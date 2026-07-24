@@ -217,8 +217,10 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# xcoding workflow context
+# AI tools / IDE helpers
 .xcoding/
-
-# Agents
+.agents/
+.claude/
+.codex/
+.opencode/
 AGENTS.md
