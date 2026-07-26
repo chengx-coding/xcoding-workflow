@@ -1,0 +1,19 @@
+schema_version = 1
+
+[git]
+auto_commit = true
+commit_message = "chore(orchestration): {operation} {run_id} [{checksum_short}]"
+on_commit_failure = "warn"
+
+[integrity]
+algorithm = "sha256"
+canonicalization = "orchestration-tree-v1"
+on_mismatch_read = "warn"
+on_mismatch_write = "block"
+
+[viewer]
+host = "127.0.0.1"
+port = 10011
+watch_interval_seconds = 1
+heartbeat_seconds = 15
+idle_shutdown_seconds = 120
