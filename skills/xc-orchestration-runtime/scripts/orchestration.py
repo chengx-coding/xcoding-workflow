@@ -1,0 +1,520 @@
+#!/usr/bin/env python3
+"""Public CLI for managed orchestration runtime trees.
+
+This entry point intentionally contains no tree state-machine logic. All
+schema, scheduling, integrity, and persistence behavior belongs to
+``runtime_core`` so the author and viewer use identical semantics.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+import runtime_core as core
+
+
+def json_print(payload: Dict[str, Any]) -> None:
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def default_template() -> Path:
+    return Path(__file__).resolve().parents[1] / "assets" / "minimal-template.xml"
+
+
+def config_for(args: argparse.Namespace, path: Optional[Path]) -> Dict[str, Any]:
+    raw_config = getattr(args, "config", "")
+    config_path = Path(raw_config) if raw_config else None
+    return core.load_config(path, config_path)
+
+
+def parse_runtime_for_read(args: argparse.Namespace) -> Tuple[Path, Any, Dict[str, Any], Dict[str, Any]]:
+    path = Path(args.tree)
+    config = config_for(args, path)
+    tree, integrity = core.read_tree_with_integrity(path, config, "runtime")
+    return path, tree, config, integrity
+
+
+def parse_runtime_for_write(args: argparse.Namespace) -> Tuple[Path, Any, Dict[str, Any]]:
+    path, tree, config, integrity = parse_runtime_for_read(args)
+    core.require_writable_integrity(integrity)
+    errors = core.validate_runtime_root(tree.getroot(), check_integrity=False)
+    if errors:
+        raise core.TreeValidationError("runtime structural validation failed", {"errors": errors})
+    return path, tree, config
+
+
+def write_runtime(
+    tree: Any,
+    path: Path,
+    config: Dict[str, Any],
+    operation: str,
+    extra: Optional[Dict[str, Any]] = None,
+    commit_paths: Optional[List[Path]] = None,
+    commit_on_write: bool = True,
+) -> Dict[str, Any]:
+    errors = core.validate_runtime_root(tree.getroot(), check_integrity=False)
+    if errors:
+        raise core.TreeValidationError("runtime structural validation failed", {"errors": errors})
+    persisted = core.write_managed_tree(
+        tree,
+        path,
+        "runtime",
+        config,
+        operation,
+        commit_paths=commit_paths,
+        commit_on_write=commit_on_write,
+    )
+    payload: Dict[str, Any] = {
+        "status": persisted["status"],
+        "operation": operation,
+        "tree_path": str(path),
+        "checksum": persisted["checksum"],
+        "integrity": persisted["integrity"],
+        "commit": persisted["commit"],
+    }
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def write_terminal_runtime(
+    tree: Any,
+    path: Path,
+    config: Dict[str, Any],
+    operation: str,
+    extra: Optional[Dict[str, Any]] = None,
+    commit_paths: Optional[List[Path]] = None,
+) -> Dict[str, Any]:
+    original_text = path.read_text(encoding="utf-8")
+    payload = write_runtime(
+        tree,
+        path,
+        config,
+        operation,
+        extra,
+        commit_paths=commit_paths,
+    )
+    if payload["status"] == "persisted_uncommitted":
+        core.atomic_write_text(path, original_text)
+        raise core.RuntimeErrorBase(
+            "terminal checkpoint could not be committed; runtime state was restored",
+            {
+                "status": "persisted_uncommitted",
+                "operation": operation,
+                "tree_path": str(path),
+                "commit": payload["commit"],
+            },
+        )
+    return payload
+
+
+def snapshot_ready(root: Any, limit: int) -> List[Dict[str, Any]]:
+    return [core.snapshot_node(root, node) for node in core.ready_from(root, core.root_node(root), limit)]
+
+
+def cmd_init(args: argparse.Namespace) -> Dict[str, Any]:
+    runtime_dir = Path(args.runtime_dir)
+    config = config_for(args, runtime_dir)
+    template_path = Path(args.template) if args.template else default_template()
+    template_tree = core.parse_xml(template_path)
+    template_errors = core.validate_template_root(template_tree.getroot())
+    if template_errors:
+        raise core.TreeValidationError("template validation failed", {"errors": template_errors})
+    run_id = args.run_id or (
+        datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:8]
+    )
+    tree_path = runtime_dir / "orchestration.xml"
+    if tree_path.exists():
+        raise core.RuntimeErrorBase("runtime tree already exists", {"path": str(tree_path)})
+    tree = core.instantiate_runtime_tree(
+        template_tree,
+        run_id,
+        args.name,
+        core.parse_set_values(args.var),
+        config,
+    )
+    core.stabilize(tree.getroot())
+    return write_runtime(
+        tree,
+        tree_path,
+        config,
+        "init",
+        {
+            "run_id": run_id,
+            "name": tree.getroot().get("name", ""),
+            "template": str(template_path),
+            "blackboard": core.blackboard(tree.getroot()),
+        },
+    )
+
+
+def cmd_next(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, _, integrity = parse_runtime_for_read(args)
+    root = tree.getroot()
+    root_status = root.get("status", "pending")
+    return {
+        "tree_path": str(path),
+        "status": "complete" if root_status == "succeeded" else root_status,
+        "integrity": integrity,
+        "counts": core.status_counts(root),
+        "ready": snapshot_ready(root, args.limit),
+    }
+
+
+def cmd_start(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, config = parse_runtime_for_write(args)
+    node = core.begin_node(tree.getroot(), args.node, args.agent)
+    return write_runtime(
+        tree,
+        path,
+        config,
+        "start",
+        {"node": core.snapshot_node(tree.getroot(), node)},
+        commit_on_write=False,
+    )
+
+
+def cmd_complete(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, config = parse_runtime_for_write(args)
+    node = core.complete_node(
+        tree.getroot(),
+        args.node,
+        args.summary,
+        args.artifact,
+        args.validation,
+        core.parse_set_values(args.set),
+    )
+    return write_terminal_runtime(
+        tree,
+        path,
+        config,
+        "complete",
+        {
+            "node": core.snapshot_node(tree.getroot(), node),
+            "counts": core.status_counts(tree.getroot()),
+        },
+        commit_paths=[Path(item) for item in args.artifact],
+    )
+
+
+def cmd_fail(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, config = parse_runtime_for_write(args)
+    node = core.fail_node(tree.getroot(), args.node, args.reason)
+    return write_terminal_runtime(
+        tree,
+        path,
+        config,
+        "fail",
+        {"node": core.snapshot_node(tree.getroot(), node), "counts": core.status_counts(tree.getroot())},
+    )
+
+
+def cmd_block(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, config = parse_runtime_for_write(args)
+    node = core.block_node(tree.getroot(), args.node, args.reason)
+    return write_terminal_runtime(
+        tree,
+        path,
+        config,
+        "block",
+        {"node": core.snapshot_node(tree.getroot(), node), "counts": core.status_counts(tree.getroot())},
+    )
+
+
+def cmd_unblock(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, config = parse_runtime_for_write(args)
+    node = core.unblock_node(tree.getroot(), args.node)
+    return write_runtime(
+        tree,
+        path,
+        config,
+        "unblock",
+        {"node": core.snapshot_node(tree.getroot(), node), "counts": core.status_counts(tree.getroot())},
+        commit_on_write=False,
+    )
+
+
+def cmd_set(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, config = parse_runtime_for_write(args)
+    root = tree.getroot()
+    for key, value in core.parse_set_values(args.set):
+        core.set_blackboard(root, key, value, "main")
+    core.stabilize(root)
+    return write_runtime(
+        tree,
+        path,
+        config,
+        "set",
+        {"blackboard": core.blackboard(root), "counts": core.status_counts(root)},
+        commit_on_write=False,
+    )
+
+
+def cmd_add_node(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, config = parse_runtime_for_write(args)
+    node = core.create_dynamic_node(
+        tree.getroot(),
+        args.parent,
+        args.logical_key,
+        args.title,
+        args.type,
+        args.executor,
+        args.role,
+        args.mode,
+        args.when,
+        args.depends_on,
+        args.instructions,
+        args.inputs,
+        args.deliverables,
+        args.acceptance,
+    )
+    core.stabilize(tree.getroot())
+    return write_runtime(
+        tree,
+        path,
+        config,
+        "add-node",
+        {"node": core.snapshot_node(tree.getroot(), node)},
+        commit_on_write=False,
+    )
+
+
+def cmd_embed_subtree(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, config = parse_runtime_for_write(args)
+    embedded = core.embed_template_subtree(
+        tree.getroot(),
+        args.parent,
+        core.parse_xml(Path(args.template)),
+        config,
+        args.instance_id or None,
+    )
+    core.stabilize(tree.getroot())
+    return write_runtime(
+        tree,
+        path,
+        config,
+        "embed-subtree",
+        {"node": core.snapshot_node(tree.getroot(), embedded), "template": args.template},
+        commit_on_write=False,
+    )
+
+
+def cmd_summary(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, _, integrity = parse_runtime_for_read(args)
+    root = tree.getroot()
+    return {
+        "tree_path": str(path),
+        "status": "complete" if root.get("status") == "succeeded" else root.get("status"),
+        "integrity": integrity,
+        "counts": core.status_counts(root),
+        "blackboard": core.blackboard(root),
+        "ready": snapshot_ready(root, args.limit),
+    }
+
+
+def cmd_show(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, _, integrity = parse_runtime_for_read(args)
+    root = tree.getroot()
+    return {
+        "tree_path": str(path),
+        "integrity": integrity,
+        "node": core.snapshot_node(root, core.find_node(root, args.node)),
+    }
+
+
+def cmd_snapshot(args: argparse.Namespace) -> Dict[str, Any]:
+    path = Path(args.tree)
+    config = config_for(args, path)
+    return core.tree_snapshot(path, config)
+
+
+def cmd_integrity_status(args: argparse.Namespace) -> Dict[str, Any]:
+    path = Path(args.tree)
+    config = config_for(args, path)
+    tree = core.parse_xml(path)
+    return {
+        "tree_path": str(path),
+        "config_source": config["_source"],
+        "integrity": core.verify_integrity(tree.getroot(), "runtime"),
+    }
+
+
+def cmd_repair_integrity(args: argparse.Namespace) -> Dict[str, Any]:
+    path = Path(args.tree)
+    config = config_for(args, path)
+    tree = core.parse_xml(path)
+    root = tree.getroot()
+    previous_integrity = core.verify_integrity(root, "runtime")
+    core.stabilize(root)
+    errors = core.validate_runtime_root(root, check_integrity=False)
+    if errors:
+        raise core.TreeValidationError("runtime structural validation failed", {"errors": errors})
+    result = write_runtime(tree, path, config, "repair-integrity", {"reason": args.reason})
+    result["previous_integrity"] = previous_integrity
+    return result
+
+
+def cmd_validate(args: argparse.Namespace) -> Dict[str, Any]:
+    path = Path(args.tree)
+    config = config_for(args, path)
+    tree = core.parse_xml(path)
+    root = tree.getroot()
+    kind = root.get("artifact_kind", "")
+    if kind == "template":
+        errors = core.validate_template_root(root)
+    elif kind == "runtime":
+        errors = core.validate_runtime_root(root)
+    else:
+        errors = [f"unsupported or missing artifact_kind: {kind or '<missing>'}"]
+    return {
+        "tree_path": str(path),
+        "artifact_kind": kind,
+        "config_source": config["_source"],
+        "valid": not errors,
+        "errors": errors,
+        "node_count": sum(1 for _ in core.iter_nodes(root)),
+    }
+
+
+def add_config_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--config", default="", help="Optional xc-orchestration-runtime TOML path.")
+
+
+def add_tree_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--tree", required=True)
+    add_config_argument(parser)
+    parser.add_argument("--json", action="store_true", help="Accepted for agent protocol compatibility; JSON is always emitted.")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Manage orchestration runtime trees.")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    init = sub.add_parser("init", help="Create a managed runtime tree from a managed template.")
+    init.add_argument("--runtime-dir", required=True)
+    init.add_argument("--template", default="")
+    init.add_argument("--run-id", default="")
+    init.add_argument("--name", default="")
+    init.add_argument("--var", action="append", default=[])
+    add_config_argument(init)
+    init.add_argument("--json", action="store_true", help="Accepted for agent protocol compatibility; JSON is always emitted.")
+    init.set_defaults(func=cmd_init)
+
+    next_cmd = sub.add_parser("next", help="Return ready nodes without changing the tree.")
+    add_tree_argument(next_cmd)
+    next_cmd.add_argument("--limit", type=int, default=8)
+    next_cmd.set_defaults(func=cmd_next)
+
+    start = sub.add_parser("start", help="Mark a ready task or gate as running.")
+    add_tree_argument(start)
+    start.add_argument("--node", required=True)
+    start.add_argument("--agent", default="")
+    start.set_defaults(func=cmd_start)
+
+    complete = sub.add_parser("complete", help="Complete a task or gate and record outputs.")
+    add_tree_argument(complete)
+    complete.add_argument("--node", required=True)
+    complete.add_argument("--summary", default="")
+    complete.add_argument("--artifact", action="append", default=[])
+    complete.add_argument("--validation", default="")
+    complete.add_argument("--set", action="append", default=[])
+    complete.set_defaults(func=cmd_complete)
+
+    fail = sub.add_parser("fail", help="Fail an executable leaf.")
+    add_tree_argument(fail)
+    fail.add_argument("--node", required=True)
+    fail.add_argument("--reason", required=True)
+    fail.set_defaults(func=cmd_fail)
+
+    block = sub.add_parser("block", help="Block an executable leaf.")
+    add_tree_argument(block)
+    block.add_argument("--node", required=True)
+    block.add_argument("--reason", required=True)
+    block.set_defaults(func=cmd_block)
+
+    unblock = sub.add_parser("unblock", help="Return a blocked executable leaf to pending.")
+    add_tree_argument(unblock)
+    unblock.add_argument("--node", required=True)
+    unblock.set_defaults(func=cmd_unblock)
+
+    set_cmd = sub.add_parser("set", help="Set cross-node blackboard values.")
+    add_tree_argument(set_cmd)
+    set_cmd.add_argument("--set", action="append", required=True)
+    set_cmd.set_defaults(func=cmd_set)
+
+    add_node = sub.add_parser("add-node", help="Append a managed dynamic node.")
+    add_tree_argument(add_node)
+    add_node.add_argument("--parent", required=True)
+    add_node.add_argument("--logical-key", required=True)
+    add_node.add_argument("--title", required=True)
+    add_node.add_argument("--type", default="task", choices=sorted(core.VALID_TYPES))
+    add_node.add_argument("--role", default="")
+    add_node.add_argument("--executor", default="subagent", choices=sorted(core.VALID_EXECUTORS))
+    add_node.add_argument("--mode", default="", choices=sorted(core.VALID_MODES))
+    add_node.add_argument("--when", default="")
+    add_node.add_argument("--depends-on", dest="depends_on", default="")
+    add_node.add_argument("--instructions", default="")
+    add_node.add_argument("--inputs", default="")
+    add_node.add_argument("--deliverables", default="")
+    add_node.add_argument("--acceptance", default="")
+    add_node.set_defaults(func=cmd_add_node)
+
+    embed = sub.add_parser("embed-subtree", help="Instantiate a managed template beneath a runtime parent.")
+    add_tree_argument(embed)
+    embed.add_argument("--parent", required=True)
+    embed.add_argument("--template", required=True)
+    embed.add_argument("--instance-id", default="")
+    embed.set_defaults(func=cmd_embed_subtree)
+
+    summary = sub.add_parser("summary", help="Show runtime progress and ready nodes.")
+    add_tree_argument(summary)
+    summary.add_argument("--limit", type=int, default=8)
+    summary.set_defaults(func=cmd_summary)
+
+    show = sub.add_parser("show", help="Show a single runtime node.")
+    add_tree_argument(show)
+    show.add_argument("--node", required=True)
+    show.set_defaults(func=cmd_show)
+
+    snapshot = sub.add_parser("snapshot", help="Export the read-only viewer snapshot.")
+    add_tree_argument(snapshot)
+    snapshot.set_defaults(func=cmd_snapshot)
+
+    integrity = sub.add_parser("integrity-status", help="Report runtime integrity without changing it.")
+    add_tree_argument(integrity)
+    integrity.set_defaults(func=cmd_integrity_status)
+
+    repair = sub.add_parser("repair-integrity", help="Explicitly recreate runtime access metadata and checksum.")
+    add_tree_argument(repair)
+    repair.add_argument("--reason", required=True)
+    repair.set_defaults(func=cmd_repair_integrity)
+
+    validate = sub.add_parser("validate", help="Validate a managed template or runtime tree.")
+    add_tree_argument(validate)
+    validate.set_defaults(func=cmd_validate)
+    return parser
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        payload = args.func(args)
+    except core.RuntimeErrorBase as exc:
+        json_print({"ok": False, "error": {"code": exc.code, "message": str(exc), "details": exc.details}})
+        return 2
+    except OSError as exc:
+        json_print({"ok": False, "error": {"code": "os_error", "message": str(exc), "details": {}}})
+        return 2
+    json_print({"ok": True, **payload})
+    return 1 if payload.get("valid") is False else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

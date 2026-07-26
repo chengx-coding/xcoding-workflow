@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Orchestration Viewer</title>
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Orchestration Viewer</h1>
+        <p id="server-status">Connecting to local viewer...</p>
+      </div>
+      <div class="controls">
+        <label>
+          Tree
+          <select id="tree-select" aria-label="Registered orchestration tree"></select>
+        </label>
+        <button id="refresh-button" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="toolbar" aria-label="Tree registration">
+        <form id="register-form">
+          <label for="tree-path">Register local runtime tree</label>
+          <input id="tree-path" name="path" type="text" placeholder="C:\path\to\orchestration.xml">
+          <button type="submit">Register</button>
+        </form>
+        <p id="message" role="status"></p>
+      </section>
+
+      <section id="overview" class="overview" hidden>
+        <article><span>Name</span><strong id="run-name"></strong></article>
+        <article><span>Run</span><strong id="run-id"></strong></article>
+        <article><span>Status</span><strong id="run-status"></strong></article>
+        <article><span>Integrity</span><strong id="integrity-status"></strong></article>
+      </section>
+
+      <section class="workspace">
+        <section class="graph-pane">
+          <div class="graph-heading">
+            <h2>Node Graph</h2>
+            <div class="graph-controls" aria-label="Graph controls">
+              <button id="expand-all-button" type="button">Expand all</button>
+              <button id="collapse-all-button" type="button">Collapse all</button>
+              <span class="control-separator" aria-hidden="true"></span>
+              <button id="zoom-out-button" type="button" aria-label="Zoom out">-</button>
+              <button id="zoom-reset-button" type="button" aria-label="Reset zoom">100%</button>
+              <button id="zoom-in-button" type="button" aria-label="Zoom in">+</button>
+              <button id="fit-button" type="button">Fit</button>
+            </div>
+          </div>
+          <div id="graph-viewport" class="graph-viewport" tabindex="0" aria-label="Orchestration node graph">
+            <div id="graph-sizer" class="graph-sizer">
+              <div id="graph-stage" class="graph-stage">
+                <svg id="graph-edges" class="graph-edges" aria-hidden="true"></svg>
+                <div id="graph-nodes" class="graph-nodes"></div>
+              </div>
+            </div>
+            <p id="graph-empty" class="graph-empty">Register a runtime tree within an allowed directory.</p>
+          </div>
+        </section>
+        <section class="detail-pane">
+          <h2>Node Detail</h2>
+          <div id="node-detail" class="node-detail">Select a node to inspect its details.</div>
+          <h2>Blackboard</h2>
+          <pre id="blackboard" class="data-block"></pre>
+        </section>
+      </section>
+    </main>
+
+    <template id="node-template">
+      <article class="graph-node">
+        <button class="node-select" type="button">
+          <span class="node-title"></span>
+          <span class="node-role"></span>
+          <span class="node-status"></span>
+        </button>
+        <button class="node-toggle" type="button" aria-label="Collapse child nodes"></button>
+        <span class="hidden-count" aria-hidden="true"></span>
+      </article>
+    </template>
+    <script src="/app.js"></script>
+  </body>
+</html>

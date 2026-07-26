@@ -1,0 +1,74 @@
+{
+  "name": "example-workflow",
+  "schema_version": 1,
+  "blackboard": {
+    "scope.confirmed": "false",
+    "review.open_issues": "false"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Example Workflow",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "investigation",
+        "title": "Investigate context",
+        "type": "task",
+        "role": "research",
+        "executor": "subagent",
+        "instructions": "Inspect the current project context and write a concise report.",
+        "deliverables": "artifacts/investigation/analysis.md",
+        "acceptance": "Report exists, cites source files, and distinguishes facts from assumptions."
+      },
+      {
+        "template_id": "scope-gate",
+        "title": "Confirm scope",
+        "type": "gate",
+        "role": "scope-confirmation",
+        "executor": "main",
+        "instructions": "Ask the user to confirm the scope after investigation.",
+        "deliverables": "Set scope.confirmed=true in the blackboard.",
+        "acceptance": "User has confirmed scope or supplied corrections."
+      },
+      {
+        "template_id": "review-loop",
+        "title": "Review and rework",
+        "type": "loop",
+        "role": "quality-loop",
+        "mode": "sequence",
+        "executor": "main",
+        "loop.max_iterations": "3",
+        "loop.continue_when": "review.open_issues == true",
+        "loop.break_when": "review.open_issues == false",
+        "loop.on_limit": "blocked",
+        "children": [
+          {
+            "template_id": "review",
+            "title": "Review output",
+            "type": "task",
+            "role": "review",
+            "executor": "subagent",
+            "instructions": "Review current artifacts and set review.open_issues true or false.",
+            "deliverables": "artifacts/review-loop/review-{iteration}.md",
+            "acceptance": "Review findings are prioritized and include closure criteria."
+          },
+          {
+            "template_id": "rework",
+            "title": "Rework output",
+            "type": "task",
+            "role": "rework",
+            "executor": "subagent",
+            "when": "review.open_issues == true",
+            "depends_on_template": "local:review",
+            "instructions": "Address the current review findings.",
+            "deliverables": "artifacts/review-loop/rework-{iteration}.md",
+            "acceptance": "Required findings are fixed or explicitly deferred."
+          }
+        ]
+      }
+    ]
+  }
+}
