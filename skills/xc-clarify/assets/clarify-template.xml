@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="clarify" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
+  <meta>
+    <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="88571b1160e2b7f158b31be36d3faef0771aa7790a60e408ed85f3afed969814" />
+  </meta>
+  <blackboard>
+    <var key="clarification.mode" />
+    <var key="clarification.subject" />
+    <var key="clarification.instance_id" />
+    <var key="clarification.status">pending</var>
+    <var key="clarification.question_count">0</var>
+    <var key="clarification.limit">12</var>
+    <var key="clarification.pending_material">true</var>
+    <var key="clarification.outcome">pending</var>
+    <var key="clarification.next_decision_id" />
+    <var key="clarification.session_artifact" />
+  </blackboard>
+  <node executor="main" mode="sequence" role="root" template_id="root" title="Clarify" type="composite">
+    <children>
+      <node executor="subagent" role="clarification-session-open" template_id="open-session-record" title="Open decision session record" type="task">
+        <instructions>Create clarification.session_artifact as a validated xc-document node-artifact. Record the mode, subject, declared inputs, and initial decision budget. Do not read or edit runtime XML.</instructions>
+        <deliverables>One decision-session.md node artifact at clarification.session_artifact.</deliverables>
+        <acceptance>The session artifact exists, validates as node-artifact, and records the clarification scope without storing dynamic control state.</acceptance>
+      </node>
+      <node executor="subagent" role="clarification-evidence" template_id="gather-context" title="Gather decision evidence" type="task">
+        <instructions>Inspect only the supplied inputs and project bridge references. Append confirmed facts, source locations, contradictions, and evidence gaps to clarification.session_artifact. Resolve factual questions without asking the user.</instructions>
+        <deliverables>Evidence appended to the decision session artifact.</deliverables>
+        <acceptance>The artifact distinguishes confirmed facts, hypotheses, and unknowns with traceable evidence.</acceptance>
+      </node>
+      <node executor="subagent" role="clarification-map" template_id="map-decisions" title="Map material decisions" type="task">
+        <instructions>Append a dependency-ordered decision map to clarification.session_artifact. Classify each uncertainty as evidence-resolved, human-decision, bounded-experiment, or accepted-assumption, and identify material human decisions.</instructions>
+        <deliverables>A decision map in the session artifact.</deliverables>
+        <acceptance>Every material human decision has an ID, dependencies, evidence, and a proposed next question.</acceptance>
+      </node>
+      <node executor="main" role="clarification-seed" template_id="seed-questioning" title="Seed decision questioning" type="task">
+        <instructions>Read the decision map from clarification.session_artifact. Before completing this task, use xc-orchestration-runtime to add the first main-executor decision Gate beneath question-group. If no material decision exists, add a closing confirmation Gate instead. Do not leave question-group empty.</instructions>
+        <deliverables>A first decision Gate or a closing confirmation Gate in question-group.</deliverables>
+        <acceptance>The next runtime query exposes an executable main Gate and question-group cannot block as an empty composite.</acceptance>
+      </node>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="question-group" title="Resolve material decisions" type="composite" />
+      <node executor="subagent" role="clarification-synthesis" template_id="synthesize-session" title="Synthesize clarified decisions" type="task">
+        <instructions>After question-group closes, append the final decision summary, bounded experiments, accepted risks, residual risks, and caller handoff readiness to clarification.session_artifact.</instructions>
+        <deliverables>A complete clarification session artifact.</deliverables>
+        <acceptance>The artifact states whether the caller may select a solution without hidden material decisions.</acceptance>
+      </node>
+      <node executor="main" role="clarification-finalize" template_id="finalize-clarification" title="Finalize clarification" type="task">
+        <instructions>Confirm clarification.status and clarification.outcome from the accepted session artifact. Record the artifact path and concise handoff result through the runtime public interface.</instructions>
+        <deliverables>A completed, deferred, or blocked clarification disposition.</deliverables>
+        <acceptance>The caller can safely continue to analysis synthesis or solution selection without reading runtime XML.</acceptance>
+      </node>
+    </children>
+  </node>
+</orchestration>
