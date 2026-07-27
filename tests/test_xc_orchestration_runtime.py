@@ -184,6 +184,15 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             sleep.assert_called_once_with(core.ATOMIC_REPLACE_RETRY_DELAY_SECONDS)
             self.assertEqual(target.read_text(encoding="utf-8"), "recovered\n")
 
+    def test_blackboard_updated_at_uses_latest_variable_timestamp(self) -> None:
+        root = ET.Element("orchestration")
+        blackboard = ET.SubElement(root, "blackboard")
+        ET.SubElement(blackboard, "var", {"key": "first", "updated_at": "2026-07-27T10:00:00+00:00"}).text = "one"
+        ET.SubElement(blackboard, "var", {"key": "second", "updated_at": "2026-07-27T10:05:00+00:00"}).text = "two"
+        ET.SubElement(blackboard, "var", {"key": "legacy"}).text = "three"
+
+        self.assertEqual(core.blackboard_updated_at(root), "2026-07-27T10:05:00+00:00")
+
     def test_terminal_checkpoint_rejects_artifact_outside_context(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"

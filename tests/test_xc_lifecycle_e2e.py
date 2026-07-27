@@ -10,7 +10,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime" / "scripts" / "orchestration.py"
-RUN = REPOSITORY_ROOT / "skills" / "xc-run" / "scripts" / "create_run.py"
+RUN = REPOSITORY_ROOT / "skills" / "xc-create-run" / "scripts" / "create_run.py"
 FEATURE = REPOSITORY_ROOT / "skills" / "xc-feature" / "scripts" / "manage_feature.py"
 RENDER = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "render_document.py"
 VALIDATE = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "validate_document.py"
@@ -307,7 +307,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
     def test_ordinary_run_without_feature_closes_without_creating_feature(self) -> None:
         _, project, context = self.create_environment()
         run = self.create_run(context, project, "20260727-1000-ordinary-run", [])
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-ordinary-run" / "assets" / "ordinary-run-template.xml", run)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml", run)
         self.set_values(
             project,
             tree,
@@ -334,7 +334,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             for feature_id in feature_ids
         ]
         run = self.create_run(context, project, "20260727-1000-multi-feature", feature_ids)
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-ordinary-run" / "assets" / "ordinary-run-template.xml", run)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml", run)
         self.set_values(
             project,
             tree,
@@ -423,7 +423,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         )
         original_contract = contract_path.read_text(encoding="utf-8")
         run = self.create_run(context, project, "20260727-1000-baseline-sync", [feature_id])
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-ordinary-run" / "assets" / "ordinary-run-template.xml", run)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml", run)
         self.set_values(
             project,
             tree,
@@ -502,7 +502,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             str(self.run_json(FEATURE, "init", "--context-dir", str(context), "--feature-id", feature_id, cwd=project)["feature_dir"])
         )
         run = self.create_run(context, project, "20260727-1000-conflict-gate", [feature_id])
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-ordinary-run" / "assets" / "ordinary-run-template.xml", run)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml", run)
         self.set_values(
             project,
             tree,
