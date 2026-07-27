@@ -37,13 +37,13 @@ python "$SKILL_DIR/scripts/orchestration.py" complete `
 
 `init` writes `<run_runtime_dir>/orchestration.xml`. The run-creation capability owns creation of `<run_runtime_dir>` and its parent run directory. All commands emit JSON; `--json` is accepted for host compatibility.
 
-Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`, `embed-subtree`, `summary`, `show`, `snapshot`, `integrity-status`, `repair-integrity`, and `validate`.
+Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`, `embed-subtree`, `summary`, `show`, `find`, `snapshot`, `integrity-status`, `repair-integrity`, and `validate`.
 
 ## Persistence and Context Commits
 
 Every managed tree has an access warning, access policy, and canonical SHA-256 integrity metadata. Normal writes reject invalid integrity; only `repair-integrity` can repair it after explicit inspection.
 
-When `auto_commit=true`, `init`, template operations, and each terminal node operation create a path-scoped context commit. A terminal `complete` commit contains both the tree transition and all declared `--artifact` paths. `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist state without a commit; their changes are included by the next terminal checkpoint.
+When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped context commit. A terminal `complete` commit contains both the tree transition and all declared `--artifact` paths. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist state without a commit; their changes are included by the next terminal checkpoint.
 
 Declared commit artifacts MUST exist inside the same context Git repository as the runtime tree. The runtime never stages unrelated context changes. A failed commit returns `persisted_uncommitted`; files remain available for recovery, but the caller MUST treat the checkpoint as uncommitted.
 

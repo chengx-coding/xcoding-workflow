@@ -151,6 +151,7 @@ def cmd_init(args: argparse.Namespace) -> Dict[str, Any]:
             "template": str(template_path),
             "blackboard": core.blackboard(tree.getroot()),
         },
+        commit_on_write=False,
     )
 
 
@@ -328,6 +329,24 @@ def cmd_show(args: argparse.Namespace) -> Dict[str, Any]:
     }
 
 
+def cmd_find(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, _, integrity = parse_runtime_for_read(args)
+    root = tree.getroot()
+    nodes = [
+        core.snapshot_node(root, node)
+        for node in core.iter_nodes(root)
+        if node.get("template_id") == args.template_id
+        and (not args.instance_id or node.get("origin_instance_id") == args.instance_id)
+    ]
+    return {
+        "tree_path": str(path),
+        "integrity": integrity,
+        "template_id": args.template_id,
+        "instance_id": args.instance_id,
+        "nodes": nodes,
+    }
+
+
 def cmd_snapshot(args: argparse.Namespace) -> Dict[str, Any]:
     path = Path(args.tree)
     config = config_for(args, path)
@@ -481,6 +500,12 @@ def build_parser() -> argparse.ArgumentParser:
     add_tree_argument(show)
     show.add_argument("--node", required=True)
     show.set_defaults(func=cmd_show)
+
+    find = sub.add_parser("find", help="Find runtime nodes by template ID.")
+    add_tree_argument(find)
+    find.add_argument("--template-id", required=True)
+    find.add_argument("--instance-id", default="")
+    find.set_defaults(func=cmd_find)
 
     snapshot = sub.add_parser("snapshot", help="Export the read-only viewer snapshot.")
     add_tree_argument(snapshot)

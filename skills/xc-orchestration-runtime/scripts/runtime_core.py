@@ -9,12 +9,14 @@ independently.
 from __future__ import annotations
 
 import copy
+import errno
 import hashlib
 import json
 import os
 import re
 import subprocess
 import tempfile
+import time
 import tomllib
 import uuid
 import xml.etree.ElementTree as ET
@@ -45,6 +47,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
 }
 
+TEMPLATE_UPDATED_AT = "1970-01-01T00:00:00+00:00"
+
 RUNTIME_NOTICE = (
     "ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS RUNTIME TREE THROUGH "
     "THE xc-orchestration-runtime SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, "
@@ -64,6 +68,9 @@ VALID_TYPES = {"composite", "task", "gate", "loop"}
 VALID_MODES = {"", "sequence", "parallel", "switch"}
 VALID_EXECUTORS = {"main", "subagent", "tool", "service"}
 NODE_KEY_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+ATOMIC_REPLACE_ATTEMPTS = 5
+ATOMIC_REPLACE_RETRY_DELAY_SECONDS = 0.05
+TRANSIENT_REPLACE_WINERRORS = {5, 32}
 
 
 class RuntimeErrorBase(RuntimeError):
@@ -388,7 +395,7 @@ def verify_integrity(root: ET.Element, artifact_kind: Optional[str] = None) -> D
 
 def apply_integrity(root: ET.Element, artifact_kind: str, config: Dict[str, Any]) -> str:
     ensure_managed_metadata(root, artifact_kind, config)
-    root.set("updated_at", utc_now())
+    root.set("updated_at", TEMPLATE_UPDATED_AT if artifact_kind == "template" else utc_now())
     integrity = integrity_element(root)
     if integrity is None:
         raise RuntimeErrorBase("managed metadata missing integrity")
@@ -417,7 +424,15 @@ def atomic_write_text(path: Path, text: str) -> None:
             handle.write(text)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temp_name, path)
+        for attempt in range(ATOMIC_REPLACE_ATTEMPTS):
+            try:
+                os.replace(temp_name, path)
+                break
+            except OSError as exc:
+                retryable = exc.errno in {errno.EACCES, errno.EPERM} or getattr(exc, "winerror", None) in TRANSIENT_REPLACE_WINERRORS
+                if not retryable or attempt == ATOMIC_REPLACE_ATTEMPTS - 1:
+                    raise
+                time.sleep(ATOMIC_REPLACE_RETRY_DELAY_SECONDS * (attempt + 1))
     finally:
         if os.path.exists(temp_name):
             os.unlink(temp_name)
@@ -499,7 +514,13 @@ def commit_managed_paths(
         if commit.returncode != 0:
             return {"status": "failed", "error": commit.stderr.strip() or commit.stdout.strip()}
         sha = run_git(["rev-parse", "HEAD"], repo_root, env)
-        return {"status": "committed", "sha": sha.stdout.strip()}
+        index_sync = run_git(["reset", "--mixed", "HEAD", "--", *rel_paths], repo_root)
+        result = {"status": "committed", "sha": sha.stdout.strip()}
+        if index_sync.returncode != 0:
+            result["index_sync"] = {"status": "failed", "error": index_sync.stderr.strip()}
+        else:
+            result["index_sync"] = {"status": "synced"}
+        return result
     finally:
         if temp_index.exists():
             temp_index.unlink()
@@ -772,15 +793,16 @@ def normalize_conditions(root: ET.Element) -> bool:
         if not when:
             continue
         status = node.get("status", "pending")
-        if status not in RUNNABLE_STATUSES or not is_unlocked_by_ancestors(root, node):
+        was_conditionally_skipped = status == "skipped" and node.get("skip_reason") == "when"
+        if (status not in RUNNABLE_STATUSES and not was_conditionally_skipped) or not is_unlocked_by_ancestors(root, node):
             continue
         should_run = eval_when(when, bb)
-        if not should_run and status != "skipped":
+        if not should_run and status in RUNNABLE_STATUSES:
             node.set("status", "skipped")
             node.set("skip_reason", "when")
             node.set("skipped_at", utc_now())
             changed = True
-        elif should_run and status == "skipped" and node.get("skip_reason") == "when":
+        elif should_run and was_conditionally_skipped:
             node.set("status", "pending")
             node.attrib.pop("skip_reason", None)
             node.attrib.pop("skipped_at", None)
@@ -808,7 +830,7 @@ def recompute_containers(root: ET.Element) -> bool:
         if not kids:
             continue
         old_status = node.get("status", "pending")
-        if old_status == "skipped" and node.get("skip_reason") == "switch":
+        if old_status == "skipped" and node.get("skip_reason") in {"switch", "when"}:
             continue
         statuses = [child.get("status", "pending") for child in kids]
         ntype = node_type(node)

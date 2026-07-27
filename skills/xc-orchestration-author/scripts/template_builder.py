@@ -154,7 +154,7 @@ def node_to_xml(spec: Dict[str, Any]) -> ET.Element:
     if unknown:
         raise core.TreeValidationError("flow spec node has unknown fields", {"fields": unknown})
     attrs: Dict[str, str] = {}
-    for key in NODE_ATTRIBUTE_KEYS:
+    for key in sorted(NODE_ATTRIBUTE_KEYS):
         value = spec.get(key)
         if value not in (None, ""):
             attrs[key] = str(value)
