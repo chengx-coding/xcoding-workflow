@@ -1,0 +1,53 @@
+{
+  "name": "context-setup",
+  "schema_version": 1,
+  "blackboard": {
+    "context.setup.ready": "false"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Context Setup",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "prepare-context",
+        "title": "Prepare context setup",
+        "type": "task",
+        "role": "context-prepare",
+        "executor": "main",
+        "instructions": "Confirm the context Git worktree and project-local facts required by WORKFLOW.md and KNOWLEDGE.md.",
+        "deliverables": "Context setup inputs recorded in the blackboard and setup artifacts.",
+        "acceptance": "The context worktree is independent from the business repository and required project-local facts are available or gated."
+      },
+      {
+        "template_id": "workflow-document",
+        "title": "Create project workflow document",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "knowledge-document",
+        "title": "Create project knowledge guidance",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "finalize-context",
+        "title": "Finalize context setup",
+        "type": "task",
+        "role": "context-finalize",
+        "executor": "main",
+        "instructions": "Verify WORKFLOW.md and KNOWLEDGE.md through xc-document and record both as setup artifacts.",
+        "deliverables": "Validated managed context documents.",
+        "acceptance": "Both context documents validate and their document-evolution subtrees are complete."
+      }
+    ]
+  }
+}
