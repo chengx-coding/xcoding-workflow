@@ -1,0 +1,126 @@
+{
+  "name": "new-feature",
+  "schema_version": 1,
+  "blackboard": {
+    "feature.id": "",
+    "feature.title": "",
+    "feature.approval_required": "true",
+    "run.requires_implementation": "true",
+    "run.requires_verification": "true"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "New Feature",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "prepare-feature",
+        "title": "Prepare new feature",
+        "type": "task",
+        "role": "feature-prepare",
+        "executor": "main",
+        "instructions": "Read the project bridge, create the run through xc-run, select an explicit feature ID, and create its empty directory through xc-feature.",
+        "deliverables": "An authoritative run directory and empty managed feature directory.",
+        "acceptance": "The context Git worktree is independent, the feature ID is explicit, and no baseline document exists outside document evolution."
+      },
+      {
+        "template_id": "goal-document",
+        "title": "Define run goal",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "analysis-group",
+        "title": "Analyze feature context",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "run-solution-document",
+        "title": "Select run solution",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "feature-contract-document",
+        "title": "Establish feature contract",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "feature-solution-document",
+        "title": "Establish feature solution",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "feature-verification-document",
+        "title": "Establish feature verification",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "approve-feature-baseline",
+        "title": "Approve feature baseline",
+        "type": "gate",
+        "role": "feature-approval",
+        "executor": "main",
+        "when": "feature.approval_required == true",
+        "instructions": "Present the accepted contract, feature solution, verification baseline, and run solution. Record approval or requested revision through the runtime.",
+        "deliverables": "A recorded approval decision or follow-up document-evolution nodes.",
+        "acceptance": "The feature baseline is approved or the tree contains explicit revision and review work."
+      },
+      {
+        "template_id": "implementation-group",
+        "title": "Implement feature",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "run.requires_implementation == true"
+      },
+      {
+        "template_id": "verification-group",
+        "title": "Verify feature",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "run.requires_verification == true"
+      },
+      {
+        "template_id": "result-document",
+        "title": "Record feature result",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "finalize-feature",
+        "title": "Finalize new feature run",
+        "type": "task",
+        "role": "feature-finalize",
+        "executor": "main",
+        "instructions": "Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the run.",
+        "deliverables": "A completed, failed, or blocked run with durable result evidence.",
+        "acceptance": "The runtime tree and declared context artifacts accurately represent the outcome."
+      }
+    ]
+  }
+}
