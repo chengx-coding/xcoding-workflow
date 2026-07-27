@@ -1,0 +1,114 @@
+{
+  "name": "ordinary-run",
+  "schema_version": 1,
+  "blackboard": {
+    "run.has_features": "false",
+    "run.requires_analysis": "true",
+    "run.requires_solution": "true",
+    "run.solution_gate_required": "true",
+    "run.requires_implementation": "true",
+    "run.requires_verification": "true"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Ordinary Run",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "prepare-run",
+        "title": "Prepare ordinary run",
+        "type": "task",
+        "role": "run-prepare",
+        "executor": "main",
+        "instructions": "Read the project bridge, create the run through xc-run, validate requested feature IDs without creating features, and record the requested scope.",
+        "deliverables": "An authoritative run directory and explicit feature associations.",
+        "acceptance": "The run is independent, feature associations are explicit, and no unmanaged feature directory was created."
+      },
+      {
+        "template_id": "goal-document",
+        "title": "Define run goal",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "analysis-group",
+        "title": "Analyze requested work",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "run.requires_analysis == true"
+      },
+      {
+        "template_id": "reconciliation-group",
+        "title": "Reconcile related feature baselines",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "run.has_features == true"
+      },
+      {
+        "template_id": "run-solution-document",
+        "title": "Select run solution",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "run.requires_solution == true"
+      },
+      {
+        "template_id": "approve-run-solution",
+        "title": "Approve run solution",
+        "type": "gate",
+        "role": "solution-approval",
+        "executor": "main",
+        "when": "run.solution_gate_required == true",
+        "instructions": "Present the selected change solution, baseline impact, implementation strategy, verification strategy, and unresolved decisions. Record approval or add revision nodes.",
+        "deliverables": "An approval decision or explicit revision work.",
+        "acceptance": "Implementation cannot proceed on a material unresolved solution decision."
+      },
+      {
+        "template_id": "implementation-group",
+        "title": "Implement approved change",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "run.requires_implementation == true"
+      },
+      {
+        "template_id": "verification-group",
+        "title": "Verify run outcome",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "run.requires_verification == true"
+      },
+      {
+        "template_id": "result-document",
+        "title": "Record run result",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "finalize-run",
+        "title": "Finalize ordinary run",
+        "type": "task",
+        "role": "run-finalize",
+        "executor": "main",
+        "instructions": "Confirm the run result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the run.",
+        "deliverables": "A completed, failed, or blocked run with durable evidence.",
+        "acceptance": "The runtime tree and context documents accurately describe the run outcome."
+      }
+    ]
+  }
+}
