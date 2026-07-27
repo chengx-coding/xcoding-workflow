@@ -3,10 +3,11 @@
 <orchestration schema_version="1" name="run" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="fc94cf779c5b69e5997bf7bd25d2916bd2c8e5d22a45dc52eaa7aa51e6785b49" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="62bd860ec2dac5655344774ef34d8d172b16a3864509e83dc011cdbeb0aedd1b" />
   </meta>
   <blackboard>
     <var key="run.has_features">false</var>
+    <var key="run.document_language">en</var>
     <var key="run.requires_analysis">true</var>
     <var key="run.requires_clarification">false</var>
     <var key="run.requires_solution">true</var>
@@ -17,9 +18,9 @@
   <node executor="main" mode="sequence" role="root" template_id="root" title="Run" type="composite">
     <children>
       <node executor="main" role="run-prepare" template_id="prepare-run" title="Prepare run" type="task">
-        <instructions>Read the project bridge, create the run through xc-create-run, validate requested feature IDs without creating features, and record the requested scope.</instructions>
+        <instructions>Read the project bridge, create the run through xc-create-run, validate requested feature IDs without creating features, determine run.document_language from the explicit parameter or initiating user request, and record the requested scope.</instructions>
         <deliverables>An authoritative run directory and explicit feature associations.</deliverables>
-        <acceptance>The run is independent, feature associations are explicit, and no unmanaged feature directory was created.</acceptance>
+        <acceptance>The run is independent, feature associations are explicit, run.document_language is set before any document write, and no unmanaged feature directory was created.</acceptance>
       </node>
       <node executor="main" mode="sequence" role="dynamic-group" template_id="goal-document" title="Define run goal" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-group" title="Analyze requested work" type="composite" when="run.requires_analysis == true" />
