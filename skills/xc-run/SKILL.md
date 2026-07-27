@@ -1,66 +1,55 @@
 ---
-name: "xc-run"
-description: "Creates standard workflow run directories inside a project's .xcoding context. Invoke when a workflow needs a durable run ID, runtime directory, or artifact directory."
+name: "xc-ordinary-run"
+description: "Runs managed investigation, iteration, repair, review, maintenance, or cross-feature work without implicitly creating a feature. Invoke for persistent work that may relate to zero, one, or multiple existing features."
 ---
 
-# XC Run
+# XC Ordinary Run
 
-`xc-run` creates a standard durable run directory. It validates that the supplied `.xcoding` directory belongs to an independent context Git worktree, generates a collision-safe timestamp-and-slug run ID, creates the standard directories, and returns their absolute paths as JSON.
+`xc-ordinary-run` is the common lifecycle for existing-code work. It always creates a durable run and `goal.md`; `analysis.md` and run `solution.md` are created only when their semantic purpose is needed. A run may reference no feature, a single existing feature, or multiple existing features.
 
 ## Parameters
 
-### Public Parameters
-
 - `context_dir` - `path`; required
-  - Scope: The project `.xcoding` directory that contains `runs/`.
-  - Side effects: The script creates `runs/` and the selected run directory.
-  - Propagation: No downstream propagation.
+  - Scope: The fixed project `.xcoding` context directory.
 
-- `project_root` - `path`; optional, defaults to the current working directory
-  - Scope: The business project root used to verify that context Git history is independent from the business code repository.
-  - Side effects: Validation only.
-  - Propagation: No downstream propagation.
+- `project_root` - `path`; required
+  - Scope: Business repository root supplied to `xc-run`.
 
-- `topic` - `string`; optional, inferred from the request when omitted
-  - Scope: Human-readable slug portion of the generated run ID.
-  - Side effects: Affects the directory name only.
-  - Propagation: No downstream propagation.
-
-- `run_id` - `string`; optional
-  - Scope: Explicit run identifier. When omitted, the script creates `YYYYMMDD-HHMM-<topic>`.
-  - Side effects: Affects the directory name only.
-  - Propagation: No downstream propagation.
+- `request` - `string`; required
+  - Scope: Requested investigation, change, repair, review, or maintenance outcome.
 
 - `feature_ids` - `string[]`; optional
-  - Scope: Feature identifiers associated with the run. A run may have zero, one, or multiple feature identifiers.
-  - Side effects: Returned as metadata only; the script does not create feature directories.
-  - Propagation: Returned to the calling workflow for tree and document initialization.
+  - Scope: Existing related feature identifiers. An empty list is valid.
 
-## Operation
+- `mode` - `enum`; optional, defaults to `change`
+  - Allowed values: `investigation`, `change`, `repair`, `review`, `maintenance`.
+  - Scope: Controls default analysis, solution, implementation, and verification gates. The runtime blackboard remains authoritative for the selected execution path.
 
-Run:
+## Main Run
 
-```powershell
-python "$SKILL_DIR/scripts/create_run.py" `
-  --context-dir <context_dir> `
-  --project-root <project_root> `
-  --topic <topic> `
-  --feature-id <feature_id>
-```
+1. Read `AGENTS.md`, `.xcoding/WORKFLOW.md`, and `.xcoding/KNOWLEDGE.md`.
+2. Verify every supplied `feature_id` already exists. Do not create or adopt a feature.
+3. Call `xc-run`, initialize `assets/ordinary-run-template.xml`, and complete `prepare-run`.
+4. Create `goal.md` through document evolution. Set blackboard controls based on the requested mode and required gates.
+5. When analysis is needed, schedule `xc-analysis` nodes and synthesize accepted evidence into `analysis.md`.
+6. When feature IDs are present, embed `xc-feature-reconciliation` sequentially under `reconciliation-group` before selecting a run solution.
+7. Create run `solution.md` when a change strategy must be selected. Use `approve-run-solution` for material decisions or unresolved risk.
+8. Add approved implementation nodes through `xc-implementation`, then verification nodes through `xc-verification`.
+9. Create `result.md` through document evolution and complete `finalize-run`.
 
-The script creates:
+## Mode Rules
 
-```text
-<context_dir>/runs/<run_id>/
-  artifacts/
-  runtime/
-```
+- `investigation`: normally requires analysis and result, but may skip solution, implementation, and verification.
+- `review`: normally requires analysis and review artifacts, but does not modify reviewed inputs.
+- `repair`: uses `xc-diagnosis` when root cause is uncertain, then follows the regular solution, implementation, and verification path.
+- `change` and `maintenance`: select only the documents and nodes necessary for the requested outcome.
 
-Use the returned `runtime_dir` to initialize the main orchestration tree. `xc-run` does not create documents, trees, logs, feature directories, or Git commits.
+## Reconciliation and Concurrency
+
+Runs may analyze and design for the same feature concurrently. Before any baseline modification, the active run re-checks feature provenance and warns when another run changed the baseline. The workflow does not use feature locks or leases. Users coordinate the serialized timing of actual feature baseline modifications.
 
 ## Constraints
 
-- The resolved `context_dir` MUST be inside a Git worktree dedicated to workflow context.
-- The script MUST NOT create a feature directory. Only the new-feature and feature-adoption workflows may do so.
-- Callers MUST use the returned paths rather than reconstructing run paths.
-- The script handles slug normalization and collision suffixes internally.
+- An ordinary run never implicitly creates `.xcoding/features/<feature-id>/`.
+- Code and executable tests are evidence of current behavior; feature baselines are approved target intent. Ambiguous conflict requires a user gate.
+- Dynamic state, task ordering, retry state, and blockers remain in the runtime tree, not in documents.
