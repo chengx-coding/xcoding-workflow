@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import json
 import subprocess
 import sys
@@ -7,6 +8,7 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from unittest import mock
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +45,17 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
         return result.stdout.strip()
 
+    def git_has_head(self, repository: Path) -> bool:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", "HEAD"],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        return result.returncode == 0
+
     def write_template(self, path: Path, config: dict[str, object]) -> None:
         root = ET.Element("orchestration", {"schema_version": "1", "name": "terminal-commit"})
         ET.SubElement(root, "blackboard")
@@ -73,6 +86,72 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         core.apply_integrity(root, "template", config)
         core.atomic_write_text(path, core.serialize_xml(root, "template"))
 
+    def write_conditional_template(self, path: Path, config: dict[str, object]) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": "conditional-group"})
+        ET.SubElement(root, "blackboard")
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": "Conditional Group",
+                "type": "composite",
+                "role": "root",
+                "mode": "sequence",
+                "executor": "main",
+            },
+        )
+        children = ET.SubElement(workflow, "children")
+        ET.SubElement(
+            children,
+            "node",
+            {
+                "template_id": "prepare",
+                "title": "Prepare",
+                "type": "task",
+                "role": "prepare",
+                "executor": "main",
+            },
+        )
+        optional = ET.SubElement(
+            children,
+            "node",
+            {
+                "template_id": "optional-group",
+                "title": "Optional group",
+                "type": "composite",
+                "role": "optional",
+                "mode": "sequence",
+                "executor": "main",
+                "when": "optional.enabled == true",
+            },
+        )
+        optional_children = ET.SubElement(optional, "children")
+        ET.SubElement(
+            optional_children,
+            "node",
+            {
+                "template_id": "optional-work",
+                "title": "Optional work",
+                "type": "task",
+                "role": "optional-work",
+                "executor": "main",
+            },
+        )
+        ET.SubElement(
+            children,
+            "node",
+            {
+                "template_id": "finish",
+                "title": "Finish",
+                "type": "task",
+                "role": "finish",
+                "executor": "main",
+            },
+        )
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
     def test_config_accepts_utf8_bom(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             context = Path(temporary) / ".xcoding"
@@ -84,6 +163,26 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
 
             self.assertFalse(config["git"]["auto_commit"])
             self.assertEqual(config["_source"], str(config_path))
+
+    def test_atomic_write_retries_transient_replace_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "orchestration.xml"
+            real_replace = core.os.replace
+            attempts = 0
+
+            def replace_once_locked(source: str, destination: str) -> None:
+                nonlocal attempts
+                attempts += 1
+                if attempts == 1:
+                    raise PermissionError(errno.EACCES, "temporary sharing conflict")
+                real_replace(source, destination)
+
+            with mock.patch.object(core.os, "replace", side_effect=replace_once_locked), mock.patch.object(core.time, "sleep") as sleep:
+                core.atomic_write_text(target, "recovered\n")
+
+            self.assertEqual(attempts, 2)
+            sleep.assert_called_once_with(core.ATOMIC_REPLACE_RETRY_DELAY_SECONDS)
+            self.assertEqual(target.read_text(encoding="utf-8"), "recovered\n")
 
     def test_terminal_checkpoint_rejects_artifact_outside_context(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -138,11 +237,51 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.assertEqual(completed.returncode, 2, completed.stderr or completed.stdout)
             self.assertFalse(payload["ok"])
             self.assertEqual(payload["error"]["details"]["status"], "persisted_uncommitted")
-            self.assertEqual(self.run_git(context, "rev-list", "--count", "HEAD"), "1")
+            self.assertFalse(self.git_has_head(context))
             self.assertTrue(outside_artifact.exists())
 
             node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
             self.assertEqual(node["status"], "running")
+
+    def test_false_conditional_composite_skips_descendants(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_conditional_template(template, config)
+
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-dir",
+                str(context / "runs" / "conditional" / "runtime"),
+                "--run-id",
+                "conditional",
+                "--var",
+                "optional.enabled=false",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(prepare["template_id"], "prepare")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+
+            optional = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "optional-group",
+                cwd=project,
+            )["nodes"][0]
+            self.assertEqual(optional["status"], "skipped")
+            ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+            self.assertEqual([node["template_id"] for node in ready], ["finish"])
 
     def test_terminal_commit_contains_tree_and_declared_artifact_only(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -197,15 +336,19 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 cwd=project,
             )
             self.assertEqual(initialized["status"], "persisted")
-            self.assertEqual(initialized["commit"]["status"], "committed")
+            self.assertEqual(initialized["commit"]["status"], "deferred")
             tree_path = Path(str(initialized["tree_path"]))
-            self.assertEqual(self.run_git(context, "rev-list", "--count", "HEAD"), "1")
+            self.assertFalse(self.git_has_head(context))
+
+            found = self.run_cli("find", "--tree", str(tree_path), "--template-id", "write-document", cwd=project)
+            self.assertEqual(len(found["nodes"]), 1)
+            self.assertEqual(found["nodes"][0]["title"], "Write document")
 
             ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)
             node_id = str(ready["ready"][0]["id"])
             started = self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
             self.assertEqual(started["commit"]["status"], "deferred")
-            self.assertEqual(self.run_git(context, "rev-list", "--count", "HEAD"), "1")
+            self.assertFalse(self.git_has_head(context))
 
             artifact = context / "runs" / run_id / "artifacts" / "write-document" / "document.md"
             artifact.parent.mkdir(parents=True)
@@ -229,13 +372,16 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             )
             self.assertEqual(completed["status"], "persisted")
             self.assertEqual(completed["commit"]["status"], "committed")
-            self.assertEqual(self.run_git(context, "rev-list", "--count", "HEAD"), "2")
+            self.assertEqual(completed["commit"]["index_sync"]["status"], "synced")
+            self.assertTrue(self.git_has_head(context))
+            self.assertEqual(self.run_git(context, "rev-list", "--count", "HEAD"), "1")
 
             changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
             self.assertIn(f"runs/{run_id}/runtime/orchestration.xml", changed_paths)
             self.assertIn(f"runs/{run_id}/artifacts/write-document/document.md", changed_paths)
             self.assertNotIn("unrelated-user-file.md", changed_paths)
             self.assertIn("?? unrelated-user-file.md", self.run_git(context, "status", "--short"))
+            self.assertEqual(self.run_git(context, "diff", "--cached", "--name-only"), "")
 
             summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
             self.assertEqual(summary["status"], "complete")
