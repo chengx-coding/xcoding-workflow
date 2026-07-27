@@ -3,12 +3,13 @@
 <orchestration schema_version="1" name="new-feature" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="e1f94daaa96baec952bf75f68f9490609f4cd69e7eb96f1642c4d760b61b21a6" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="33d68f95b05ab8c2aa5aed284eb8b1118169ed341f37bd0e30594fd8964e6339" />
   </meta>
   <blackboard>
     <var key="feature.id" />
     <var key="feature.title" />
     <var key="feature.approval_required">true</var>
+    <var key="run.document_language">en</var>
     <var key="run.requires_clarification">false</var>
     <var key="run.requires_implementation">true</var>
     <var key="run.requires_verification">true</var>
@@ -16,9 +17,9 @@
   <node executor="main" mode="sequence" role="root" template_id="root" title="New Feature" type="composite">
     <children>
       <node executor="main" role="feature-prepare" template_id="prepare-feature" title="Prepare new feature" type="task">
-        <instructions>Read the project bridge, create the run through xc-create-run, select an explicit feature ID, and create its empty directory through xc-feature.</instructions>
+        <instructions>Read the project bridge, create the run through xc-create-run, determine and validate run.document_language through xc-document from the explicit parameter or initiating user request, select an explicit feature ID, and create its empty directory through xc-feature.</instructions>
         <deliverables>An authoritative run directory and empty managed feature directory.</deliverables>
-        <acceptance>The context Git worktree is independent, the feature ID is explicit, and no baseline document exists outside document evolution.</acceptance>
+        <acceptance>The context Git worktree is independent, the feature ID is explicit, run.document_language is set before any document write, and no baseline document exists outside document evolution.</acceptance>
       </node>
       <node executor="main" mode="sequence" role="dynamic-group" template_id="goal-document" title="Define run goal" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-group" title="Analyze feature context" type="composite" />
