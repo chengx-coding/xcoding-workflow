@@ -12,6 +12,7 @@ import yaml
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RENDER_DOCUMENT = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "render_document.py"
+RUN_GOAL_TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-document" / "assets" / "templates" / "run-goal.md"
 
 
 class XcDocumentRenderTests(unittest.TestCase):
@@ -127,6 +128,39 @@ class XcDocumentRenderTests(unittest.TestCase):
             self.assertEqual(code, 0, payload)
             frontmatter = output.read_text(encoding="utf-8").split("---", 2)[1]
             self.assertEqual(yaml.safe_load(frontmatter)["feature_ids"], ["payment-refund", "ledger"])
+
+    def test_renders_non_english_run_document_headings_without_translation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "goal.md"
+
+            code, payload = self.invoke(
+                "--template",
+                str(RUN_GOAL_TEMPLATE),
+                "--out",
+                str(output),
+                "--set",
+                "content_language=zh-CN",
+                "--set",
+                "run_id=20260727-1200-language",
+                "--set",
+                "tree_ref=xc://run/20260727-1200-language/main",
+                "--set",
+                "document_title=语言契约目标",
+                "--set",
+                "requested_outcome_heading=请求结果",
+                "--set",
+                "scope_and_constraints_heading=范围与约束",
+                "--set",
+                "acceptance_conditions_heading=验收条件",
+                "--set-json",
+                "feature_ids=[]",
+            )
+
+            self.assertEqual(code, 0, payload)
+            rendered = output.read_text(encoding="utf-8")
+            self.assertEqual(yaml.safe_load(rendered.split("---", 2)[1])["content_language"], "zh-CN")
+            self.assertIn("# 语言契约目标", rendered)
+            self.assertIn("## 请求结果", rendered)
 
 
 if __name__ == "__main__":

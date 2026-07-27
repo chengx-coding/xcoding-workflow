@@ -24,12 +24,15 @@ description: "Explicitly adopts an existing unmanaged feature by deriving durabl
 - `request` - `string`; optional
   - Scope: Motivation, known future changes, or adoption constraints.
 
+- `document_language` - `string`; optional
+  - Scope: Explicit simplified BCP 47 language tag for top-level run documents. When omitted, use the initiating user request's clearly dominant language; if that cannot be decided quickly, use `en`.
+
 ## Main Run
 
-1. Read the project bridge and knowledge guidance, then create an adoption run through `xc-create-run`.
+1. Read the project bridge and knowledge guidance, then create an adoption run through `xc-create-run`. Determine, validate through `xc-document`, and set `run.document_language` before any document write.
 2. Use `xc-feature init` only after confirming that the feature is not already managed.
 3. Initialize `assets/feature-adoption-template.xml` in the returned runtime directory and complete `prepare-adoption`.
-4. Create `goal.md` and evidence-driven `analysis.md` through document-evolution nodes. Record code boundaries, tests, behavior, uncertainty, and any product-intent gap.
+4. Create `goal.md` and evidence-driven `analysis.md` through document-evolution nodes, setting `document.content_language` from `run.document_language`. Record code boundaries, tests, behavior, uncertainty, and any product-intent gap.
 5. Build feature `contract.md`, `solution.md`, and `verification.md` through separate document-evolution subtrees.
 6. Present the resulting baseline through `approve-adopted-baseline`. Add revision, review, or user-gate nodes when evidence is incomplete or intended behavior cannot be derived safely.
 7. Create `result.md` and complete `finalize-adoption`.
@@ -46,3 +49,4 @@ description: "Explicitly adopts an existing unmanaged feature by deriving durabl
 - Do not infer a feature directory from an ordinary run.
 - Do not convert historical code behavior into approved target intent without evidence and confirmation.
 - Preserve evidence and unresolved gaps in `analysis.md`, `result.md`, and node artifacts, not in runtime blackboard fields.
+- A later explicit language correction revises declared top-level run documents and user-facing artifacts only; adopted feature baselines remain governed by the project bridge.

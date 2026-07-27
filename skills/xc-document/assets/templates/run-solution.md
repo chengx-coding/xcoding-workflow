@@ -1,18 +1,19 @@
 ---
 schema_version: 1
 document_kind: run-solution
+content_language: "{{content_language}}"
 run_id: "{{run_id}}"
 feature_ids: "{{feature_ids}}"
 orchestration:
   main_tree_ref: "{{tree_ref}}"
 ---
 
-# {{run_title}} Solution
+# {{document_title}}
 
-## Selected Change
+## {{selected_change_heading}}
 
-## Feature Baseline Impact
+## {{feature_baseline_impact_heading}}
 
-## Implementation and Migration Strategy
+## {{implementation_and_migration_strategy_heading}}
 
-## Verification Strategy
+## {{verification_strategy_heading}}

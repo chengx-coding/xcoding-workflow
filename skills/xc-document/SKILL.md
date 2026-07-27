@@ -31,6 +31,12 @@ python "$SKILL_DIR/scripts/validate_document.py" `
 
 The validator emits JSON and returns nonzero for invalid frontmatter or an invalid document contract.
 
+Validate an explicit run language before writing `run.document_language`:
+
+```powershell
+python "$SKILL_DIR/scripts/validate_language.py" --language <simplified_bcp47_tag>
+```
+
 ## Template Rendering
 
 ```powershell
@@ -42,6 +48,8 @@ python "$SKILL_DIR/scripts/render_document.py" `
 ```
 
 The renderer replaces only `{{snake_case}}` placeholders, rejects unresolved placeholders, and writes UTF-8 LF-normalized Markdown. Use `--set` for string values and `--set-json` for a JSON object, array, number, boolean, or null that is inserted into YAML frontmatter. Use it for deterministic scaffolding before a document-evolution worker writes the document body.
+
+For run-document and node-artifact templates, the caller supplies `content_language` and every localized heading value. The renderer never detects a language or translates text.
 
 ## Managed Document Kinds
 
@@ -59,6 +67,14 @@ node-artifact
 ```
 
 Every managed document uses YAML frontmatter with `schema_version: 1` and `document_kind`. Feature documents carry `feature_id` and initialization/update provenance. Run documents carry `run_id`, `feature_ids`, and a main tree reference. Node artifacts carry `run_id`, `node_id`, feature identifiers, and a tree reference.
+
+## Content Language and Audience
+
+`content_language` is an optional simplified BCP 47 tag. When omitted, validation treats it as `en` without modifying the document. Run lifecycles must explicitly set it from their fixed `run.document_language` before writing a top-level run document.
+
+`node-artifact` documents may additionally set `audience` to `internal` or `user`. Omitted `audience` means `internal`; internal artifacts use `en`. A user artifact must explicitly set `content_language`.
+
+Artifact writers read `metadata.artifact.audience` and `metadata.artifact.content_language` from their supplied runtime node. The defaults are `internal` and `en`. A user artifact uses `run.document_language` only when the node explicitly declares that selector, and writes the resolved language tag into its frontmatter. Preserve code, paths, identifiers, commands, and raw output while localizing surrounding prose.
 
 ## Constraints
 

@@ -30,7 +30,7 @@ Every required finding includes severity (`critical`, `high`, `medium`, or `low`
 
 ## Output
 
-Write a validated `node-artifact` document containing the scope, evidence reviewed, findings, coverage limits, and conclusion. The worker sets only the caller-declared short blackboard value, such as `document.review.open_issues`, through the runtime public command.
+Write a validated `node-artifact` document containing the scope, evidence reviewed, findings, coverage limits, and conclusion. The worker sets only the caller-declared short blackboard value, such as `document.review.open_issues`, through the runtime public command. Review artifacts default to internal English; use the supplied `metadata.artifact.*` contract only when the caller explicitly requests a user-facing report.
 
 ## Constraints
 

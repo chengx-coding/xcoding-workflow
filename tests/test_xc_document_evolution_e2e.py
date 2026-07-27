@@ -72,6 +72,7 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
                 "document.template": str(RUN_GOAL_TEMPLATE),
                 "document.inputs": "none",
                 "document.contract": "none",
+                "document.content_language": "en",
                 "document.review_required": str(review_required).lower(),
                 "document.gate_required": str(gate_required).lower(),
                 "document.review.open_issues": "false",
@@ -116,9 +117,30 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
             args.extend(["--artifact", str(artifact)])
         self.run_json(RUNTIME, *args, cwd=project)
 
-    def render_and_validate_goal(self, project: Path, document_path: Path, tree: Path, run_id: str) -> None:
-        self.run_json(
-            RENDER,
+    def render_and_validate_goal(
+        self,
+        project: Path,
+        document_path: Path,
+        tree: Path,
+        run_id: str,
+        content_language: str = "en",
+    ) -> None:
+        headings = (
+            {
+                "document_title": f"{run_id} Goal",
+                "requested_outcome_heading": "Requested Outcome",
+                "scope_and_constraints_heading": "Scope and Constraints",
+                "acceptance_conditions_heading": "Acceptance Conditions",
+            }
+            if content_language == "en"
+            else {
+                "document_title": "运行目标",
+                "requested_outcome_heading": "请求结果",
+                "scope_and_constraints_heading": "范围与约束",
+                "acceptance_conditions_heading": "验收条件",
+            }
+        )
+        args = [
             "--template",
             str(RUN_GOAL_TEMPLATE),
             "--out",
@@ -128,9 +150,15 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
             "--set",
             f"tree_ref={tree}",
             "--set",
-            f"run_title={run_id}",
+            f"content_language={content_language}",
             "--set-json",
             "feature_ids=[]",
+        ]
+        for key, value in headings.items():
+            args.extend(["--set", f"{key}={value}"])
+        self.run_json(
+            RENDER,
+            *args,
             cwd=project,
         )
         self.run_json(VALIDATE, "--document", str(document_path), "--expected-kind", "run-goal", cwd=project)
@@ -166,6 +194,22 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         )
         self.complete_validation(project, tree, "validate-draft", document_path)
         self.complete_validation(project, tree, "validate-final", document_path)
+        self.assert_complete(project, tree)
+
+    def test_writes_non_english_run_document_with_declared_language(self) -> None:
+        run_id = "20260727-1100-document-language"
+        project, tree, document_path = self.create_document_flow(run_id, review_required=False, gate_required=False)
+        self.set_values(project, tree, {"document.content_language": "zh-CN"})
+        writer = self.start_ready(project, tree, "write-document", "xc-document")
+        self.render_and_validate_goal(project, document_path, tree, run_id, "zh-CN")
+
+        self.complete_node(project, tree, writer, "Wrote the Chinese goal document.", "xc-document validation passed", document_path)
+        self.complete_validation(project, tree, "validate-draft", document_path)
+        self.complete_validation(project, tree, "validate-final", document_path)
+
+        content = document_path.read_text(encoding="utf-8")
+        self.assertIn("content_language: zh-CN", content)
+        self.assertIn("# 运行目标", content)
         self.assert_complete(project, tree)
 
     def test_review_revision_and_gate_close_document_evolution(self) -> None:

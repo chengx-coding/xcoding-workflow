@@ -3,9 +3,10 @@
 <orchestration schema_version="1" name="document-evolution" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="6848e5eb4f55ce5787845f8a990905ca12efc99c22108a21d2df3b506d4b08a7" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="59a9ecd9abbef7225069652df74c8e09c48ec1bf58f50f7bc631820a0f541b6e" />
   </meta>
   <blackboard>
+    <var key="document.content_language" />
     <var key="document.review_required">false</var>
     <var key="document.gate_required">false</var>
     <var key="document.review.open_issues">false</var>
@@ -13,7 +14,7 @@
   <node executor="main" mode="sequence" role="root" template_id="root" title="Document Evolution" type="composite">
     <children>
       <node executor="subagent" role="document-write" template_id="write-document" title="Write or revise document" type="task">
-        <instructions>Read document.path, document.template, document.inputs, and document.contract from the supplied blackboard and node references. Write or revise the target document immediately. Preserve valid frontmatter and do not read the runtime XML directly.</instructions>
+        <instructions>Read document.path, document.template, document.inputs, document.contract, and document.content_language from the supplied blackboard and node references. Write or revise the target document immediately. Preserve valid frontmatter and do not read the runtime XML directly.</instructions>
         <deliverables>The managed document at document.path.</deliverables>
         <acceptance>The target document exists, follows its authoring contract, and has complete YAML frontmatter.</acceptance>
       </node>
@@ -24,13 +25,13 @@
       </node>
       <node executor="main" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" role="document-review-loop" template_id="review-loop" title="Review and revise document" type="loop" when="document.review_required == true">
         <children>
-          <node executor="subagent" role="document-review" template_id="review-document" title="Review document" type="task">
+          <node executor="subagent" role="document-review" template_id="review-document" title="Review document" type="task" metadata.artifact.audience="internal" metadata.artifact.content_language="en">
             <instructions>Review document.path against the domain review dimensions. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
             <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
             <acceptance>The review distinguishes required findings from optional observations and sets document.review.open_issues.</acceptance>
           </node>
           <node depends_on_template="local:review-document" executor="subagent" role="document-revise" template_id="revise-document" title="Revise document from review" type="task" when="document.review.open_issues == true">
-            <instructions>Read the latest review artifact and revise only document.path. Preserve valid frontmatter and record the updated document as the node artifact.</instructions>
+            <instructions>Read the latest review artifact and revise only document.path. Preserve document.content_language when it is set, preserve valid frontmatter, and record the updated document as the node artifact.</instructions>
             <deliverables>An updated managed document.</deliverables>
             <acceptance>Required review findings are resolved or explicitly escalated to a user gate.</acceptance>
           </node>

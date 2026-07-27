@@ -206,6 +206,19 @@ def parse_set_values(values: Optional[Sequence[str]]) -> List[Tuple[str, str]]:
     return result
 
 
+def parse_metadata_values(values: Optional[Sequence[str]]) -> List[Tuple[str, str]]:
+    result: List[Tuple[str, str]] = []
+    seen: set[str] = set()
+    for key, value in parse_set_values(values):
+        if not key.startswith("metadata.") or key == "metadata." or ".." in key:
+            raise RuntimeErrorBase("--metadata expects a non-empty metadata.<key>=value entry", {"key": key})
+        if key in seen:
+            raise RuntimeErrorBase("--metadata keys must be unique", {"key": key})
+        seen.add(key)
+        result.append((key, value))
+    return result
+
+
 def parse_xml(path: Path) -> ET.ElementTree:
     if not path.exists():
         raise RuntimeErrorBase("orchestration file not found", {"path": str(path)})
@@ -968,6 +981,34 @@ def result_snapshot(node: ET.Element) -> Dict[str, Any]:
     return payload
 
 
+def declared_artifacts(root: ET.Element, audience: str = "") -> List[Dict[str, Any]]:
+    entries: List[Dict[str, Any]] = []
+    for node in iter_nodes(root):
+        result = find_direct(node, "result")
+        artifacts = find_direct(result, "artifacts") if result is not None else None
+        if artifacts is None:
+            continue
+        metadata = {
+            key: value
+            for key, value in node.attrib.items()
+            if key.startswith("metadata.artifact.")
+        }
+        artifact_audience = metadata.get("metadata.artifact.audience", "internal")
+        if audience and artifact_audience != audience:
+            continue
+        for artifact in artifacts.findall("artifact"):
+            path = artifact.get("path", "")
+            if path:
+                entries.append(
+                    {
+                        "path": path,
+                        "node_id": node.get("id", ""),
+                        "metadata": dict(sorted(metadata.items())),
+                    }
+                )
+    return entries
+
+
 def snapshot_node(root: ET.Element, node: ET.Element) -> Dict[str, Any]:
     return {
         "id": node.get("id", ""),
@@ -1404,6 +1445,7 @@ def create_dynamic_node(
     inputs: str = "",
     deliverables: str = "",
     acceptance: str = "",
+    metadata: Optional[Sequence[Tuple[str, str]]] = None,
 ) -> ET.Element:
     if not NODE_KEY_RE.match(logical_key):
         raise TreeValidationError("logical_key must be lowercase kebab-case", {"logical_key": logical_key})
@@ -1469,6 +1511,8 @@ def create_dynamic_node(
         attrs["when"] = when
     if depends_on:
         attrs["depends_on"] = depends_on
+    for key, value in metadata or []:
+        attrs[key] = value
     node = ET.SubElement(holder, "node", attrs)
     for tag, value in (
         ("instructions", instructions),

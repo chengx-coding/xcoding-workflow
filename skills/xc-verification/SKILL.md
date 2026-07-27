@@ -27,6 +27,8 @@ Read the project bridge before choosing commands. Select the smallest command se
 
 When a feature verification baseline exists, map evidence to its requirement IDs. A passing command does not establish an untested requirement; record such gaps explicitly. Failed verification is a workflow result, not an opportunity to silently change acceptance criteria.
 
+Verification artifacts default to internal English. A user-facing verification report must be explicitly marked with `metadata.artifact.audience=user` and uses the resolved `metadata.artifact.content_language`; preserve commands and raw output exactly.
+
 ## Constraints
 
 - Do not invent test commands, tools, environments, thresholds, or pass criteria.

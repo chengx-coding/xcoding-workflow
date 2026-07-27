@@ -274,6 +274,7 @@ def cmd_add_node(args: argparse.Namespace) -> Dict[str, Any]:
         args.inputs,
         args.deliverables,
         args.acceptance,
+        core.parse_metadata_values(args.metadata),
     )
     core.stabilize(tree.getroot())
     return write_runtime(
@@ -344,6 +345,15 @@ def cmd_find(args: argparse.Namespace) -> Dict[str, Any]:
         "template_id": args.template_id,
         "instance_id": args.instance_id,
         "nodes": nodes,
+    }
+
+
+def cmd_artifacts(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, _, integrity = parse_runtime_for_read(args)
+    return {
+        "tree_path": str(path),
+        "integrity": integrity,
+        "artifacts": core.declared_artifacts(tree.getroot(), args.audience),
     }
 
 
@@ -482,6 +492,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_node.add_argument("--inputs", default="")
     add_node.add_argument("--deliverables", default="")
     add_node.add_argument("--acceptance", default="")
+    add_node.add_argument("--metadata", action="append", default=[])
     add_node.set_defaults(func=cmd_add_node)
 
     embed = sub.add_parser("embed-subtree", help="Instantiate a managed template beneath a runtime parent.")
@@ -506,6 +517,11 @@ def build_parser() -> argparse.ArgumentParser:
     find.add_argument("--template-id", required=True)
     find.add_argument("--instance-id", default="")
     find.set_defaults(func=cmd_find)
+
+    artifacts = sub.add_parser("artifacts", help="List artifacts declared by completed runtime nodes.")
+    add_tree_argument(artifacts)
+    artifacts.add_argument("--audience", choices=("internal", "user"), default="")
+    artifacts.set_defaults(func=cmd_artifacts)
 
     snapshot = sub.add_parser("snapshot", help="Export the read-only viewer snapshot.")
     add_tree_argument(snapshot)

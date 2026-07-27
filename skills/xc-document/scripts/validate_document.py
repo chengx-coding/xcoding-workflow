@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,8 @@ DOCUMENT_KINDS = {
 }
 FEATURE_KINDS = {"feature-contract", "feature-solution", "feature-verification"}
 RUN_KINDS = {"run-goal", "run-analysis", "run-solution", "run-result"}
+LANGUAGE_TAG = re.compile(r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$")
+NODE_ARTIFACT_AUDIENCES = {"internal", "user"}
 
 
 def parse_document(path: Path) -> tuple[dict[str, Any], str, list[str]]:
@@ -71,6 +74,40 @@ def validate_provenance_entry(value: Any, field: str, errors: list[str]) -> None
             errors.append(f"{field}.{key} must be a non-empty string")
 
 
+def effective_content_language(metadata: dict[str, Any]) -> str:
+    value = metadata.get("content_language")
+    return value.strip() if isinstance(value, str) and value.strip() else "en"
+
+
+def effective_audience(metadata: dict[str, Any]) -> str:
+    value = metadata.get("audience")
+    return value.strip() if isinstance(value, str) and value.strip() else "internal"
+
+
+def validate_content_language(metadata: dict[str, Any], errors: list[str]) -> str:
+    if "content_language" not in metadata:
+        return "en"
+    value = metadata.get("content_language")
+    if not isinstance(value, str) or not LANGUAGE_TAG.fullmatch(value.strip()):
+        errors.append("content_language must be a valid simplified BCP 47 language tag")
+        return ""
+    return value.strip()
+
+
+def validate_node_artifact_language(metadata: dict[str, Any], content_language: str, errors: list[str]) -> None:
+    if "audience" in metadata and not isinstance(metadata.get("audience"), str):
+        errors.append("audience must be internal or user")
+        return
+    audience = effective_audience(metadata)
+    if audience not in NODE_ARTIFACT_AUDIENCES:
+        errors.append("audience must be internal or user")
+        return
+    if audience == "user" and "content_language" not in metadata:
+        errors.append("user node-artifact documents must explicitly set content_language")
+    if audience == "internal" and content_language and content_language.lower() != "en":
+        errors.append("internal node-artifact documents must use content_language en")
+
+
 def validate_document(metadata: dict[str, Any], expected_kind: str = "") -> list[str]:
     errors: list[str] = []
     if metadata.get("schema_version") != 1:
@@ -83,6 +120,9 @@ def validate_document(metadata: dict[str, Any], expected_kind: str = "") -> list
         errors.append(f"document_kind must be {expected_kind}")
     if any(field in metadata for field in ("status", "current_node", "task_progress", "loop_state", "blocker")):
         errors.append("frontmatter must not duplicate dynamic orchestration state")
+    content_language = validate_content_language(metadata, errors)
+    if kind != "node-artifact" and "audience" in metadata:
+        errors.append("audience is only allowed for node-artifact documents")
 
     orchestration = metadata.get("orchestration")
     if not isinstance(orchestration, dict):
@@ -102,6 +142,7 @@ def validate_document(metadata: dict[str, Any], expected_kind: str = "") -> list
         require_string(metadata, "node_id", errors)
         require_feature_ids(metadata, errors)
         require_string(orchestration, "tree_ref", errors)
+        validate_node_artifact_language(metadata, content_language, errors)
     else:
         validate_provenance_entry(orchestration.get("initialized_by"), "orchestration.initialized_by", errors)
         validate_provenance_entry(orchestration.get("last_updated_by"), "orchestration.last_updated_by", errors)
@@ -120,6 +161,8 @@ def main() -> int:
         "ok": not errors,
         "path": str(path),
         "document_kind": metadata.get("document_kind", ""),
+        "content_language": effective_content_language(metadata),
+        "audience": effective_audience(metadata) if metadata.get("document_kind") == "node-artifact" else "",
         "errors": errors,
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
