@@ -66,7 +66,7 @@ python "$SKILL_DIR/scripts/orchestration.py" snapshot --tree <tree_ref>
 python "$SKILL_DIR/scripts/viewer_server.py" --tree <tree_ref>
 ```
 
-The viewer consumes only runtime snapshots, binds to loopback, and exposes no tree mutation endpoints. Use `xc-orchestration-viewer` for user-facing open, monitor, or visualize requests.
+The viewer consumes only runtime snapshots, binds to loopback, and exposes no tree mutation endpoints. Its default launch mode starts a detached background server and returns one JSON result containing `ok`, `mode`, `pid`, `url`, and `trees`. The background server does not write logs. Pass `--foreground` to keep the server in the current terminal; it emits JSON-line lifecycle, client, and refresh events for manual diagnostics. Pass `--no-browser` for automated verification. Use `xc-orchestration-viewer` for user-facing open, monitor, or visualize requests.
 
 ## References
 

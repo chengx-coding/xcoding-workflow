@@ -16,6 +16,9 @@ const state = {
   snapshotVersion: null,
   currentSnapshot: null,
   heartbeatTimer: null,
+  reconnectTimer: null,
+  connecting: false,
+  messageIsConnectionError: false,
   refreshTimer: null,
   blackboardTimer: null,
   collapsedByTree: new Map(),
@@ -38,6 +41,7 @@ const elements = {
   treeCount: document.querySelector("#tree-count"),
   message: document.querySelector("#message"),
   serverStatus: document.querySelector("#server-status"),
+  serverStatusLabel: document.querySelector("#server-status-label"),
   overview: document.querySelector("#overview"),
   runName: document.querySelector("#run-name"),
   runId: document.querySelector("#run-id"),
@@ -48,7 +52,6 @@ const elements = {
   graphStage: document.querySelector("#graph-stage"),
   graphEdges: document.querySelector("#graph-edges"),
   graphNodes: document.querySelector("#graph-nodes"),
-  graphPanHandle: document.querySelector("#graph-pan-handle"),
   graphEmpty: document.querySelector("#graph-empty"),
   nodeDetail: document.querySelector("#node-detail"),
   blackboardPanel: document.querySelector(".blackboard-panel"),
@@ -60,20 +63,72 @@ const elements = {
 };
 
 async function request(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
-  const payload = await response.json();
+  let response;
+  try {
+    response = await fetch(path, {
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      ...options,
+    });
+  } catch (cause) {
+    const error = new Error("Viewer server is unreachable.");
+    error.connectionLost = true;
+    error.cause = cause;
+    throw error;
+  }
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (cause) {
+    const error = new Error("Viewer server returned an invalid response.");
+    error.connectionLost = true;
+    error.cause = cause;
+    throw error;
+  }
   if (!response.ok || !payload.ok) {
     throw new Error(payload.error?.message || `Request failed: ${response.status}`);
   }
   return payload;
 }
 
-function setMessage(message, isError = false) {
+function setConnectionStatus(status) {
+  elements.serverStatus.dataset.connection = status;
+  elements.serverStatusLabel.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function clearHeartbeat() {
+  if (state.heartbeatTimer !== null) {
+    window.clearInterval(state.heartbeatTimer);
+    state.heartbeatTimer = null;
+  }
+}
+
+function scheduleReconnect() {
+  if (state.reconnectTimer !== null) {
+    return;
+  }
+  state.reconnectTimer = window.setTimeout(() => {
+    state.reconnectTimer = null;
+    connectClient();
+  }, 2000);
+}
+
+function disconnectClient() {
+  state.clientId = null;
+  clearHeartbeat();
+  setConnectionStatus("disconnected");
+  scheduleReconnect();
+}
+
+function handleRequestFailure(error) {
+  if (error.connectionLost) {
+    disconnectClient();
+  }
+}
+
+function setMessage(message, isError = false, isConnectionError = false) {
   elements.message.textContent = message || "";
   elements.message.classList.toggle("error", isError);
+  state.messageIsConnectionError = Boolean(message && isConnectionError);
 }
 
 function statusClass(status) {
@@ -541,7 +596,8 @@ async function refreshSnapshot(force = false) {
     renderNodeDetail(findNode(snapshot.root, state.selectedNodeId));
     setMessage(payload.refresh_error?.message || "");
   } catch (error) {
-    setMessage(error.message, true);
+    setMessage(error.message, true, Boolean(error.connectionLost));
+    handleRequestFailure(error);
   }
 }
 
@@ -554,7 +610,8 @@ async function refreshTrees() {
       await refreshSnapshot();
     }
   } catch (error) {
-    setMessage(error.message, true);
+    setMessage(error.message, true, Boolean(error.connectionLost));
+    handleRequestFailure(error);
   }
 }
 
@@ -656,21 +713,42 @@ function stopPanning(event) {
 }
 
 async function connectClient() {
+  if (state.clientId || state.connecting) {
+    return;
+  }
+  state.connecting = true;
+  setConnectionStatus("connecting");
   try {
     const payload = await request("/api/clients", { method: "POST", body: "{}" });
     state.clientId = payload.client_id;
-    elements.serverStatus.textContent = "Connected to local read-only viewer.";
+    if (state.reconnectTimer !== null) {
+      window.clearTimeout(state.reconnectTimer);
+      state.reconnectTimer = null;
+    }
+    setConnectionStatus("connected");
+    if (state.messageIsConnectionError) {
+      setMessage("");
+    }
     const interval = Math.max(payload.heartbeat_seconds * 500, 1000);
+    const clientId = state.clientId;
+    clearHeartbeat();
     state.heartbeatTimer = window.setInterval(() => {
-      request(`/api/clients/${encodeURIComponent(state.clientId)}/heartbeat`, {
+      if (state.clientId !== clientId) {
+        return;
+      }
+      request(`/api/clients/${encodeURIComponent(clientId)}/heartbeat`, {
         method: "POST",
         body: "{}",
       }).catch(() => {
-        elements.serverStatus.textContent = "Viewer connection lost.";
+        if (state.clientId === clientId) {
+          disconnectClient();
+        }
       });
     }, interval);
-  } catch (error) {
-    elements.serverStatus.textContent = `Unable to connect: ${error.message}`;
+  } catch {
+    disconnectClient();
+  } finally {
+    state.connecting = false;
   }
 }
 

@@ -7,22 +7,29 @@ import argparse
 import hashlib
 import json
 import mimetypes
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import threading
 import time
 import uuid
 import webbrowser
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 from urllib.parse import unquote, urlparse
 
 import runtime_core as core
 
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "viewer" / "static"
+BACKGROUND_START_TIMEOUT_SECONDS = 10
+BACKGROUND_START_POLL_SECONDS = 0.05
+EventSink = Callable[[str, Dict[str, Any]], None]
 
 
 def json_bytes(payload: Dict[str, Any]) -> bytes:
@@ -71,11 +78,16 @@ class TreeEntry:
 class TreeRegistry:
     """Thread-safe registry with retained last-valid snapshots."""
 
-    def __init__(self, config: Dict[str, Any], allow_roots: Iterable[Path]) -> None:
+    def __init__(self, config: Dict[str, Any], allow_roots: Iterable[Path], event_sink: Optional[EventSink] = None) -> None:
         self.config = config
         self.allow_roots = {root.resolve() for root in allow_roots}
         self.entries: Dict[str, TreeEntry] = {}
         self.lock = threading.RLock()
+        self.event_sink = event_sink
+
+    def emit(self, event: str, **details: Any) -> None:
+        if self.event_sink is not None:
+            self.event_sink(event, details)
 
     def is_allowed(self, path: Path) -> bool:
         return any(is_within(path, root) for root in self.allow_roots)
@@ -125,8 +137,11 @@ class TreeRegistry:
             stat = entry.path.stat()
         except OSError as exc:
             with self.lock:
+                prior_error = entry.error
                 entry.error = {"code": "tree_unavailable", "message": str(exc)}
                 entry.refreshed_at = time.time()
+            if prior_error is None:
+                self.emit("tree_refresh_failed", tree_id=tree_id, path=str(entry.path), error=entry.error)
             return entry
         if not force and stat.st_mtime_ns == entry.mtime_ns and stat.st_size == entry.size:
             return entry
@@ -134,17 +149,23 @@ class TreeRegistry:
             snapshot = core.tree_snapshot(entry.path, self.config)
         except core.RuntimeErrorBase as exc:
             with self.lock:
+                prior_error = entry.error
                 entry.error = {"code": exc.code, "message": str(exc), "details": exc.details}
                 entry.mtime_ns = stat.st_mtime_ns
                 entry.size = stat.st_size
                 entry.refreshed_at = time.time()
+            if prior_error is None:
+                self.emit("tree_refresh_failed", tree_id=tree_id, path=str(entry.path), error=entry.error)
             return entry
         with self.lock:
+            prior_error = entry.error
             entry.snapshot = snapshot
             entry.error = None
             entry.mtime_ns = stat.st_mtime_ns
             entry.size = stat.st_size
             entry.refreshed_at = time.time()
+        if prior_error is not None:
+            self.emit("tree_refresh_recovered", tree_id=tree_id, path=str(entry.path))
         return entry
 
     def refresh_all(self) -> None:
@@ -155,7 +176,7 @@ class TreeRegistry:
 
 
 class ViewerState:
-    def __init__(self, registry: TreeRegistry, config: Dict[str, Any]) -> None:
+    def __init__(self, registry: TreeRegistry, config: Dict[str, Any], event_sink: Optional[EventSink] = None) -> None:
         self.registry = registry
         self.config = config
         self.clients: Dict[str, float] = {}
@@ -163,6 +184,12 @@ class ViewerState:
         self.shutdown_requested = threading.Event()
         self.server: Optional[ThreadingHTTPServer] = None
         self.lock = threading.RLock()
+        self.event_sink = event_sink
+        self.shutdown_reason = "stopped"
+
+    def emit(self, event: str, **details: Any) -> None:
+        if self.event_sink is not None:
+            self.event_sink(event, details)
 
     @property
     def heartbeat_seconds(self) -> int:
@@ -176,6 +203,8 @@ class ViewerState:
         client_id = uuid.uuid4().hex
         with self.lock:
             self.clients[client_id] = time.monotonic()
+            active_clients = len(self.clients)
+        self.emit("client_connected", client_id=client_id, active_clients=active_clients)
         return {"client_id": client_id, "heartbeat_seconds": self.heartbeat_seconds}
 
     def heartbeat(self, client_id: str) -> None:
@@ -188,17 +217,26 @@ class ViewerState:
         now = time.monotonic()
         timeout = max(self.heartbeat_seconds * 2, 1)
         with self.lock:
+            expired = [
+                client_id
+                for client_id, seen_at in self.clients.items()
+                if now - seen_at > timeout
+            ]
             self.clients = {
                 client_id: seen_at
                 for client_id, seen_at in self.clients.items()
                 if now - seen_at <= timeout
             }
-            return len(self.clients)
+            active_clients = len(self.clients)
+        for client_id in expired:
+            self.emit("client_expired", client_id=client_id, active_clients=active_clients)
+        return active_clients
 
-    def request_shutdown(self) -> None:
+    def request_shutdown(self, reason: str = "stopped") -> None:
         if self.shutdown_requested.is_set():
             return
         self.shutdown_requested.set()
+        self.shutdown_reason = reason
         if self.server is not None:
             threading.Thread(target=self.server.shutdown, daemon=True).start()
 
@@ -337,7 +375,8 @@ def polling_loop(state: ViewerState) -> None:
     while not state.shutdown_requested.wait(interval):
         state.registry.refresh_all()
         if state.active_clients() == 0 and time.monotonic() - state.started_at >= state.idle_shutdown_seconds:
-            state.request_shutdown()
+            state.emit("idle_shutdown", idle_shutdown_seconds=state.idle_shutdown_seconds)
+            state.request_shutdown("idle")
             return
 
 
@@ -351,6 +390,159 @@ def create_server(host: str, port: int, state: ViewerState) -> ThreadingHTTPServ
         return ThreadingHTTPServer((host, 0), handler)
 
 
+class ViewerLaunchError(RuntimeError):
+    """Raised when the Viewer cannot bind and publish a ready server."""
+
+
+def emit_console_event(event: str, details: Dict[str, Any]) -> None:
+    print(json.dumps({"event": event, **details}, ensure_ascii=False), flush=True)
+
+
+def publish_readiness(path: Path, payload: Dict[str, Any]) -> None:
+    temporary = path.with_suffix(f"{path.suffix}.tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def resolve_server(args: argparse.Namespace, event_sink: Optional[EventSink]) -> tuple[ViewerState, ThreadingHTTPServer, str]:
+    context_path = Path(args.tree[0]) if args.tree else Path.cwd()
+    config = core.load_config(context_path, Path(args.config) if args.config else None)
+    host = args.host or config["viewer"]["host"]
+    if host != "127.0.0.1":
+        raise ViewerLaunchError("viewer host must be 127.0.0.1")
+    port = config["viewer"]["port"] if args.port is None else args.port
+    if port < 0 or port > 65535:
+        raise ViewerLaunchError("viewer port must be between 0 and 65535")
+    allow_roots = [Path(value) for value in args.allow_root]
+    registry = TreeRegistry(config, allow_roots, event_sink)
+    for raw_path in args.tree:
+        registry.register(raw_path, add_parent_root=True)
+    state = ViewerState(registry, config, event_sink)
+    server = create_server(host, port, state)
+    state.server = server
+    url = f"http://{host}:{server.server_address[1]}/"
+    return state, server, url
+
+
+def run_server(
+    args: argparse.Namespace,
+    *,
+    event_sink: Optional[EventSink],
+    readiness_path: Optional[Path] = None,
+    open_browser: bool = False,
+) -> int:
+    state, server, url = resolve_server(args, event_sink)
+    ready_payload = {"ok": True, "url": url, "trees": state.registry.list()}
+    if readiness_path is not None:
+        publish_readiness(readiness_path, ready_payload)
+    state.emit("viewer_started", mode="foreground", url=url, trees=ready_payload["trees"])
+    watcher = threading.Thread(target=polling_loop, args=(state,), daemon=True)
+    watcher.start()
+    if open_browser:
+        webbrowser.open(url)
+    try:
+        server.serve_forever(poll_interval=0.25)
+    except KeyboardInterrupt:
+        state.request_shutdown("keyboard_interrupt")
+    finally:
+        state.request_shutdown()
+        server.server_close()
+        state.emit("viewer_stopped", reason=state.shutdown_reason)
+    return 0
+
+
+def child_command(args: argparse.Namespace, readiness_path: Path) -> List[str]:
+    command = [sys.executable, str(Path(__file__).resolve()), "--_child", "--ready-file", str(readiness_path)]
+    for tree in args.tree:
+        command.extend(["--tree", tree])
+    for allow_root in args.allow_root:
+        command.extend(["--allow-root", allow_root])
+    if args.config:
+        command.extend(["--config", args.config])
+    if args.host:
+        command.extend(["--host", args.host])
+    if args.port is not None:
+        command.extend(["--port", str(args.port)])
+    return command
+
+
+def stop_background_process(process: subprocess.Popen[Any]) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=2)
+
+
+def launch_background(args: argparse.Namespace) -> int:
+    ready_dir = Path(tempfile.mkdtemp(prefix="xc-viewer-ready-"))
+    readiness_path = ready_dir / "ready.json"
+    process_kwargs: Dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+        "close_fds": True,
+    }
+    if os.name == "nt":
+        process_kwargs["creationflags"] = (
+            getattr(subprocess, "DETACHED_PROCESS", 0)
+            | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        )
+    else:
+        process_kwargs["start_new_session"] = True
+    try:
+        process = subprocess.Popen(child_command(args, readiness_path), **process_kwargs)
+    except OSError as exc:
+        shutil.rmtree(ready_dir, ignore_errors=True)
+        print(f"viewer startup failed: {exc}", file=sys.stderr, flush=True)
+        return 2
+    deadline = time.monotonic() + BACKGROUND_START_TIMEOUT_SECONDS
+    try:
+        while time.monotonic() < deadline:
+            if readiness_path.is_file():
+                try:
+                    payload = json.loads(readiness_path.read_text(encoding="utf-8"))
+                except json.JSONDecodeError:
+                    payload = None
+                if isinstance(payload, dict):
+                    if payload.get("ok"):
+                        result = {
+                            "ok": True,
+                            "mode": "background",
+                            "pid": process.pid,
+                            "url": payload["url"],
+                            "trees": payload["trees"],
+                        }
+                        if not args.no_browser:
+                            webbrowser.open(str(payload["url"]))
+                        print(json.dumps(result, ensure_ascii=False), flush=True)
+                        return 0
+                    message = str(payload.get("error", "viewer failed before startup"))
+                    raise ViewerLaunchError(message)
+            if process.poll() is not None:
+                raise ViewerLaunchError(f"viewer process exited before startup (code {process.returncode})")
+            time.sleep(BACKGROUND_START_POLL_SECONDS)
+        raise ViewerLaunchError("viewer did not become ready before the startup timeout")
+    except ViewerLaunchError as exc:
+        stop_background_process(process)
+        print(f"viewer startup failed: {exc}", file=sys.stderr, flush=True)
+        return 2
+    finally:
+        shutil.rmtree(ready_dir, ignore_errors=True)
+
+
+def run_background_child(args: argparse.Namespace) -> int:
+    readiness_path = Path(args.ready_file)
+    try:
+        return run_server(args, event_sink=None, readiness_path=readiness_path, open_browser=False)
+    except (OSError, ViewerLaunchError, core.RuntimeErrorBase, ValueError) as exc:
+        publish_readiness(readiness_path, {"ok": False, "error": str(exc)})
+        return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Launch the local, read-only orchestration viewer.")
     parser.add_argument("--tree", action="append", default=[], help="Initial managed runtime XML tree. May be repeated.")
@@ -359,41 +551,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--host", default="", help="Loopback host override; only 127.0.0.1 is accepted.")
     parser.add_argument("--port", type=int, default=None, help="Preferred port; occupied ports fall back to an ephemeral port.")
     parser.add_argument("--no-browser", action="store_true", help="Do not open the browser automatically.")
+    parser.add_argument("--foreground", action="store_true", help="Run the Viewer in this terminal and emit JSON-line events.")
+    parser.add_argument("--_child", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--ready-file", default="", help=argparse.SUPPRESS)
     return parser
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
-    context_path = Path(args.tree[0]) if args.tree else Path.cwd()
-    config = core.load_config(context_path, Path(args.config) if args.config else None)
-    host = args.host or config["viewer"]["host"]
-    if host != "127.0.0.1":
-        raise SystemExit("viewer host must be 127.0.0.1")
-    port = config["viewer"]["port"] if args.port is None else args.port
-    if port < 0 or port > 65535:
-        raise SystemExit("viewer port must be between 0 and 65535")
-    allow_roots = [Path(value) for value in args.allow_root]
-    registry = TreeRegistry(config, allow_roots)
-    for raw_path in args.tree:
-        registry.register(raw_path, add_parent_root=True)
-    state = ViewerState(registry, config)
-    server = create_server(host, port, state)
-    state.server = server
-    actual_port = server.server_address[1]
-    url = f"http://{host}:{actual_port}/"
-    print(json.dumps({"ok": True, "url": url, "trees": registry.list()}, ensure_ascii=False), flush=True)
-    watcher = threading.Thread(target=polling_loop, args=(state,), daemon=True)
-    watcher.start()
-    if not args.no_browser:
-        webbrowser.open(url)
-    try:
-        server.serve_forever(poll_interval=0.25)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        state.request_shutdown()
-        server.server_close()
-    return 0
+    if args._child:
+        if not args.ready_file:
+            raise SystemExit("private viewer child requires a ready file")
+        return run_background_child(args)
+    if args.foreground:
+        try:
+            return run_server(args, event_sink=emit_console_event, open_browser=not args.no_browser)
+        except (OSError, ViewerLaunchError, core.RuntimeErrorBase, ValueError) as exc:
+            print(f"viewer startup failed: {exc}", file=sys.stderr, flush=True)
+            return 2
+    return launch_background(args)
 
 
 if __name__ == "__main__":
