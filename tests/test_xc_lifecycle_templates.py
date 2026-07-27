@@ -48,6 +48,12 @@ WORKFLOWS = (
         REPOSITORY_ROOT / "skills" / "xc-feature-reconciliation" / "assets" / "feature-reconciliation-template.xml",
         "load-feature-provenance",
     ),
+    (
+        "clarify",
+        REPOSITORY_ROOT / "skills" / "xc-clarify" / "assets" / "clarify-flow.json",
+        REPOSITORY_ROOT / "skills" / "xc-clarify" / "assets" / "clarify-template.xml",
+        "open-session-record",
+    ),
 )
 
 

@@ -36,9 +36,10 @@ description: "Runs managed investigation, iteration, repair, review, maintenance
 4. Create `goal.md` through document evolution. Before every top-level run document subtree, set `document.content_language` to `run.document_language`. Set blackboard controls based on the requested mode and required gates.
 5. When analysis is needed, schedule `xc-analysis` nodes and synthesize accepted evidence into `analysis.md`.
 6. When feature IDs are present, embed `xc-feature-reconciliation` sequentially under `reconciliation-group` before selecting a run solution.
-7. Create run `solution.md` when a change strategy must be selected. Use `approve-run-solution` for material decisions or unresolved risk.
-8. Add approved implementation nodes through `xc-implementation`, then verification nodes through `xc-verification`.
-9. Create `result.md` through document evolution and complete `finalize-run`.
+7. When evidence leaves a material human-owned decision unresolved, or the user explicitly asks to clarify or stress-test work, set `run.requires_clarification=true` and embed `xc-clarify` under `clarification-group`. The group must complete before selecting a solution.
+8. Create run `solution.md` when a change strategy must be selected. Use `approve-run-solution` for material decisions or unresolved risk.
+9. Add approved implementation nodes through `xc-implementation`, then verification nodes through `xc-verification`.
+10. Create `result.md` through document evolution and complete `finalize-run`.
 
 ## Mode Rules
 
