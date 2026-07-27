@@ -29,7 +29,7 @@ python <runtime_skill_dir>\scripts\viewer_server.py `
   --allow-root <additional_runtime_directory>
 ```
 
-The server binds to `127.0.0.1`, prefers port `10011`, falls back to an available local port, prints the actual URL, and opens it in the default browser. Pass `--no-browser` only for automated verification.
+The server binds to `127.0.0.1`, prefers port `20668`, falls back to an available local port, prints the actual URL, and opens it in the default browser. Pass `--no-browser` only for automated verification.
 
 Explicit `--tree` paths are automatically allowed. Manual registration from the page is limited to explicit `--allow-root` paths, so the viewer cannot become an arbitrary local file reader.
 
