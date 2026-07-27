@@ -35,6 +35,10 @@ description: "Initializes a project's managed .xcoding context documents and set
 5. Set document blackboard values for `KNOWLEDGE.md`, embed a second document-evolution instance under `knowledge-document`, render its template, complete validation, and complete the embedded subtree.
 6. Complete `finalize-context` with both documents as artifacts.
 
+When the runtime reports an empty reachable dynamic group, append the planned
+document subtree or close the group through the public runtime command before
+requesting unrelated work.
+
 The setup main session writes project-specific body content from confirmed user decisions. It must not invent build commands, repository conventions, or knowledge-base locations.
 
 ## Context Document Requirements

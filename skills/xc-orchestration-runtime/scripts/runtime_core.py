@@ -20,6 +20,7 @@ import time
 import tomllib
 import uuid
 import xml.etree.ElementTree as ET
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
@@ -67,10 +68,14 @@ VALID_STATUSES = {"pending", "ready", "running", "succeeded", "failed", "blocked
 VALID_TYPES = {"composite", "task", "gate", "loop"}
 VALID_MODES = {"", "sequence", "parallel", "switch"}
 VALID_EXECUTORS = {"main", "subagent", "tool", "service"}
+VALID_WHEN_POLICIES = {"reactive", "latched"}
+VALID_DYNAMIC_GROUP_STATES = {"open", "closed"}
 NODE_KEY_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 ATOMIC_REPLACE_ATTEMPTS = 5
 ATOMIC_REPLACE_RETRY_DELAY_SECONDS = 0.05
 TRANSIENT_REPLACE_WINERRORS = {5, 32}
+RUNTIME_LOCK_TIMEOUT_SECONDS = 15
+RUNTIME_LOCK_RETRY_SECONDS = 0.05
 
 
 class RuntimeErrorBase(RuntimeError):
@@ -93,6 +98,22 @@ class IntegrityError(RuntimeErrorBase):
 
 class TreeValidationError(RuntimeErrorBase):
     code = "tree_validation_error"
+
+
+class StateConflictError(RuntimeErrorBase):
+    code = "state_conflict"
+
+
+class TreeSealedError(RuntimeErrorBase):
+    code = "tree_sealed"
+
+
+class DynamicGroupClosedError(RuntimeErrorBase):
+    code = "group_closed"
+
+
+class InvalidTransitionError(RuntimeErrorBase):
+    code = "invalid_transition"
 
 
 def utc_now() -> str:
@@ -451,6 +472,58 @@ def atomic_write_text(path: Path, text: str) -> None:
             os.unlink(temp_name)
 
 
+def runtime_lock_path(tree_path: Path) -> Path:
+    resolved = str(tree_path.resolve()).encode("utf-8")
+    digest = hashlib.sha256(resolved).hexdigest()
+    return Path(tempfile.gettempdir()) / f"xc-orchestration-{digest}.lock"
+
+
+@contextmanager
+def runtime_write_lock(tree_path: Path) -> Iterator[None]:
+    """Serialize runtime mutations for one local managed tree."""
+
+    lock_path = runtime_lock_path(tree_path)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+b") as handle:
+        handle.seek(0, os.SEEK_END)
+        if handle.tell() == 0:
+            handle.write(b"0")
+            handle.flush()
+        deadline = time.monotonic() + RUNTIME_LOCK_TIMEOUT_SECONDS
+        acquired = False
+        while not acquired:
+            try:
+                handle.seek(0)
+                if os.name == "nt":
+                    import msvcrt
+
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+            except OSError:
+                if time.monotonic() >= deadline:
+                    raise StateConflictError(
+                        "timed out waiting for the runtime mutation lock",
+                        {"tree_path": str(tree_path), "lock_path": str(lock_path)},
+                    )
+                time.sleep(RUNTIME_LOCK_RETRY_SECONDS)
+        try:
+            yield
+        finally:
+            handle.seek(0)
+            if os.name == "nt":
+                import msvcrt
+
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
 def run_git(args: Sequence[str], cwd: Path, env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", *args],
@@ -640,6 +713,90 @@ def root_node(root: ET.Element) -> ET.Element:
     return node
 
 
+def runtime_revision(root: ET.Element) -> int:
+    raw = root.get("revision", "0")
+    try:
+        revision = int(raw)
+    except ValueError as exc:
+        raise TreeValidationError("runtime revision must be a non-negative integer", {"revision": raw}) from exc
+    if revision < 0:
+        raise TreeValidationError("runtime revision must be a non-negative integer", {"revision": raw})
+    return revision
+
+
+def require_expected_revision(root: ET.Element, expected_revision: Optional[int]) -> None:
+    current = runtime_revision(root)
+    if expected_revision is not None and expected_revision != current:
+        raise StateConflictError(
+            "runtime revision does not match the expected revision",
+            {"expected_revision": expected_revision, "actual_revision": current},
+        )
+
+
+def is_runtime_sealed(root: ET.Element) -> bool:
+    return root.get("status") == "succeeded" or bool(root.get("sealed_at"))
+
+
+def require_runtime_mutable(root: ET.Element, operation: str) -> None:
+    if is_runtime_sealed(root):
+        raise TreeSealedError(
+            "successful runtime trees are sealed; reopen explicitly before mutating them",
+            {
+                "operation": operation,
+                "sealed_at": root.get("sealed_at", ""),
+                "revision": runtime_revision(root),
+            },
+        )
+
+
+def finalize_runtime_mutation(root: ET.Element) -> int:
+    revision = runtime_revision(root) + 1
+    root.set("revision", str(revision))
+    if root.get("status") == "succeeded" and not root.get("sealed_at"):
+        root.set("sealed_at", utc_now())
+        root.set("sealed_revision", str(revision))
+        root.set("sealed_epoch", root.get("epoch", "0"))
+    return revision
+
+
+def reopen_runtime_tree(root: ET.Element, reason: str) -> None:
+    normalized_reason = reason.strip()
+    if not normalized_reason:
+        raise TreeValidationError("reopen reason must not be empty")
+    if root.get("status") != "succeeded":
+        raise InvalidTransitionError(
+            "only successful runtime trees can be reopened",
+            {"status": root.get("status", "pending")},
+        )
+
+    try:
+        next_epoch = int(root.get("epoch", "0")) + 1
+    except ValueError as exc:
+        raise TreeValidationError("runtime epoch must be a non-negative integer", {"epoch": root.get("epoch", "")}) from exc
+
+    metadata = find_meta(root)
+    if metadata is None:
+        raise TreeValidationError("runtime metadata is missing")
+    history = ensure_direct(metadata, "reopen_history")
+    ET.SubElement(
+        history,
+        "reopen",
+        {
+            "epoch": str(next_epoch),
+            "reopened_at": utc_now(),
+            "reason": normalized_reason,
+            "sealed_at": root.get("sealed_at", ""),
+            "sealed_revision": root.get("sealed_revision", ""),
+        },
+    )
+    for key in ("sealed_at", "sealed_revision", "sealed_epoch"):
+        root.attrib.pop(key, None)
+    root.set("epoch", str(next_epoch))
+    root.set("reopen_pending", "true")
+    root.set("status", "running")
+    root_node(root).set("status", "running")
+
+
 def parent_map(root: ET.Element) -> Dict[str, Optional[str]]:
     result: Dict[str, Optional[str]] = {}
 
@@ -678,6 +835,43 @@ def find_node(root: ET.Element, node_id: str) -> ET.Element:
     return node
 
 
+def is_dynamic_group(node: ET.Element) -> bool:
+    return node_type(node) == "composite" and node_role(node) == "dynamic-group"
+
+
+def dynamic_group_state(node: ET.Element) -> str:
+    if not is_dynamic_group(node):
+        return ""
+    return node.get("dynamic.state", "open")
+
+
+def close_dynamic_group(root: ET.Element, group_id: str) -> ET.Element:
+    group = find_node(root, group_id)
+    if not is_dynamic_group(group):
+        raise TreeValidationError("close-group requires a dynamic-group composite", {"group_id": group_id})
+    state = dynamic_group_state(group)
+    if state not in VALID_DYNAMIC_GROUP_STATES:
+        raise TreeValidationError("dynamic group has invalid state", {"group_id": group_id, "state": state})
+    if state == "closed":
+        return group
+    group.set("dynamic.state", "closed")
+    stabilize(root)
+    return group
+
+
+def require_dynamic_group_open(parent: ET.Element) -> None:
+    if not is_dynamic_group(parent):
+        return
+    state = dynamic_group_state(parent)
+    if state == "closed":
+        raise DynamicGroupClosedError(
+            "cannot append work to a closed dynamic group",
+            {"group_id": parent.get("id", ""), "state": state},
+        )
+    if state != "open":
+        raise TreeValidationError("dynamic group has invalid state", {"group_id": parent.get("id", ""), "state": state})
+
+
 def normalize_value(value: str) -> str:
     return value.strip().strip('"').strip("'").lower()
 
@@ -695,6 +889,10 @@ def eval_when(expression: str, bb: Dict[str, str]) -> bool:
     if expr.startswith("!"):
         return normalize_value(bb.get(expr[1:].strip(), "")) not in {"1", "true", "yes", "y"}
     return normalize_value(bb.get(expr, "")) in {"1", "true", "yes", "y"}
+
+
+def when_policy(node: ET.Element) -> str:
+    return node.get("when.policy", "reactive")
 
 
 def dependencies_satisfied(root: ET.Element, node: ET.Element) -> bool:
@@ -823,7 +1021,7 @@ def normalize_conditions(root: ET.Element) -> bool:
             node.set("skip_reason", "when")
             node.set("skipped_at", utc_now())
             changed = True
-        elif should_run and was_conditionally_skipped:
+        elif should_run and was_conditionally_skipped and when_policy(node) == "reactive":
             node.set("status", "pending")
             node.attrib.pop("skip_reason", None)
             node.attrib.pop("skipped_at", None)
@@ -849,6 +1047,13 @@ def recompute_containers(root: ET.Element) -> bool:
     for node in reversed(list(iter_nodes(root))):
         kids = children(node)
         if not kids:
+            old_status = node.get("status", "pending")
+            if old_status == "skipped" and node.get("skip_reason") in {"switch", "when"}:
+                continue
+            if is_dynamic_group(node) and dynamic_group_state(node) == "closed":
+                if old_status != "succeeded":
+                    node.set("status", "succeeded")
+                    changed = True
             continue
         old_status = node.get("status", "pending")
         if old_status == "skipped" and node.get("skip_reason") in {"switch", "when"}:
@@ -893,6 +1098,12 @@ def recompute_containers(root: ET.Element) -> bool:
             new_status = "failed"
         elif any(status == "blocked" for status in statuses):
             new_status = "blocked"
+        elif (
+            node is root_node(root)
+            and root.get("reopen_pending") == "true"
+            and all(status in SUCCESS_STATUSES for status in statuses)
+        ):
+            new_status = "running"
         elif all(status in SUCCESS_STATUSES for status in statuses):
             new_status = "succeeded"
         elif any(status in {"running", "succeeded", "ready"} for status in statuses):
@@ -1041,6 +1252,29 @@ def status_counts(root: ET.Element) -> Dict[str, int]:
     return result
 
 
+def awaiting_dynamic_groups(root: ET.Element) -> List[Dict[str, str]]:
+    groups: List[Dict[str, str]] = []
+    for node in iter_nodes(root):
+        if (
+            not is_dynamic_group(node)
+            or dynamic_group_state(node) != "open"
+            or children(node)
+            or node.get("status", "pending") not in RUNNABLE_STATUSES
+            or not is_unlocked_by_ancestors(root, node)
+        ):
+            continue
+        groups.append(
+            {
+                "id": node.get("id", ""),
+                "template_id": node.get("template_id", ""),
+                "title": node.get("title", ""),
+                "path": " / ".join(node_path(root, node)),
+                "state": "open",
+            }
+        )
+    return groups
+
+
 def tree_snapshot(path: Path, config: Dict[str, Any]) -> Dict[str, Any]:
     tree, integrity = read_tree_with_integrity(path, config)
     root = tree.getroot()
@@ -1057,9 +1291,13 @@ def tree_snapshot(path: Path, config: Dict[str, Any]) -> Dict[str, Any]:
             "status": root.get("status", "pending"),
             "updated_at": root.get("updated_at", ""),
             "blackboard_updated_at": blackboard_updated_at(root),
+            "revision": runtime_revision(root),
+            "sealed_at": root.get("sealed_at", ""),
+            "epoch": root.get("epoch", "0"),
         },
         "blackboard": blackboard(root),
         "counts": status_counts(root),
+        "awaiting_dynamic_groups": awaiting_dynamic_groups(root),
         "ready": [
             {"id": node.get("id"), "title": node.get("title"), "executor": node.get("executor")}
             for node in ready_from(root, root_n, 256)
@@ -1123,6 +1361,8 @@ def instantiate_template_node(
     for key, value in template_node.attrib.items():
         if key not in excluded:
             attrs[key] = value
+    if role == "dynamic-group":
+        attrs["dynamic.state"] = template_node.get("dynamic.state", "open")
     if canonical_type == "loop":
         attrs["loop.iteration"] = "1"
         attrs["loop.max_iterations"] = template_node.get("loop.max_iterations", "1")
@@ -1176,6 +1416,7 @@ def instantiate_runtime_tree(
             "run_id": run_id,
             "status": "pending",
             "created_at": utc_now(),
+            "revision": "0",
         },
     )
     template_bb = find_direct(template_root, "blackboard")
@@ -1247,6 +1488,14 @@ def validate_template_root(root: ET.Element, check_integrity: bool = True) -> Li
         mode = node.get("mode", "")
         if mode not in VALID_MODES:
             errors.append(f"{tid}: invalid mode {mode}")
+        policy = node.get("when.policy", "")
+        if policy and policy not in VALID_WHEN_POLICIES:
+            errors.append(f"{tid}: invalid when.policy {policy}")
+        if policy and not node.get("when"):
+            errors.append(f"{tid}: when.policy requires when")
+        dynamic_state = node.get("dynamic.state", "")
+        if dynamic_state and (node_role(node) != "dynamic-group" or dynamic_state not in VALID_DYNAMIC_GROUP_STATES):
+            errors.append(f"{tid}: invalid dynamic.state {dynamic_state}")
         status = node.get("status")
         if status not in (None, "pending"):
             errors.append(f"{tid}: template status must be omitted or pending")
@@ -1327,6 +1576,10 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
         errors.append("runtime schema_version must be 1")
     if not root.get("run_id"):
         errors.append("runtime missing run_id")
+    try:
+        runtime_revision(root)
+    except TreeValidationError as exc:
+        errors.append(str(exc))
     if check_integrity:
         integrity = verify_integrity(root, "runtime")
         if integrity["status"] != "valid":
@@ -1361,6 +1614,14 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
         mode = node.get("mode", "")
         if mode not in VALID_MODES:
             errors.append(f"{node_id}: invalid mode {mode}")
+        policy = node.get("when.policy", "")
+        if policy and policy not in VALID_WHEN_POLICIES:
+            errors.append(f"{node_id}: invalid when.policy {policy}")
+        if policy and not node.get("when"):
+            errors.append(f"{node_id}: when.policy requires when")
+        dynamic_state = node.get("dynamic.state", "")
+        if dynamic_state and (node_role(node) != "dynamic-group" or dynamic_state not in VALID_DYNAMIC_GROUP_STATES):
+            errors.append(f"{node_id}: invalid dynamic.state {dynamic_state}")
         if normalized_type in {"task", "gate"} and node_children:
             errors.append(f"{node_id}: {normalized_type} cannot have children")
         if normalized_type in {"task", "gate"} and mode:
@@ -1452,6 +1713,7 @@ def create_dynamic_node(
     parent = find_node(root, parent_id)
     if node_type(parent) not in {"composite", "loop"}:
         raise TreeValidationError("dynamic node parent must be composite or loop", {"parent_id": parent_id})
+    require_dynamic_group_open(parent)
     if any(existing.get("logical_key") == logical_key for existing in iter_nodes(root)):
         raise TreeValidationError("logical_key already exists in runtime tree", {"logical_key": logical_key})
     canonical_type, normalized_role = normalize_type(node_type_value, role)
@@ -1505,6 +1767,8 @@ def create_dynamic_node(
     }
     if normalized_role:
         attrs["role"] = normalized_role
+    if normalized_role == "dynamic-group":
+        attrs["dynamic.state"] = "open"
     if mode:
         attrs["mode"] = mode
     if when:
@@ -1513,6 +1777,7 @@ def create_dynamic_node(
         attrs["depends_on"] = depends_on
     for key, value in metadata or []:
         attrs[key] = value
+    root.attrib.pop("reopen_pending", None)
     node = ET.SubElement(holder, "node", attrs)
     for tag, value in (
         ("instructions", instructions),
@@ -1539,6 +1804,7 @@ def embed_template_subtree(
     parent = find_node(root, parent_id)
     if node_type(parent) not in {"composite", "loop"}:
         raise TreeValidationError("subtree parent must be composite or loop", {"parent_id": parent_id})
+    require_dynamic_group_open(parent)
     holder = ensure_direct(parent, "children")
     meta = ensure_managed_metadata(root, "runtime", config)
     instances = ensure_direct(meta, "template_instances")
@@ -1557,6 +1823,7 @@ def embed_template_subtree(
     if collisions:
         raise TreeValidationError("embedded runtime IDs would collide", {"ids": collisions})
     holder.append(child_root)
+    root.attrib.pop("reopen_pending", None)
     ET.SubElement(
         instances,
         "instance",
@@ -1597,6 +1864,11 @@ def complete_node(
     variables: Optional[Sequence[Tuple[str, str]]] = None,
 ) -> ET.Element:
     node = require_executable_leaf(root, node_id)
+    if node.get("status") != "running":
+        raise InvalidTransitionError(
+            "complete requires a running node",
+            {"node_id": node_id, "status": node.get("status", "pending")},
+        )
     node.set("status", "succeeded")
     node.set("completed_at", utc_now())
     result = ensure_node_child(node, "result")
@@ -1616,6 +1888,11 @@ def complete_node(
 
 def fail_node(root: ET.Element, node_id: str, reason: str) -> ET.Element:
     node = require_executable_leaf(root, node_id)
+    if node.get("status") != "running":
+        raise InvalidTransitionError(
+            "fail requires a running node",
+            {"node_id": node_id, "status": node.get("status", "pending")},
+        )
     node.set("status", "failed")
     node.set("failed_at", utc_now())
     ensure_node_child(ensure_node_child(node, "result"), "failure_reason").text = reason
@@ -1625,6 +1902,11 @@ def fail_node(root: ET.Element, node_id: str, reason: str) -> ET.Element:
 
 def block_node(root: ET.Element, node_id: str, reason: str) -> ET.Element:
     node = require_executable_leaf(root, node_id)
+    if node.get("status") != "running":
+        raise InvalidTransitionError(
+            "block requires a running node",
+            {"node_id": node_id, "status": node.get("status", "pending")},
+        )
     node.set("status", "blocked")
     node.set("blocked_at", utc_now())
     node.set("block_reason", reason)

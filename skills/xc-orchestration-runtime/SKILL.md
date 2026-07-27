@@ -13,6 +13,7 @@ description: "Runs and observes managed orchestration trees. Invoke when a workf
 - The main session requests ready nodes, starts delegated work, handles `executor=main` gates, and checks summaries. It does not need the full tree.
 - A worker executes exactly one assigned node and reports through `complete`, `fail`, or `block`.
 - Runtime trees use `schema_version="1"`. Earlier formats and CLI semantics are unsupported.
+- A terminal operation is valid only for a `running` task or gate. A successful root is sealed until the main session explicitly reopens it after a user-approved reason.
 
 ## Runtime Lifecycle
 
@@ -37,15 +38,21 @@ python "$SKILL_DIR/scripts/orchestration.py" complete `
 
 `init` writes `<run_runtime_dir>/orchestration.xml`. The run-creation capability owns creation of `<run_runtime_dir>` and its parent run directory. All commands emit JSON; `--json` is accepted for host compatibility.
 
-Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`, `embed-subtree`, `summary`, `show`, `find`, `artifacts`, `snapshot`, `integrity-status`, `repair-integrity`, and `validate`.
+Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`, `embed-subtree`, `close-group`, `reopen`, `summary`, `show`, `find`, `artifacts`, `snapshot`, `integrity-status`, `repair-integrity`, and `validate`.
 
 `add-node` accepts repeated `--metadata metadata.<key>=value` values for dynamic node metadata. Use `metadata.artifact.audience=internal|user` and `metadata.artifact.content_language=en|run.document_language` to declare an artifact's audience and language selector. `artifacts --audience user` lists only paths declared through terminal `complete --artifact` operations and their node metadata; it never scans the context repository.
+
+Every write response returns a monotonic `revision`. Callers MAY pass it back as `--expected-revision <value>` on a later write; a mismatch returns `state_conflict`. The runtime serializes writes for one local tree even when callers omit that option.
+
+`next` and `summary` return `awaiting_dynamic_groups` when a reachable, empty dynamic group is open. The main session must append work or call `close-group`; a closed group rejects further additions. Do not treat an empty `ready` list with awaiting groups as an unclassified deadlock.
 
 ## Persistence and Context Commits
 
 Every managed tree has an access warning, access policy, and canonical SHA-256 integrity metadata. Normal writes reject invalid integrity; only `repair-integrity` can repair it after explicit inspection.
 
 When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped context commit. A terminal `complete` commit contains both the tree transition and all declared `--artifact` paths. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist state without a commit; their changes are included by the next terminal checkpoint.
+
+When the root succeeds, the runtime records sealing metadata and rejects ordinary mutations. `reopen --reason "<user-approved-reason>"` is the only mutation that can reopen a successful tree; it records a new epoch. Domain Skills must require an explicit main-session user decision before invoking it.
 
 Declared commit artifacts MUST exist inside the same context Git repository as the runtime tree. The runtime never stages unrelated context changes. A failed commit returns `persisted_uncommitted`; files remain available for recovery, but the caller MUST treat the checkpoint as uncommitted.
 

@@ -13,6 +13,8 @@ python "$SKILL_DIR/scripts/orchestration.py" embed-subtree `
 ## Preconditions
 
 - The parent must be a `composite` or `loop` runtime node.
+- A dynamic-group parent must remain `open`; a closed group rejects embedding.
+- The root tree must not be sealed. Reopening a completed tree requires the owning workflow's explicit user gate.
 - The child must be a valid, checksummed managed template.
 - `instance-id` is optional; when supplied it must be lowercase kebab-case and unique within the parent runtime tree.
 
@@ -31,6 +33,11 @@ This preserves the original template ID and the embedding instance ID on every r
 ## Blackboard and Artifacts
 
 Embedding only composes node structure. The parent runtime blackboard remains the shared control plane. Child template defaults are not copied into the runtime blackboard; set explicit shared values before or after embedding.
+
+Sequential instances that reuse shared control keys should mark optional
+one-time branches with `when.policy=latched`. Parallel reuse of the same
+shared keys remains unsupported until a separate scoped-blackboard design is
+approved.
 
 Child tasks should use artifact paths isolated by instance:
 

@@ -13,6 +13,12 @@ Templates are managed `schema_version="1"` XML artifacts. Every node uses a stab
 
 Template dependencies use `depends_on_template="local:<template_id>"`. The runtime rewrites them to globally unique runtime node IDs. Use `metadata.*` for domain-specific classification rather than adding runtime node types.
 
+Conditional nodes default to `when.policy=reactive`; set
+`when.policy=latched` for a one-time optional branch that must not reopen when
+shared control values later change. A `role=dynamic-group` starts open and may
+declare `dynamic.state=closed` only when the template intentionally contains
+no future dynamic work.
+
 The runtime supports sequence, parallel, switch/case, simple `when` conditions, explicit dependencies, dynamic nodes, and end-of-iteration loop conditions. Loop-local `break` and `continue` signals are not part of the current contract.
 
 ## Workflow

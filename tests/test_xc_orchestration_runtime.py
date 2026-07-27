@@ -39,6 +39,18 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
         return json.loads(result.stdout)
 
+    def run_cli_error(self, *args: str, cwd: Path) -> dict[str, object]:
+        result = subprocess.run(
+            [sys.executable, str(RUNTIME_CLI), *args],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(result.returncode, 2, result.stderr or result.stdout)
+        return json.loads(result.stdout)
+
     def run_git(self, repository: Path, *args: str) -> str:
         result = subprocess.run(
             ["git", *args],
@@ -92,7 +104,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         core.apply_integrity(root, "template", config)
         core.atomic_write_text(path, core.serialize_xml(root, "template"))
 
-    def write_conditional_template(self, path: Path, config: dict[str, object]) -> None:
+    def write_conditional_template(self, path: Path, config: dict[str, object], when_policy: str = "") -> None:
         root = ET.Element("orchestration", {"schema_version": "1", "name": "conditional-group"})
         ET.SubElement(root, "blackboard")
         workflow = ET.SubElement(
@@ -119,18 +131,21 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 "executor": "main",
             },
         )
+        optional_attributes = {
+            "template_id": "optional-group",
+            "title": "Optional group",
+            "type": "composite",
+            "role": "optional",
+            "mode": "sequence",
+            "executor": "main",
+            "when": "optional.enabled == true",
+        }
+        if when_policy:
+            optional_attributes["when.policy"] = when_policy
         optional = ET.SubElement(
             children,
             "node",
-            {
-                "template_id": "optional-group",
-                "title": "Optional group",
-                "type": "composite",
-                "role": "optional",
-                "mode": "sequence",
-                "executor": "main",
-                "when": "optional.enabled == true",
-            },
+            optional_attributes,
         )
         optional_children = ET.SubElement(optional, "children")
         ET.SubElement(
@@ -155,6 +170,50 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 "executor": "main",
             },
         )
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
+    def write_dynamic_group_template(self, path: Path, config: dict[str, object]) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": "dynamic-group"})
+        ET.SubElement(root, "blackboard")
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": "Dynamic Group",
+                "type": "composite",
+                "role": "root",
+                "mode": "sequence",
+                "executor": "main",
+            },
+        )
+        children = ET.SubElement(workflow, "children")
+        for template_id, title in (("prepare", "Prepare"), ("finish", "Finish")):
+            if template_id == "finish":
+                ET.SubElement(
+                    children,
+                    "node",
+                    {
+                        "template_id": "work-group",
+                        "title": "Work group",
+                        "type": "composite",
+                        "role": "dynamic-group",
+                        "mode": "sequence",
+                        "executor": "main",
+                    },
+                )
+            ET.SubElement(
+                children,
+                "node",
+                {
+                    "template_id": template_id,
+                    "title": title,
+                    "type": "task",
+                    "role": template_id,
+                    "executor": "main",
+                },
+            )
         core.apply_integrity(root, "template", config)
         core.atomic_write_text(path, core.serialize_xml(root, "template"))
 
@@ -402,7 +461,266 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             )
             payload = json.loads(invalid.stdout)
             self.assertEqual(invalid.returncode, 2, invalid.stderr or invalid.stdout)
-            self.assertEqual(payload["error"]["code"], "runtime_error")
+            self.assertEqual(payload["error"]["code"], "tree_sealed")
+
+    def test_mutations_serialize_and_reject_stale_revisions(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-dir",
+                str(context / "runs" / "revision" / "runtime"),
+                "--run-id",
+                "revision",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            first_revision = int(initialized["revision"])
+
+            updated = self.run_cli(
+                "set",
+                "--tree",
+                str(tree_path),
+                "--expected-revision",
+                str(first_revision),
+                "--set",
+                "scope.confirmed=true",
+                cwd=project,
+            )
+            stale = self.run_cli_error(
+                "set",
+                "--tree",
+                str(tree_path),
+                "--expected-revision",
+                str(first_revision),
+                "--set",
+                "scope.stale=true",
+                cwd=project,
+            )
+            self.assertEqual(stale["error"]["code"], "state_conflict")
+
+            commands = [
+                [
+                    sys.executable,
+                    str(RUNTIME_CLI),
+                    "set",
+                    "--tree",
+                    str(tree_path),
+                    "--set",
+                    "parallel.left=true",
+                ],
+                [
+                    sys.executable,
+                    str(RUNTIME_CLI),
+                    "set",
+                    "--tree",
+                    str(tree_path),
+                    "--set",
+                    "parallel.right=true",
+                ],
+            ]
+            processes = [
+                subprocess.Popen(
+                    command,
+                    cwd=project,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                )
+                for command in commands
+            ]
+            for process in processes:
+                stdout, stderr = process.communicate(timeout=15)
+                self.assertEqual(process.returncode, 0, stderr or stdout)
+                self.assertTrue(json.loads(stdout)["ok"])
+
+            summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+            self.assertEqual(summary["blackboard"]["parallel.left"], "true")
+            self.assertEqual(summary["blackboard"]["parallel.right"], "true")
+            self.assertEqual(int(summary["revision"]), int(updated["revision"]) + 2)
+
+    def test_terminal_commands_require_running_nodes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-dir",
+                str(context / "runs" / "transition" / "runtime"),
+                "--run-id",
+                "transition",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            node_id = str(self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]["id"])
+
+            for command, extra in (
+                ("complete", []),
+                ("fail", ["--reason", "unexpected"]),
+                ("block", ["--reason", "unexpected"]),
+            ):
+                rejected = self.run_cli_error(command, "--tree", str(tree_path), "--node", node_id, *extra, cwd=project)
+                self.assertEqual(rejected["error"]["code"], "invalid_transition")
+
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            self.assertEqual(self.run_cli("summary", "--tree", str(tree_path), cwd=project)["status"], "complete")
+
+    def test_latched_conditions_do_not_reactivate_after_a_shared_value_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+
+            def ready_after_enable(policy: str) -> list[str]:
+                template = project / f"{policy or 'reactive'}.xml"
+                self.write_conditional_template(template, config, policy)
+                initialized = self.run_cli(
+                    "init",
+                    "--template",
+                    str(template),
+                    "--runtime-dir",
+                    str(context / "runs" / (policy or "reactive") / "runtime"),
+                    "--run-id",
+                    policy or "reactive",
+                    "--var",
+                    "optional.enabled=false",
+                    cwd=project,
+                )
+                tree_path = Path(str(initialized["tree_path"]))
+                prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+                self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+                self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+                self.run_cli("set", "--tree", str(tree_path), "--set", "optional.enabled=true", cwd=project)
+                return [
+                    str(node["template_id"])
+                    for node in self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+                ]
+
+            self.assertEqual(ready_after_enable(""), ["optional-work"])
+            self.assertEqual(ready_after_enable("latched"), ["finish"])
+
+    def test_dynamic_groups_report_waiting_state_and_reject_closed_appends(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "dynamic.xml"
+            self.write_dynamic_group_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-dir",
+                str(context / "runs" / "dynamic" / "runtime"),
+                "--run-id",
+                "dynamic",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+
+            waiting = self.run_cli("next", "--tree", str(tree_path), cwd=project)
+            self.assertEqual(waiting["ready"], [])
+            self.assertEqual([item["template_id"] for item in waiting["awaiting_dynamic_groups"]], ["work-group"])
+            group_id = str(waiting["awaiting_dynamic_groups"][0]["id"])
+            self.run_cli("close-group", "--tree", str(tree_path), "--group", group_id, cwd=project)
+
+            rejected = self.run_cli_error(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                group_id,
+                "--logical-key",
+                "late-work",
+                "--title",
+                "Late work",
+                "--executor",
+                "main",
+                cwd=project,
+            )
+            self.assertEqual(rejected["error"]["code"], "group_closed")
+            self.assertEqual(
+                [node["template_id"] for node in self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]],
+                ["finish"],
+            )
+
+    def test_successful_trees_require_explicit_reopen_before_new_work(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-dir",
+                str(context / "runs" / "sealed" / "runtime"),
+                "--run-id",
+                "sealed",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            root_id = str(self.run_cli("find", "--tree", str(tree_path), "--template-id", "root", cwd=project)["nodes"][0]["id"])
+            first = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+
+            sealed = self.run_cli_error("set", "--tree", str(tree_path), "--set", "late.change=true", cwd=project)
+            self.assertEqual(sealed["error"]["code"], "tree_sealed")
+            reopened = self.run_cli(
+                "reopen",
+                "--tree",
+                str(tree_path),
+                "--reason",
+                "The user approved a documented correction.",
+                cwd=project,
+            )
+            self.assertEqual(reopened["epoch"], "1")
+            self.assertEqual(self.run_cli("snapshot", "--tree", str(tree_path), cwd=project)["metadata"]["epoch"], "1")
+            self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                root_id,
+                "--logical-key",
+                "approved-correction",
+                "--title",
+                "Approved correction",
+                "--executor",
+                "main",
+                cwd=project,
+            )
+            correction = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(correction["logical_key"], "approved-correction")
 
     def test_terminal_commit_contains_tree_and_declared_artifact_only(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

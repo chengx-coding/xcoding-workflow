@@ -43,6 +43,7 @@
         "mode": "sequence",
         "executor": "main",
         "when": "document.review_required == true",
+        "when.policy": "latched",
         "loop.max_iterations": "3",
         "loop.continue_when": "document.review.open_issues == true",
         "loop.break_when": "document.review.open_issues == false",
@@ -85,6 +86,7 @@
         "role": "document-confirmation",
         "executor": "main",
         "when": "document.gate_required == true",
+        "when.policy": "latched",
         "instructions": "Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.",
         "deliverables": "Structured user decisions or an explicit continuation decision.",
         "acceptance": "Required user decisions are recorded and any necessary revision nodes are scheduled."
