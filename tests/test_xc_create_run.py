@@ -9,10 +9,10 @@ from pathlib import Path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-CREATE_RUN = REPOSITORY_ROOT / "skills" / "xc-run" / "scripts" / "create_run.py"
+CREATE_RUN = REPOSITORY_ROOT / "skills" / "xc-create-run" / "scripts" / "create_run.py"
 
 
-class XcRunTests(unittest.TestCase):
+class XcCreateRunTests(unittest.TestCase):
     def run_git(self, repository: Path, *args: str) -> None:
         result = subprocess.run(["git", *args], cwd=repository, capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)

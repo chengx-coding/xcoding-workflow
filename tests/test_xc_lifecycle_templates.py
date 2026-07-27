@@ -37,9 +37,9 @@ WORKFLOWS = (
         "prepare-adoption",
     ),
     (
-        "ordinary-run",
-        REPOSITORY_ROOT / "skills" / "xc-ordinary-run" / "assets" / "ordinary-run-flow.json",
-        REPOSITORY_ROOT / "skills" / "xc-ordinary-run" / "assets" / "ordinary-run-template.xml",
+        "run",
+        REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-flow.json",
+        REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml",
         "prepare-run",
     ),
     (
