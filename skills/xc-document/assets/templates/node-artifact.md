@@ -1,6 +1,8 @@
 ---
 schema_version: 1
 document_kind: node-artifact
+content_language: "{{content_language}}"
+audience: "{{audience}}"
 run_id: "{{run_id}}"
 node_id: "{{node_id}}"
 feature_ids: "{{feature_ids}}"
@@ -10,10 +12,10 @@ orchestration:
 
 # {{artifact_title}}
 
-## Scope
+## {{scope_heading}}
 
-## Evidence
+## {{evidence_heading}}
 
-## Findings
+## {{findings_heading}}
 
-## Conclusion
+## {{conclusion_heading}}

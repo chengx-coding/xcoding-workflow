@@ -4,7 +4,8 @@
   "blackboard": {
     "feature.id": "",
     "feature.title": "",
-    "feature.adoption_approval_required": "true"
+    "feature.adoption_approval_required": "true",
+    "run.document_language": "en"
   },
   "root": {
     "template_id": "root",
@@ -20,9 +21,9 @@
         "type": "task",
         "role": "adoption-prepare",
         "executor": "main",
-        "instructions": "Read the project bridge, create the run through xc-create-run, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.",
+        "instructions": "Read the project bridge, create the run through xc-create-run, determine and validate run.document_language through xc-document from the explicit parameter or initiating user request, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.",
         "deliverables": "An authoritative run directory, explicit code-entry scope, and empty managed feature directory.",
-        "acceptance": "The feature is not already managed and the adoption scope has enough evidence to begin analysis."
+        "acceptance": "The feature is not already managed, run.document_language is set before any document write, and the adoption scope has enough evidence to begin analysis."
       },
       {
         "template_id": "goal-document",

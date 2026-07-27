@@ -1,18 +1,19 @@
 ---
 schema_version: 1
 document_kind: run-result
+content_language: "{{content_language}}"
 run_id: "{{run_id}}"
 feature_ids: "{{feature_ids}}"
 orchestration:
   main_tree_ref: "{{tree_ref}}"
 ---
 
-# {{run_title}} Result
+# {{document_title}}
 
-## Actual Changes
+## {{actual_changes_heading}}
 
-## Validation Evidence
+## {{validation_evidence_heading}}
 
-## Baseline Synchronization
+## {{baseline_synchronization_heading}}
 
-## Deviations and Residual Risks
+## {{deviations_and_residual_risks_heading}}

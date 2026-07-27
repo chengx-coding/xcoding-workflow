@@ -23,7 +23,7 @@ description: "Executes one approved implementation node in a managed workflow ru
 
 ## Operation
 
-Read the supplied node contract and approved inputs, make the smallest coherent change, and preserve unrelated worktree changes. Run focused verification before reporting success. Record changed paths, validation commands and outcomes, baseline impact, and any unresolved issue in the declared artifact.
+Read the supplied node contract and approved inputs, make the smallest coherent change, and preserve unrelated worktree changes. Run focused verification before reporting success. Record changed paths, validation commands and outcomes, baseline impact, and any unresolved issue in the declared artifact. Implementation artifacts default to internal English; localize only an explicitly declared `metadata.artifact.audience=user` report using its resolved artifact language.
 
 When implementation evidence changes a feature baseline, add a separate document-evolution subtree or user gate through the caller's runtime workflow. Do not overwrite a baseline opportunistically from an implementation node.
 

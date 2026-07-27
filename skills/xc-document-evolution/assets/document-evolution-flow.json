@@ -2,6 +2,7 @@
   "name": "document-evolution",
   "schema_version": 1,
   "blackboard": {
+    "document.content_language": "",
     "document.review_required": "false",
     "document.gate_required": "false",
     "document.review.open_issues": "false"
@@ -20,7 +21,7 @@
         "type": "task",
         "role": "document-write",
         "executor": "subagent",
-        "instructions": "Read document.path, document.template, document.inputs, and document.contract from the supplied blackboard and node references. Write or revise the target document immediately. Preserve valid frontmatter and do not read the runtime XML directly.",
+        "instructions": "Read document.path, document.template, document.inputs, document.contract, and document.content_language from the supplied blackboard and node references. Write or revise the target document immediately. Preserve valid frontmatter and do not read the runtime XML directly.",
         "deliverables": "The managed document at document.path.",
         "acceptance": "The target document exists, follows its authoring contract, and has complete YAML frontmatter."
       },
@@ -53,6 +54,12 @@
             "type": "task",
             "role": "document-review",
             "executor": "subagent",
+            "metadata": {
+              "artifact": {
+                "audience": "internal",
+                "content_language": "en"
+              }
+            },
             "instructions": "Review document.path against the domain review dimensions. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.",
             "deliverables": "A review artifact with prioritized findings and closure criteria.",
             "acceptance": "The review distinguishes required findings from optional observations and sets document.review.open_issues."
@@ -65,7 +72,7 @@
             "executor": "subagent",
             "when": "document.review.open_issues == true",
             "depends_on_template": "local:review-document",
-            "instructions": "Read the latest review artifact and revise only document.path. Preserve valid frontmatter and record the updated document as the node artifact.",
+            "instructions": "Read the latest review artifact and revise only document.path. Preserve document.content_language when it is set, preserve valid frontmatter, and record the updated document as the node artifact.",
             "deliverables": "An updated managed document.",
             "acceptance": "Required review findings are resolved or explicitly escalated to a user gate."
           }

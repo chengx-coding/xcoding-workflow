@@ -25,12 +25,15 @@ description: "Runs managed investigation, iteration, repair, review, maintenance
   - Allowed values: `investigation`, `change`, `repair`, `review`, `maintenance`.
   - Scope: Controls default analysis, solution, implementation, and verification gates. The runtime blackboard remains authoritative for the selected execution path.
 
+- `document_language` - `string`; optional
+  - Scope: Explicit simplified BCP 47 language tag for top-level run documents. When omitted, use the initiating user request's clearly dominant language; if that cannot be decided quickly, use `en`.
+
 ## Main Run
 
 1. Read `AGENTS.md`, `.xcoding/WORKFLOW.md`, and `.xcoding/KNOWLEDGE.md`.
 2. Verify every supplied `feature_id` already exists. Do not create or adopt a feature.
-3. Call `xc-create-run`, initialize `assets/run-template.xml`, and complete `prepare-run`.
-4. Create `goal.md` through document evolution. Set blackboard controls based on the requested mode and required gates.
+3. Call `xc-create-run`, initialize `assets/run-template.xml`, determine and validate `run.document_language` through `xc-document`, then complete `prepare-run`. An explicit `document_language` wins; otherwise use only the initiating request's clearly dominant language or `en`.
+4. Create `goal.md` through document evolution. Before every top-level run document subtree, set `document.content_language` to `run.document_language`. Set blackboard controls based on the requested mode and required gates.
 5. When analysis is needed, schedule `xc-analysis` nodes and synthesize accepted evidence into `analysis.md`.
 6. When feature IDs are present, embed `xc-feature-reconciliation` sequentially under `reconciliation-group` before selecting a run solution.
 7. Create run `solution.md` when a change strategy must be selected. Use `approve-run-solution` for material decisions or unresolved risk.
@@ -53,3 +56,4 @@ Runs may analyze and design for the same feature concurrently. Before any baseli
 - An ordinary run never implicitly creates `.xcoding/features/<feature-id>/`.
 - Code and executable tests are evidence of current behavior; feature baselines are approved target intent. Ambiguous conflict requires a user gate.
 - Dynamic state, task ordering, retry state, and blockers remain in the runtime tree, not in documents.
+- Do not re-detect language from later user messages. A user may explicitly correct `run.document_language`; revise already declared top-level run documents and `metadata.artifact.audience=user` reports through runtime-managed document-evolution work.

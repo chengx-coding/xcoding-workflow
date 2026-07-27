@@ -292,6 +292,112 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
             self.assertEqual([node["template_id"] for node in ready], ["finish"])
 
+    def test_dynamic_artifact_metadata_and_declared_artifact_query(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            run_id = "20260727-1200-artifact-query"
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-dir",
+                str(context / "runs" / run_id / "runtime"),
+                "--run-id",
+                run_id,
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            root = self.run_cli("find", "--tree", str(tree_path), "--template-id", "root", cwd=project)["nodes"][0]
+
+            added = self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                str(root["id"]),
+                "--logical-key",
+                "write-user-report",
+                "--title",
+                "Write user report",
+                "--type",
+                "task",
+                "--executor",
+                "main",
+                "--metadata",
+                "metadata.artifact.audience=user",
+                "--metadata",
+                "metadata.artifact.content_language=run.document_language",
+                cwd=project,
+            )
+            self.assertEqual(added["node"]["attributes"]["metadata.artifact.audience"], "user")
+
+            first = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+
+            user_node = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(user_node["logical_key"], "write-user-report")
+            artifact = context / "runs" / run_id / "artifacts" / "user-report.md"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text("# User report\n", encoding="utf-8")
+            unrelated = context / "runs" / run_id / "unmanaged.md"
+            unrelated.write_text("# Unmanaged\n", encoding="utf-8")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(user_node["id"]), cwd=project)
+            self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                str(user_node["id"]),
+                "--artifact",
+                str(artifact),
+                cwd=project,
+            )
+
+            queried = self.run_cli("artifacts", "--tree", str(tree_path), "--audience", "user", cwd=project)["artifacts"]
+            self.assertEqual(queried, [{
+                "path": str(artifact),
+                "node_id": str(user_node["id"]),
+                "metadata": {
+                    "metadata.artifact.audience": "user",
+                    "metadata.artifact.content_language": "run.document_language",
+                },
+            }])
+
+            invalid = subprocess.run(
+                [
+                    sys.executable,
+                    str(RUNTIME_CLI),
+                    "add-node",
+                    "--tree",
+                    str(tree_path),
+                    "--parent",
+                    str(root["id"]),
+                    "--logical-key",
+                    "invalid-metadata",
+                    "--title",
+                    "Invalid metadata",
+                    "--executor",
+                    "main",
+                    "--metadata",
+                    "artifact.audience=user",
+                ],
+                cwd=project,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            payload = json.loads(invalid.stdout)
+            self.assertEqual(invalid.returncode, 2, invalid.stderr or invalid.stdout)
+            self.assertEqual(payload["error"]["code"], "runtime_error")
+
     def test_terminal_commit_contains_tree_and_declared_artifact_only(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"

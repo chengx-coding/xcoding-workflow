@@ -9,7 +9,7 @@ The main session provides:
 - `tree_ref`
 - One node JSON returned by `next`
 - Domain Skill references and artifact paths named by the node
-- Required user decisions or blackboard values
+- Required user decisions or blackboard values, including `run.document_language` when the node writes a user-facing artifact
 
 ## Rules
 
@@ -19,6 +19,7 @@ The main session provides:
 4. Write important outputs to the declared artifact path or target system; never leave them only in chat.
 5. On completion, call the runtime public command with a concise summary, validation outcome, and artifact paths.
 6. Artifact paths intended for an automatic checkpoint commit must be inside the context Git repository.
+7. Read `metadata.artifact.audience` and `metadata.artifact.content_language` from the supplied node. Default to `internal` and `en`; resolve `run.document_language` only for an explicitly declared user-facing artifact.
 
 ## Worker Prompt Skeleton
 

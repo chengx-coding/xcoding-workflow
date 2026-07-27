@@ -5,6 +5,7 @@
     "feature.id": "",
     "feature.title": "",
     "feature.approval_required": "true",
+    "run.document_language": "en",
     "run.requires_implementation": "true",
     "run.requires_verification": "true"
   },
@@ -22,9 +23,9 @@
         "type": "task",
         "role": "feature-prepare",
         "executor": "main",
-        "instructions": "Read the project bridge, create the run through xc-create-run, select an explicit feature ID, and create its empty directory through xc-feature.",
+        "instructions": "Read the project bridge, create the run through xc-create-run, determine and validate run.document_language through xc-document from the explicit parameter or initiating user request, select an explicit feature ID, and create its empty directory through xc-feature.",
         "deliverables": "An authoritative run directory and empty managed feature directory.",
-        "acceptance": "The context Git worktree is independent, the feature ID is explicit, and no baseline document exists outside document evolution."
+        "acceptance": "The context Git worktree is independent, the feature ID is explicit, run.document_language is set before any document write, and no baseline document exists outside document evolution."
       },
       {
         "template_id": "goal-document",

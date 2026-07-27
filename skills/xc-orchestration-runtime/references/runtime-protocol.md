@@ -30,6 +30,7 @@ set                  Update short cross-node blackboard values without a checkpo
 add-node             Add a dynamic node using a logical_key.
 embed-subtree        Instantiate a managed template under a runtime parent.
 summary / show / find Read progress, one node, or nodes with a template ID.
+artifacts            List only terminally declared artifact paths and node metadata.
 snapshot             Export the viewer JSON model.
 integrity-status     Report access policy and checksum state.
 repair-integrity     Explicitly restore managed metadata after a mismatch.
@@ -51,6 +52,10 @@ All commands return JSON. `--json` is accepted for host compatibility.
 ## Blackboard, Artifacts, and Checkpoints
 
 Use the blackboard only for short control values such as `review.open_issues=false`. Rich reports, review findings, validation outputs, diagnostics, and generated documents are artifacts. The workflow does not create generic raw-log artifacts.
+
+Dynamic nodes may receive scalar `metadata.*` attributes through repeated `add-node --metadata metadata.<key>=value` arguments. Artifact-producing nodes use `metadata.artifact.audience` (`internal` by default) and `metadata.artifact.content_language` (`en` by default). A user-facing artifact declares `audience=user` and `content_language=run.document_language`; its writer resolves that selector before writing document frontmatter.
+
+Use `artifacts --audience user` to locate previously declared user-facing reports for a language correction. The response includes only paths declared by `complete --artifact`, their owner node IDs, and `metadata.artifact.*`; it never discovers files by scanning directories.
 
 When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. A `complete` checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped context commit. Declared checkpoint artifacts must exist inside the same context Git repository as the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist tree state but defer commit creation to the next checkpoint.
 

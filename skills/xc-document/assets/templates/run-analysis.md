@@ -1,18 +1,19 @@
 ---
 schema_version: 1
 document_kind: run-analysis
+content_language: "{{content_language}}"
 run_id: "{{run_id}}"
 feature_ids: "{{feature_ids}}"
 orchestration:
   main_tree_ref: "{{tree_ref}}"
 ---
 
-# {{run_title}} Analysis
+# {{document_title}}
 
-## Evidence and Current State
+## {{evidence_and_current_state_heading}}
 
-## Reconciliation
+## {{reconciliation_heading}}
 
-## Impact and Risks
+## {{impact_and_risks_heading}}
 
-## Alternatives
+## {{alternatives_heading}}

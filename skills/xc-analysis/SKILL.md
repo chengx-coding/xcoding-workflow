@@ -29,6 +29,8 @@ The caller reads `.xcoding/WORKFLOW.md` and `.xcoding/KNOWLEDGE.md`, creates or 
 
 Use parallel nodes only for independent perspectives. The caller names each perspective, declares its artifact path, and schedules a synthesis node after all required evidence nodes complete. A synthesis may discard unsupported claims; it must not merge incompatible evidence silently.
 
+Analysis node artifacts default to internal English. A caller may explicitly mark a user-facing analysis report with `metadata.artifact.audience=user` and `metadata.artifact.content_language=run.document_language`; resolve the language before writing its node-artifact frontmatter.
+
 ## Output Rules
 
 - Distinguish confirmed facts, hypotheses, and unknowns.

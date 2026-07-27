@@ -16,6 +16,64 @@ RENDER = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "render_docume
 VALIDATE = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "validate_document.py"
 DOCUMENT_EVOLUTION_TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-document-evolution" / "assets" / "document-evolution-template.xml"
 DOCUMENT_TEMPLATES = REPOSITORY_ROOT / "skills" / "xc-document" / "assets" / "templates"
+RUN_DOCUMENT_HEADINGS = {
+    "run-goal": {
+        "document_title": "Run Goal",
+        "requested_outcome_heading": "Requested Outcome",
+        "scope_and_constraints_heading": "Scope and Constraints",
+        "acceptance_conditions_heading": "Acceptance Conditions",
+    },
+    "run-analysis": {
+        "document_title": "Run Analysis",
+        "evidence_and_current_state_heading": "Evidence and Current State",
+        "reconciliation_heading": "Reconciliation",
+        "impact_and_risks_heading": "Impact and Risks",
+        "alternatives_heading": "Alternatives",
+    },
+    "run-solution": {
+        "document_title": "Run Solution",
+        "selected_change_heading": "Selected Change",
+        "feature_baseline_impact_heading": "Feature Baseline Impact",
+        "implementation_and_migration_strategy_heading": "Implementation and Migration Strategy",
+        "verification_strategy_heading": "Verification Strategy",
+    },
+    "run-result": {
+        "document_title": "Run Result",
+        "actual_changes_heading": "Actual Changes",
+        "validation_evidence_heading": "Validation Evidence",
+        "baseline_synchronization_heading": "Baseline Synchronization",
+        "deviations_and_residual_risks_heading": "Deviations and Residual Risks",
+    },
+}
+ZH_RUN_DOCUMENT_HEADINGS = {
+    "run-goal": {
+        "document_title": "运行目标",
+        "requested_outcome_heading": "请求结果",
+        "scope_and_constraints_heading": "范围与约束",
+        "acceptance_conditions_heading": "验收条件",
+    },
+    "run-analysis": {
+        "document_title": "运行分析",
+        "evidence_and_current_state_heading": "证据与当前状态",
+        "reconciliation_heading": "对齐",
+        "impact_and_risks_heading": "影响与风险",
+        "alternatives_heading": "备选方案",
+    },
+    "run-solution": {
+        "document_title": "运行方案",
+        "selected_change_heading": "选定变更",
+        "feature_baseline_impact_heading": "Feature 基线影响",
+        "implementation_and_migration_strategy_heading": "实施与迁移策略",
+        "verification_strategy_heading": "验证策略",
+    },
+    "run-result": {
+        "document_title": "运行结果",
+        "actual_changes_heading": "实际变更",
+        "validation_evidence_heading": "验证证据",
+        "baseline_synchronization_heading": "基线同步",
+        "deviations_and_residual_risks_heading": "偏差与剩余风险",
+    },
+}
 
 
 class XcLifecycleEndToEndTests(unittest.TestCase):
@@ -133,6 +191,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         feature_id: str = "",
         instance_id: str = "",
         parent_instance_id: str = "",
+        content_language: str = "en",
     ) -> None:
         parent = self.find_one(project, tree, group_template_id, parent_instance_id)
         instance_id = instance_id or group_template_id
@@ -158,6 +217,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 "document.template": str(DOCUMENT_TEMPLATES / f"{document_kind}.md"),
                 "document.inputs": "none",
                 "document.contract": "none",
+                "document.content_language": content_language if document_kind in RUN_DOCUMENT_HEADINGS else "",
                 "document.review_required": "false",
                 "document.gate_required": "false",
                 "document.review.open_issues": "false",
@@ -196,15 +256,18 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                     f"node_id={writer['id']}",
                 ]
             )
-        else:
+        elif document_kind in RUN_DOCUMENT_HEADINGS:
             render_args.extend(
                 [
                     "--set",
-                    f"run_title={run['run_id']}",
+                    f"content_language={content_language}",
                     "--set-json",
                     f"feature_ids={json.dumps(feature_ids)}",
                 ]
             )
+            headings = ZH_RUN_DOCUMENT_HEADINGS[document_kind] if content_language == "zh-CN" else RUN_DOCUMENT_HEADINGS[document_kind]
+            for key, value in headings.items():
+                render_args.extend(["--set", f"{key}={value}"])
         self.run_json(RENDER, *render_args, cwd=project)
         self.run_json(VALIDATE, "--document", str(document_path), "--expected-kind", document_kind, cwd=project)
         self.run_json(
@@ -267,18 +330,21 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             tree,
             {
                 "feature.approval_required": "false",
+                "run.document_language": "zh-CN",
                 "run.requires_implementation": "false",
                 "run.requires_verification": "false",
             },
         )
         self.complete_ready_task(project, tree, "prepare-feature", feature_dir)
-        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [feature_id])
-        self.complete_document(project, tree, run, "analysis-group", "run-analysis", Path(str(run["run_dir"])) / "analysis.md", [feature_id])
-        self.complete_document(project, tree, run, "run-solution-document", "run-solution", Path(str(run["run_dir"])) / "solution.md", [feature_id])
+        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [feature_id], content_language="zh-CN")
+        self.complete_document(project, tree, run, "analysis-group", "run-analysis", Path(str(run["run_dir"])) / "analysis.md", [feature_id], content_language="zh-CN")
+        self.complete_document(project, tree, run, "run-solution-document", "run-solution", Path(str(run["run_dir"])) / "solution.md", [feature_id], content_language="zh-CN")
         self.complete_document(project, tree, run, "feature-contract-document", "feature-contract", feature_dir / "contract.md", [feature_id], feature_id)
         self.complete_document(project, tree, run, "feature-solution-document", "feature-solution", feature_dir / "solution.md", [feature_id], feature_id)
         self.complete_document(project, tree, run, "feature-verification-document", "feature-verification", feature_dir / "verification.md", [feature_id], feature_id)
-        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [feature_id])
+        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [feature_id], content_language="zh-CN")
+        self.assertIn("content_language: zh-CN", (Path(str(run["run_dir"])) / "goal.md").read_text(encoding="utf-8"))
+        self.assertIn("# 运行结果", (Path(str(run["run_dir"])) / "result.md").read_text(encoding="utf-8"))
         self.complete_ready_task(project, tree, "finalize-feature")
         self.assert_complete(project, tree)
 
@@ -293,14 +359,16 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             REPOSITORY_ROOT / "skills" / "xc-feature-adoption" / "assets" / "feature-adoption-template.xml",
             run,
         )
-        self.set_values(project, tree, {"feature.adoption_approval_required": "false"})
+        self.set_values(project, tree, {"feature.adoption_approval_required": "false", "run.document_language": "zh-CN"})
         self.complete_ready_task(project, tree, "prepare-adoption", feature_dir)
-        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [feature_id])
-        self.complete_document(project, tree, run, "analysis-group", "run-analysis", Path(str(run["run_dir"])) / "analysis.md", [feature_id])
+        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [feature_id], content_language="zh-CN")
+        self.complete_document(project, tree, run, "analysis-group", "run-analysis", Path(str(run["run_dir"])) / "analysis.md", [feature_id], content_language="zh-CN")
         self.complete_document(project, tree, run, "feature-contract-document", "feature-contract", feature_dir / "contract.md", [feature_id], feature_id)
         self.complete_document(project, tree, run, "feature-solution-document", "feature-solution", feature_dir / "solution.md", [feature_id], feature_id)
         self.complete_document(project, tree, run, "feature-verification-document", "feature-verification", feature_dir / "verification.md", [feature_id], feature_id)
-        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [feature_id])
+        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [feature_id], content_language="zh-CN")
+        self.assertIn("content_language: zh-CN", (Path(str(run["run_dir"])) / "analysis.md").read_text(encoding="utf-8"))
+        self.assertNotIn("content_language:", (feature_dir / "contract.md").read_text(encoding="utf-8"))
         self.complete_ready_task(project, tree, "finalize-adoption")
         self.assert_complete(project, tree)
 
@@ -312,6 +380,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             project,
             tree,
             {
+                "run.document_language": "zh-CN",
                 "run.requires_analysis": "false",
                 "run.requires_solution": "false",
                 "run.solution_gate_required": "false",
@@ -320,10 +389,11 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             },
         )
         self.complete_ready_task(project, tree, "prepare-run")
-        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [])
-        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [])
+        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [], content_language="zh-CN")
+        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [], content_language="zh-CN")
         self.complete_ready_task(project, tree, "finalize-run")
         self.assertFalse((context / "features").exists())
+        self.assertIn("# 运行目标", (Path(str(run["run_dir"])) / "goal.md").read_text(encoding="utf-8"))
         self.assert_complete(project, tree)
 
     def test_ordinary_run_reconciles_multiple_features_sequentially(self) -> None:

@@ -3,6 +3,7 @@
   "schema_version": 1,
   "blackboard": {
     "run.has_features": "false",
+    "run.document_language": "en",
     "run.requires_analysis": "true",
     "run.requires_solution": "true",
     "run.solution_gate_required": "true",
@@ -23,9 +24,9 @@
         "type": "task",
         "role": "run-prepare",
         "executor": "main",
-        "instructions": "Read the project bridge, create the run through xc-create-run, validate requested feature IDs without creating features, and record the requested scope.",
+        "instructions": "Read the project bridge, create the run through xc-create-run, validate requested feature IDs without creating features, determine and validate run.document_language through xc-document from the explicit parameter or initiating user request, and record the requested scope.",
         "deliverables": "An authoritative run directory and explicit feature associations.",
-        "acceptance": "The run is independent, feature associations are explicit, and no unmanaged feature directory was created."
+        "acceptance": "The run is independent, feature associations are explicit, run.document_language is set before any document write, and no unmanaged feature directory was created."
       },
       {
         "template_id": "goal-document",

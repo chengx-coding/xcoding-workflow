@@ -39,7 +39,7 @@ The setup main session writes project-specific body content from confirmed user 
 
 ## Context Document Requirements
 
-`WORKFLOW.md` must define project identity, document and commit language, code repository and verification commands, feature/run conventions, and project-specific constraints.
+`WORKFLOW.md` must define project identity, project-document and commit language, code repository and verification commands, feature/run conventions, and project-specific constraints. It decides the language of project workflow, knowledge, and feature-baseline documents; top-level run documents instead use their fixed `run.document_language`.
 
 `KNOWLEDGE.md` must state whether a knowledge base exists, where it lives, how to access it, and how to proceed when no knowledge base is configured. It must not create a knowledge directory by default.
 

@@ -37,7 +37,9 @@ python "$SKILL_DIR/scripts/orchestration.py" complete `
 
 `init` writes `<run_runtime_dir>/orchestration.xml`. The run-creation capability owns creation of `<run_runtime_dir>` and its parent run directory. All commands emit JSON; `--json` is accepted for host compatibility.
 
-Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`, `embed-subtree`, `summary`, `show`, `find`, `snapshot`, `integrity-status`, `repair-integrity`, and `validate`.
+Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`, `embed-subtree`, `summary`, `show`, `find`, `artifacts`, `snapshot`, `integrity-status`, `repair-integrity`, and `validate`.
+
+`add-node` accepts repeated `--metadata metadata.<key>=value` values for dynamic node metadata. Use `metadata.artifact.audience=internal|user` and `metadata.artifact.content_language=en|run.document_language` to declare an artifact's audience and language selector. `artifacts --audience user` lists only paths declared through terminal `complete --artifact` operations and their node metadata; it never scans the context repository.
 
 ## Persistence and Context Commits
 
