@@ -310,7 +310,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                         "",
                         "[viewer]",
                         'host = "127.0.0.1"',
-                        "port = 10011",
+                        "port = 20668",
                         "watch_interval_seconds = 1",
                         "heartbeat_seconds = 15",
                         "idle_shutdown_seconds = 120",
