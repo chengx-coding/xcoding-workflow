@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import errno
 import json
+import os
+import socket
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
+import urllib.error
+import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest import mock
@@ -15,6 +20,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_SKILL = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime"
 RUNTIME_SCRIPTS = RUNTIME_SKILL / "scripts"
 RUNTIME_CLI = RUNTIME_SCRIPTS / "orchestration.py"
+VIEWER_SERVER = RUNTIME_SCRIPTS / "viewer_server.py"
 
 sys.path.insert(0, str(RUNTIME_SCRIPTS))
 import runtime_core as core
@@ -501,6 +507,171 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
             self.assertEqual(summary["status"], "complete")
             self.assertEqual(summary["counts"]["succeeded"], 2)
+
+
+class ViewerServerTests(unittest.TestCase):
+    def write_config(self, directory: Path, idle_shutdown_seconds: int) -> Path:
+        config_path = directory / "viewer.toml"
+        config_path.write_text(
+            "\n".join(
+                [
+                    "[viewer]",
+                    "port = 0",
+                    "watch_interval_seconds = 1",
+                    "heartbeat_seconds = 1",
+                    f"idle_shutdown_seconds = {idle_shutdown_seconds}",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        return config_path
+
+    def request_json(self, url: str) -> dict[str, object]:
+        with urllib.request.urlopen(url, timeout=2) as response:
+            self.assertEqual(response.status, 200)
+            return json.loads(response.read().decode("utf-8"))
+
+    def post_json(self, url: str, payload: dict[str, object] | None = None) -> dict[str, object]:
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(payload or {}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=2) as response:
+            self.assertIn(response.status, {200, 201})
+            return json.loads(response.read().decode("utf-8"))
+
+    def is_healthy(self, url: str) -> bool:
+        try:
+            return bool(self.request_json(f"{url}api/health").get("ok"))
+        except (OSError, urllib.error.URLError, ValueError):
+            return False
+
+    def stop_background_process(self, pid: int) -> None:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/pid", str(pid), "/t", "/f"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            return
+        try:
+            os.kill(pid, 15)
+        except ProcessLookupError:
+            return
+
+    def test_background_launch_returns_one_json_result_and_falls_back_from_occupied_port(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupied:
+            root = Path(temporary)
+            config_path = self.write_config(root, idle_shutdown_seconds=30)
+            occupied.bind(("127.0.0.1", 0))
+            occupied.listen()
+            requested_port = occupied.getsockname()[1]
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(VIEWER_SERVER),
+                    "--no-browser",
+                    "--config",
+                    str(config_path),
+                    "--port",
+                    str(requested_port),
+                ],
+                cwd=REPOSITORY_ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+                timeout=15,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+            self.assertEqual(len(result.stdout.splitlines()), 1)
+            payload = json.loads(result.stdout)
+            try:
+                self.assertTrue(payload["ok"])
+                self.assertEqual(set(payload), {"ok", "mode", "pid", "url", "trees"})
+                self.assertEqual(payload["mode"], "background")
+                self.assertNotEqual(int(payload["url"].rsplit(":", 1)[1].rstrip("/")), requested_port)
+                self.assertTrue(self.is_healthy(str(payload["url"])))
+            finally:
+                self.stop_background_process(int(payload["pid"]))
+
+    def test_background_server_closes_after_configured_idle_period(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config_path = self.write_config(Path(temporary), idle_shutdown_seconds=1)
+            result = subprocess.run(
+                [sys.executable, str(VIEWER_SERVER), "--no-browser", "--config", str(config_path)],
+                cwd=REPOSITORY_ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+                timeout=15,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+            payload = json.loads(result.stdout)
+            url = str(payload["url"])
+            try:
+                self.assertTrue(self.is_healthy(url))
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline and self.is_healthy(url):
+                    time.sleep(0.1)
+                self.assertFalse(self.is_healthy(url))
+            finally:
+                self.stop_background_process(int(payload["pid"]))
+
+    def test_foreground_mode_emits_lifecycle_events_and_serves_health(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config_path = self.write_config(Path(temporary), idle_shutdown_seconds=2)
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(VIEWER_SERVER),
+                    "--foreground",
+                    "--no-browser",
+                    "--config",
+                    str(config_path),
+                ],
+                cwd=REPOSITORY_ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+            )
+            assert process.stdout is not None
+            started = json.loads(process.stdout.readline())
+            self.assertEqual(started["event"], "viewer_started")
+            self.assertTrue(self.is_healthy(str(started["url"])))
+            client = self.post_json(f"{started['url']}api/clients")
+            self.assertTrue(client["client_id"])
+            stdout, stderr = process.communicate(timeout=10)
+            self.assertEqual(process.returncode, 0, stderr)
+            events = [started, *(json.loads(line) for line in stdout.splitlines())]
+            event_names = [event["event"] for event in events]
+            self.assertIn("client_connected", event_names)
+            self.assertIn("client_expired", event_names)
+            self.assertIn("idle_shutdown", event_names)
+            self.assertIn("viewer_stopped", event_names)
+
+    def test_static_viewer_assets_define_connection_badge_without_pan_handle(self) -> None:
+        static_dir = RUNTIME_SKILL / "viewer" / "static"
+        index = (static_dir / "index.html").read_text(encoding="utf-8")
+        app = (static_dir / "app.js").read_text(encoding="utf-8")
+        css = (static_dir / "app.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="server-status-label"', index)
+        self.assertNotIn("graph-pan-handle", index)
+        self.assertIn("function scheduleReconnect()", app)
+        self.assertIn('setConnectionStatus("disconnected")', app)
+        self.assertNotIn("graphPanHandle", app)
+        self.assertIn('.server-status[data-connection="connected"]', css)
+        self.assertNotIn(".graph-pan-handle", css)
 
 
 if __name__ == "__main__":

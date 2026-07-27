@@ -11,7 +11,10 @@
     <header class="topbar">
       <div>
         <h1>Orchestration Viewer</h1>
-        <p id="server-status">Connecting to local viewer...</p>
+        <p id="server-status" class="server-status" data-connection="connecting" role="status" aria-live="polite">
+          <span class="connection-indicator" aria-hidden="true"></span>
+          <span id="server-status-label">Connecting</span>
+        </p>
       </div>
       <div class="controls">
         <button id="refresh-button" type="button">Refresh</button>
@@ -65,7 +68,6 @@
                 <div id="graph-nodes" class="graph-nodes"></div>
               </div>
             </div>
-            <div id="graph-pan-handle" class="graph-pan-handle" aria-hidden="true">✥</div>
             <p id="graph-empty" class="graph-empty">Register a runtime tree within an allowed directory.</p>
           </div>
           </section>
