@@ -29,7 +29,7 @@ unblock              Return a blocked leaf to pending without a checkpoint commi
 set                  Update short cross-node blackboard values without a checkpoint commit.
 add-node             Add a dynamic node using a logical_key.
 embed-subtree        Instantiate a managed template under a runtime parent.
-summary / show       Read progress or one node.
+summary / show / find Read progress, one node, or nodes with a template ID.
 snapshot             Export the viewer JSON model.
 integrity-status     Report access policy and checksum state.
 repair-integrity     Explicitly restore managed metadata after a mismatch.
@@ -52,7 +52,7 @@ All commands return JSON. `--json` is accepted for host compatibility.
 
 Use the blackboard only for short control values such as `review.open_issues=false`. Rich reports, review findings, validation outputs, diagnostics, and generated documents are artifacts. The workflow does not create generic raw-log artifacts.
 
-When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. A `complete` checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped context commit. Declared checkpoint artifacts must exist inside the same context Git repository as the tree. `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist tree state but defer commit creation to the next checkpoint.
+When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. A `complete` checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped context commit. Declared checkpoint artifacts must exist inside the same context Git repository as the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist tree state but defer commit creation to the next checkpoint.
 
 ## Integrity and Recovery
 
