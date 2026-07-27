@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
-<orchestration schema_version="1" name="ordinary-run" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
+<orchestration schema_version="1" name="run" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="4e343858d83406c9f512e9a9523b2d88cd2f6d795476b8ac8ebea4417bbf419c" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="59dc51966a14bb8406d8bcb19fd02fc5dc2848858411b888e4acb5ac313cd299" />
   </meta>
   <blackboard>
     <var key="run.has_features">false</var>
@@ -13,10 +13,10 @@
     <var key="run.requires_implementation">true</var>
     <var key="run.requires_verification">true</var>
   </blackboard>
-  <node executor="main" mode="sequence" role="root" template_id="root" title="Ordinary Run" type="composite">
+  <node executor="main" mode="sequence" role="root" template_id="root" title="Run" type="composite">
     <children>
-      <node executor="main" role="run-prepare" template_id="prepare-run" title="Prepare ordinary run" type="task">
-        <instructions>Read the project bridge, create the run through xc-run, validate requested feature IDs without creating features, and record the requested scope.</instructions>
+      <node executor="main" role="run-prepare" template_id="prepare-run" title="Prepare run" type="task">
+        <instructions>Read the project bridge, create the run through xc-create-run, validate requested feature IDs without creating features, and record the requested scope.</instructions>
         <deliverables>An authoritative run directory and explicit feature associations.</deliverables>
         <acceptance>The run is independent, feature associations are explicit, and no unmanaged feature directory was created.</acceptance>
       </node>

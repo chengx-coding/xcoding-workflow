@@ -1,5 +1,5 @@
 {
-  "name": "ordinary-run",
+  "name": "run",
   "schema_version": 1,
   "blackboard": {
     "run.has_features": "false",
@@ -11,7 +11,7 @@
   },
   "root": {
     "template_id": "root",
-    "title": "Ordinary Run",
+    "title": "Run",
     "type": "composite",
     "role": "root",
     "mode": "sequence",
@@ -19,11 +19,11 @@
     "children": [
       {
         "template_id": "prepare-run",
-        "title": "Prepare ordinary run",
+        "title": "Prepare run",
         "type": "task",
         "role": "run-prepare",
         "executor": "main",
-        "instructions": "Read the project bridge, create the run through xc-run, validate requested feature IDs without creating features, and record the requested scope.",
+        "instructions": "Read the project bridge, create the run through xc-create-run, validate requested feature IDs without creating features, and record the requested scope.",
         "deliverables": "An authoritative run directory and explicit feature associations.",
         "acceptance": "The run is independent, feature associations are explicit, and no unmanaged feature directory was created."
       },

@@ -37,7 +37,9 @@ Explicit `--tree` paths are automatically allowed. Manual registration from the 
 
 - The viewer is read-only and exposes no lifecycle or blackboard mutation endpoints.
 - Runtime trees render as a connected horizontal node graph, not a nested list.
-- Expand, collapse, zoom, and fit controls affect browser presentation only.
+- A collapsible sidebar registers, selects, and removes viewer-local runtime-tree instances. Removing an instance never modifies its runtime tree or files.
+- Drag the graph canvas to pan and use the mouse wheel to zoom; graph expansion controls affect browser presentation only.
+- Blackboard values render as collapsible key-value rows with the runtime tree's last update time.
 - Browser pages use independent heartbeats, and the server closes after the configured idle period without active clients.
 - The server polls for changes, preserves the last valid snapshot after parse errors, and reports tree health to the page.
 

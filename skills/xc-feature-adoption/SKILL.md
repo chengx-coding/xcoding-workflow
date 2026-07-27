@@ -13,7 +13,7 @@ description: "Explicitly adopts an existing unmanaged feature by deriving durabl
   - Scope: The fixed project `.xcoding` context directory.
 
 - `project_root` - `path`; required
-  - Scope: Business repository root supplied to `xc-run`.
+  - Scope: Business repository root supplied to `xc-create-run`.
 
 - `feature_id` - `string`; required
   - Scope: Explicit stable ID for a currently unmanaged feature.
@@ -26,7 +26,7 @@ description: "Explicitly adopts an existing unmanaged feature by deriving durabl
 
 ## Main Run
 
-1. Read the project bridge and knowledge guidance, then create an adoption run through `xc-run`.
+1. Read the project bridge and knowledge guidance, then create an adoption run through `xc-create-run`.
 2. Use `xc-feature init` only after confirming that the feature is not already managed.
 3. Initialize `assets/feature-adoption-template.xml` in the returned runtime directory and complete `prepare-adoption`.
 4. Create `goal.md` and evidence-driven `analysis.md` through document-evolution nodes. Record code boundaries, tests, behavior, uncertainty, and any product-intent gap.
@@ -38,7 +38,7 @@ description: "Explicitly adopts an existing unmanaged feature by deriving durabl
 
 - Adoption does not silently change product behavior or repair code.
 - Baselines should state current evidenced behavior and clearly separate unknowns or target changes.
-- If the user wants a product change after adoption, start a separate `xc-ordinary-run`.
+- If the user wants a product change after adoption, start a separate `xc-run`.
 - The feature directory is created before its baseline documents but becomes useful only after the approval gate or an explicit blocked result.
 
 ## Constraints

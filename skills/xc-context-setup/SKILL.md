@@ -5,7 +5,7 @@ description: "Initializes a project's managed .xcoding context documents and set
 
 # XC Context Setup
 
-`xc-context-setup` establishes the required managed context documents: `.xcoding/WORKFLOW.md` and `.xcoding/KNOWLEDGE.md`. It uses `xc-run`, `xc-orchestration-runtime`, `xc-document-evolution`, and `xc-document`; it never creates a business feature.
+`xc-context-setup` establishes the required managed context documents: `.xcoding/WORKFLOW.md` and `.xcoding/KNOWLEDGE.md`. It uses `xc-create-run`, `xc-orchestration-runtime`, `xc-document-evolution`, and `xc-document`; it never creates a business feature.
 
 ## Parameters
 
@@ -14,12 +14,12 @@ description: "Initializes a project's managed .xcoding context documents and set
 - `context_dir` - `path`; required
   - Scope: Project `.xcoding` directory inside an independent context Git worktree.
   - Side effects: Creates a setup run and writes the two required context documents.
-  - Propagation: Passed unchanged to `xc-run` and runtime initialization.
+  - Propagation: Passed unchanged to `xc-create-run` and runtime initialization.
 
 - `project_root` - `path`; optional, defaults to the current working directory
   - Scope: Business project root used to enforce context Git separation.
   - Side effects: Validation only.
-  - Propagation: Passed unchanged to `xc-run`.
+  - Propagation: Passed unchanged to `xc-create-run`.
 
 - `auto_commit` - `boolean`; optional, defaults to the runtime configuration
   - Scope: Controls context checkpoint commits.
@@ -28,7 +28,7 @@ description: "Initializes a project's managed .xcoding context documents and set
 
 ## Main Run
 
-1. Call `xc-run` with topic `workflow-setup`.
+1. Call `xc-create-run` with topic `workflow-setup`.
 2. Initialize `assets/context-setup-template.xml` in the returned `runtime_dir`.
 3. Complete `prepare-context`, then embed `xc-document-evolution` under `workflow-document`.
 4. Set document blackboard values for `WORKFLOW.md`, render its template, complete validation, and complete the embedded subtree.

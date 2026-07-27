@@ -22,7 +22,7 @@
         "type": "task",
         "role": "feature-prepare",
         "executor": "main",
-        "instructions": "Read the project bridge, create the run through xc-run, select an explicit feature ID, and create its empty directory through xc-feature.",
+        "instructions": "Read the project bridge, create the run through xc-create-run, select an explicit feature ID, and create its empty directory through xc-feature.",
         "deliverables": "An authoritative run directory and empty managed feature directory.",
         "acceptance": "The context Git worktree is independent, the feature ID is explicit, and no baseline document exists outside document evolution."
       },

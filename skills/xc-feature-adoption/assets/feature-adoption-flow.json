@@ -20,7 +20,7 @@
         "type": "task",
         "role": "adoption-prepare",
         "executor": "main",
-        "instructions": "Read the project bridge, create the run through xc-run, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.",
+        "instructions": "Read the project bridge, create the run through xc-create-run, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.",
         "deliverables": "An authoritative run directory, explicit code-entry scope, and empty managed feature directory.",
         "acceptance": "The feature is not already managed and the adoption scope has enough evidence to begin analysis."
       },

@@ -1,11 +1,11 @@
 ---
-name: "xc-run"
+name: "xc-create-run"
 description: "Creates standard workflow run directories inside a project's .xcoding context. Invoke when a workflow needs a durable run ID, runtime directory, or artifact directory."
 ---
 
-# XC Run
+# XC Create Run
 
-`xc-run` creates a standard durable run directory. It validates that the supplied `.xcoding` directory belongs to an independent context Git worktree, generates a collision-safe timestamp-and-slug run ID, creates the standard directories, and returns their absolute paths as JSON.
+`xc-create-run` creates a standard durable run directory. It validates that the supplied `.xcoding` directory belongs to an independent context Git worktree, generates a collision-safe timestamp-and-slug run ID, creates the standard directories, and returns their absolute paths as JSON.
 
 ## Parameters
 
@@ -56,7 +56,7 @@ The script creates:
   runtime/
 ```
 
-Use the returned `runtime_dir` to initialize the main orchestration tree. `xc-run` does not create documents, trees, logs, feature directories, or Git commits.
+Use the returned `runtime_dir` to initialize the main orchestration tree. `xc-create-run` does not create documents, trees, logs, feature directories, or Git commits.
 
 ## Constraints
 
