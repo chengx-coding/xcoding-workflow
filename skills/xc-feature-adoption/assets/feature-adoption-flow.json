@@ -1,0 +1,98 @@
+{
+  "name": "feature-adoption",
+  "schema_version": 1,
+  "blackboard": {
+    "feature.id": "",
+    "feature.title": "",
+    "feature.adoption_approval_required": "true"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Feature Adoption",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "prepare-adoption",
+        "title": "Prepare feature adoption",
+        "type": "task",
+        "role": "adoption-prepare",
+        "executor": "main",
+        "instructions": "Read the project bridge, create the run through xc-run, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.",
+        "deliverables": "An authoritative run directory, explicit code-entry scope, and empty managed feature directory.",
+        "acceptance": "The feature is not already managed and the adoption scope has enough evidence to begin analysis."
+      },
+      {
+        "template_id": "goal-document",
+        "title": "Define adoption goal",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "analysis-group",
+        "title": "Analyze current feature behavior",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "feature-contract-document",
+        "title": "Document adopted feature contract",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "feature-solution-document",
+        "title": "Document adopted feature solution",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "feature-verification-document",
+        "title": "Document adopted feature verification",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "approve-adopted-baseline",
+        "title": "Approve adopted feature baseline",
+        "type": "gate",
+        "role": "adoption-approval",
+        "executor": "main",
+        "when": "feature.adoption_approval_required == true",
+        "instructions": "Present the code-derived baseline, evidence gaps, and any target-versus-current differences. Record approval, required revision, or an explicit unresolved conflict.",
+        "deliverables": "An adoption decision and any required follow-up nodes.",
+        "acceptance": "The feature baseline is approved as current evidence or the workflow is blocked on an explicit product decision."
+      },
+      {
+        "template_id": "result-document",
+        "title": "Record adoption result",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "finalize-adoption",
+        "title": "Finalize feature adoption",
+        "type": "task",
+        "role": "adoption-finalize",
+        "executor": "main",
+        "instructions": "Confirm the adopted feature documents, provenance, artifacts, and unresolved evidence gaps, then close the run.",
+        "deliverables": "A completed, failed, or blocked adoption run with durable result evidence.",
+        "acceptance": "No ordinary run is needed to infer whether the feature was adopted successfully."
+      }
+    ]
+  }
+}

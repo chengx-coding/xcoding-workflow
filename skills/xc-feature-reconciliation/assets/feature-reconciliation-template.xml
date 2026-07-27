@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="feature-reconciliation" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
+  <meta>
+    <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="500aedc80628594b23460f3c585df81bd25e4f6f57147a9cb9be020627913925" />
+  </meta>
+  <blackboard>
+    <var key="reconciliation.feature_id" />
+    <var key="reconciliation.needs_baseline_sync">false</var>
+    <var key="reconciliation.has_ambiguous_conflict">false</var>
+  </blackboard>
+  <node executor="main" mode="sequence" role="root" template_id="root" title="Feature Reconciliation" type="composite">
+    <children>
+      <node executor="subagent" role="reconciliation-provenance" template_id="load-feature-provenance" title="Load feature provenance" type="task">
+        <instructions>Read the feature baseline frontmatter and query referenced runtime trees only through xc-orchestration-runtime. Record provenance and current baseline references in the declared artifact.</instructions>
+        <deliverables>A provenance artifact for reconciliation.feature_id.</deliverables>
+        <acceptance>The artifact identifies feature document provenance without directly reading runtime XML.</acceptance>
+      </node>
+      <node executor="subagent" role="reconciliation-inspection" template_id="inspect-current-state" title="Inspect current implementation state" type="task">
+        <instructions>Compare code, executable tests, Git evidence, and feature baselines. Distinguish current implementation facts, approved target intent, evidence-backed drift, and ambiguous conflicts.</instructions>
+        <deliverables>A current-state artifact with evidence and a proposed reconciliation disposition.</deliverables>
+        <acceptance>Every proposed difference is traceable and marked as synchronizable, conflicting, or unresolved.</acceptance>
+      </node>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-document" title="Update reconciliation analysis" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="baseline-sync" title="Synchronize evidence-backed baseline drift" type="composite" when="reconciliation.needs_baseline_sync == true" />
+      <node executor="main" role="reconciliation-conflict" template_id="conflict-gate" title="Resolve reconciliation conflict" type="gate" when="reconciliation.has_ambiguous_conflict == true">
+        <instructions>Present the code evidence, target baseline, requested run goal, and proposed options. Record the user decision and add required document-evolution nodes.</instructions>
+        <deliverables>A structured user decision or an explicit blocked condition.</deliverables>
+        <acceptance>No ambiguous product-intent conflict proceeds without a recorded decision.</acceptance>
+      </node>
+      <node executor="main" role="reconciliation-finalize" template_id="finalize-reconciliation" title="Finalize feature reconciliation" type="task">
+        <instructions>Record the reconciliation disposition, synchronized baseline references, conflicts, and residual evidence gaps.</instructions>
+        <deliverables>A concise reconciliation result for the enclosing ordinary run.</deliverables>
+        <acceptance>The enclosing run can select a solution without silently assuming code and baseline agreement.</acceptance>
+      </node>
+    </children>
+  </node>
+</orchestration>
