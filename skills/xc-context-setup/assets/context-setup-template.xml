@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="context-setup" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
+  <meta>
+    <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="f3d54fe21041cea21d15a35114fedae45e248fc6c70272f996d7c24c527ba567" />
+  </meta>
+  <blackboard>
+    <var key="context.setup.ready">false</var>
+  </blackboard>
+  <node executor="main" mode="sequence" role="root" template_id="root" title="Context Setup" type="composite">
+    <children>
+      <node executor="main" role="context-prepare" template_id="prepare-context" title="Prepare context setup" type="task">
+        <instructions>Confirm the context Git worktree and project-local facts required by WORKFLOW.md and KNOWLEDGE.md.</instructions>
+        <deliverables>Context setup inputs recorded in the blackboard and setup artifacts.</deliverables>
+        <acceptance>The context worktree is independent from the business repository and required project-local facts are available or gated.</acceptance>
+      </node>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="workflow-document" title="Create project workflow document" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="knowledge-document" title="Create project knowledge guidance" type="composite" />
+      <node executor="main" role="context-finalize" template_id="finalize-context" title="Finalize context setup" type="task">
+        <instructions>Verify WORKFLOW.md and KNOWLEDGE.md through xc-document and record both as setup artifacts.</instructions>
+        <deliverables>Validated managed context documents.</deliverables>
+        <acceptance>Both context documents validate and their document-evolution subtrees are complete.</acceptance>
+      </node>
+    </children>
+  </node>
+</orchestration>
