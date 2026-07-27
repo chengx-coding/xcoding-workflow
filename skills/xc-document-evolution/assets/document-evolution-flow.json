@@ -1,0 +1,97 @@
+{
+  "name": "document-evolution",
+  "schema_version": 1,
+  "blackboard": {
+    "document.review_required": "false",
+    "document.gate_required": "false",
+    "document.review.open_issues": "false"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Document Evolution",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "write-document",
+        "title": "Write or revise document",
+        "type": "task",
+        "role": "document-write",
+        "executor": "subagent",
+        "instructions": "Read document.path, document.template, document.inputs, and document.contract from the supplied blackboard and node references. Write or revise the target document immediately. Preserve valid frontmatter and do not read the runtime XML directly.",
+        "deliverables": "The managed document at document.path.",
+        "acceptance": "The target document exists, follows its authoring contract, and has complete YAML frontmatter."
+      },
+      {
+        "template_id": "validate-draft",
+        "title": "Validate draft document",
+        "type": "task",
+        "role": "document-validate",
+        "executor": "tool",
+        "instructions": "Run xc-document validation for document.path and document.kind.",
+        "deliverables": "A validation result recorded in the node result.",
+        "acceptance": "xc-document validates the draft without errors."
+      },
+      {
+        "template_id": "review-loop",
+        "title": "Review and revise document",
+        "type": "loop",
+        "role": "document-review-loop",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "document.review_required == true",
+        "loop.max_iterations": "3",
+        "loop.continue_when": "document.review.open_issues == true",
+        "loop.break_when": "document.review.open_issues == false",
+        "loop.on_limit": "blocked",
+        "children": [
+          {
+            "template_id": "review-document",
+            "title": "Review document",
+            "type": "task",
+            "role": "document-review",
+            "executor": "subagent",
+            "instructions": "Review document.path against the domain review dimensions. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.",
+            "deliverables": "A review artifact with prioritized findings and closure criteria.",
+            "acceptance": "The review distinguishes required findings from optional observations and sets document.review.open_issues."
+          },
+          {
+            "template_id": "revise-document",
+            "title": "Revise document from review",
+            "type": "task",
+            "role": "document-revise",
+            "executor": "subagent",
+            "when": "document.review.open_issues == true",
+            "depends_on_template": "local:review-document",
+            "instructions": "Read the latest review artifact and revise only document.path. Preserve valid frontmatter and record the updated document as the node artifact.",
+            "deliverables": "An updated managed document.",
+            "acceptance": "Required review findings are resolved or explicitly escalated to a user gate."
+          }
+        ]
+      },
+      {
+        "template_id": "document-gate",
+        "title": "Confirm document decisions",
+        "type": "gate",
+        "role": "document-confirmation",
+        "executor": "main",
+        "when": "document.gate_required == true",
+        "instructions": "Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.",
+        "deliverables": "Structured user decisions or an explicit continuation decision.",
+        "acceptance": "Required user decisions are recorded and any necessary revision nodes are scheduled."
+      },
+      {
+        "template_id": "validate-final",
+        "title": "Validate final document",
+        "type": "task",
+        "role": "document-validate-final",
+        "executor": "tool",
+        "instructions": "Run xc-document validation for document.path and document.kind after review and user decisions.",
+        "deliverables": "A final validation result recorded in the node result.",
+        "acceptance": "xc-document validates the final document without errors."
+      }
+    ]
+  }
+}
