@@ -1,0 +1,77 @@
+{
+  "name": "feature-reconciliation",
+  "schema_version": 1,
+  "blackboard": {
+    "reconciliation.feature_id": "",
+    "reconciliation.needs_baseline_sync": "false",
+    "reconciliation.has_ambiguous_conflict": "false"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Feature Reconciliation",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "load-feature-provenance",
+        "title": "Load feature provenance",
+        "type": "task",
+        "role": "reconciliation-provenance",
+        "executor": "subagent",
+        "instructions": "Read the feature baseline frontmatter and query referenced runtime trees only through xc-orchestration-runtime. Record provenance and current baseline references in the declared artifact.",
+        "deliverables": "A provenance artifact for reconciliation.feature_id.",
+        "acceptance": "The artifact identifies feature document provenance without directly reading runtime XML."
+      },
+      {
+        "template_id": "inspect-current-state",
+        "title": "Inspect current implementation state",
+        "type": "task",
+        "role": "reconciliation-inspection",
+        "executor": "subagent",
+        "instructions": "Compare code, executable tests, Git evidence, and feature baselines. Distinguish current implementation facts, approved target intent, evidence-backed drift, and ambiguous conflicts.",
+        "deliverables": "A current-state artifact with evidence and a proposed reconciliation disposition.",
+        "acceptance": "Every proposed difference is traceable and marked as synchronizable, conflicting, or unresolved."
+      },
+      {
+        "template_id": "analysis-document",
+        "title": "Update reconciliation analysis",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "baseline-sync",
+        "title": "Synchronize evidence-backed baseline drift",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "reconciliation.needs_baseline_sync == true"
+      },
+      {
+        "template_id": "conflict-gate",
+        "title": "Resolve reconciliation conflict",
+        "type": "gate",
+        "role": "reconciliation-conflict",
+        "executor": "main",
+        "when": "reconciliation.has_ambiguous_conflict == true",
+        "instructions": "Present the code evidence, target baseline, requested run goal, and proposed options. Record the user decision and add required document-evolution nodes.",
+        "deliverables": "A structured user decision or an explicit blocked condition.",
+        "acceptance": "No ambiguous product-intent conflict proceeds without a recorded decision."
+      },
+      {
+        "template_id": "finalize-reconciliation",
+        "title": "Finalize feature reconciliation",
+        "type": "task",
+        "role": "reconciliation-finalize",
+        "executor": "main",
+        "instructions": "Record the reconciliation disposition, synchronized baseline references, conflicts, and residual evidence gaps.",
+        "deliverables": "A concise reconciliation result for the enclosing ordinary run.",
+        "acceptance": "The enclosing run can select a solution without silently assuming code and baseline agreement."
+      }
+    ]
+  }
+}
