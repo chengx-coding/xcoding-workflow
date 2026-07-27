@@ -26,6 +26,8 @@ NODE_ATTRIBUTE_KEYS = {
     "mode",
     "depends_on_template",
     "when",
+    "when.policy",
+    "dynamic.state",
     "loop.max_iterations",
     "loop.continue_when",
     "loop.break_when",

@@ -41,6 +41,12 @@ description: "Runs managed investigation, iteration, repair, review, maintenance
 9. Add approved implementation nodes through `xc-implementation`, then verification nodes through `xc-verification`.
 10. Create `result.md` through document evolution and complete `finalize-run`.
 
+When `next` or `summary` reports `awaiting_dynamic_groups`, the main session
+must append the planned subtree or explicitly close an intentionally empty
+group before treating the run as blocked. An explicit correction to a
+successful run first passes through the owning user gate and runtime `reopen`;
+ordinary work must not append to a sealed historical tree.
+
 ## Mode Rules
 
 - `investigation`: normally requires analysis and result, but may skip solution, implementation, and verification.

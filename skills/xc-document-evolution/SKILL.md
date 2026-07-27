@@ -33,6 +33,12 @@ write document
 
 The calling Skill supplies document-specific instructions, inputs, review dimensions, and gate questions through the tree node contract and blackboard. It MAY dynamically add further revise, review, or gate nodes when user feedback requires them.
 
+The optional review loop and document gate use `when.policy=latched`. If an
+instance skips either branch, later changes to the shared `document.*` keys
+must not reactivate that completed instance. Callers still serialize instances
+that reuse those shared keys; this template does not provide local blackboard
+scope.
+
 ## Node Contracts
 
 - The write or revise worker uses `xc-document` templates, applies `document.content_language` when present, and writes the target document immediately.
@@ -44,6 +50,11 @@ The calling Skill supplies document-specific instructions, inputs, review dimens
 ## Language Corrections
 
 When a user explicitly corrects `run.document_language`, the owning lifecycle uses the runtime `artifacts` command to select only declared top-level run documents and `metadata.artifact.audience=user` reports. It creates a dynamic correction group and embeds the first revision subtree before requesting the next node. Complete each correction subtree before setting the next `document.*` values and embedding the next subtree; keep review and gate flags false unless the user separately requests review.
+
+If the source runtime already succeeded, the owning main session must first
+record the explicit user correction through its gate and call runtime `reopen`
+with that reason. The reopened epoch is the only path for adding correction
+work to a sealed tree.
 
 ## Constraints
 

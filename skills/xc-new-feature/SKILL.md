@@ -42,6 +42,11 @@ description: "Starts and governs a complete managed workflow for developing a ne
 
 Use runtime-returned paths and node IDs only. Dynamic document, analysis, implementation, review, and verification nodes must declare their artifacts and complete through the runtime public interface.
 
+When a reachable dynamic group is empty, `next` reports it in
+`awaiting_dynamic_groups`. The main session appends the planned work or closes
+the group explicitly; it must not classify that control state as an unexplained
+deadlock.
+
 ## Baseline Requirements
 
 The feature baselines are approved target documents, not dynamic status ledgers:

@@ -8,6 +8,7 @@
 init
 repeat:
   next
+  append work to, or close, any awaiting dynamic group
   start and delegate each ready subagent node
   handle main-executor gates
   receive complete, fail, or block updates
@@ -15,7 +16,9 @@ repeat:
 until status is complete, failed, or blocked
 ```
 
-`next` returns ready executable leaves only. The main session consumes their JSON payload rather than reading the complete tree.
+`next` returns ready executable leaves and `awaiting_dynamic_groups`. An empty
+`ready` list is not a deadlock when one of those groups is reachable: the main
+session appends work or closes the group through the runtime.
 
 ## Commands
 
@@ -29,6 +32,8 @@ unblock              Return a blocked leaf to pending without a checkpoint commi
 set                  Update short cross-node blackboard values without a checkpoint commit.
 add-node             Add a dynamic node using a logical_key.
 embed-subtree        Instantiate a managed template under a runtime parent.
+close-group          Close a dynamic group and reject future appends to it.
+reopen               Reopen a sealed successful tree with an auditable reason.
 summary / show / find Read progress, one node, or nodes with a template ID.
 artifacts            List only terminally declared artifact paths and node metadata.
 snapshot             Export the viewer JSON model.
@@ -39,15 +44,30 @@ validate             Validate a managed runtime tree or template.
 
 All commands return JSON. `--json` is accepted for host compatibility.
 
+Write responses include a monotonic `revision`. A caller MAY include
+`--expected-revision <value>` in a later write; a mismatch returns
+`state_conflict`. The runtime serializes local cross-process writes regardless
+of whether a caller supplies that optimistic precondition.
+
 ## Node and State Rules
 
 - Runtime IDs are generated as `rt_<run_id>__<instance_id>__<template_id>`.
 - A runtime node preserves `origin_template_id` and `origin_instance_id`.
 - Dynamic nodes use a caller-provided kebab-case `logical_key`; the runtime assigns the real ID.
 - Only `task` and `gate` leaves can be started, completed, failed, blocked, or unblocked.
+- `complete`, `fail`, and `block` require the target leaf to be `running`.
 - `composite` and `loop` states are recalculated by the runtime.
 - `succeeded` and `skipped` let parent scheduling continue.
 - `failed` and `blocked` stop their enclosing sequence until handled.
+
+Nodes with `when` default to `when.policy=reactive`, so a conditionally skipped
+node may become pending when the condition turns true. A template may set
+`when.policy=latched` to make a conditional skip final for that instance.
+
+A `role=dynamic-group` composite defaults to `dynamic.state=open`. An empty
+open group is reported as awaiting. `close-group` changes the state to closed;
+an empty closed group succeeds and `add-node` or `embed-subtree` then return
+`group_closed`.
 
 ## Blackboard, Artifacts, and Checkpoints
 
@@ -58,6 +78,11 @@ Dynamic nodes may receive scalar `metadata.*` attributes through repeated `add-n
 Use `artifacts --audience user` to locate previously declared user-facing reports for a language correction. The response includes only paths declared by `complete --artifact`, their owner node IDs, and `metadata.artifact.*`; it never discovers files by scanning directories.
 
 When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. A `complete` checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped context commit. Declared checkpoint artifacts must exist inside the same context Git repository as the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist tree state but defer commit creation to the next checkpoint.
+
+When the root succeeds, the runtime records `sealed_at` and rejects ordinary
+writes with `tree_sealed`. `reopen --reason` is an explicit main-session
+operation: it records a new epoch before further dynamic work can be appended.
+Domain workflows must collect the required user decision before reopening.
 
 ## Integrity and Recovery
 

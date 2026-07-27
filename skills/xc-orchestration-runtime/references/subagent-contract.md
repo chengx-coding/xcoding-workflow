@@ -8,6 +8,7 @@ The main session provides:
 
 - `tree_ref`
 - One node JSON returned by `next`
+- The `revision` returned with that node batch when the caller requires an optimistic write precondition
 - Domain Skill references and artifact paths named by the node
 - Required user decisions or blackboard values, including `run.document_language` when the node writes a user-facing artifact
 
@@ -20,6 +21,7 @@ The main session provides:
 5. On completion, call the runtime public command with a concise summary, validation outcome, and artifact paths.
 6. Artifact paths intended for an automatic checkpoint commit must be inside the context Git repository.
 7. Read `metadata.artifact.audience` and `metadata.artifact.content_language` from the supplied node. Default to `internal` and `en`; resolve `run.document_language` only for an explicitly declared user-facing artifact.
+8. Complete, fail, or block only the supplied node after it has been started. Report `state_conflict` or `tree_sealed` to the main session instead of retrying an ambiguous mutation.
 
 ## Worker Prompt Skeleton
 
