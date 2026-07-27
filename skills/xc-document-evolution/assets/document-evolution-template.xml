@@ -3,7 +3,7 @@
 <orchestration schema_version="1" name="document-evolution" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="59a9ecd9abbef7225069652df74c8e09c48ec1bf58f50f7bc631820a0f541b6e" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="4b977d0a81ff0d5a1db0ea7f6ed5a87f4af4a467f2386eb469dd11917128b198" />
   </meta>
   <blackboard>
     <var key="document.content_language" />
@@ -23,7 +23,7 @@
         <deliverables>A validation result recorded in the node result.</deliverables>
         <acceptance>xc-document validates the draft without errors.</acceptance>
       </node>
-      <node executor="main" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" role="document-review-loop" template_id="review-loop" title="Review and revise document" type="loop" when="document.review_required == true">
+      <node executor="main" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" role="document-review-loop" template_id="review-loop" title="Review and revise document" type="loop" when="document.review_required == true" when.policy="latched">
         <children>
           <node executor="subagent" role="document-review" template_id="review-document" title="Review document" type="task" metadata.artifact.audience="internal" metadata.artifact.content_language="en">
             <instructions>Review document.path against the domain review dimensions. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
@@ -37,7 +37,7 @@
           </node>
         </children>
       </node>
-      <node executor="main" role="document-confirmation" template_id="document-gate" title="Confirm document decisions" type="gate" when="document.gate_required == true">
+      <node executor="main" role="document-confirmation" template_id="document-gate" title="Confirm document decisions" type="gate" when="document.gate_required == true" when.policy="latched">
         <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
         <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
         <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
