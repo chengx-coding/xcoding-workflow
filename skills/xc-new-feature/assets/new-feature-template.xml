@@ -3,12 +3,13 @@
 <orchestration schema_version="1" name="new-feature" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="df3b71cea09ee2553953b9fc6abf2e10751da6fea338176ecb6980108ee5e4f0" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="e1f94daaa96baec952bf75f68f9490609f4cd69e7eb96f1642c4d760b61b21a6" />
   </meta>
   <blackboard>
     <var key="feature.id" />
     <var key="feature.title" />
     <var key="feature.approval_required">true</var>
+    <var key="run.requires_clarification">false</var>
     <var key="run.requires_implementation">true</var>
     <var key="run.requires_verification">true</var>
   </blackboard>
@@ -21,6 +22,7 @@
       </node>
       <node executor="main" mode="sequence" role="dynamic-group" template_id="goal-document" title="Define run goal" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-group" title="Analyze feature context" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="clarification-group" title="Clarify material decisions" type="composite" when="run.requires_clarification == true" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="run-solution-document" title="Select run solution" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-contract-document" title="Establish feature contract" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-solution-document" title="Establish feature solution" type="composite" />
