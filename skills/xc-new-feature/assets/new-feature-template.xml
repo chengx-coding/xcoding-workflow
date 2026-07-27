@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="new-feature" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
+  <meta>
+    <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="5786d6c4418d2e5149cb3c79d68a01fba138906199f51676c70c464074fec8e2" />
+  </meta>
+  <blackboard>
+    <var key="feature.id" />
+    <var key="feature.title" />
+    <var key="feature.approval_required">true</var>
+    <var key="run.requires_implementation">true</var>
+    <var key="run.requires_verification">true</var>
+  </blackboard>
+  <node executor="main" mode="sequence" role="root" template_id="root" title="New Feature" type="composite">
+    <children>
+      <node executor="main" role="feature-prepare" template_id="prepare-feature" title="Prepare new feature" type="task">
+        <instructions>Read the project bridge, create the run through xc-run, select an explicit feature ID, and create its empty directory through xc-feature.</instructions>
+        <deliverables>An authoritative run directory and empty managed feature directory.</deliverables>
+        <acceptance>The context Git worktree is independent, the feature ID is explicit, and no baseline document exists outside document evolution.</acceptance>
+      </node>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="goal-document" title="Define run goal" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-group" title="Analyze feature context" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="run-solution-document" title="Select run solution" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-contract-document" title="Establish feature contract" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-solution-document" title="Establish feature solution" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-verification-document" title="Establish feature verification" type="composite" />
+      <node executor="main" role="feature-approval" template_id="approve-feature-baseline" title="Approve feature baseline" type="gate" when="feature.approval_required == true">
+        <instructions>Present the accepted contract, feature solution, verification baseline, and run solution. Record approval or requested revision through the runtime.</instructions>
+        <deliverables>A recorded approval decision or follow-up document-evolution nodes.</deliverables>
+        <acceptance>The feature baseline is approved or the tree contains explicit revision and review work.</acceptance>
+      </node>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="implementation-group" title="Implement feature" type="composite" when="run.requires_implementation == true" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="verification-group" title="Verify feature" type="composite" when="run.requires_verification == true" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record feature result" type="composite" />
+      <node executor="main" role="feature-finalize" template_id="finalize-feature" title="Finalize new feature run" type="task">
+        <instructions>Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the run.</instructions>
+        <deliverables>A completed, failed, or blocked run with durable result evidence.</deliverables>
+        <acceptance>The runtime tree and declared context artifacts accurately represent the outcome.</acceptance>
+      </node>
+    </children>
+  </node>
+</orchestration>
