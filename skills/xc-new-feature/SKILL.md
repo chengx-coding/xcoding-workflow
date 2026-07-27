@@ -13,7 +13,7 @@ description: "Starts and governs a complete managed workflow for developing a ne
   - Scope: The fixed project `.xcoding` directory in an independent context Git worktree.
 
 - `project_root` - `path`; required
-  - Scope: Business repository root supplied to `xc-run` for context-separation validation.
+  - Scope: Business repository root supplied to `xc-create-run` for context-separation validation.
 
 - `feature_id` - `string`; required
   - Scope: Explicit stable ID. Default projects use a lowercase slug; validate any project-specific override through `WORKFLOW.md`.
@@ -27,7 +27,7 @@ description: "Starts and governs a complete managed workflow for developing a ne
 ## Main Run
 
 1. Read `AGENTS.md`, `.xcoding/WORKFLOW.md`, and `.xcoding/KNOWLEDGE.md`.
-2. Call `xc-run` with the feature request topic and the selected `feature_id`.
+2. Call `xc-create-run` with the feature request topic and the selected `feature_id`.
 3. Call `xc-feature init`, then initialize `assets/new-feature-template.xml` in the returned runtime directory.
 4. Complete `prepare-feature` with the feature directory as a declared artifact.
 5. Use `find` to locate each dynamic group and embed `xc-document-evolution` for `goal.md`, run `solution.md`, and each feature baseline document.

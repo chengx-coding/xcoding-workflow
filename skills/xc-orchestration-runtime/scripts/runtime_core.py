@@ -594,6 +594,14 @@ def blackboard(root: ET.Element) -> Dict[str, str]:
     return result
 
 
+def blackboard_updated_at(root: ET.Element) -> str:
+    holder = find_direct(root, "blackboard")
+    if holder is None:
+        return ""
+    timestamps = [variable.get("updated_at", "") for variable in holder.findall("var")]
+    return max((timestamp for timestamp in timestamps if timestamp), default="")
+
+
 def ensure_blackboard(root: ET.Element) -> ET.Element:
     return ensure_direct(root, "blackboard", insert_at=1)
 
@@ -1007,6 +1015,7 @@ def tree_snapshot(path: Path, config: Dict[str, Any]) -> Dict[str, Any]:
             "artifact_kind": root.get("artifact_kind", ""),
             "status": root.get("status", "pending"),
             "updated_at": root.get("updated_at", ""),
+            "blackboard_updated_at": blackboard_updated_at(root),
         },
         "blackboard": blackboard(root),
         "counts": status_counts(root),

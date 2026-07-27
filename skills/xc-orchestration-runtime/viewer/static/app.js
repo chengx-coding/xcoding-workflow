@@ -17,16 +17,25 @@ const state = {
   currentSnapshot: null,
   heartbeatTimer: null,
   refreshTimer: null,
+  blackboardTimer: null,
   collapsedByTree: new Map(),
   scaleByTree: new Map(),
+  blackboardCollapsedByTree: new Map(),
+  sidebarCollapsed: false,
+  pan: null,
   graphSize: { width: 0, height: 0 },
 };
 
 const elements = {
-  treeSelect: document.querySelector("#tree-select"),
+  viewerLayout: document.querySelector(".viewer-layout"),
+  treeSidebar: document.querySelector("#tree-sidebar"),
+  sidebarToggle: document.querySelector("#sidebar-toggle"),
+  sidebarToggleIcon: document.querySelector(".sidebar-toggle-icon"),
   refreshButton: document.querySelector("#refresh-button"),
   registerForm: document.querySelector("#register-form"),
   treePath: document.querySelector("#tree-path"),
+  treeList: document.querySelector("#tree-list"),
+  treeCount: document.querySelector("#tree-count"),
   message: document.querySelector("#message"),
   serverStatus: document.querySelector("#server-status"),
   overview: document.querySelector("#overview"),
@@ -39,15 +48,14 @@ const elements = {
   graphStage: document.querySelector("#graph-stage"),
   graphEdges: document.querySelector("#graph-edges"),
   graphNodes: document.querySelector("#graph-nodes"),
+  graphPanHandle: document.querySelector("#graph-pan-handle"),
   graphEmpty: document.querySelector("#graph-empty"),
-  expandAllButton: document.querySelector("#expand-all-button"),
-  collapseAllButton: document.querySelector("#collapse-all-button"),
-  zoomOutButton: document.querySelector("#zoom-out-button"),
-  zoomResetButton: document.querySelector("#zoom-reset-button"),
-  zoomInButton: document.querySelector("#zoom-in-button"),
-  fitButton: document.querySelector("#fit-button"),
   nodeDetail: document.querySelector("#node-detail"),
-  blackboard: document.querySelector("#blackboard"),
+  blackboardPanel: document.querySelector(".blackboard-panel"),
+  blackboardValues: document.querySelector("#blackboard-values"),
+  blackboardUpdatedAt: document.querySelector("#blackboard-updated-at"),
+  blackboardToggle: document.querySelector("#blackboard-toggle"),
+  blackboardToggleIcon: document.querySelector(".blackboard-toggle-icon"),
   nodeTemplate: document.querySelector("#node-template"),
 };
 
@@ -86,32 +94,70 @@ function currentScale() {
   return state.scaleByTree.get(state.selectedTreeId) || 1;
 }
 
+function blackboardIsCollapsed() {
+  return state.blackboardCollapsedByTree.get(state.selectedTreeId) || false;
+}
+
 function selectTree(treeId) {
   state.selectedTreeId = treeId || null;
   state.snapshotVersion = null;
   state.selectedNodeId = null;
   state.currentSnapshot = null;
-  if (treeId) {
-    elements.treeSelect.value = treeId;
-  }
   refreshSnapshot();
 }
 
 function populateTrees(trees) {
   const previous = state.selectedTreeId;
-  elements.treeSelect.replaceChildren();
+  elements.treeList.replaceChildren();
+  elements.treeCount.textContent = String(trees.length);
   if (!trees.length) {
-    elements.treeSelect.add(new Option("No trees registered", ""));
     state.selectedTreeId = null;
+    const empty = document.createElement("p");
+    empty.className = "blackboard-empty";
+    empty.textContent = "No runtime trees registered.";
+    elements.treeList.append(empty);
     return;
-  }
-  for (const tree of trees) {
-    const label = `${tree.name || tree.path} (${tree.status})`;
-    elements.treeSelect.add(new Option(label, tree.tree_id));
   }
   const known = trees.some((tree) => tree.tree_id === previous);
   state.selectedTreeId = known ? previous : trees[0].tree_id;
-  elements.treeSelect.value = state.selectedTreeId;
+  for (const tree of trees) {
+    elements.treeList.append(createTreeInstance(tree));
+  }
+}
+
+function createTreeInstance(tree) {
+  const instance = document.createElement("article");
+  instance.className = "tree-instance";
+  instance.classList.toggle("selected", tree.tree_id === state.selectedTreeId);
+
+  const select = document.createElement("button");
+  select.className = "tree-instance-select";
+  select.type = "button";
+  select.setAttribute("aria-current", String(tree.tree_id === state.selectedTreeId));
+  select.setAttribute("aria-label", `Select ${tree.name || tree.path}`);
+  select.addEventListener("click", () => selectTree(tree.tree_id));
+
+  const name = document.createElement("span");
+  name.className = "tree-instance-name";
+  name.textContent = tree.name || tree.path;
+  const status = document.createElement("span");
+  status.className = `tree-instance-status ${statusClass(tree.status)}`;
+  status.textContent = tree.status || "unavailable";
+  const path = document.createElement("span");
+  path.className = "tree-instance-path";
+  path.textContent = tree.path;
+  path.title = tree.path;
+  select.append(name, status, path);
+
+  const remove = document.createElement("button");
+  remove.className = "tree-instance-remove";
+  remove.type = "button";
+  remove.textContent = "×";
+  remove.setAttribute("aria-label", `Remove ${tree.name || tree.path} from this viewer`);
+  remove.title = "Remove from this viewer";
+  remove.addEventListener("click", () => removeTree(tree.tree_id));
+  instance.append(select, remove);
+  return instance;
 }
 
 function renderOverview(snapshot) {
@@ -124,7 +170,53 @@ function renderOverview(snapshot) {
   elements.runStatus.className = statusClass(metadata.status);
   elements.integrityStatus.textContent = integrity.status || "unknown";
   elements.integrityStatus.className = statusClass(integrity.status);
-  elements.blackboard.textContent = JSON.stringify(snapshot.blackboard || {}, null, 2);
+  renderBlackboard(snapshot);
+}
+
+function formatUpdatedAt(value) {
+  const timestamp = Date.parse(value || "");
+  if (Number.isNaN(timestamp)) {
+    return "Updated time unavailable";
+  }
+  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
+  if (minutes < 24 * 60) {
+    return `Updated ${minutes} min ago`;
+  }
+  const date = new Date(timestamp);
+  const twoDigits = (part) => String(part).padStart(2, "0");
+  return `Updated ${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`;
+}
+
+function renderBlackboard(snapshot = state.currentSnapshot) {
+  const metadata = snapshot?.metadata || {};
+  const blackboard = snapshot?.blackboard || {};
+  const collapsed = blackboardIsCollapsed();
+  elements.blackboardPanel.classList.toggle("collapsed", collapsed);
+  elements.blackboardToggle.setAttribute("aria-expanded", String(!collapsed));
+  elements.blackboardToggleIcon.textContent = collapsed ? "⌄" : "⌃";
+  elements.blackboardToggle.querySelector(".sr-only").textContent = collapsed ? "Expand blackboard" : "Collapse blackboard";
+  elements.blackboardUpdatedAt.textContent = formatUpdatedAt(metadata.blackboard_updated_at);
+  elements.blackboardValues.replaceChildren();
+  const entries = Object.entries(blackboard).sort(([left], [right]) => left.localeCompare(right));
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "blackboard-empty";
+    empty.textContent = "No blackboard values.";
+    elements.blackboardValues.append(empty);
+    return;
+  }
+  for (const [key, value] of entries) {
+    const row = document.createElement("div");
+    row.className = "blackboard-row";
+    const keyElement = document.createElement("code");
+    keyElement.className = "blackboard-key";
+    keyElement.textContent = key;
+    const valueElement = document.createElement("code");
+    valueElement.className = "blackboard-value";
+    valueElement.textContent = value;
+    row.append(keyElement, valueElement);
+    elements.blackboardValues.append(row);
+  }
 }
 
 function walkNodes(node, visitor) {
@@ -352,34 +444,12 @@ function toggleNode(node) {
   renderGraph();
 }
 
-function applyGraphScale(scale, center = false) {
+function applyGraphScale(scale) {
   const normalized = Math.min(GRAPH.maxScale, Math.max(GRAPH.minScale, scale));
   state.scaleByTree.set(state.selectedTreeId, normalized);
   elements.graphStage.style.transform = `scale(${normalized})`;
   elements.graphSizer.style.width = `${Math.ceil(state.graphSize.width * normalized)}px`;
   elements.graphSizer.style.height = `${Math.ceil(state.graphSize.height * normalized)}px`;
-  const percentage = Math.round(normalized * 100);
-  elements.zoomResetButton.textContent = `${percentage}%`;
-  elements.zoomResetButton.setAttribute("aria-label", `Reset zoom (${percentage}%)`);
-  elements.zoomOutButton.disabled = normalized <= GRAPH.minScale;
-  elements.zoomInButton.disabled = normalized >= GRAPH.maxScale;
-  if (center) {
-    elements.graphViewport.scrollTo({ left: 0, top: 0, behavior: "smooth" });
-  }
-}
-
-function setZoom(scale) {
-  applyGraphScale(scale);
-}
-
-function fitGraph() {
-  if (!state.graphSize.width || !state.graphSize.height) {
-    return;
-  }
-  const availableWidth = Math.max(elements.graphViewport.clientWidth - 24, 1);
-  const availableHeight = Math.max(elements.graphViewport.clientHeight - 24, 1);
-  const scale = Math.min(1, availableWidth / state.graphSize.width, availableHeight / state.graphSize.height);
-  applyGraphScale(scale, true);
 }
 
 function renderGraph() {
@@ -443,38 +513,13 @@ function renderNodeDetail(node) {
   }
 }
 
-function expandAll() {
-  collapsedNodes().clear();
-  renderGraph();
-}
-
-function collapseAll() {
-  const root = state.currentSnapshot?.root;
-  if (!root) {
-    return;
-  }
-  const collapsed = collapsedNodes();
-  collapsed.clear();
-  for (const child of root.children || []) {
-    walkNodes(child, (node) => {
-      if (node.children?.length) {
-        collapsed.add(node.id);
-      }
-    });
-  }
-  const selectedPath = findNodePath(root, state.selectedNodeId);
-  if (selectedPath?.length > 2) {
-    state.selectedNodeId = selectedPath[1].id;
-    renderNodeDetail(selectedPath[1]);
-  }
-  renderGraph();
-}
-
 async function refreshSnapshot(force = false) {
   if (!state.selectedTreeId) {
     elements.overview.hidden = true;
     state.currentSnapshot = null;
     renderGraph();
+    renderNodeDetail(null);
+    renderBlackboard(null);
     return;
   }
   try {
@@ -513,6 +558,103 @@ async function refreshTrees() {
   }
 }
 
+async function removeTree(treeId) {
+  try {
+    await request(`/api/trees/${encodeURIComponent(treeId)}`, { method: "DELETE", body: "{}" });
+    if (state.selectedTreeId === treeId) {
+      state.selectedTreeId = null;
+      state.snapshotVersion = null;
+      state.currentSnapshot = null;
+      state.selectedNodeId = null;
+    }
+    await refreshTrees();
+    setMessage("Tree removed from this viewer.");
+  } catch (error) {
+    setMessage(error.message, true);
+  }
+}
+
+function setSidebarCollapsed(collapsed) {
+  state.sidebarCollapsed = collapsed;
+  elements.treeSidebar.classList.toggle("collapsed", collapsed);
+  elements.viewerLayout.classList.toggle("sidebar-collapsed", collapsed);
+  elements.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+  elements.sidebarToggleIcon.textContent = collapsed ? "›" : "‹";
+  elements.sidebarToggle.querySelector(".sr-only").textContent = collapsed ? "Expand sidebar" : "Collapse sidebar";
+}
+
+function toggleBlackboard() {
+  if (!state.selectedTreeId) {
+    return;
+  }
+  state.blackboardCollapsedByTree.set(state.selectedTreeId, !blackboardIsCollapsed());
+  renderBlackboard();
+}
+
+function zoomAroundPointer(event) {
+  if (!state.currentSnapshot) {
+    return;
+  }
+  event.preventDefault();
+  const viewport = elements.graphViewport;
+  const beforeScale = currentScale();
+  const scaleDelta = event.deltaY < 0 ? GRAPH.scaleStep : -GRAPH.scaleStep;
+  const afterScale = Math.min(GRAPH.maxScale, Math.max(GRAPH.minScale, beforeScale + scaleDelta));
+  if (afterScale === beforeScale) {
+    return;
+  }
+  const rect = viewport.getBoundingClientRect();
+  const pointerX = event.clientX - rect.left + viewport.scrollLeft;
+  const pointerY = event.clientY - rect.top + viewport.scrollTop;
+  const contentX = pointerX / beforeScale;
+  const contentY = pointerY / beforeScale;
+  applyGraphScale(afterScale);
+  viewport.scrollLeft = contentX * afterScale - (event.clientX - rect.left);
+  viewport.scrollTop = contentY * afterScale - (event.clientY - rect.top);
+}
+
+function startPanning(event) {
+  if (event.button !== 0 || event.target.closest(".graph-node")) {
+    return;
+  }
+  elements.graphViewport.focus({ preventScroll: true });
+  state.pan = {
+    pointerId: event.pointerId,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    scrollLeft: elements.graphViewport.scrollLeft,
+    scrollTop: elements.graphViewport.scrollTop,
+  };
+  elements.graphViewport.classList.add("panning");
+  try {
+    elements.graphViewport.setPointerCapture(event.pointerId);
+  } catch {
+  }
+  event.preventDefault();
+}
+
+function movePanning(event) {
+  if (!state.pan || event.pointerId !== state.pan.pointerId) {
+    return;
+  }
+  elements.graphViewport.scrollLeft = state.pan.scrollLeft - (event.clientX - state.pan.clientX);
+  elements.graphViewport.scrollTop = state.pan.scrollTop - (event.clientY - state.pan.clientY);
+}
+
+function stopPanning(event) {
+  if (!state.pan || event.pointerId !== state.pan.pointerId) {
+    return;
+  }
+  try {
+    if (elements.graphViewport.hasPointerCapture(event.pointerId)) {
+      elements.graphViewport.releasePointerCapture(event.pointerId);
+    }
+  } catch {
+  }
+  state.pan = null;
+  elements.graphViewport.classList.remove("panning");
+}
+
 async function connectClient() {
   try {
     const payload = await request("/api/clients", { method: "POST", body: "{}" });
@@ -532,14 +674,14 @@ async function connectClient() {
   }
 }
 
-elements.treeSelect.addEventListener("change", () => selectTree(elements.treeSelect.value));
 elements.refreshButton.addEventListener("click", () => refreshSnapshot(true));
-elements.expandAllButton.addEventListener("click", expandAll);
-elements.collapseAllButton.addEventListener("click", collapseAll);
-elements.zoomOutButton.addEventListener("click", () => setZoom(currentScale() - GRAPH.scaleStep));
-elements.zoomInButton.addEventListener("click", () => setZoom(currentScale() + GRAPH.scaleStep));
-elements.zoomResetButton.addEventListener("click", () => setZoom(1));
-elements.fitButton.addEventListener("click", fitGraph);
+elements.sidebarToggle.addEventListener("click", () => setSidebarCollapsed(!state.sidebarCollapsed));
+elements.blackboardToggle.addEventListener("click", toggleBlackboard);
+elements.graphViewport.addEventListener("wheel", zoomAroundPointer, { passive: false });
+elements.graphViewport.addEventListener("pointerdown", startPanning);
+elements.graphViewport.addEventListener("pointermove", movePanning);
+elements.graphViewport.addEventListener("pointerup", stopPanning);
+elements.graphViewport.addEventListener("pointercancel", stopPanning);
 elements.registerForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const path = elements.treePath.value.trim();
@@ -563,4 +705,5 @@ elements.registerForm.addEventListener("submit", async (event) => {
 
 Promise.all([connectClient(), refreshTrees()]).then(() => {
   state.refreshTimer = window.setInterval(refreshTrees, 1000);
+  state.blackboardTimer = window.setInterval(renderBlackboard, 60000);
 });

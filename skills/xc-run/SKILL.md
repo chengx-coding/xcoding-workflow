@@ -1,11 +1,11 @@
 ---
-name: "xc-ordinary-run"
+name: "xc-run"
 description: "Runs managed investigation, iteration, repair, review, maintenance, or cross-feature work without implicitly creating a feature. Invoke for persistent work that may relate to zero, one, or multiple existing features."
 ---
 
-# XC Ordinary Run
+# XC Run
 
-`xc-ordinary-run` is the common lifecycle for existing-code work. It always creates a durable run and `goal.md`; `analysis.md` and run `solution.md` are created only when their semantic purpose is needed. A run may reference no feature, a single existing feature, or multiple existing features.
+`xc-run` is the common lifecycle for existing-code work. It always creates a durable run and `goal.md`; `analysis.md` and run `solution.md` are created only when their semantic purpose is needed. A run may reference no feature, a single existing feature, or multiple existing features.
 
 ## Parameters
 
@@ -13,7 +13,7 @@ description: "Runs managed investigation, iteration, repair, review, maintenance
   - Scope: The fixed project `.xcoding` context directory.
 
 - `project_root` - `path`; required
-  - Scope: Business repository root supplied to `xc-run`.
+  - Scope: Business repository root supplied to `xc-create-run`.
 
 - `request` - `string`; required
   - Scope: Requested investigation, change, repair, review, or maintenance outcome.
@@ -29,7 +29,7 @@ description: "Runs managed investigation, iteration, repair, review, maintenance
 
 1. Read `AGENTS.md`, `.xcoding/WORKFLOW.md`, and `.xcoding/KNOWLEDGE.md`.
 2. Verify every supplied `feature_id` already exists. Do not create or adopt a feature.
-3. Call `xc-run`, initialize `assets/ordinary-run-template.xml`, and complete `prepare-run`.
+3. Call `xc-create-run`, initialize `assets/run-template.xml`, and complete `prepare-run`.
 4. Create `goal.md` through document evolution. Set blackboard controls based on the requested mode and required gates.
 5. When analysis is needed, schedule `xc-analysis` nodes and synthesize accepted evidence into `analysis.md`.
 6. When feature IDs are present, embed `xc-feature-reconciliation` sequentially under `reconciliation-group` before selecting a run solution.

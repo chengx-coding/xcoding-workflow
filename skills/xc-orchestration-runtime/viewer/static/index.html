@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Orchestration Viewer</title>
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/app.css">
   </head>
   <body>
@@ -13,43 +14,48 @@
         <p id="server-status">Connecting to local viewer...</p>
       </div>
       <div class="controls">
-        <label>
-          Tree
-          <select id="tree-select" aria-label="Registered orchestration tree"></select>
-        </label>
         <button id="refresh-button" type="button">Refresh</button>
       </div>
     </header>
 
-    <main>
-      <section class="toolbar" aria-label="Tree registration">
-        <form id="register-form">
-          <label for="tree-path">Register local runtime tree</label>
-          <input id="tree-path" name="path" type="text" placeholder="C:\path\to\orchestration.xml">
-          <button type="submit">Register</button>
-        </form>
-        <p id="message" role="status"></p>
-      </section>
+    <main class="viewer-layout">
+      <aside id="tree-sidebar" class="tree-sidebar" aria-label="Runtime tree management">
+        <div class="sidebar-heading">
+          <h2>Runtime Trees</h2>
+          <button id="sidebar-toggle" class="icon-button" type="button" aria-expanded="true" aria-controls="tree-sidebar">
+            <span class="sidebar-toggle-icon" aria-hidden="true">‹</span>
+            <span class="sr-only">Collapse sidebar</span>
+          </button>
+        </div>
+        <div class="sidebar-content">
+          <form id="register-form" class="register-form">
+            <label for="tree-path">Register local runtime tree</label>
+            <input id="tree-path" name="path" type="text" placeholder="C:\path\to\orchestration.xml">
+            <button type="submit">Add tree</button>
+          </form>
+          <p id="message" role="status"></p>
+          <div class="tree-list-heading">
+            <h3>Registered Instances</h3>
+            <span id="tree-count" class="tree-count">0</span>
+          </div>
+          <div id="tree-list" class="tree-list" aria-live="polite"></div>
+        </div>
+      </aside>
 
-      <section id="overview" class="overview" hidden>
-        <article><span>Name</span><strong id="run-name"></strong></article>
-        <article><span>Run</span><strong id="run-id"></strong></article>
-        <article><span>Status</span><strong id="run-status"></strong></article>
-        <article><span>Integrity</span><strong id="integrity-status"></strong></article>
-      </section>
+      <section class="viewer-content">
+        <section id="overview" class="overview" hidden>
+          <article><span>Name</span><strong id="run-name"></strong></article>
+          <article><span>Run</span><strong id="run-id"></strong></article>
+          <article><span>Status</span><strong id="run-status"></strong></article>
+          <article><span>Integrity</span><strong id="integrity-status"></strong></article>
+        </section>
 
-      <section class="workspace">
-        <section class="graph-pane">
+        <section class="workspace">
+          <section class="graph-pane">
           <div class="graph-heading">
-            <h2>Node Graph</h2>
-            <div class="graph-controls" aria-label="Graph controls">
-              <button id="expand-all-button" type="button">Expand all</button>
-              <button id="collapse-all-button" type="button">Collapse all</button>
-              <span class="control-separator" aria-hidden="true"></span>
-              <button id="zoom-out-button" type="button" aria-label="Zoom out">-</button>
-              <button id="zoom-reset-button" type="button" aria-label="Reset zoom">100%</button>
-              <button id="zoom-in-button" type="button" aria-label="Zoom in">+</button>
-              <button id="fit-button" type="button">Fit</button>
+            <div>
+              <h2>Node Graph</h2>
+              <p>Drag to pan. Use the mouse wheel to zoom.</p>
             </div>
           </div>
           <div id="graph-viewport" class="graph-viewport" tabindex="0" aria-label="Orchestration node graph">
@@ -59,14 +65,27 @@
                 <div id="graph-nodes" class="graph-nodes"></div>
               </div>
             </div>
+            <div id="graph-pan-handle" class="graph-pan-handle" aria-hidden="true">✥</div>
             <p id="graph-empty" class="graph-empty">Register a runtime tree within an allowed directory.</p>
           </div>
-        </section>
-        <section class="detail-pane">
-          <h2>Node Detail</h2>
-          <div id="node-detail" class="node-detail">Select a node to inspect its details.</div>
-          <h2>Blackboard</h2>
-          <pre id="blackboard" class="data-block"></pre>
+          </section>
+          <section class="detail-pane">
+            <h2>Node Detail</h2>
+            <div id="node-detail" class="node-detail">Select a node to inspect its details.</div>
+            <section class="blackboard-panel">
+              <div class="blackboard-heading">
+                <div>
+                  <h2>Blackboard</h2>
+                  <p id="blackboard-updated-at" class="blackboard-updated-at">Updated time unavailable</p>
+                </div>
+                <button id="blackboard-toggle" class="icon-button" type="button" aria-expanded="true" aria-controls="blackboard-values">
+                  <span class="blackboard-toggle-icon" aria-hidden="true">⌃</span>
+                  <span class="sr-only">Collapse blackboard</span>
+                </button>
+              </div>
+              <div id="blackboard-values" class="blackboard-values"></div>
+            </section>
+          </section>
         </section>
       </section>
     </main>
