@@ -3,7 +3,7 @@
 <orchestration schema_version="1" name="feature-adoption" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="0911bfda5e0bffbbc932248801f34ec30df0e9564e5834c8c6b7e8008adeab71" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="4fc26aa7a0199e959a9e031e46c675802e3d474865663e61074fa30e951ea585" />
   </meta>
   <blackboard>
     <var key="feature.id" />
@@ -14,7 +14,7 @@
   <node executor="main" mode="sequence" role="root" template_id="root" title="Feature Adoption" type="composite">
     <children>
       <node executor="main" role="adoption-prepare" template_id="prepare-adoption" title="Prepare feature adoption" type="task">
-        <instructions>Read the project bridge, create the run through xc-create-run, determine run.document_language from the explicit parameter or initiating user request, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.</instructions>
+        <instructions>Read the project bridge, create the run through xc-create-run, determine and validate run.document_language through xc-document from the explicit parameter or initiating user request, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.</instructions>
         <deliverables>An authoritative run directory, explicit code-entry scope, and empty managed feature directory.</deliverables>
         <acceptance>The feature is not already managed, run.document_language is set before any document write, and the adoption scope has enough evidence to begin analysis.</acceptance>
       </node>
