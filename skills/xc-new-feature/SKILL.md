@@ -35,9 +35,10 @@ description: "Starts and governs a complete managed workflow for developing a ne
 4. Complete `prepare-feature` with the feature directory as a declared artifact.
 5. Use `find` to locate each dynamic group and embed `xc-document-evolution` for `goal.md`, run `solution.md`, and each feature baseline document. Set `document.content_language` from `run.document_language` only for top-level run documents; use the project bridge for feature-baseline language.
 6. Schedule evidence and synthesis nodes using `xc-analysis`; write the accepted run analysis when needed.
-7. Review and approve the feature `contract.md`, `solution.md`, and `verification.md` through document-evolution loops and `approve-feature-baseline`.
-8. Add bounded implementation nodes under `implementation-group`, then verification nodes under `verification-group`.
-9. Create `result.md` through document evolution and complete `finalize-feature`.
+7. When evidence leaves a material human-owned decision unresolved, or the user explicitly asks to clarify or stress-test the feature, set `run.requires_clarification=true` and embed `xc-clarify` under `clarification-group` before selecting the run solution.
+8. Review and approve the feature `contract.md`, `solution.md`, and `verification.md` through document-evolution loops and `approve-feature-baseline`.
+9. Add bounded implementation nodes under `implementation-group`, then verification nodes under `verification-group`.
+10. Create `result.md` through document evolution and complete `finalize-feature`.
 
 Use runtime-returned paths and node IDs only. Dynamic document, analysis, implementation, review, and verification nodes must declare their artifacts and complete through the runtime public interface.
 

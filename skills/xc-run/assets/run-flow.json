@@ -5,6 +5,7 @@
     "run.has_features": "false",
     "run.document_language": "en",
     "run.requires_analysis": "true",
+    "run.requires_clarification": "false",
     "run.requires_solution": "true",
     "run.solution_gate_required": "true",
     "run.requires_implementation": "true",
@@ -53,6 +54,15 @@
         "mode": "sequence",
         "executor": "main",
         "when": "run.has_features == true"
+      },
+      {
+        "template_id": "clarification-group",
+        "title": "Clarify material decisions",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "run.requires_clarification == true"
       },
       {
         "template_id": "run-solution-document",

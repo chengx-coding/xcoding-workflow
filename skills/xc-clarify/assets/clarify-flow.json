@@ -1,0 +1,94 @@
+{
+  "name": "clarify",
+  "schema_version": 1,
+  "blackboard": {
+    "clarification.mode": "",
+    "clarification.subject": "",
+    "clarification.instance_id": "",
+    "clarification.status": "pending",
+    "clarification.question_count": "0",
+    "clarification.limit": "12",
+    "clarification.pending_material": "true",
+    "clarification.outcome": "pending",
+    "clarification.next_decision_id": "",
+    "clarification.session_artifact": ""
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Clarify",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "open-session-record",
+        "title": "Open decision session record",
+        "type": "task",
+        "role": "clarification-session-open",
+        "executor": "subagent",
+        "instructions": "Create clarification.session_artifact as a validated xc-document node-artifact. Record the mode, subject, declared inputs, and initial decision budget. Do not read or edit runtime XML.",
+        "deliverables": "One decision-session.md node artifact at clarification.session_artifact.",
+        "acceptance": "The session artifact exists, validates as node-artifact, and records the clarification scope without storing dynamic control state."
+      },
+      {
+        "template_id": "gather-context",
+        "title": "Gather decision evidence",
+        "type": "task",
+        "role": "clarification-evidence",
+        "executor": "subagent",
+        "instructions": "Inspect only the supplied inputs and project bridge references. Append confirmed facts, source locations, contradictions, and evidence gaps to clarification.session_artifact. Resolve factual questions without asking the user.",
+        "deliverables": "Evidence appended to the decision session artifact.",
+        "acceptance": "The artifact distinguishes confirmed facts, hypotheses, and unknowns with traceable evidence."
+      },
+      {
+        "template_id": "map-decisions",
+        "title": "Map material decisions",
+        "type": "task",
+        "role": "clarification-map",
+        "executor": "subagent",
+        "instructions": "Append a dependency-ordered decision map to clarification.session_artifact. Classify each uncertainty as evidence-resolved, human-decision, bounded-experiment, or accepted-assumption, and identify material human decisions.",
+        "deliverables": "A decision map in the session artifact.",
+        "acceptance": "Every material human decision has an ID, dependencies, evidence, and a proposed next question."
+      },
+      {
+        "template_id": "seed-questioning",
+        "title": "Seed decision questioning",
+        "type": "task",
+        "role": "clarification-seed",
+        "executor": "main",
+        "instructions": "Read the decision map from clarification.session_artifact. Before completing this task, use xc-orchestration-runtime to add the first main-executor decision Gate beneath question-group. If no material decision exists, add a closing confirmation Gate instead. Do not leave question-group empty.",
+        "deliverables": "A first decision Gate or a closing confirmation Gate in question-group.",
+        "acceptance": "The next runtime query exposes an executable main Gate and question-group cannot block as an empty composite."
+      },
+      {
+        "template_id": "question-group",
+        "title": "Resolve material decisions",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "synthesize-session",
+        "title": "Synthesize clarified decisions",
+        "type": "task",
+        "role": "clarification-synthesis",
+        "executor": "subagent",
+        "instructions": "After question-group closes, append the final decision summary, bounded experiments, accepted risks, residual risks, and caller handoff readiness to clarification.session_artifact.",
+        "deliverables": "A complete clarification session artifact.",
+        "acceptance": "The artifact states whether the caller may select a solution without hidden material decisions."
+      },
+      {
+        "template_id": "finalize-clarification",
+        "title": "Finalize clarification",
+        "type": "task",
+        "role": "clarification-finalize",
+        "executor": "main",
+        "instructions": "Confirm clarification.status and clarification.outcome from the accepted session artifact. Record the artifact path and concise handoff result through the runtime public interface.",
+        "deliverables": "A completed, deferred, or blocked clarification disposition.",
+        "acceptance": "The caller can safely continue to analysis synthesis or solution selection without reading runtime XML."
+      }
+    ]
+  }
+}
