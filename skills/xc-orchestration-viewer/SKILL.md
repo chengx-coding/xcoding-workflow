@@ -36,13 +36,13 @@ from the page is limited to explicit `--allow-root` paths. The native file
 picker may additionally authorize the parent directory of the one XML file
 that the user explicitly selects. Picker requests require the actual loopback
 Viewer origin, are serialized by the server, and run the native dialog in a
-dedicated helper process.
+dedicated helper process without opening a console window on Windows.
 
 ## Behavior
 
 - The viewer is read-only and exposes no lifecycle or blackboard mutation endpoints.
 - Runtime trees render as a connected horizontal node graph, not a nested list.
-- A collapsible sidebar registers, selects, and removes viewer-local runtime-tree instances. Removing an instance never modifies its runtime tree or files.
+- A collapsible edge-aligned sidebar registers, selects, and removes viewer-local runtime-tree instances. Its path field occupies a full row, its actions sit below, and instance selection is highlighted immediately. Removing an instance never modifies its runtime tree or files.
 - Drag the graph canvas to pan. Wheel and range-slider zoom stay synchronized; graph expansion controls affect browser presentation only.
 - The graph starts with a tall portrait-friendly viewport. Drag its lower boundary, or use the focused boundary's arrow keys, to change its height.
 - The selected runtime snapshot is checked every 20 seconds and rerendered only when its version changes. Manual forced refresh remains available.

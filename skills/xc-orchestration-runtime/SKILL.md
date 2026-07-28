@@ -106,8 +106,8 @@ registration remains constrained to Viewer allow roots; an explicit native
 selection authorizes only the selected file's parent directory. Picker
 requests require the actual bound loopback Host and matching browser Origin.
 The server serializes requests and launches Tk in a helper process whose main
-thread owns the dialog. A concurrent picker request is rejected while one
-dialog is active.
+thread owns the dialog. On Windows, the helper starts without a console
+window. A concurrent picker request is rejected while one dialog is active.
 
 The default launch mode starts a detached background server and returns one
 JSON result containing `ok`, `mode`, `pid`, `url`, and `trees`. The background

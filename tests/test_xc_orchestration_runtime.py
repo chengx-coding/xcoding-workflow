@@ -1870,6 +1870,22 @@ class ViewerServerTests(unittest.TestCase):
             with self.assertRaisesRegex(core.RuntimeErrorBase, "unavailable"):
                 viewer_server.select_tree_file()
 
+        canceled = subprocess.CompletedProcess(
+            args=["tree-picker"],
+            returncode=0,
+            stdout='{"ok": true, "selected": false, "path": ""}\n',
+            stderr="",
+        )
+        with (
+            mock.patch.object(viewer_server.os, "name", "nt"),
+            mock.patch.object(viewer_server.subprocess, "run", return_value=canceled) as run_picker_process,
+        ):
+            self.assertIsNone(viewer_server.select_tree_file())
+        self.assertEqual(
+            run_picker_process.call_args.kwargs["creationflags"],
+            getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+
         active = 0
         max_active = 0
         active_lock = threading.Lock()
@@ -1951,10 +1967,18 @@ class ViewerServerTests(unittest.TestCase):
         self.assertNotIn("graphPanHandle", app)
         self.assertIn('id="save-svg-button"', index)
         self.assertIn('id="pick-tree-button"', index)
+        self.assertIn('class="register-actions"', index)
         self.assertIn('id="zoom-slider"', index)
         self.assertIn('id="graph-resize-handle"', index)
         self.assertIn("const AUTO_REFRESH_MS = 20000", app)
         self.assertIn("window.setInterval(refreshTrees, AUTO_REFRESH_MS)", app)
+        self.assertIn("function updateTreeSelection()", app)
+        self.assertIn("instance.dataset.treeId = tree.tree_id", app)
+        self.assertIn("updateTreeSelection();", app)
+        self.assertIn('select?.removeAttribute("aria-current")', app)
+        self.assertNotIn('setAttribute("aria-current", String(', app)
+        self.assertIn("const requestId = ++state.snapshotRequestId", app)
+        self.assertIn("treeId !== state.selectedTreeId", app)
         self.assertIn("elements.zoomSlider.value", app)
         self.assertIn("function zoomAroundViewportCenter(scale)", app)
         self.assertIn("function startResizing(event)", app)
@@ -1962,6 +1986,9 @@ class ViewerServerTests(unittest.TestCase):
         self.assertIn("/svg`", app)
         self.assertIn('.server-status[data-connection="connected"]', css)
         self.assertNotIn(".graph-pan-handle", css)
+        self.assertIn("padding-left: 8px", css)
+        self.assertIn(".register-actions", css)
+        self.assertNotIn("grid-template-columns: minmax(0, 1fr) auto auto", css)
         self.assertIn("height: clamp(680px, 76vh, 1080px)", css)
         self.assertIn(".graph-resize-handle", css)
 

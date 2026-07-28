@@ -15,6 +15,7 @@ const state = {
   selectedTreeId: null,
   selectedNodeId: null,
   snapshotVersion: null,
+  snapshotRequestId: 0,
   currentSnapshot: null,
   heartbeatTimer: null,
   reconnectTimer: null,
@@ -160,8 +161,22 @@ function blackboardIsCollapsed() {
   return state.blackboardCollapsedByTree.get(state.selectedTreeId) || false;
 }
 
+function updateTreeSelection() {
+  for (const instance of elements.treeList.querySelectorAll(".tree-instance")) {
+    const selected = instance.dataset.treeId === state.selectedTreeId;
+    instance.classList.toggle("selected", selected);
+    const select = instance.querySelector(".tree-instance-select");
+    if (selected) {
+      select?.setAttribute("aria-current", "true");
+    } else {
+      select?.removeAttribute("aria-current");
+    }
+  }
+}
+
 function selectTree(treeId) {
   state.selectedTreeId = treeId || null;
+  updateTreeSelection();
   elements.saveSvgButton.disabled = !state.selectedTreeId;
   state.snapshotVersion = null;
   state.selectedNodeId = null;
@@ -193,12 +208,15 @@ function populateTrees(trees) {
 function createTreeInstance(tree) {
   const instance = document.createElement("article");
   instance.className = "tree-instance";
+  instance.dataset.treeId = tree.tree_id;
   instance.classList.toggle("selected", tree.tree_id === state.selectedTreeId);
 
   const select = document.createElement("button");
   select.className = "tree-instance-select";
   select.type = "button";
-  select.setAttribute("aria-current", String(tree.tree_id === state.selectedTreeId));
+  if (tree.tree_id === state.selectedTreeId) {
+    select.setAttribute("aria-current", "true");
+  }
   select.setAttribute("aria-label", `Select ${tree.name || tree.path}`);
   select.addEventListener("click", () => selectTree(tree.tree_id));
 
@@ -582,7 +600,9 @@ function renderNodeDetail(node) {
 }
 
 async function refreshSnapshot(force = false) {
-  if (!state.selectedTreeId) {
+  const treeId = state.selectedTreeId;
+  const requestId = ++state.snapshotRequestId;
+  if (!treeId) {
     elements.overview.hidden = true;
     state.currentSnapshot = null;
     renderGraph();
@@ -592,12 +612,18 @@ async function refreshSnapshot(force = false) {
   }
   try {
     if (force) {
-      await request(`/api/trees/${encodeURIComponent(state.selectedTreeId)}/refresh`, {
+      await request(`/api/trees/${encodeURIComponent(treeId)}/refresh`, {
         method: "POST",
         body: "{}",
       });
+      if (requestId !== state.snapshotRequestId || treeId !== state.selectedTreeId) {
+        return;
+      }
     }
-    const payload = await request(`/api/trees/${encodeURIComponent(state.selectedTreeId)}/snapshot`);
+    const payload = await request(`/api/trees/${encodeURIComponent(treeId)}/snapshot`);
+    if (requestId !== state.snapshotRequestId || treeId !== state.selectedTreeId) {
+      return;
+    }
     const snapshot = payload.snapshot;
     if (state.snapshotVersion === snapshot.version) {
       return;
@@ -609,6 +635,9 @@ async function refreshSnapshot(force = false) {
     renderNodeDetail(findNode(snapshot.root, state.selectedNodeId));
     setMessage(payload.refresh_error?.message || "");
   } catch (error) {
+    if (requestId !== state.snapshotRequestId || treeId !== state.selectedTreeId) {
+      return;
+    }
     setMessage(error.message, true, Boolean(error.connectionLost));
     handleRequestFailure(error);
   }

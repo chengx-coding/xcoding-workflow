@@ -135,10 +135,11 @@ complete snapshot model used for automatic terminal export.
 The native tree picker requires the actual bound loopback Host and a matching
 browser Origin when Origin is present. The Viewer serializes picker requests
 and launches a helper process so Tk owns the dialog on that process's main
-thread. A concurrent picker request is rejected while the first dialog is
-active. Cancellation is not an error. A selected file is validated and only
-its parent directory is added to the Viewer allow roots. The existing direct
-path registration endpoint does not expand allow roots.
+thread. The helper does not open a console window on Windows. A concurrent
+picker request is rejected while the first dialog is active. Cancellation is
+not an error. A selected file is validated and only its parent directory is
+added to the Viewer allow roots. The existing direct path registration
+endpoint does not expand allow roots.
 
 ## Integrity and Recovery
 
