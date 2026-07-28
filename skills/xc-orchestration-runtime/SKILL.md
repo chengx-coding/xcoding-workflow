@@ -12,6 +12,7 @@ description: "Runs and observes managed orchestration trees. Invoke when a workf
 - Agents MUST NOT directly read, summarize, edit, patch, or reformat managed orchestration XML. Use `scripts/orchestration.py` only.
 - The main session requests ready nodes, starts delegated work, handles `executor=main` gates, and checks summaries. It does not need the full tree.
 - A worker executes exactly one assigned node and reports through `complete`, `fail`, or `block`.
+- A known node ID is not start authority. `start` accepts only an executable leaf that satisfies the same readiness predicate used by `next`.
 - Runtime trees use `schema_version="1"`. Earlier formats and CLI semantics are unsupported.
 - A terminal operation is valid only for a `running` task or gate. A successful root is sealed until the main session explicitly reopens it after a user-approved reason.
 
@@ -39,6 +40,13 @@ python "$SKILL_DIR/scripts/orchestration.py" complete `
 `init` writes `<run_runtime_dir>/orchestration.xml`. The run-creation capability owns creation of `<run_runtime_dir>` and its parent run directory. All commands emit JSON; `--json` is accepted for host compatibility.
 
 Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`, `embed-subtree`, `close-group`, `reopen`, `summary`, `show`, `find`, `artifacts`, `snapshot`, `integrity-status`, `repair-integrity`, and `validate`.
+
+An unreachable or otherwise non-runnable start returns `node_not_ready` with a
+stable `details.reason` and does not change node state or runtime revision.
+Condition, dependency, ancestor status, and sequence-predecessor blockers use
+the same core readiness predicate as scheduler output. Stale expected
+revisions remain `state_conflict`; successful sealed trees remain
+`tree_sealed`.
 
 `add-node` accepts repeated `--metadata metadata.<key>=value` values for dynamic node metadata. Use `metadata.artifact.audience=internal|user` and `metadata.artifact.content_language=en|run.document_language` to declare an artifact's audience and language selector. `artifacts --audience user` lists only paths declared through terminal `complete --artifact` operations and their node metadata; it never scans the context repository.
 
