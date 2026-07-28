@@ -112,12 +112,33 @@ Dynamic nodes may receive scalar `metadata.*` attributes through repeated `add-n
 
 Use `artifacts --audience user` to locate previously declared user-facing reports for a language correction. The response includes only paths declared by terminal `complete`, `fail`, or `block` operations, their owner node IDs, and `metadata.artifact.*`; it never discovers files by scanning directories.
 
-When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. Each checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped context commit. Declared checkpoint artifacts must exist inside the same context Git repository as the tree. A failed checkpoint restores the pre-operation tree and returns `persisted_uncommitted`; the files remain available, but the terminal state, revision, and declarations are not accepted. When `auto_commit=false`, checkpoint creation and checkpoint path validation are disabled; the terminal state and declarations are persisted without a context commit. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist tree state but defer commit creation to the next checkpoint.
+When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. Each checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped context commit. A non-terminal mutation that newly seals the root is also a completion checkpoint. Every newly sealed checkpoint includes the generated complete-tree SVG beside `orchestration.xml`. Declared checkpoint artifacts must exist inside the same context Git repository as the tree. Rendering, writing, or commit failure restores the pre-operation XML and SVG bytes; a rejected commit returns `persisted_uncommitted`, and the terminal state, revision, and declarations are not accepted. When `auto_commit=false`, checkpoint creation and checkpoint path validation are disabled; the terminal state, declarations, and newly sealed SVG are persisted without a context commit. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` otherwise persist state but defer commit creation to the next checkpoint.
 
 When the root succeeds, the runtime records `sealed_at` and rejects ordinary
 writes with `tree_sealed`. `reopen --reason` is an explicit main-session
 operation: it records a new epoch before further dynamic work can be appended.
-Domain workflows must collect the required user decision before reopening.
+Domain workflows must collect the required user decision before reopening. A
+newly sealed root writes `<normalized-run-name>.svg` beside the runtime XML.
+The SVG contains every node regardless of Viewer collapse state. Reopening
+preserves the last successful SVG; the next successful seal overwrites it.
+
+## Viewer Behavior
+
+The loopback Viewer serves retained runtime snapshots only. Its page requests
+the selected snapshot every 20 seconds and skips rendering when the snapshot
+version is unchanged. Manual forced refresh remains available.
+
+The graph viewport has a draggable lower boundary and exposes synchronized
+wheel and range-slider zoom. The SVG download endpoint renders the same
+complete snapshot model used for automatic terminal export.
+
+The native tree picker requires the actual bound loopback Host and a matching
+browser Origin when Origin is present. The Viewer serializes picker requests
+and launches a helper process so Tk owns the dialog on that process's main
+thread. A concurrent picker request is rejected while the first dialog is
+active. Cancellation is not an error. A selected file is validated and only
+its parent directory is added to the Viewer allow roots. The existing direct
+path registration endpoint does not expand allow roots.
 
 ## Integrity and Recovery
 

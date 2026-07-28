@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import errno
+import html
 import hashlib
 import json
 import os
@@ -76,6 +77,12 @@ ATOMIC_REPLACE_RETRY_DELAY_SECONDS = 0.05
 TRANSIENT_REPLACE_WINERRORS = {5, 32}
 RUNTIME_LOCK_TIMEOUT_SECONDS = 15
 RUNTIME_LOCK_RETRY_SECONDS = 0.05
+SVG_NODE_WIDTH = 232
+SVG_NODE_HEIGHT = 86
+SVG_COLUMN_GAP = 112
+SVG_ROW_GAP = 30
+SVG_PADDING = 42
+SVG_HEADER_HEIGHT = 72
 
 
 class RuntimeErrorBase(RuntimeError):
@@ -454,12 +461,12 @@ def serialize_xml(root: ET.Element, artifact_kind: str) -> str:
     return f'<?xml version="1.0" encoding="utf-8"?>\n<!-- {xml_warning(artifact_kind)} -->\n{body}\n'
 
 
-def atomic_write_text(path: Path, text: str) -> None:
+def atomic_write_bytes(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(text)
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
         for attempt in range(ATOMIC_REPLACE_ATTEMPTS):
@@ -474,6 +481,10 @@ def atomic_write_text(path: Path, text: str) -> None:
     finally:
         if os.path.exists(temp_name):
             os.unlink(temp_name)
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    atomic_write_bytes(path, text.encode("utf-8"))
 
 
 def runtime_lock_path(tree_path: Path) -> Path:
@@ -627,6 +638,7 @@ def write_managed_tree(
     operation: str,
     commit_paths: Optional[Sequence[Path]] = None,
     commit_on_write: bool = True,
+    export_runtime_svg: bool = False,
 ) -> Dict[str, Any]:
     root = tree.getroot()
     checksum = apply_integrity(root, artifact_kind, config)
@@ -635,9 +647,15 @@ def write_managed_tree(
     integrity = verify_integrity(reloaded.getroot(), artifact_kind)
     if integrity["status"] != "valid":
         raise RuntimeErrorBase("checksum verification failed after write", {"path": str(path), "integrity": integrity})
+    generated_paths: List[Path] = []
+    if artifact_kind == "runtime" and export_runtime_svg:
+        svg_path = runtime_svg_path(path, reloaded.getroot())
+        snapshot = snapshot_from_root(reloaded.getroot(), path, integrity)
+        atomic_write_text(svg_path, render_snapshot_svg(snapshot))
+        generated_paths.append(svg_path)
     if commit_on_write:
         commit = commit_managed_paths(
-            [path, *(commit_paths or [])],
+            [path, *generated_paths, *(commit_paths or [])],
             operation,
             root.get("run_id", ""),
             checksum,
@@ -651,6 +669,8 @@ def write_managed_tree(
         "integrity": integrity,
         "commit": commit,
     }
+    if generated_paths:
+        result["svg_path"] = str(generated_paths[0])
     if commit["status"] == "failed":
         result["status"] = "persisted_uncommitted"
     else:
@@ -1383,9 +1403,7 @@ def awaiting_dynamic_groups(root: ET.Element) -> List[Dict[str, str]]:
     return groups
 
 
-def tree_snapshot(path: Path, config: Dict[str, Any]) -> Dict[str, Any]:
-    tree, integrity = read_tree_with_integrity(path, config)
-    root = tree.getroot()
+def snapshot_from_root(root: ET.Element, path: Path, integrity: Dict[str, Any]) -> Dict[str, Any]:
     root_n = root_node(root)
     return {
         "tree_path": str(path.resolve()),
@@ -1412,6 +1430,161 @@ def tree_snapshot(path: Path, config: Dict[str, Any]) -> Dict[str, Any]:
         ],
         "root": snapshot_node(root, root_n),
     }
+
+
+def tree_snapshot(path: Path, config: Dict[str, Any]) -> Dict[str, Any]:
+    tree, integrity = read_tree_with_integrity(path, config)
+    return snapshot_from_root(tree.getroot(), path, integrity)
+
+
+def runtime_svg_filename(name: str, run_id: str) -> str:
+    fallback = slug(run_id, "orchestration")
+    return f"{slug(name or run_id, fallback)}.svg"
+
+
+def runtime_svg_path(tree_path: Path, root: ET.Element) -> Path:
+    return tree_path.parent / runtime_svg_filename(root.get("name", ""), root.get("run_id", ""))
+
+
+def _svg_text(value: Any, limit: int) -> str:
+    text = str(value or "")
+    if len(text) > limit:
+        text = f"{text[: max(limit - 1, 0)]}\u2026"
+    return html.escape(text)
+
+
+def _layout_snapshot_tree(root: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], int, int]:
+    heights: Dict[str, int] = {}
+
+    def measure(node: Dict[str, Any]) -> int:
+        child_nodes = node.get("children") or []
+        if not child_nodes:
+            heights[str(node.get("id", ""))] = SVG_NODE_HEIGHT
+            return SVG_NODE_HEIGHT
+        child_height = sum(measure(child) for child in child_nodes)
+        height = max(SVG_NODE_HEIGHT, child_height + SVG_ROW_GAP * max(len(child_nodes) - 1, 0))
+        heights[str(node.get("id", ""))] = height
+        return height
+
+    root_height = measure(root)
+    nodes: List[Dict[str, Any]] = []
+    edges: List[Dict[str, Any]] = []
+    max_depth = 0
+
+    def place(node: Dict[str, Any], depth: int, top: int, parent_id: str = "") -> None:
+        nonlocal max_depth
+        max_depth = max(max_depth, depth)
+        node_id = str(node.get("id", ""))
+        subtree_height = heights[node_id]
+        position = {
+            "node": node,
+            "x": SVG_PADDING + depth * (SVG_NODE_WIDTH + SVG_COLUMN_GAP),
+            "y": SVG_HEADER_HEIGHT + SVG_PADDING + top + (subtree_height - SVG_NODE_HEIGHT) / 2,
+        }
+        nodes.append(position)
+        if parent_id:
+            edges.append({"source_id": parent_id, "target_id": node_id, "status": node.get("status", "")})
+        child_top = top
+        for child in node.get("children") or []:
+            place(child, depth + 1, child_top, node_id)
+            child_top += heights[str(child.get("id", ""))] + SVG_ROW_GAP
+
+    place(root, 0, 0)
+    width = SVG_PADDING * 2 + (max_depth + 1) * SVG_NODE_WIDTH + max_depth * SVG_COLUMN_GAP
+    height = SVG_HEADER_HEIGHT + SVG_PADDING * 2 + root_height
+    return nodes, edges, width, height
+
+
+def render_snapshot_svg(snapshot: Dict[str, Any]) -> str:
+    root = snapshot.get("root")
+    if not isinstance(root, dict):
+        raise RuntimeErrorBase("snapshot has no root node")
+    nodes, edges, width, height = _layout_snapshot_tree(root)
+    positions = {str(item["node"].get("id", "")): item for item in nodes}
+    metadata = snapshot.get("metadata") or {}
+    status_colors = {
+        "succeeded": "#4ade80",
+        "running": "#60a5fa",
+        "ready": "#60a5fa",
+        "failed": "#f87171",
+        "blocked": "#f87171",
+        "skipped": "#fbbf24",
+        "pending": "#94a3b8",
+    }
+    lines = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+            f'viewBox="0 0 {width} {height}" role="img" aria-labelledby="title description">'
+        ),
+        f'  <title id="title">{_svg_text(metadata.get("name") or "Orchestration", 160)}</title>',
+        (
+            '  <desc id="description">Complete orchestration tree for '
+            f'{_svg_text(metadata.get("run_id"), 160)}.</desc>'
+        ),
+        '  <rect width="100%" height="100%" fill="#0b1220"/>',
+        (
+            f'  <text x="{SVG_PADDING}" y="31" fill="#f8fafc" '
+            'font-family="Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">'
+            f'{_svg_text(metadata.get("name") or "Orchestration", 100)}</text>'
+        ),
+        (
+            f'  <text x="{SVG_PADDING}" y="53" fill="#94a3b8" '
+            'font-family="Segoe UI,Arial,sans-serif" font-size="12">'
+            f'Run {_svg_text(metadata.get("run_id"), 80)} \u00b7 {_svg_text(metadata.get("status"), 24)}</text>'
+        ),
+    ]
+    for edge in edges:
+        source = positions[edge["source_id"]]
+        target = positions[edge["target_id"]]
+        start_x = source["x"] + SVG_NODE_WIDTH
+        start_y = source["y"] + SVG_NODE_HEIGHT / 2
+        end_x = target["x"]
+        end_y = target["y"] + SVG_NODE_HEIGHT / 2
+        control = max((end_x - start_x) * 0.5, 36)
+        color = status_colors.get(str(edge["status"]), "#4b607a")
+        dash = ' stroke-dasharray="6 5"' if edge["status"] == "skipped" else ""
+        lines.append(
+            f'  <path d="M {start_x:g} {start_y:g} C {start_x + control:g} {start_y:g}, '
+            f'{end_x - control:g} {end_y:g}, {end_x:g} {end_y:g}" fill="none" '
+            f'stroke="{color}" stroke-width="2"{dash}/>'
+        )
+    for item in nodes:
+        node = item["node"]
+        x = item["x"]
+        y = item["y"]
+        status = str(node.get("status", "pending"))
+        color = status_colors.get(status, "#94a3b8")
+        role = " / ".join(part for part in (node.get("type"), node.get("role")) if part)
+        lines.extend(
+            [
+                f'  <g data-node-id="{html.escape(str(node.get("id", "")), quote=True)}" data-status="{html.escape(status, quote=True)}">',
+                f'    <title>{html.escape(str(node.get("title") or node.get("id") or ""))}</title>',
+                (
+                    f'    <rect x="{x:g}" y="{y:g}" width="{SVG_NODE_WIDTH}" height="{SVG_NODE_HEIGHT}" '
+                    'rx="9" fill="#172033" stroke="#475569"/>'
+                ),
+                f'    <rect x="{x:g}" y="{y:g}" width="4" height="{SVG_NODE_HEIGHT}" rx="2" fill="{color}"/>',
+                (
+                    f'    <text x="{x + 14:g}" y="{y + 27:g}" fill="#f8fafc" '
+                    'font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">'
+                    f'{_svg_text(node.get("title") or node.get("id"), 30)}</text>'
+                ),
+                (
+                    f'    <text x="{x + 14:g}" y="{y + 49:g}" fill="#94a3b8" '
+                    'font-family="Segoe UI,Arial,sans-serif" font-size="11">'
+                    f'{_svg_text(role, 35)}</text>'
+                ),
+                (
+                    f'    <text x="{x + 14:g}" y="{y + 70:g}" fill="{color}" '
+                    'font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">'
+                    f'{_svg_text(status.upper(), 24)}</text>'
+                ),
+                "  </g>",
+            ]
+        )
+    lines.append("</svg>")
+    return "\n".join(lines) + "\n"
 
 
 def template_id(node: ET.Element) -> str:

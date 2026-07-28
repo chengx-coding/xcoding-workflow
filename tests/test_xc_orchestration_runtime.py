@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import errno
 import json
 import os
@@ -7,6 +8,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import urllib.error
@@ -14,6 +16,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest import mock
+from urllib.parse import urlparse
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -23,7 +26,9 @@ RUNTIME_CLI = RUNTIME_SCRIPTS / "orchestration.py"
 VIEWER_SERVER = RUNTIME_SCRIPTS / "viewer_server.py"
 
 sys.path.insert(0, str(RUNTIME_SCRIPTS))
+import orchestration as runtime_cli
 import runtime_core as core
+import viewer_server
 
 
 class OrchestrationRuntimeCliTests(unittest.TestCase):
@@ -389,6 +394,38 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
 
         self.assertEqual(core.blackboard_updated_at(root), "2026-07-27T10:05:00+00:00")
 
+    def test_snapshot_svg_is_complete_parseable_and_escaped(self) -> None:
+        snapshot = {
+            "metadata": {"name": "A & B", "run_id": "svg-run", "status": "running"},
+            "root": {
+                "id": "root",
+                "title": "Root <node>",
+                "type": "composite",
+                "role": "root",
+                "status": "running",
+                "children": [
+                    {
+                        "id": "child",
+                        "title": "Child & work",
+                        "type": "task",
+                        "role": "work",
+                        "status": "succeeded",
+                        "children": [],
+                    }
+                ],
+            },
+        }
+
+        rendered = core.render_snapshot_svg(snapshot)
+        parsed = ET.fromstring(rendered)
+
+        self.assertEqual(parsed.tag, "{http://www.w3.org/2000/svg}svg")
+        self.assertEqual(len(parsed.findall(".//{http://www.w3.org/2000/svg}g")), 2)
+        self.assertEqual(len(parsed.findall(".//{http://www.w3.org/2000/svg}path")), 1)
+        self.assertIn("A &amp; B", rendered)
+        self.assertIn("Root &lt;node&gt;", rendered)
+        self.assertEqual(core.runtime_svg_filename("Viewer Run", "fallback"), "viewer-run.svg")
+
     def test_terminal_checkpoint_rejects_artifact_outside_context(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"
@@ -444,6 +481,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.assertEqual(payload["error"]["details"]["status"], "persisted_uncommitted")
             self.assertFalse(self.git_has_head(context))
             self.assertTrue(outside_artifact.exists())
+            self.assertFalse((tree_path.parent / "terminal-commit.svg").exists())
 
             node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
             self.assertEqual(node["status"], "running")
@@ -1292,7 +1330,16 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             root_id = str(self.run_cli("find", "--tree", str(tree_path), "--template-id", "root", cwd=project)["nodes"][0]["id"])
             first = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
             self.run_cli("start", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
-            self.run_cli("complete", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+            first_completion = self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                str(first["id"]),
+                cwd=project,
+            )
+            svg_path = Path(str(first_completion["svg_path"]))
+            first_svg = svg_path.read_text(encoding="utf-8")
 
             sealed = self.run_cli_error("set", "--tree", str(tree_path), "--set", "late.change=true", cwd=project)
             self.assertEqual(sealed["error"]["code"], "tree_sealed")
@@ -1322,6 +1369,156 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             )
             correction = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
             self.assertEqual(correction["logical_key"], "approved-correction")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(correction["id"]), cwd=project)
+            second_completion = self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                str(correction["id"]),
+                cwd=project,
+            )
+            self.assertEqual(Path(str(second_completion["svg_path"])), svg_path)
+            second_svg = svg_path.read_text(encoding="utf-8")
+            self.assertNotEqual(second_svg, first_svg)
+            self.assertIn("Approved correction", second_svg)
+
+    def test_non_terminal_close_group_seals_with_svg_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            self.run_git(context, "init")
+            self.run_git(context, "config", "user.name", "XC Test")
+            self.run_git(context, "config", "user.email", "xc-test@example.invalid")
+            (context / "xc-orchestration-runtime.toml").write_text(
+                "[git]\nauto_commit = true\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            tree_path = self.init_flow(
+                project,
+                context,
+                config,
+                "close-group-seal",
+                [
+                    {
+                        "template_id": "work-group",
+                        "title": "Work group",
+                        "type": "composite",
+                        "role": "dynamic-group",
+                        "mode": "sequence",
+                    }
+                ],
+            )
+            group = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "work-group",
+                cwd=project,
+            )["nodes"][0]
+
+            closed = self.run_cli(
+                "close-group",
+                "--tree",
+                str(tree_path),
+                "--group",
+                str(group["id"]),
+                cwd=project,
+            )
+
+            svg_path = Path(str(closed["svg_path"]))
+            self.assertEqual(closed["commit"]["status"], "committed")
+            self.assertTrue(svg_path.is_file())
+            self.assertEqual(self.run_cli("summary", "--tree", str(tree_path), cwd=project)["status"], "complete")
+            changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
+            self.assertIn("runs/close-group-seal/runtime/orchestration.xml", changed_paths)
+            self.assertIn("runs/close-group-seal/runtime/close-group-seal.svg", changed_paths)
+
+    def test_non_terminal_seal_restores_tree_when_svg_render_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text(
+                "[git]\nauto_commit = false\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            tree_path = self.init_flow(
+                project,
+                context,
+                config,
+                "close-group-rollback",
+                [
+                    {
+                        "template_id": "work-group",
+                        "title": "Work group",
+                        "type": "composite",
+                        "role": "dynamic-group",
+                        "mode": "sequence",
+                    }
+                ],
+            )
+            group = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "work-group",
+                cwd=project,
+            )["nodes"][0]
+            before = tree_path.read_bytes()
+            args = argparse.Namespace(
+                tree=str(tree_path),
+                config="",
+                expected_revision=None,
+                group=str(group["id"]),
+            )
+
+            with mock.patch.object(core, "render_snapshot_svg", side_effect=RuntimeError("render failed")):
+                with self.assertRaisesRegex(RuntimeError, "render failed"):
+                    runtime_cli.cmd_close_group(args)
+
+            self.assertEqual(tree_path.read_bytes(), before)
+            self.assertFalse((tree_path.parent / "close-group-rollback.svg").exists())
+            summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+            self.assertEqual(summary["status"], "pending")
+            self.assertEqual(summary["awaiting_dynamic_groups"][0]["state"], "open")
+
+    def test_non_utf8_existing_svg_is_overwritten_or_restored_as_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "success"
+            _, tree_path, node_id = self.create_terminal_runtime(project, "binary-success", auto_commit=False)
+            svg_path = tree_path.parent / "terminal-commit.svg"
+            svg_path.write_bytes(b"\xff\xfeold-sidecar")
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            self.assertTrue(svg_path.read_bytes().startswith(b'<?xml version="1.0"'))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "rollback"
+            _, tree_path, node_id = self.create_terminal_runtime(project, "binary-rollback", auto_commit=True)
+            svg_path = tree_path.parent / "terminal-commit.svg"
+            previous = b"\xff\xfeold-sidecar"
+            svg_path.write_bytes(previous)
+            outside = project / "outside.md"
+            outside.write_text("outside\n", encoding="utf-8")
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            rejected = self.run_cli_error(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--artifact",
+                str(outside),
+                cwd=project,
+            )
+            self.assertEqual(rejected["error"]["details"]["status"], "persisted_uncommitted")
+            self.assertEqual(svg_path.read_bytes(), previous)
 
     def test_terminal_commit_contains_tree_and_declared_artifact_only(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1413,11 +1610,16 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.assertEqual(completed["status"], "persisted")
             self.assertEqual(completed["commit"]["status"], "committed")
             self.assertEqual(completed["commit"]["index_sync"]["status"], "synced")
+            svg_path = Path(str(completed["svg_path"]))
+            self.assertEqual(svg_path, tree_path.parent / "terminal-commit.svg")
+            self.assertTrue(svg_path.is_file())
+            ET.fromstring(svg_path.read_text(encoding="utf-8"))
             self.assertTrue(self.git_has_head(context))
             self.assertEqual(self.run_git(context, "rev-list", "--count", "HEAD"), "1")
 
             changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
             self.assertIn(f"runs/{run_id}/runtime/orchestration.xml", changed_paths)
+            self.assertIn(f"runs/{run_id}/runtime/terminal-commit.svg", changed_paths)
             self.assertIn(f"runs/{run_id}/artifacts/write-document/document.md", changed_paths)
             self.assertNotIn("unrelated-user-file.md", changed_paths)
             self.assertIn("?? unrelated-user-file.md", self.run_git(context, "status", "--short"))
@@ -1467,6 +1669,40 @@ class ViewerServerTests(unittest.TestCase):
             return bool(self.request_json(f"{url}api/health").get("ok"))
         except (OSError, urllib.error.URLError, ValueError):
             return False
+
+    def start_test_server(
+        self,
+        root: Path,
+        tree_path: Path | None = None,
+    ) -> tuple[viewer_server.ViewerState, object, threading.Thread, str]:
+        config_path = self.write_config(root, idle_shutdown_seconds=30)
+        config = core.load_config(root, config_path)
+        registry = viewer_server.TreeRegistry(config, [root])
+        if tree_path is not None:
+            registry.register(str(tree_path), add_parent_root=True)
+        state = viewer_server.ViewerState(registry, config)
+        server = viewer_server.create_server("127.0.0.1", 0, state)
+        state.server = server
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        url = f"http://127.0.0.1:{server.server_address[1]}/"
+        return state, server, thread, url
+
+    def write_runtime_tree(self, root: Path, name: str = "viewer-tree") -> Path:
+        config = core.load_config(root, self.write_config(root, idle_shutdown_seconds=30))
+        template = core.parse_xml(RUNTIME_SKILL / "assets" / "minimal-template.xml")
+        tree = core.instantiate_runtime_tree(template, "viewer-run", name, [], config)
+        core.stabilize(tree.getroot())
+        tree_path = root / "runtime" / "orchestration.xml"
+        core.write_managed_tree(
+            tree,
+            tree_path,
+            "runtime",
+            config,
+            "test",
+            commit_on_write=False,
+        )
+        return tree_path
 
     def stop_background_process(self, pid: int) -> None:
         if os.name == "nt":
@@ -1578,7 +1814,131 @@ class ViewerServerTests(unittest.TestCase):
             self.assertIn("idle_shutdown", event_names)
             self.assertIn("viewer_stopped", event_names)
 
-    def test_static_viewer_assets_define_connection_badge_without_pan_handle(self) -> None:
+    def test_viewer_serves_svg_for_registered_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            tree_path = self.write_runtime_tree(root)
+            state, server, thread, url = self.start_test_server(root, tree_path)
+            try:
+                tree_id = state.registry.list()[0]["tree_id"]
+                with urllib.request.urlopen(f"{url}api/trees/{tree_id}/svg", timeout=2) as response:
+                    rendered = response.read().decode("utf-8")
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.headers.get_content_type(), "image/svg+xml")
+                    self.assertIn('filename="viewer-tree.svg"', response.headers["Content-Disposition"])
+                parsed = ET.fromstring(rendered)
+                self.assertEqual(parsed.tag, "{http://www.w3.org/2000/svg}svg")
+                self.assertEqual(
+                    len(parsed.findall(".//{http://www.w3.org/2000/svg}g")),
+                    sum(1 for _ in core.iter_nodes(core.parse_xml(tree_path).getroot())),
+                )
+            finally:
+                state.request_shutdown()
+                thread.join(timeout=3)
+                server.server_close()
+
+    def test_tree_picker_registers_selected_path_and_handles_cancel(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            selected_root = root / "selected"
+            selected_root.mkdir()
+            tree_path = self.write_runtime_tree(selected_root, "picked-tree")
+            state, server, thread, url = self.start_test_server(root)
+            try:
+                with mock.patch.object(viewer_server, "select_tree_file", return_value=str(tree_path)):
+                    picked = self.post_json(f"{url}api/tree-picker")
+                self.assertTrue(picked["selected"])
+                self.assertEqual(picked["tree"]["path"], str(tree_path.resolve()))
+                self.assertIn(tree_path.parent.resolve(), state.registry.allow_roots)
+
+                with mock.patch.object(viewer_server, "select_tree_file", return_value=None):
+                    canceled = self.post_json(f"{url}api/tree-picker")
+                self.assertFalse(canceled["selected"])
+            finally:
+                state.request_shutdown()
+                thread.join(timeout=3)
+                server.server_close()
+
+    def test_tree_picker_helper_reports_failure_and_serializes_requests(self) -> None:
+        failed = subprocess.CompletedProcess(
+            args=["tree-picker"],
+            returncode=2,
+            stdout='{"ok": false, "error": "no desktop"}\n',
+            stderr="",
+        )
+        with mock.patch.object(viewer_server.subprocess, "run", return_value=failed):
+            with self.assertRaisesRegex(core.RuntimeErrorBase, "unavailable"):
+                viewer_server.select_tree_file()
+
+        active = 0
+        max_active = 0
+        active_lock = threading.Lock()
+
+        def run_picker(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+            nonlocal active, max_active
+            with active_lock:
+                active += 1
+                max_active = max(max_active, active)
+            time.sleep(0.05)
+            with active_lock:
+                active -= 1
+            return subprocess.CompletedProcess(
+                args=["tree-picker"],
+                returncode=0,
+                stdout='{"ok": true, "selected": false, "path": ""}\n',
+                stderr="",
+            )
+
+        results: list[str | None] = []
+        errors: list[str] = []
+
+        def invoke_picker() -> None:
+            try:
+                results.append(viewer_server.select_tree_file())
+            except core.RuntimeErrorBase as exc:
+                errors.append(str(exc))
+
+        with mock.patch.object(viewer_server.subprocess, "run", side_effect=run_picker):
+            threads = [threading.Thread(target=invoke_picker) for _ in range(2)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=2)
+
+        self.assertEqual(max_active, 1)
+        self.assertEqual(results, [None])
+        self.assertEqual(errors, ["a native file selection dialog is already active"])
+
+    def test_tree_picker_rejects_foreign_browser_origin(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state, server, thread, url = self.start_test_server(root)
+            try:
+                with mock.patch.object(viewer_server, "select_tree_file") as picker:
+                    for host, origin in (
+                        (urlparse(url).netloc, "https://example.invalid"),
+                        ("attacker.invalid", "http://attacker.invalid"),
+                    ):
+                        request = urllib.request.Request(
+                            f"{url}api/tree-picker",
+                            data=b"{}",
+                            headers={
+                                "Content-Type": "application/json",
+                                "Host": host,
+                                "Origin": origin,
+                            },
+                            method="POST",
+                        )
+                        with self.assertRaises(urllib.error.HTTPError) as raised:
+                            urllib.request.urlopen(request, timeout=2)
+                        self.assertEqual(raised.exception.code, 403)
+                    picker.assert_not_called()
+            finally:
+                state.request_shutdown()
+                thread.join(timeout=3)
+                server.server_close()
+
+    def test_static_viewer_assets_define_refresh_resize_zoom_picker_and_svg_controls(self) -> None:
         static_dir = RUNTIME_SKILL / "viewer" / "static"
         index = (static_dir / "index.html").read_text(encoding="utf-8")
         app = (static_dir / "app.js").read_text(encoding="utf-8")
@@ -1589,8 +1949,21 @@ class ViewerServerTests(unittest.TestCase):
         self.assertIn("function scheduleReconnect()", app)
         self.assertIn('setConnectionStatus("disconnected")', app)
         self.assertNotIn("graphPanHandle", app)
+        self.assertIn('id="save-svg-button"', index)
+        self.assertIn('id="pick-tree-button"', index)
+        self.assertIn('id="zoom-slider"', index)
+        self.assertIn('id="graph-resize-handle"', index)
+        self.assertIn("const AUTO_REFRESH_MS = 20000", app)
+        self.assertIn("window.setInterval(refreshTrees, AUTO_REFRESH_MS)", app)
+        self.assertIn("elements.zoomSlider.value", app)
+        self.assertIn("function zoomAroundViewportCenter(scale)", app)
+        self.assertIn("function startResizing(event)", app)
+        self.assertIn("/api/tree-picker", app)
+        self.assertIn("/svg`", app)
         self.assertIn('.server-status[data-connection="connected"]', css)
         self.assertNotIn(".graph-pan-handle", css)
+        self.assertIn("height: clamp(680px, 76vh, 1080px)", css)
+        self.assertIn(".graph-resize-handle", css)
 
 
 if __name__ == "__main__":

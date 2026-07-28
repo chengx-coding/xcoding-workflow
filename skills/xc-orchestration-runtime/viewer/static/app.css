@@ -170,7 +170,7 @@ button:focus-visible {
 
 .register-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: end;
 }
 
@@ -379,13 +379,44 @@ button:focus-visible {
 }
 
 .graph-heading {
-  min-height: 40px;
+  min-height: 48px;
   margin-bottom: 12px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.zoom-control {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 190px) 42px;
+  align-items: center;
+  gap: 8px;
+}
+
+.zoom-control label,
+.zoom-control output {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.zoom-control input {
+  width: min(190px, 22vw);
+  min-height: 24px;
+  padding: 0;
+  accent-color: #60a5fa;
+}
+
+.zoom-control output {
+  color: #dbeafe;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .graph-viewport {
   position: relative;
-  height: 568px;
+  height: clamp(680px, 76vh, 1080px);
+  min-height: 480px;
   overflow: auto;
   border: 1px solid #263244;
   border-radius: 8px;
@@ -398,6 +429,31 @@ button:focus-visible {
   cursor: grab;
   touch-action: none;
   user-select: none;
+}
+
+.graph-resize-handle {
+  height: 14px;
+  display: grid;
+  place-items: center;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.graph-resize-handle::before {
+  width: 72px;
+  height: 4px;
+  border-radius: 999px;
+  background: #475569;
+  content: "";
+}
+
+.graph-resize-handle:hover::before,
+.graph-resize-handle:focus-visible::before {
+  background: #60a5fa;
+}
+
+.graph-resize-handle:focus-visible {
+  outline: none;
 }
 
 .graph-viewport.panning {
@@ -731,7 +787,28 @@ pre {
     width: 48px;
   }
 
+  .register-form {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .register-form #pick-tree-button {
+    grid-column: 1 / -1;
+  }
+
+  .graph-heading {
+    display: block;
+  }
+
+  .zoom-control {
+    margin-top: 12px;
+    grid-template-columns: auto minmax(100px, 1fr) 42px;
+  }
+
+  .zoom-control input {
+    width: 100%;
+  }
+
   .graph-viewport {
-    height: 520px;
+    height: clamp(640px, 82vh, 980px);
   }
 }
