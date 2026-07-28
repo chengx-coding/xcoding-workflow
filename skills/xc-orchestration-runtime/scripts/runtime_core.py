@@ -116,6 +116,10 @@ class InvalidTransitionError(RuntimeErrorBase):
     code = "invalid_transition"
 
 
+class NodeNotReadyError(RuntimeErrorBase):
+    code = "node_not_ready"
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
@@ -895,36 +899,120 @@ def when_policy(node: ET.Element) -> str:
     return node.get("when.policy", "reactive")
 
 
-def dependencies_satisfied(root: ET.Element, node: ET.Element) -> bool:
+def incomplete_dependency_ids(
+    root: ET.Element,
+    node: ET.Element,
+    lookup: Optional[Dict[str, ET.Element]] = None,
+) -> List[str]:
     raw = node.get("depends_on", "").strip()
     if not raw:
-        return True
-    lookup = nodes_by_id(root)
+        return []
+    node_lookup = lookup if lookup is not None else nodes_by_id(root)
+    incomplete: List[str] = []
     for dep_id in [item.strip() for item in raw.split(",") if item.strip()]:
-        dep = lookup.get(dep_id)
+        dep = node_lookup.get(dep_id)
         if dep is None or dep.get("status", "pending") not in SUCCESS_STATUSES:
-            return False
-    return True
+            incomplete.append(dep_id)
+    return incomplete
 
 
-def is_unlocked_by_ancestors(root: ET.Element, node: ET.Element) -> bool:
-    parents = element_parent_map(root)
+def dependencies_satisfied(root: ET.Element, node: ET.Element) -> bool:
+    return not incomplete_dependency_ids(root, node)
+
+
+def ancestor_readiness_blocker(
+    root: ET.Element,
+    node: ET.Element,
+    parents: Optional[Dict[str, ET.Element]] = None,
+    lookup: Optional[Dict[str, ET.Element]] = None,
+    bb: Optional[Dict[str, str]] = None,
+) -> Optional[Dict[str, Any]]:
+    parent_lookup = parents if parents is not None else element_parent_map(root)
+    node_lookup = lookup if lookup is not None else nodes_by_id(root)
+    blackboard_values = bb if bb is not None else blackboard(root)
     current = node
     current_id = current.get("id", "")
-    while current_id in parents:
-        parent = parents[current_id]
-        if parent.get("status") in {"failed", "blocked"}:
-            return False
-        mode = parent.get("mode", "sequence")
-        if mode == "sequence":
+    while current_id in parent_lookup:
+        parent = parent_lookup[current_id]
+        parent_id = parent.get("id", "")
+        parent_status = parent.get("status", "pending")
+        if parent_status == "skipped":
+            reason = (
+                "ancestor_condition_false"
+                if parent.get("skip_reason") == "when"
+                else "ancestor_skipped"
+            )
+            return {
+                "reason": reason,
+                "blocker_node_id": parent_id,
+                "blocker_status": parent_status,
+            }
+        if parent_status in {"failed", "blocked"}:
+            return {
+                "reason": f"ancestor_{parent_status}",
+                "blocker_node_id": parent_id,
+                "blocker_status": parent_status,
+            }
+        when = parent.get("when")
+        if when and not eval_when(when, blackboard_values):
+            return {
+                "reason": "ancestor_condition_false",
+                "blocker_node_id": parent_id,
+                "blocker_status": parent_status,
+            }
+        incomplete = incomplete_dependency_ids(root, parent, node_lookup)
+        if incomplete:
+            return {
+                "reason": "ancestor_dependency_incomplete",
+                "blocker_node_id": parent_id,
+                "blocker_status": parent_status,
+                "dependency_ids": incomplete,
+            }
+        if parent.get("mode", "sequence") == "sequence":
             for sibling in children(parent):
                 if sibling is current:
                     break
-                if sibling.get("status", "pending") not in SUCCESS_STATUSES:
-                    return False
+                sibling_status = sibling.get("status", "pending")
+                if sibling_status not in SUCCESS_STATUSES:
+                    return {
+                        "reason": "sequence_predecessor_incomplete",
+                        "blocker_node_id": sibling.get("id", ""),
+                        "blocker_status": sibling_status,
+                    }
         current = parent
         current_id = current.get("id", "")
-    return dependencies_satisfied(root, node)
+    return None
+
+
+def node_readiness_blocker(
+    root: ET.Element,
+    node: ET.Element,
+    parents: Optional[Dict[str, ET.Element]] = None,
+    lookup: Optional[Dict[str, ET.Element]] = None,
+    bb: Optional[Dict[str, str]] = None,
+) -> Optional[Dict[str, Any]]:
+    node_lookup = lookup if lookup is not None else nodes_by_id(root)
+    blackboard_values = bb if bb is not None else blackboard(root)
+    status = node.get("status", "pending")
+    if status not in RUNNABLE_STATUSES:
+        reason = "condition_false" if status == "skipped" and node.get("skip_reason") == "when" else "node_status"
+        return {"reason": reason}
+    when = node.get("when")
+    if when and not eval_when(when, blackboard_values):
+        return {"reason": "condition_false"}
+    incomplete = incomplete_dependency_ids(root, node, node_lookup)
+    if incomplete:
+        return {"reason": "dependency_incomplete", "dependency_ids": incomplete}
+    return ancestor_readiness_blocker(root, node, parents, node_lookup, blackboard_values)
+
+
+def is_unlocked_by_ancestors(root: ET.Element, node: ET.Element) -> bool:
+    lookup = nodes_by_id(root)
+    return not incomplete_dependency_ids(root, node, lookup) and ancestor_readiness_blocker(
+        root,
+        node,
+        lookup=lookup,
+    ) is None
 
 
 def reset_subtree(node: ET.Element) -> None:
@@ -1129,40 +1217,60 @@ def stabilize(root: ET.Element) -> bool:
     return changed
 
 
-def is_runnable(root: ET.Element, node: ET.Element) -> bool:
-    if node.get("status", "pending") not in RUNNABLE_STATUSES:
-        return False
+def is_runnable(
+    root: ET.Element,
+    node: ET.Element,
+    parents: Optional[Dict[str, ET.Element]] = None,
+    lookup: Optional[Dict[str, ET.Element]] = None,
+    bb: Optional[Dict[str, str]] = None,
+) -> bool:
     if node_type(node) in {"composite", "loop"} or children(node):
         return False
-    if not dependencies_satisfied(root, node):
-        return False
-    when = node.get("when")
-    return not when or eval_when(when, blackboard(root))
+    return node_readiness_blocker(root, node, parents, lookup, bb) is None
 
 
-def ready_from(root: ET.Element, node: ET.Element, limit: int) -> List[ET.Element]:
+def ready_from(
+    root: ET.Element,
+    node: ET.Element,
+    limit: int,
+    parents: Optional[Dict[str, ET.Element]] = None,
+    lookup: Optional[Dict[str, ET.Element]] = None,
+    bb: Optional[Dict[str, str]] = None,
+) -> List[ET.Element]:
+    parent_lookup = parents if parents is not None else element_parent_map(root)
+    node_lookup = lookup if lookup is not None else nodes_by_id(root)
+    blackboard_values = bb if bb is not None else blackboard(root)
     if limit <= 0 or node.get("status") in TERMINAL_STATUSES:
         return []
     kids = children(node)
     if not kids:
-        return [node] if is_runnable(root, node) else []
+        return [node] if is_runnable(root, node, parent_lookup, node_lookup, blackboard_values) else []
     mode = node.get("mode", "sequence")
     if mode == "parallel":
         ready: List[ET.Element] = []
         for child in kids:
-            ready.extend(ready_from(root, child, limit - len(ready)))
+            ready.extend(
+                ready_from(
+                    root,
+                    child,
+                    limit - len(ready),
+                    parent_lookup,
+                    node_lookup,
+                    blackboard_values,
+                )
+            )
             if len(ready) >= limit:
                 break
         return ready[:limit]
     if mode == "switch":
         for child in kids:
             if child.get("status") != "skipped":
-                return ready_from(root, child, limit)
+                return ready_from(root, child, limit, parent_lookup, node_lookup, blackboard_values)
         return []
     for child in kids:
         if child.get("status", "pending") in SUCCESS_STATUSES:
             continue
-        return ready_from(root, child, limit)
+        return ready_from(root, child, limit, parent_lookup, node_lookup, blackboard_values)
     return []
 
 
@@ -1845,8 +1953,16 @@ def require_executable_leaf(root: ET.Element, node_id: str) -> ET.Element:
 
 def begin_node(root: ET.Element, node_id: str, agent: str = "") -> ET.Element:
     node = require_executable_leaf(root, node_id)
-    if not is_runnable(root, node):
-        raise RuntimeErrorBase("node is not ready", {"node": node_id, "status": node.get("status")})
+    blocker = node_readiness_blocker(root, node)
+    if blocker is not None:
+        raise NodeNotReadyError(
+            "node is not ready",
+            {
+                "node_id": node_id,
+                "status": node.get("status", "pending"),
+                **blocker,
+            },
+        )
     node.set("status", "running")
     node.set("started_at", utc_now())
     if agent:

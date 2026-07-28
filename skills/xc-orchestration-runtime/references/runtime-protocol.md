@@ -55,10 +55,33 @@ of whether a caller supplies that optimistic precondition.
 - A runtime node preserves `origin_template_id` and `origin_instance_id`.
 - Dynamic nodes use a caller-provided kebab-case `logical_key`; the runtime assigns the real ID.
 - Only `task` and `gate` leaves can be started, completed, failed, blocked, or unblocked.
+- `start` uses the same core readiness predicate as `next`; possessing a runtime node ID does not bypass conditions, dependencies, ancestor state, or sequence ordering.
 - `complete`, `fail`, and `block` require the target leaf to be `running`.
 - `composite` and `loop` states are recalculated by the runtime.
 - `succeeded` and `skipped` let parent scheduling continue.
 - `failed` and `blocked` stop their enclosing sequence until handled.
+
+When a mutable tree contains an executable leaf that is not currently ready,
+`start` returns `node_not_ready`. Its `details.reason` is one of:
+
+```text
+node_status
+condition_false
+dependency_incomplete
+ancestor_skipped
+ancestor_failed
+ancestor_blocked
+ancestor_condition_false
+ancestor_dependency_incomplete
+sequence_predecessor_incomplete
+```
+
+The details may also identify the blocking node, its status, or incomplete
+dependency IDs. A conditionally skipped node or ancestor uses the condition
+reason; an unselected switch ancestor uses `ancestor_skipped`. Rejection is
+read-only: the node status and runtime revision do not change. Mutation-level
+guards run first, so stale `--expected-revision` remains `state_conflict` and a
+successful sealed tree remains `tree_sealed`.
 
 Nodes with `when` default to `when.policy=reactive`, so a conditionally skipped
 node may become pending when the condition turns true. A template may set

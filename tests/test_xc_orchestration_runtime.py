@@ -217,6 +217,104 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         core.apply_integrity(root, "template", config)
         core.atomic_write_text(path, core.serialize_xml(root, "template"))
 
+    def write_flow_template(
+        self,
+        path: Path,
+        config: dict[str, object],
+        child_specs: list[dict[str, object]],
+        *,
+        mode: str = "sequence",
+        blackboard: dict[str, str] | None = None,
+    ) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": path.stem})
+        variables = ET.SubElement(root, "blackboard")
+        for key, value in (blackboard or {}).items():
+            ET.SubElement(variables, "var", {"key": key}).text = value
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": path.stem,
+                "type": "composite",
+                "role": "root",
+                "mode": mode,
+                "executor": "main",
+            },
+        )
+        holder = ET.SubElement(workflow, "children")
+
+        def append_node(parent: ET.Element, spec: dict[str, object]) -> None:
+            nested = list(spec.get("children", []))
+            template_id = str(spec["template_id"])
+            attributes = {
+                "template_id": template_id,
+                "title": str(spec.get("title", template_id)),
+                "type": str(spec.get("type", "composite" if nested else "task")),
+                "role": str(spec.get("role", template_id)),
+                "executor": str(spec.get("executor", "main")),
+            }
+            for key, value in spec.items():
+                if key not in {"template_id", "title", "type", "role", "executor", "children"}:
+                    attributes[key] = str(value)
+            if nested and "mode" not in attributes:
+                attributes["mode"] = "sequence"
+            node = ET.SubElement(parent, "node", attributes)
+            if nested:
+                nested_holder = ET.SubElement(node, "children")
+                for child in nested:
+                    append_node(nested_holder, child)
+
+        for child_spec in child_specs:
+            append_node(holder, child_spec)
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
+    def init_flow(
+        self,
+        project: Path,
+        context: Path,
+        config: dict[str, object],
+        run_id: str,
+        child_specs: list[dict[str, object]],
+        *,
+        mode: str = "sequence",
+        blackboard: dict[str, str] | None = None,
+    ) -> Path:
+        template = project / f"{run_id}.xml"
+        self.write_flow_template(template, config, child_specs, mode=mode, blackboard=blackboard)
+        initialized = self.run_cli(
+            "init",
+            "--template",
+            str(template),
+            "--runtime-dir",
+            str(context / "runs" / run_id / "runtime"),
+            "--run-id",
+            run_id,
+            cwd=project,
+        )
+        return Path(str(initialized["tree_path"]))
+
+    def assert_start_not_ready(
+        self,
+        project: Path,
+        tree_path: Path,
+        node_id: str,
+        reason: str,
+    ) -> dict[str, object]:
+        before_summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+        before_node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+        self.assertNotIn(node_id, {node["id"] for node in before_summary["ready"]})
+        rejected = self.run_cli_error("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+        self.assertEqual(rejected["error"]["code"], "node_not_ready")
+        self.assertEqual(rejected["error"]["details"]["reason"], reason)
+        self.assertEqual(rejected["error"]["details"]["status"], before_node["status"])
+        after_summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+        after_node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+        self.assertEqual(after_summary["revision"], before_summary["revision"])
+        self.assertEqual(after_node["status"], before_node["status"])
+        return rejected
+
     def test_config_accepts_utf8_bom(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             context = Path(temporary) / ".xcoding"
@@ -356,6 +454,311 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.assertEqual(optional["status"], "skipped")
             ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
             self.assertEqual([node["template_id"] for node in ready], ["finish"])
+
+    def test_start_rejects_sequence_condition_and_switch_bypasses(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+
+            sequence_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "sequence-readiness",
+                [
+                    {"template_id": "first"},
+                    {"template_id": "second"},
+                ],
+            )
+            second = self.run_cli(
+                "find",
+                "--tree",
+                str(sequence_tree),
+                "--template-id",
+                "second",
+                cwd=project,
+            )["nodes"][0]
+            sequence_rejection = self.assert_start_not_ready(
+                project,
+                sequence_tree,
+                str(second["id"]),
+                "sequence_predecessor_incomplete",
+            )
+            self.assertEqual(sequence_rejection["error"]["details"]["blocker_status"], "pending")
+
+            revision = int(self.run_cli("summary", "--tree", str(sequence_tree), cwd=project)["revision"])
+            self.run_cli("set", "--tree", str(sequence_tree), "--set", "unrelated.change=true", cwd=project)
+            before_stale = self.run_cli("summary", "--tree", str(sequence_tree), cwd=project)
+            before_second = self.run_cli(
+                "show",
+                "--tree",
+                str(sequence_tree),
+                "--node",
+                str(second["id"]),
+                cwd=project,
+            )["node"]
+            stale = self.run_cli_error(
+                "start",
+                "--tree",
+                str(sequence_tree),
+                "--node",
+                str(second["id"]),
+                "--expected-revision",
+                str(revision),
+                cwd=project,
+            )
+            self.assertEqual(stale["error"]["code"], "state_conflict")
+            after_stale = self.run_cli("summary", "--tree", str(sequence_tree), cwd=project)
+            after_second = self.run_cli(
+                "show",
+                "--tree",
+                str(sequence_tree),
+                "--node",
+                str(second["id"]),
+                cwd=project,
+            )["node"]
+            self.assertEqual(after_stale["revision"], before_stale["revision"])
+            self.assertEqual(after_second["status"], before_second["status"])
+
+            condition_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "condition-readiness",
+                [
+                    {"template_id": "conditional", "when": "work.enabled == true"},
+                    {"template_id": "control"},
+                ],
+                mode="parallel",
+                blackboard={"work.enabled": "false"},
+            )
+            conditional = self.run_cli(
+                "find",
+                "--tree",
+                str(condition_tree),
+                "--template-id",
+                "conditional",
+                cwd=project,
+            )["nodes"][0]
+            self.assert_start_not_ready(project, condition_tree, str(conditional["id"]), "condition_false")
+
+            ancestor_condition_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "ancestor-condition-readiness",
+                [
+                    {
+                        "template_id": "conditional-group",
+                        "when": "group.enabled == true",
+                        "children": [{"template_id": "conditional-child"}],
+                    },
+                    {"template_id": "control"},
+                ],
+                mode="parallel",
+                blackboard={"group.enabled": "false"},
+            )
+            conditional_child = self.run_cli(
+                "find",
+                "--tree",
+                str(ancestor_condition_tree),
+                "--template-id",
+                "conditional-child",
+                cwd=project,
+            )["nodes"][0]
+            self.assert_start_not_ready(
+                project,
+                ancestor_condition_tree,
+                str(conditional_child["id"]),
+                "ancestor_condition_false",
+            )
+
+            switch_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "switch-readiness",
+                [
+                    {
+                        "template_id": "route",
+                        "mode": "switch",
+                        "switch.key": "route.selected",
+                        "children": [
+                            {
+                                "template_id": "selected-case",
+                                "role": "case",
+                                "case.value": "selected",
+                                "children": [{"template_id": "selected-work"}],
+                            },
+                            {
+                                "template_id": "unselected-case",
+                                "role": "case",
+                                "case.value": "unselected",
+                                "children": [{"template_id": "unselected-work"}],
+                            },
+                        ],
+                    },
+                    {"template_id": "control"},
+                ],
+                mode="parallel",
+                blackboard={"route.selected": "selected"},
+            )
+            unselected = self.run_cli(
+                "find",
+                "--tree",
+                str(switch_tree),
+                "--template-id",
+                "unselected-work",
+                cwd=project,
+            )["nodes"][0]
+            self.assert_start_not_ready(project, switch_tree, str(unselected["id"]), "ancestor_skipped")
+
+    def test_start_rejects_failed_blocked_terminal_and_sealed_states(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+
+            for terminal_command, reason in (("fail", "ancestor_failed"), ("block", "ancestor_blocked")):
+                with self.subTest(terminal_command=terminal_command):
+                    tree_path = self.init_flow(
+                        project,
+                        context,
+                        config,
+                        f"{terminal_command}-ancestor",
+                        [
+                            {"template_id": "first"},
+                            {"template_id": "second"},
+                        ],
+                    )
+                    first = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+                    second = self.run_cli(
+                        "find",
+                        "--tree",
+                        str(tree_path),
+                        "--template-id",
+                        "second",
+                        cwd=project,
+                    )["nodes"][0]
+                    self.run_cli("start", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+                    self.run_cli(
+                        terminal_command,
+                        "--tree",
+                        str(tree_path),
+                        "--node",
+                        str(first["id"]),
+                        "--reason",
+                        "test outcome",
+                        cwd=project,
+                    )
+                    self.assert_start_not_ready(project, tree_path, str(second["id"]), reason)
+
+            parallel_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "parallel-readiness",
+                [
+                    {"template_id": "left"},
+                    {"template_id": "right"},
+                ],
+                mode="parallel",
+            )
+            ready = self.run_cli("next", "--tree", str(parallel_tree), cwd=project)["ready"]
+            self.assertEqual({node["template_id"] for node in ready}, {"left", "right"})
+            by_template = {str(node["template_id"]): node for node in ready}
+            self.run_cli("start", "--tree", str(parallel_tree), "--node", str(by_template["left"]["id"]), cwd=project)
+            self.run_cli("start", "--tree", str(parallel_tree), "--node", str(by_template["right"]["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(parallel_tree), "--node", str(by_template["left"]["id"]), cwd=project)
+            self.assert_start_not_ready(project, parallel_tree, str(by_template["left"]["id"]), "node_status")
+
+            sealed_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "sealed-start",
+                [{"template_id": "only"}],
+            )
+            only = self.run_cli("next", "--tree", str(sealed_tree), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(sealed_tree), "--node", str(only["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(sealed_tree), "--node", str(only["id"]), cwd=project)
+            sealed = self.run_cli_error("start", "--tree", str(sealed_tree), "--node", str(only["id"]), cwd=project)
+            self.assertEqual(sealed["error"]["code"], "tree_sealed")
+
+    def test_start_rejects_leaf_and_ancestor_dependency_bypasses(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+
+            leaf_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "leaf-dependency",
+                [
+                    {"template_id": "dependency"},
+                    {"template_id": "dependent", "depends_on_template": "local:dependency"},
+                ],
+                mode="parallel",
+            )
+            leaf_ready = self.run_cli("next", "--tree", str(leaf_tree), cwd=project)["ready"]
+            self.assertEqual([node["template_id"] for node in leaf_ready], ["dependency"])
+            dependent = self.run_cli(
+                "find",
+                "--tree",
+                str(leaf_tree),
+                "--template-id",
+                "dependent",
+                cwd=project,
+            )["nodes"][0]
+            leaf_rejection = self.assert_start_not_ready(
+                project,
+                leaf_tree,
+                str(dependent["id"]),
+                "dependency_incomplete",
+            )
+            self.assertEqual(len(leaf_rejection["error"]["details"]["dependency_ids"]), 1)
+
+            ancestor_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "ancestor-dependency",
+                [
+                    {"template_id": "dependency"},
+                    {
+                        "template_id": "dependent-group",
+                        "depends_on_template": "local:dependency",
+                        "children": [{"template_id": "dependent-child"}],
+                    },
+                ],
+                mode="parallel",
+            )
+            ancestor_ready = self.run_cli("next", "--tree", str(ancestor_tree), cwd=project)["ready"]
+            self.assertEqual([node["template_id"] for node in ancestor_ready], ["dependency"])
+            dependent_child = self.run_cli(
+                "find",
+                "--tree",
+                str(ancestor_tree),
+                "--template-id",
+                "dependent-child",
+                cwd=project,
+            )["nodes"][0]
+            ancestor_rejection = self.assert_start_not_ready(
+                project,
+                ancestor_tree,
+                str(dependent_child["id"]),
+                "ancestor_dependency_incomplete",
+            )
+            self.assertEqual(len(ancestor_rejection["error"]["details"]["dependency_ids"]), 1)
 
     def test_dynamic_artifact_metadata_and_declared_artifact_query(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
