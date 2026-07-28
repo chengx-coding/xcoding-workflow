@@ -60,7 +60,22 @@ Write short cross-node variables with `--set review.open_issues=false`.
 python "$SKILL_DIR/scripts/orchestration.py" fail `
   --tree <tree_ref> `
   --node <node_id> `
-  --reason "<attempted_action_and_failure>"
+  --reason "<attempted_action_and_failure>" `
+  --artifact <failure_evidence_path> `
+  --artifact <additional_evidence_path>
+
+python "$SKILL_DIR/scripts/orchestration.py" block `
+  --tree <tree_ref> `
+  --node <node_id> `
+  --reason "<external_prerequisite>" `
+  --artifact <blocker_evidence_path>
 ```
+
+`--artifact` is optional and repeatable for `fail` and `block`. With
+`auto_commit=true`, the terminal transition and all declarations enter one
+path-scoped checkpoint. A failed checkpoint restores the prior tree and
+returns `persisted_uncommitted`. With `auto_commit=false`, checkpoint path
+validation remains disabled and the terminal declarations persist without a
+context commit.
 
 Use `block` rather than `fail` when progress requires user input, external access, or another recoverable prerequisite.

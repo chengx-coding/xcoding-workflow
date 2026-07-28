@@ -1971,6 +1971,14 @@ def begin_node(root: ET.Element, node_id: str, agent: str = "") -> ET.Element:
     return node
 
 
+def append_result_artifacts(result: ET.Element, artifacts: Optional[Sequence[str]] = None) -> None:
+    if not artifacts:
+        return
+    holder = ensure_direct(result, "artifacts")
+    for artifact in artifacts:
+        ET.SubElement(holder, "artifact", {"path": artifact})
+
+
 def complete_node(
     root: ET.Element,
     node_id: str,
@@ -1990,10 +1998,7 @@ def complete_node(
     result = ensure_node_child(node, "result")
     if summary:
         ensure_node_child(result, "summary").text = summary
-    if artifacts:
-        holder = ensure_direct(result, "artifacts")
-        for artifact in artifacts:
-            ET.SubElement(holder, "artifact", {"path": artifact})
+    append_result_artifacts(result, artifacts)
     if validation:
         ensure_node_child(result, "validation").text = validation
     for key, value in variables or []:
@@ -2002,7 +2007,12 @@ def complete_node(
     return node
 
 
-def fail_node(root: ET.Element, node_id: str, reason: str) -> ET.Element:
+def fail_node(
+    root: ET.Element,
+    node_id: str,
+    reason: str,
+    artifacts: Optional[Sequence[str]] = None,
+) -> ET.Element:
     node = require_executable_leaf(root, node_id)
     if node.get("status") != "running":
         raise InvalidTransitionError(
@@ -2011,12 +2021,19 @@ def fail_node(root: ET.Element, node_id: str, reason: str) -> ET.Element:
         )
     node.set("status", "failed")
     node.set("failed_at", utc_now())
-    ensure_node_child(ensure_node_child(node, "result"), "failure_reason").text = reason
+    result = ensure_node_child(node, "result")
+    ensure_node_child(result, "failure_reason").text = reason
+    append_result_artifacts(result, artifacts)
     stabilize(root)
     return node
 
 
-def block_node(root: ET.Element, node_id: str, reason: str) -> ET.Element:
+def block_node(
+    root: ET.Element,
+    node_id: str,
+    reason: str,
+    artifacts: Optional[Sequence[str]] = None,
+) -> ET.Element:
     node = require_executable_leaf(root, node_id)
     if node.get("status") != "running":
         raise InvalidTransitionError(
@@ -2026,6 +2043,7 @@ def block_node(root: ET.Element, node_id: str, reason: str) -> ET.Element:
     node.set("status", "blocked")
     node.set("blocked_at", utc_now())
     node.set("block_reason", reason)
+    append_result_artifacts(ensure_node_child(node, "result"), artifacts)
     stabilize(root)
     return node
 
