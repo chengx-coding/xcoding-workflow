@@ -70,19 +70,54 @@ def write_runtime(
     commit_paths: Optional[List[Path]] = None,
     commit_on_write: bool = True,
 ) -> Dict[str, Any]:
+    original_tree = path.read_bytes() if path.exists() else None
+    was_sealed = bool(tree.getroot().get("sealed_at"))
     revision = core.finalize_runtime_mutation(tree.getroot())
+    newly_sealed = tree.getroot().get("status") == "succeeded" and not was_sealed
+    svg_path = core.runtime_svg_path(path, tree.getroot()) if newly_sealed else None
+    original_svg = svg_path.read_bytes() if svg_path is not None and svg_path.exists() else None
+
+    def restore_newly_sealed_write() -> None:
+        if original_tree is None:
+            path.unlink(missing_ok=True)
+        else:
+            core.atomic_write_bytes(path, original_tree)
+        if svg_path is None:
+            return
+        if original_svg is None:
+            svg_path.unlink(missing_ok=True)
+        else:
+            core.atomic_write_bytes(svg_path, original_svg)
+
     errors = core.validate_runtime_root(tree.getroot(), check_integrity=False)
     if errors:
         raise core.TreeValidationError("runtime structural validation failed", {"errors": errors})
-    persisted = core.write_managed_tree(
-        tree,
-        path,
-        "runtime",
-        config,
-        operation,
-        commit_paths=commit_paths,
-        commit_on_write=commit_on_write,
-    )
+    try:
+        persisted = core.write_managed_tree(
+            tree,
+            path,
+            "runtime",
+            config,
+            operation,
+            commit_paths=commit_paths,
+            commit_on_write=commit_on_write or newly_sealed,
+            export_runtime_svg=newly_sealed,
+        )
+    except Exception:
+        if newly_sealed:
+            restore_newly_sealed_write()
+        raise
+    if newly_sealed and persisted["status"] == "persisted_uncommitted":
+        restore_newly_sealed_write()
+        raise core.RuntimeErrorBase(
+            "completed tree checkpoint could not be committed; runtime state was restored",
+            {
+                "status": "persisted_uncommitted",
+                "operation": operation,
+                "tree_path": str(path),
+                "commit": persisted["commit"],
+            },
+        )
     payload: Dict[str, Any] = {
         "status": persisted["status"],
         "operation": operation,
@@ -92,6 +127,8 @@ def write_runtime(
         "commit": persisted["commit"],
         "revision": revision,
     }
+    if persisted.get("svg_path"):
+        payload["svg_path"] = persisted["svg_path"]
     if extra:
         payload.update(extra)
     return payload
@@ -105,17 +142,37 @@ def write_terminal_runtime(
     extra: Optional[Dict[str, Any]] = None,
     commit_paths: Optional[List[Path]] = None,
 ) -> Dict[str, Any]:
-    original_text = path.read_text(encoding="utf-8")
-    payload = write_runtime(
-        tree,
-        path,
-        config,
-        operation,
-        extra,
-        commit_paths=commit_paths,
+    original_tree = path.read_bytes()
+    svg_path = (
+        core.runtime_svg_path(path, tree.getroot())
+        if tree.getroot().get("status") == "succeeded"
+        else None
     )
+    original_svg = svg_path.read_bytes() if svg_path is not None and svg_path.exists() else None
+
+    def restore_checkpoint() -> None:
+        core.atomic_write_bytes(path, original_tree)
+        if svg_path is None:
+            return
+        if original_svg is None:
+            svg_path.unlink(missing_ok=True)
+        else:
+            core.atomic_write_bytes(svg_path, original_svg)
+
+    try:
+        payload = write_runtime(
+            tree,
+            path,
+            config,
+            operation,
+            extra,
+            commit_paths=commit_paths,
+        )
+    except Exception:
+        restore_checkpoint()
+        raise
     if payload["status"] == "persisted_uncommitted":
-        core.atomic_write_text(path, original_text)
+        restore_checkpoint()
         raise core.RuntimeErrorBase(
             "terminal checkpoint could not be committed; runtime state was restored",
             {

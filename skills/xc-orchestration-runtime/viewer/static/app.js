@@ -8,6 +8,7 @@ const GRAPH = {
   maxScale: 1.5,
   scaleStep: 0.1,
 };
+const AUTO_REFRESH_MS = 20000;
 
 const state = {
   clientId: null,
@@ -26,6 +27,7 @@ const state = {
   blackboardCollapsedByTree: new Map(),
   sidebarCollapsed: false,
   pan: null,
+  resize: null,
   graphSize: { width: 0, height: 0 },
 };
 
@@ -35,7 +37,9 @@ const elements = {
   sidebarToggle: document.querySelector("#sidebar-toggle"),
   sidebarToggleIcon: document.querySelector(".sidebar-toggle-icon"),
   refreshButton: document.querySelector("#refresh-button"),
+  saveSvgButton: document.querySelector("#save-svg-button"),
   registerForm: document.querySelector("#register-form"),
+  pickTreeButton: document.querySelector("#pick-tree-button"),
   treePath: document.querySelector("#tree-path"),
   treeList: document.querySelector("#tree-list"),
   treeCount: document.querySelector("#tree-count"),
@@ -48,11 +52,14 @@ const elements = {
   runStatus: document.querySelector("#run-status"),
   integrityStatus: document.querySelector("#integrity-status"),
   graphViewport: document.querySelector("#graph-viewport"),
+  graphResizeHandle: document.querySelector("#graph-resize-handle"),
   graphSizer: document.querySelector("#graph-sizer"),
   graphStage: document.querySelector("#graph-stage"),
   graphEdges: document.querySelector("#graph-edges"),
   graphNodes: document.querySelector("#graph-nodes"),
   graphEmpty: document.querySelector("#graph-empty"),
+  zoomSlider: document.querySelector("#zoom-slider"),
+  zoomValue: document.querySelector("#zoom-value"),
   nodeDetail: document.querySelector("#node-detail"),
   blackboardPanel: document.querySelector(".blackboard-panel"),
   blackboardValues: document.querySelector("#blackboard-values"),
@@ -155,6 +162,7 @@ function blackboardIsCollapsed() {
 
 function selectTree(treeId) {
   state.selectedTreeId = treeId || null;
+  elements.saveSvgButton.disabled = !state.selectedTreeId;
   state.snapshotVersion = null;
   state.selectedNodeId = null;
   state.currentSnapshot = null;
@@ -167,6 +175,7 @@ function populateTrees(trees) {
   elements.treeCount.textContent = String(trees.length);
   if (!trees.length) {
     state.selectedTreeId = null;
+    elements.saveSvgButton.disabled = true;
     const empty = document.createElement("p");
     empty.className = "blackboard-empty";
     empty.textContent = "No runtime trees registered.";
@@ -175,6 +184,7 @@ function populateTrees(trees) {
   }
   const known = trees.some((tree) => tree.tree_id === previous);
   state.selectedTreeId = known ? previous : trees[0].tree_id;
+  elements.saveSvgButton.disabled = false;
   for (const tree of trees) {
     elements.treeList.append(createTreeInstance(tree));
   }
@@ -505,6 +515,9 @@ function applyGraphScale(scale) {
   elements.graphStage.style.transform = `scale(${normalized})`;
   elements.graphSizer.style.width = `${Math.ceil(state.graphSize.width * normalized)}px`;
   elements.graphSizer.style.height = `${Math.ceil(state.graphSize.height * normalized)}px`;
+  elements.zoomSlider.value = String(Math.round(normalized * 100));
+  elements.zoomValue.value = `${Math.round(normalized * 100)}%`;
+  elements.zoomValue.textContent = elements.zoomValue.value;
 }
 
 function renderGraph() {
@@ -606,9 +619,7 @@ async function refreshTrees() {
     const payload = await request("/api/trees");
     const previous = state.selectedTreeId;
     populateTrees(payload.trees);
-    if (state.selectedTreeId !== previous || state.snapshotVersion === null) {
-      await refreshSnapshot();
-    }
+    await refreshSnapshot();
   } catch (error) {
     setMessage(error.message, true, Boolean(error.connectionLost));
     handleRequestFailure(error);
@@ -712,6 +723,92 @@ function stopPanning(event) {
   elements.graphViewport.classList.remove("panning");
 }
 
+function zoomAroundViewportCenter(scale) {
+  if (!state.currentSnapshot) {
+    return;
+  }
+  const viewport = elements.graphViewport;
+  const beforeScale = currentScale();
+  const centerX = viewport.scrollLeft + viewport.clientWidth / 2;
+  const centerY = viewport.scrollTop + viewport.clientHeight / 2;
+  applyGraphScale(scale);
+  const ratio = currentScale() / beforeScale;
+  viewport.scrollLeft = centerX * ratio - viewport.clientWidth / 2;
+  viewport.scrollTop = centerY * ratio - viewport.clientHeight / 2;
+}
+
+function startResizing(event) {
+  if (event.button !== 0) {
+    return;
+  }
+  state.resize = {
+    pointerId: event.pointerId,
+    clientY: event.clientY,
+    height: elements.graphViewport.getBoundingClientRect().height,
+  };
+  elements.graphResizeHandle.setPointerCapture(event.pointerId);
+  event.preventDefault();
+}
+
+function moveResizing(event) {
+  if (!state.resize || event.pointerId !== state.resize.pointerId) {
+    return;
+  }
+  const height = Math.min(1600, Math.max(480, state.resize.height + event.clientY - state.resize.clientY));
+  elements.graphViewport.style.height = `${Math.round(height)}px`;
+}
+
+function stopResizing(event) {
+  if (!state.resize || event.pointerId !== state.resize.pointerId) {
+    return;
+  }
+  if (elements.graphResizeHandle.hasPointerCapture(event.pointerId)) {
+    elements.graphResizeHandle.releasePointerCapture(event.pointerId);
+  }
+  state.resize = null;
+}
+
+function resizeWithKeyboard(event) {
+  if (!["ArrowUp", "ArrowDown"].includes(event.key)) {
+    return;
+  }
+  const delta = event.key === "ArrowDown" ? 40 : -40;
+  const height = elements.graphViewport.getBoundingClientRect().height;
+  elements.graphViewport.style.height = `${Math.min(1600, Math.max(480, height + delta))}px`;
+  event.preventDefault();
+}
+
+function saveSvg() {
+  if (!state.selectedTreeId) {
+    return;
+  }
+  const link = document.createElement("a");
+  link.href = `/api/trees/${encodeURIComponent(state.selectedTreeId)}/svg`;
+  link.download = "";
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+async function pickTree() {
+  elements.pickTreeButton.disabled = true;
+  try {
+    const payload = await request("/api/tree-picker", { method: "POST", body: "{}" });
+    if (!payload.selected) {
+      setMessage("File selection canceled.");
+      return;
+    }
+    await refreshTrees();
+    selectTree(payload.tree.tree_id);
+    setMessage("Tree registered.");
+  } catch (error) {
+    setMessage(error.message, true);
+    handleRequestFailure(error);
+  } finally {
+    elements.pickTreeButton.disabled = false;
+  }
+}
+
 async function connectClient() {
   if (state.clientId || state.connecting) {
     return;
@@ -753,13 +850,21 @@ async function connectClient() {
 }
 
 elements.refreshButton.addEventListener("click", () => refreshSnapshot(true));
+elements.saveSvgButton.addEventListener("click", saveSvg);
+elements.pickTreeButton.addEventListener("click", pickTree);
 elements.sidebarToggle.addEventListener("click", () => setSidebarCollapsed(!state.sidebarCollapsed));
 elements.blackboardToggle.addEventListener("click", toggleBlackboard);
+elements.zoomSlider.addEventListener("input", () => zoomAroundViewportCenter(Number(elements.zoomSlider.value) / 100));
 elements.graphViewport.addEventListener("wheel", zoomAroundPointer, { passive: false });
 elements.graphViewport.addEventListener("pointerdown", startPanning);
 elements.graphViewport.addEventListener("pointermove", movePanning);
 elements.graphViewport.addEventListener("pointerup", stopPanning);
 elements.graphViewport.addEventListener("pointercancel", stopPanning);
+elements.graphResizeHandle.addEventListener("pointerdown", startResizing);
+elements.graphResizeHandle.addEventListener("pointermove", moveResizing);
+elements.graphResizeHandle.addEventListener("pointerup", stopResizing);
+elements.graphResizeHandle.addEventListener("pointercancel", stopResizing);
+elements.graphResizeHandle.addEventListener("keydown", resizeWithKeyboard);
 elements.registerForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const path = elements.treePath.value.trim();
@@ -782,6 +887,6 @@ elements.registerForm.addEventListener("submit", async (event) => {
 });
 
 Promise.all([connectClient(), refreshTrees()]).then(() => {
-  state.refreshTimer = window.setInterval(refreshTrees, 1000);
+  state.refreshTimer = window.setInterval(refreshTrees, AUTO_REFRESH_MS);
   state.blackboardTimer = window.setInterval(renderBlackboard, 60000);
 });

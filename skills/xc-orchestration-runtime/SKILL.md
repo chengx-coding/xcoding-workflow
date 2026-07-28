@@ -68,9 +68,16 @@ Every write response returns a monotonic `revision`. Callers MAY pass it back as
 
 Every managed tree has an access warning, access policy, and canonical SHA-256 integrity metadata. Normal writes reject invalid integrity; only `repair-integrity` can repair it after explicit inspection.
 
-When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped context commit containing both the tree transition and all declared `--artifact` paths. A commit failure restores the pre-operation tree and returns `persisted_uncommitted`; declared files remain available for recovery, but the terminal state and declarations are not accepted. When `auto_commit=false`, checkpointing and its path validation remain disabled, while the terminal state and artifact declarations are persisted in the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist state without a commit; their changes are included by the next terminal checkpoint.
+When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped context commit containing both the tree transition and all declared `--artifact` paths. A commit failure restores the pre-operation tree and returns `persisted_uncommitted`; declared files remain available for recovery, but the terminal state and declarations are not accepted. When `auto_commit=false`, checkpointing and its path validation remain disabled, while the terminal state and artifact declarations are persisted in the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` normally persist state without a commit; their changes are included by the next terminal checkpoint. A non-terminal mutation that newly seals the root is promoted to a completion checkpoint.
 
 When the root succeeds, the runtime records sealing metadata and rejects ordinary mutations. `reopen --reason "<user-approved-reason>"` is the only mutation that can reopen a successful tree; it records a new epoch. Domain Skills must require an explicit main-session user decision before invoking it.
+
+When a mutation newly seals the root, the runtime also writes a complete
+standalone SVG beside `orchestration.xml`. Its filename is the normalized run
+name with an `.svg` suffix. A successful completion after `reopen` overwrites
+the same SVG. Every newly sealed checkpoint includes the SVG in the same
+path-scoped commit and restores the previous XML and SVG bytes when rendering,
+writing, or committing fails.
 
 Declared commit artifacts MUST exist inside the same context Git repository as the runtime tree. The runtime never stages unrelated context changes. A failed commit returns `persisted_uncommitted`; files remain available for recovery, but the caller MUST treat the checkpoint as uncommitted.
 
@@ -91,7 +98,24 @@ python "$SKILL_DIR/scripts/orchestration.py" snapshot --tree <tree_ref>
 python "$SKILL_DIR/scripts/viewer_server.py" --tree <tree_ref>
 ```
 
-The viewer consumes only runtime snapshots, binds to loopback, and exposes no tree mutation endpoints. Its default launch mode starts a detached background server and returns one JSON result containing `ok`, `mode`, `pid`, `url`, and `trees`. The background server does not write logs. Pass `--foreground` to keep the server in the current terminal; it emits JSON-line lifecycle, client, and refresh events for manual diagnostics. Pass `--no-browser` for automated verification. Use `xc-orchestration-viewer` for user-facing open, monitor, or visualize requests.
+The viewer consumes only runtime snapshots, binds to loopback, and exposes no
+tree mutation endpoints. The page checks the selected snapshot every 20
+seconds, supports a vertically resizable graph, synchronized wheel and slider
+zoom, complete SVG download, and a native local XML picker. Direct path
+registration remains constrained to Viewer allow roots; an explicit native
+selection authorizes only the selected file's parent directory. Picker
+requests require the actual bound loopback Host and matching browser Origin.
+The server serializes requests and launches Tk in a helper process whose main
+thread owns the dialog. A concurrent picker request is rejected while one
+dialog is active.
+
+The default launch mode starts a detached background server and returns one
+JSON result containing `ok`, `mode`, `pid`, `url`, and `trees`. The background
+server does not write logs. Pass `--foreground` to keep the server in the
+current terminal; it emits JSON-line lifecycle, client, and refresh events for
+manual diagnostics. Pass `--no-browser` for automated verification. Use
+`xc-orchestration-viewer` for user-facing open, monitor, or visualize
+requests.
 
 ## References
 

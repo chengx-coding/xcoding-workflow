@@ -27,8 +27,11 @@ import runtime_core as core
 
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "viewer" / "static"
+TREE_PICKER_HELPER = Path(__file__).resolve().with_name("tree_picker.py")
 BACKGROUND_START_TIMEOUT_SECONDS = 10
 BACKGROUND_START_POLL_SECONDS = 0.05
+TREE_PICKER_TIMEOUT_SECONDS = 300
+TREE_PICKER_LOCK = threading.Lock()
 EventSink = Callable[[str, Dict[str, Any]], None]
 
 
@@ -47,6 +50,46 @@ def is_within(path: Path, root: Path) -> bool:
 def tree_id_for(path: Path) -> str:
     digest = hashlib.sha256(str(path).encode("utf-8")).hexdigest()[:12]
     return f"tree-{digest}"
+
+
+def select_tree_file() -> Optional[str]:
+    if not TREE_PICKER_LOCK.acquire(blocking=False):
+        raise core.RuntimeErrorBase("a native file selection dialog is already active")
+    try:
+        result = subprocess.run(
+            [sys.executable, str(TREE_PICKER_HELPER)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=TREE_PICKER_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise core.RuntimeErrorBase(
+            "native file selection failed",
+            {"error": str(exc)},
+        ) from exc
+    finally:
+        TREE_PICKER_LOCK.release()
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise core.RuntimeErrorBase(
+            "native file selection returned an invalid response",
+            {"returncode": result.returncode, "stderr": result.stderr.strip()},
+        ) from exc
+    if result.returncode != 0 or not payload.get("ok"):
+        raise core.RuntimeErrorBase(
+            "native file selection is unavailable in this environment",
+            {"error": str(payload.get("error") or result.stderr.strip())},
+        )
+    selected = payload.get("path", "")
+    if not payload.get("selected"):
+        return None
+    if not isinstance(selected, str) or not selected:
+        raise core.RuntimeErrorBase("native file selection returned no path")
+    return selected
 
 
 @dataclass
@@ -286,6 +329,30 @@ class ViewerRequestHandler(BaseHTTPRequestHandler):
                 },
             )
             return
+        if parsed.path.startswith("/api/trees/") and parsed.path.endswith("/svg"):
+            tree_id = parsed.path.split("/")[3]
+            try:
+                entry = self.state.registry.get(tree_id)
+            except core.RuntimeErrorBase as exc:
+                self.send_runtime_error(exc, HTTPStatus.NOT_FOUND)
+                return
+            if entry.snapshot is None:
+                self.send_json(
+                    HTTPStatus.CONFLICT,
+                    {"ok": False, "error": entry.error or {"code": "snapshot_unavailable", "message": "No valid snapshot yet."}},
+                )
+                return
+            filename = core.runtime_svg_filename(
+                str(entry.snapshot.get("metadata", {}).get("name", "")),
+                str(entry.snapshot.get("metadata", {}).get("run_id", "")),
+            )
+            self.send_bytes(
+                HTTPStatus.OK,
+                core.render_snapshot_svg(entry.snapshot).encode("utf-8"),
+                "image/svg+xml; charset=utf-8",
+                {"Content-Disposition": f'attachment; filename="{filename}"'},
+            )
+            return
         self.serve_static(parsed.path)
 
     def do_POST(self) -> None:
@@ -298,6 +365,27 @@ class ViewerRequestHandler(BaseHTTPRequestHandler):
                     raise core.RuntimeErrorBase("path is required")
                 entry = self.state.registry.register(path)
                 self.send_json(HTTPStatus.CREATED, {"ok": True, "tree": entry.listing()})
+                return
+            if parsed.path == "/api/tree-picker":
+                server_host, server_port = self.server.server_address[:2]
+                expected_host = f"{server_host}:{server_port}"
+                origin = self.headers.get("Origin", "")
+                expected_origin = f"http://{expected_host}"
+                if self.headers.get("Host", "") != expected_host or (origin and origin != expected_origin):
+                    self.send_json(
+                        HTTPStatus.FORBIDDEN,
+                        {"ok": False, "error": {"code": "forbidden_origin", "message": "Tree picker requires the Viewer origin."}},
+                    )
+                    return
+                path = select_tree_file()
+                if path is None:
+                    self.send_json(HTTPStatus.OK, {"ok": True, "selected": False})
+                    return
+                entry = self.state.registry.register(path, add_parent_root=True)
+                self.send_json(
+                    HTTPStatus.CREATED,
+                    {"ok": True, "selected": True, "tree": entry.listing()},
+                )
                 return
             if parsed.path == "/api/clients":
                 self.send_json(HTTPStatus.CREATED, {"ok": True, **self.state.open_client()})
@@ -346,11 +434,21 @@ class ViewerRequestHandler(BaseHTTPRequestHandler):
         self.send_json(status, {"ok": False, "error": {"code": error.code, "message": str(error), "details": error.details}})
 
     def send_json(self, status: HTTPStatus, payload: Dict[str, Any]) -> None:
-        body = json_bytes(payload)
+        self.send_bytes(status, json_bytes(payload), "application/json; charset=utf-8")
+
+    def send_bytes(
+        self,
+        status: HTTPStatus,
+        body: bytes,
+        content_type: str,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> None:
         self.send_response(status.value)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
