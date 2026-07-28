@@ -14,8 +14,7 @@ body {
   min-width: 720px;
 }
 
-.topbar,
-.viewer-layout {
+.topbar {
   max-width: 1800px;
   margin: 0 auto;
   padding-left: 24px;
@@ -134,6 +133,8 @@ button:focus-visible {
   display: grid;
   grid-template-columns: 284px minmax(0, 1fr);
   gap: 18px;
+  padding-left: 8px;
+  padding-right: 24px;
   padding-top: 18px;
   padding-bottom: 24px;
   transition: grid-template-columns 160ms ease;
@@ -170,15 +171,17 @@ button:focus-visible {
 
 .register-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: end;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
 }
 
-.register-form label {
-  grid-column: 1 / -1;
+.register-actions {
+  display: flex;
+  gap: 10px;
 }
 
-.register-form button {
+.register-actions button {
+  flex: 1 1 0;
   white-space: nowrap;
 }
 
@@ -787,12 +790,8 @@ pre {
     width: 48px;
   }
 
-  .register-form {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .register-form #pick-tree-button {
-    grid-column: 1 / -1;
+  .viewer-layout {
+    padding-right: 8px;
   }
 
   .graph-heading {

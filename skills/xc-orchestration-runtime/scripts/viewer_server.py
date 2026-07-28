@@ -55,15 +55,20 @@ def tree_id_for(path: Path) -> str:
 def select_tree_file() -> Optional[str]:
     if not TREE_PICKER_LOCK.acquire(blocking=False):
         raise core.RuntimeErrorBase("a native file selection dialog is already active")
+    process_kwargs: Dict[str, Any] = {
+        "capture_output": True,
+        "text": True,
+        "encoding": "utf-8",
+        "errors": "replace",
+        "check": False,
+        "timeout": TREE_PICKER_TIMEOUT_SECONDS,
+    }
+    if os.name == "nt":
+        process_kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     try:
         result = subprocess.run(
             [sys.executable, str(TREE_PICKER_HELPER)],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-            timeout=TREE_PICKER_TIMEOUT_SECONDS,
+            **process_kwargs,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise core.RuntimeErrorBase(

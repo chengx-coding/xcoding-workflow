@@ -35,8 +35,10 @@
           <form id="register-form" class="register-form">
             <label for="tree-path">Register local runtime tree</label>
             <input id="tree-path" name="path" type="text" placeholder="C:\path\to\orchestration.xml">
-            <button id="pick-tree-button" type="button">Choose file</button>
-            <button type="submit">Add tree</button>
+            <div class="register-actions">
+              <button id="pick-tree-button" type="button">Choose file</button>
+              <button type="submit">Add tree</button>
+            </div>
           </form>
           <p id="message" role="status"></p>
           <div class="tree-list-heading">
