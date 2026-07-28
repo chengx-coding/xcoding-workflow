@@ -35,9 +35,19 @@ python "$SKILL_DIR/scripts/orchestration.py" complete `
   --tree <tree_ref> --node <node_id> `
   --summary "<summary>" --validation "<validation_result>" `
   --artifact <context_artifact_path>
+
+python "$SKILL_DIR/scripts/orchestration.py" fail `
+  --tree <tree_ref> --node <node_id> --reason "<failure_reason>" `
+  --artifact <context_artifact_path>
+
+python "$SKILL_DIR/scripts/orchestration.py" block `
+  --tree <tree_ref> --node <node_id> --reason "<block_reason>" `
+  --artifact <context_artifact_path>
 ```
 
 `init` writes `<run_runtime_dir>/orchestration.xml`. The run-creation capability owns creation of `<run_runtime_dir>` and its parent run directory. All commands emit JSON; `--json` is accepted for host compatibility.
+
+`--artifact` is optional and repeatable on `complete`, `fail`, and `block`.
 
 Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`, `embed-subtree`, `close-group`, `reopen`, `summary`, `show`, `find`, `artifacts`, `snapshot`, `integrity-status`, `repair-integrity`, and `validate`.
 
@@ -48,7 +58,7 @@ the same core readiness predicate as scheduler output. Stale expected
 revisions remain `state_conflict`; successful sealed trees remain
 `tree_sealed`.
 
-`add-node` accepts repeated `--metadata metadata.<key>=value` values for dynamic node metadata. Use `metadata.artifact.audience=internal|user` and `metadata.artifact.content_language=en|run.document_language` to declare an artifact's audience and language selector. `artifacts --audience user` lists only paths declared through terminal `complete --artifact` operations and their node metadata; it never scans the context repository.
+`add-node` accepts repeated `--metadata metadata.<key>=value` values for dynamic node metadata. Use `metadata.artifact.audience=internal|user` and `metadata.artifact.content_language=en|run.document_language` to declare an artifact's audience and language selector. `artifacts --audience user` lists only paths declared through terminal `complete`, `fail`, or `block` operations and their node metadata; it never scans the context repository.
 
 Every write response returns a monotonic `revision`. Callers MAY pass it back as `--expected-revision <value>` on a later write; a mismatch returns `state_conflict`. The runtime serializes writes for one local tree even when callers omit that option.
 
@@ -58,7 +68,7 @@ Every write response returns a monotonic `revision`. Callers MAY pass it back as
 
 Every managed tree has an access warning, access policy, and canonical SHA-256 integrity metadata. Normal writes reject invalid integrity; only `repair-integrity` can repair it after explicit inspection.
 
-When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped context commit. A terminal `complete` commit contains both the tree transition and all declared `--artifact` paths. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist state without a commit; their changes are included by the next terminal checkpoint.
+When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped context commit containing both the tree transition and all declared `--artifact` paths. A commit failure restores the pre-operation tree and returns `persisted_uncommitted`; declared files remain available for recovery, but the terminal state and declarations are not accepted. When `auto_commit=false`, checkpointing and its path validation remain disabled, while the terminal state and artifact declarations are persisted in the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist state without a commit; their changes are included by the next terminal checkpoint.
 
 When the root succeeds, the runtime records sealing metadata and rejects ordinary mutations. `reopen --reason "<user-approved-reason>"` is the only mutation that can reopen a successful tree; it records a new epoch. Domain Skills must require an explicit main-session user decision before invoking it.
 

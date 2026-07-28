@@ -104,6 +104,39 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         core.apply_integrity(root, "template", config)
         core.atomic_write_text(path, core.serialize_xml(root, "template"))
 
+    def create_terminal_runtime(
+        self,
+        project: Path,
+        run_id: str,
+        auto_commit: bool,
+    ) -> tuple[Path, Path, str]:
+        context = project / ".xcoding"
+        context.mkdir(parents=True)
+        if auto_commit:
+            self.run_git(context, "init")
+            self.run_git(context, "config", "user.name", "XC Test")
+            self.run_git(context, "config", "user.email", "xc-test@example.invalid")
+        (context / "xc-orchestration-runtime.toml").write_text(
+            f"[git]\nauto_commit = {'true' if auto_commit else 'false'}\n",
+            encoding="utf-8",
+        )
+        config = core.load_config(context)
+        template = project / "template.xml"
+        self.write_template(template, config)
+        initialized = self.run_cli(
+            "init",
+            "--template",
+            str(template),
+            "--runtime-dir",
+            str(context / "runs" / run_id / "runtime"),
+            "--run-id",
+            run_id,
+            cwd=project,
+        )
+        tree_path = Path(str(initialized["tree_path"]))
+        node_id = str(self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]["id"])
+        return context, tree_path, node_id
+
     def write_conditional_template(self, path: Path, config: dict[str, object], when_policy: str = "") -> None:
         root = ET.Element("orchestration", {"schema_version": "1", "name": "conditional-group"})
         ET.SubElement(root, "blackboard")
@@ -414,6 +447,171 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
 
             node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
             self.assertEqual(node["status"], "running")
+
+    def test_fail_and_block_checkpoint_declared_artifacts_only(self) -> None:
+        for operation, terminal_status in (("fail", "failed"), ("block", "blocked")):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                run_id = f"terminal-{operation}-artifacts"
+                context, tree_path, node_id = self.create_terminal_runtime(project, run_id, auto_commit=True)
+                self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+
+                artifact_dir = context / "runs" / run_id / "artifacts" / operation
+                artifact_dir.mkdir(parents=True)
+                artifacts = [artifact_dir / "evidence.md", artifact_dir / "diagnostic.txt"]
+                artifacts[0].write_text("# Evidence\n", encoding="utf-8")
+                artifacts[1].write_text("diagnostic\n", encoding="utf-8")
+                unrelated = context / "unrelated-user-file.md"
+                unrelated.write_text("# Preserve me\n", encoding="utf-8")
+
+                terminal = self.run_cli(
+                    operation,
+                    "--tree",
+                    str(tree_path),
+                    "--node",
+                    node_id,
+                    "--reason",
+                    f"{operation} evidence",
+                    "--artifact",
+                    str(artifacts[0]),
+                    "--artifact",
+                    str(artifacts[1]),
+                    cwd=project,
+                )
+                self.assertEqual(terminal["commit"]["status"], "committed")
+                self.assertEqual(terminal["node"]["status"], terminal_status)
+                self.assertEqual(terminal["node"]["result"]["artifacts"], [str(path) for path in artifacts])
+
+                declared = self.run_cli("artifacts", "--tree", str(tree_path), cwd=project)["artifacts"]
+                self.assertEqual([item["path"] for item in declared], [str(path) for path in artifacts])
+                changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
+                self.assertIn(f"runs/{run_id}/runtime/orchestration.xml", changed_paths)
+                for artifact in artifacts:
+                    self.assertIn(artifact.relative_to(context).as_posix(), changed_paths)
+                self.assertNotIn("unrelated-user-file.md", changed_paths)
+                self.assertIn("?? unrelated-user-file.md", self.run_git(context, "status", "--short"))
+
+    def test_fail_and_block_without_artifacts_remain_compatible(self) -> None:
+        for operation, terminal_status in (("fail", "failed"), ("block", "blocked")):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                _, tree_path, node_id = self.create_terminal_runtime(
+                    project,
+                    f"legacy-{operation}",
+                    auto_commit=False,
+                )
+                self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+                terminal = self.run_cli(
+                    operation,
+                    "--tree",
+                    str(tree_path),
+                    "--node",
+                    node_id,
+                    "--reason",
+                    f"legacy {operation}",
+                    cwd=project,
+                )
+                self.assertEqual(terminal["commit"]["status"], "disabled")
+                self.assertEqual(terminal["node"]["status"], terminal_status)
+                self.assertNotIn("artifacts", terminal["node"]["result"])
+
+    def test_auto_commit_disabled_records_unvalidated_terminal_artifacts(self) -> None:
+        for operation, terminal_status in (("fail", "failed"), ("block", "blocked")):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                _, tree_path, node_id = self.create_terminal_runtime(
+                    project,
+                    f"disabled-{operation}",
+                    auto_commit=False,
+                )
+                self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+                missing_outside_path = project / "missing-outside.md"
+                terminal = self.run_cli(
+                    operation,
+                    "--tree",
+                    str(tree_path),
+                    "--node",
+                    node_id,
+                    "--reason",
+                    f"disabled {operation}",
+                    "--artifact",
+                    str(missing_outside_path),
+                    cwd=project,
+                )
+                self.assertEqual(terminal["commit"]["status"], "disabled")
+                self.assertEqual(terminal["node"]["status"], terminal_status)
+                self.assertEqual(terminal["node"]["result"]["artifacts"], [str(missing_outside_path)])
+
+    def test_fail_and_block_restore_tree_when_artifact_checkpoint_fails(self) -> None:
+        for operation in ("fail", "block"):
+            for path_kind in ("outside", "missing"):
+                with (
+                    self.subTest(operation=operation, path_kind=path_kind),
+                    tempfile.TemporaryDirectory() as temporary,
+                ):
+                    project = Path(temporary) / "project"
+                    context, tree_path, node_id = self.create_terminal_runtime(
+                        project,
+                        f"rollback-{operation}-{path_kind}",
+                        auto_commit=True,
+                    )
+                    self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+                    before = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                    if path_kind == "outside":
+                        artifact = project / "outside.md"
+                        artifact.write_text("# Outside\n", encoding="utf-8")
+                    else:
+                        artifact = context / "missing.md"
+
+                    rejected = self.run_cli_error(
+                        operation,
+                        "--tree",
+                        str(tree_path),
+                        "--node",
+                        node_id,
+                        "--reason",
+                        f"{path_kind} artifact",
+                        "--artifact",
+                        str(artifact),
+                        cwd=project,
+                    )
+                    self.assertEqual(rejected["error"]["details"]["status"], "persisted_uncommitted")
+                    after = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                    node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+                    self.assertEqual(after["revision"], before["revision"])
+                    self.assertEqual(node["status"], "running")
+                    self.assertNotIn("artifacts", node["result"])
+                    self.assertFalse(self.git_has_head(context))
+
+    def test_rejected_fail_and_block_with_artifact_do_not_mutate_tree(self) -> None:
+        for operation in ("fail", "block"):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                _, tree_path, node_id = self.create_terminal_runtime(
+                    project,
+                    f"rejected-{operation}",
+                    auto_commit=False,
+                )
+                artifact = project / "unused.md"
+                artifact.write_text("# Unused\n", encoding="utf-8")
+                before = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                self.run_cli_error(
+                    operation,
+                    "--tree",
+                    str(tree_path),
+                    "--node",
+                    node_id,
+                    "--reason",
+                    f"rejected {operation}",
+                    "--artifact",
+                    str(artifact),
+                    cwd=project,
+                )
+                after = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+                self.assertEqual(after["revision"], before["revision"])
+                self.assertEqual(node["status"], "pending")
+                self.assertEqual(node["result"], {})
 
     def test_false_conditional_composite_skips_descendants(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

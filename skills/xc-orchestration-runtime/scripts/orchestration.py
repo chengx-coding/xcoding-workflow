@@ -223,25 +223,27 @@ def cmd_complete(args: argparse.Namespace) -> Dict[str, Any]:
 
 def cmd_fail(args: argparse.Namespace) -> Dict[str, Any]:
     with runtime_mutation(args, "fail") as (path, tree, config):
-        node = core.fail_node(tree.getroot(), args.node, args.reason)
+        node = core.fail_node(tree.getroot(), args.node, args.reason, args.artifact)
         return write_terminal_runtime(
             tree,
             path,
             config,
             "fail",
             {"node": core.snapshot_node(tree.getroot(), node), "counts": core.status_counts(tree.getroot())},
+            commit_paths=[Path(item) for item in args.artifact],
         )
 
 
 def cmd_block(args: argparse.Namespace) -> Dict[str, Any]:
     with runtime_mutation(args, "block") as (path, tree, config):
-        node = core.block_node(tree.getroot(), args.node, args.reason)
+        node = core.block_node(tree.getroot(), args.node, args.reason, args.artifact)
         return write_terminal_runtime(
             tree,
             path,
             config,
             "block",
             {"node": core.snapshot_node(tree.getroot(), node), "counts": core.status_counts(tree.getroot())},
+            commit_paths=[Path(item) for item in args.artifact],
         )
 
 
@@ -522,12 +524,14 @@ def build_parser() -> argparse.ArgumentParser:
     add_mutation_tree_argument(fail)
     fail.add_argument("--node", required=True)
     fail.add_argument("--reason", required=True)
+    fail.add_argument("--artifact", action="append", default=[])
     fail.set_defaults(func=cmd_fail)
 
     block = sub.add_parser("block", help="Block an executable leaf.")
     add_mutation_tree_argument(block)
     block.add_argument("--node", required=True)
     block.add_argument("--reason", required=True)
+    block.add_argument("--artifact", action="append", default=[])
     block.set_defaults(func=cmd_block)
 
     unblock = sub.add_parser("unblock", help="Return a blocked executable leaf to pending.")
@@ -591,7 +595,7 @@ def build_parser() -> argparse.ArgumentParser:
     find.add_argument("--instance-id", default="")
     find.set_defaults(func=cmd_find)
 
-    artifacts = sub.add_parser("artifacts", help="List artifacts declared by completed runtime nodes.")
+    artifacts = sub.add_parser("artifacts", help="List artifacts declared by terminal runtime nodes.")
     add_tree_argument(artifacts)
     artifacts.add_argument("--audience", choices=("internal", "user"), default="")
     artifacts.set_defaults(func=cmd_artifacts)

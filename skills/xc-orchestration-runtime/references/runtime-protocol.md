@@ -43,6 +43,18 @@ validate             Validate a managed runtime tree or template.
 ```
 
 All commands return JSON. `--json` is accepted for host compatibility.
+`complete`, `fail`, and `block` accept optional, repeatable `--artifact`
+arguments:
+
+```powershell
+python "$SKILL_DIR/scripts/orchestration.py" fail `
+  --tree <tree_ref> --node <node_id> --reason "<failure_reason>" `
+  --artifact <first_path> --artifact <second_path>
+
+python "$SKILL_DIR/scripts/orchestration.py" block `
+  --tree <tree_ref> --node <node_id> --reason "<block_reason>" `
+  --artifact <evidence_path>
+```
 
 Write responses include a monotonic `revision`. A caller MAY include
 `--expected-revision <value>` in a later write; a mismatch returns
@@ -98,9 +110,9 @@ Use the blackboard only for short control values such as `review.open_issues=fal
 
 Dynamic nodes may receive scalar `metadata.*` attributes through repeated `add-node --metadata metadata.<key>=value` arguments. Artifact-producing nodes use `metadata.artifact.audience` (`internal` by default) and `metadata.artifact.content_language` (`en` by default). A user-facing artifact declares `audience=user` and `content_language=run.document_language`; its writer resolves that selector before writing document frontmatter.
 
-Use `artifacts --audience user` to locate previously declared user-facing reports for a language correction. The response includes only paths declared by `complete --artifact`, their owner node IDs, and `metadata.artifact.*`; it never discovers files by scanning directories.
+Use `artifacts --audience user` to locate previously declared user-facing reports for a language correction. The response includes only paths declared by terminal `complete`, `fail`, or `block` operations, their owner node IDs, and `metadata.artifact.*`; it never discovers files by scanning directories.
 
-When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. A `complete` checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped context commit. Declared checkpoint artifacts must exist inside the same context Git repository as the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist tree state but defer commit creation to the next checkpoint.
+When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. Each checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped context commit. Declared checkpoint artifacts must exist inside the same context Git repository as the tree. A failed checkpoint restores the pre-operation tree and returns `persisted_uncommitted`; the files remain available, but the terminal state, revision, and declarations are not accepted. When `auto_commit=false`, checkpoint creation and checkpoint path validation are disabled; the terminal state and declarations are persisted without a context commit. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` persist tree state but defer commit creation to the next checkpoint.
 
 When the root succeeds, the runtime records `sealed_at` and rejects ordinary
 writes with `tree_sealed`. `reopen --reason` is an explicit main-session
