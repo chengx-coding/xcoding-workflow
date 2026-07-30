@@ -108,6 +108,19 @@ class XcSkillInstallerTests(unittest.TestCase):
             self.assertEqual(payload["error"]["code"], "target_drift")
             self.assertTrue((unexpected / "SKILL.md").is_file())
 
+    def test_install_refuses_retired_source_package_names(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source, target, manifest = self.create_roots(Path(directory))
+            retired_package = "xc-" + "create-run"
+            self.create_source_package(source, retired_package)
+
+            code, payload = self.invoke(source, target, manifest)
+
+            self.assertEqual(code, 2)
+            self.assertFalse(payload["ok"])
+            self.assertEqual(payload["error"]["code"], "retired_xc_packages")
+            self.assertEqual(payload["error"]["details"]["packages"], [retired_package])
+
     def test_check_mode_writes_nothing_when_manifest_or_source_drift_exists(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             source, target, manifest = self.create_roots(Path(directory))

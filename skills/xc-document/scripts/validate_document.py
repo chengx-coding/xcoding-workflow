@@ -19,16 +19,22 @@ DOCUMENT_KINDS = {
     "feature-contract",
     "feature-solution",
     "feature-verification",
-    "run-goal",
-    "run-analysis",
-    "run-solution",
-    "run-result",
+    "work-order-goal",
+    "work-order-analysis",
+    "work-order-solution",
+    "work-order-result",
     "node-artifact",
 }
 FEATURE_KINDS = {"feature-contract", "feature-solution", "feature-verification"}
-RUN_KINDS = {"run-goal", "run-analysis", "run-solution", "run-result"}
+WORK_ORDER_KINDS = {
+    "work-order-goal",
+    "work-order-analysis",
+    "work-order-solution",
+    "work-order-result",
+}
 LANGUAGE_TAG = re.compile(r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$")
 NODE_ARTIFACT_AUDIENCES = {"internal", "user"}
+PREVIOUS_MANAGED_IDENTITY = "run_" + "id"
 
 
 def parse_document(path: Path) -> tuple[dict[str, Any], str, list[str]]:
@@ -69,7 +75,12 @@ def validate_provenance_entry(value: Any, field: str, errors: list[str]) -> None
     if not isinstance(value, dict):
         errors.append(f"{field} must be an object")
         return
-    for key in ("run_id", "tree_ref", "node_id"):
+    if PREVIOUS_MANAGED_IDENTITY in value:
+        errors.append(
+            f"{field} contains unsupported managed identity field: "
+            f"{PREVIOUS_MANAGED_IDENTITY}"
+        )
+    for key in ("work_order_id", "tree_ref", "node_id"):
         if not isinstance(value.get(key), str) or not value[key].strip():
             errors.append(f"{field}.{key} must be a non-empty string")
 
@@ -112,6 +123,11 @@ def validate_document(metadata: dict[str, Any], expected_kind: str = "") -> list
     errors: list[str] = []
     if metadata.get("schema_version") != 1:
         errors.append("schema_version must be integer 1")
+    if PREVIOUS_MANAGED_IDENTITY in metadata:
+        errors.append(
+            "frontmatter contains unsupported managed identity field: "
+            f"{PREVIOUS_MANAGED_IDENTITY}"
+        )
     kind = metadata.get("document_kind")
     if kind not in DOCUMENT_KINDS:
         errors.append(f"document_kind must be one of: {', '.join(sorted(DOCUMENT_KINDS))}")
@@ -133,12 +149,12 @@ def validate_document(metadata: dict[str, Any], expected_kind: str = "") -> list
         require_string(metadata, "feature_id", errors)
         validate_provenance_entry(orchestration.get("initialized_by"), "orchestration.initialized_by", errors)
         validate_provenance_entry(orchestration.get("last_updated_by"), "orchestration.last_updated_by", errors)
-    elif kind in RUN_KINDS:
-        require_string(metadata, "run_id", errors)
+    elif kind in WORK_ORDER_KINDS:
+        require_string(metadata, "work_order_id", errors)
         require_feature_ids(metadata, errors)
         require_string(orchestration, "main_tree_ref", errors)
     elif kind == "node-artifact":
-        require_string(metadata, "run_id", errors)
+        require_string(metadata, "work_order_id", errors)
         require_string(metadata, "node_id", errors)
         require_feature_ids(metadata, errors)
         require_string(orchestration, "tree_ref", errors)

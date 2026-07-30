@@ -21,9 +21,9 @@ description: "Runs and observes managed orchestration trees. Invoke when a workf
 ```powershell
 python "$SKILL_DIR/scripts/orchestration.py" init `
   --template <managed_template> `
-  --runtime-dir <run_runtime_dir> `
-  --run-id <run_id> `
-  --name <run_name>
+  --runtime-path <workbench_runtime_path> `
+  --work-order-id <work_order_id> `
+  --name <work_order_name>
 
 python "$SKILL_DIR/scripts/orchestration.py" next `
   --tree <tree_ref>
@@ -34,22 +34,27 @@ python "$SKILL_DIR/scripts/orchestration.py" start `
 python "$SKILL_DIR/scripts/orchestration.py" complete `
   --tree <tree_ref> --node <node_id> `
   --summary "<summary>" --validation "<validation_result>" `
-  --artifact <context_artifact_path>
+  --artifact <workshop_artifact_path>
 
 python "$SKILL_DIR/scripts/orchestration.py" fail `
   --tree <tree_ref> --node <node_id> --reason "<failure_reason>" `
-  --artifact <context_artifact_path>
+  --artifact <workshop_artifact_path>
 
 python "$SKILL_DIR/scripts/orchestration.py" block `
   --tree <tree_ref> --node <node_id> --reason "<block_reason>" `
-  --artifact <context_artifact_path>
+  --artifact <workshop_artifact_path>
 ```
 
-`init` writes `<run_runtime_dir>/orchestration.xml`. The run-creation capability owns creation of `<run_runtime_dir>` and its parent run directory. All commands emit JSON; `--json` is accepted for host compatibility.
+`init` writes `<workbench_runtime_path>/orchestration.xml`. The work-order opener owns creation of the workbench and its runtime path. All commands emit JSON; `--json` is accepted for host compatibility.
 
 `--artifact` is optional and repeatable on `complete`, `fail`, and `block`.
 
-Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`, `embed-subtree`, `close-group`, `reopen`, `summary`, `show`, `find`, `artifacts`, `snapshot`, `integrity-status`, `repair-integrity`, and `validate`.
+Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`,
+`embed-subtree`, `close-group`, `reopen-group`, `reopen`, `summary`, `show`,
+`find`, `artifacts`, `snapshot`, `integrity-status`, `repair-integrity`, and
+`validate`. `reopen-group --reason` is an auditable recovery operation for a
+closed dynamic group. `add-node --before` may then insert explicitly approved
+recovery work before a blocked direct child.
 
 An unreachable or otherwise non-runnable start returns `node_not_ready` with a
 stable `details.reason` and does not change node state or runtime revision.
@@ -58,28 +63,28 @@ the same core readiness predicate as scheduler output. Stale expected
 revisions remain `state_conflict`; successful sealed trees remain
 `tree_sealed`.
 
-`add-node` accepts repeated `--metadata metadata.<key>=value` values for dynamic node metadata. Use `metadata.artifact.audience=internal|user` and `metadata.artifact.content_language=en|run.document_language` to declare an artifact's audience and language selector. `artifacts --audience user` lists only paths declared through terminal `complete`, `fail`, or `block` operations and their node metadata; it never scans the context repository.
+`add-node` accepts repeated `--metadata metadata.<key>=value` values for dynamic node metadata. Use `metadata.artifact.audience=internal|user` and `metadata.artifact.content_language=en|work_order.document_language` to declare an artifact's audience and language selector. `artifacts --audience user` lists only paths declared through terminal `complete`, `fail`, or `block` operations and their node metadata; it never scans the workshop repository.
 
 Every write response returns a monotonic `revision`. Callers MAY pass it back as `--expected-revision <value>` on a later write; a mismatch returns `state_conflict`. The runtime serializes writes for one local tree even when callers omit that option.
 
 `next` and `summary` return `awaiting_dynamic_groups` when a reachable, empty dynamic group is open. The main session must append work or call `close-group`; a closed group rejects further additions. Do not treat an empty `ready` list with awaiting groups as an unclassified deadlock.
 
-## Persistence and Context Commits
+## Persistence and Workshop Commits
 
 Every managed tree has an access warning, access policy, and canonical SHA-256 integrity metadata. Normal writes reject invalid integrity; only `repair-integrity` can repair it after explicit inspection.
 
-When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped context commit containing both the tree transition and all declared `--artifact` paths. A commit failure restores the pre-operation tree and returns `persisted_uncommitted`; declared files remain available for recovery, but the terminal state and declarations are not accepted. When `auto_commit=false`, checkpointing and its path validation remain disabled, while the terminal state and artifact declarations are persisted in the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` normally persist state without a commit; their changes are included by the next terminal checkpoint. A non-terminal mutation that newly seals the root is promoted to a completion checkpoint.
+When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped workshop commit containing both the tree transition and all declared `--artifact` paths. A commit failure restores the pre-operation tree and returns `persisted_uncommitted`; declared files remain available for recovery, but the terminal state and declarations are not accepted. When `auto_commit=false`, checkpointing and its path validation remain disabled, while the terminal state and artifact declarations are persisted in the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` normally persist state without a commit; their changes are included by the next terminal checkpoint. A non-terminal mutation that newly seals the root is promoted to a completion checkpoint.
 
 When the root succeeds, the runtime records sealing metadata and rejects ordinary mutations. `reopen --reason "<user-approved-reason>"` is the only mutation that can reopen a successful tree; it records a new epoch. Domain Skills must require an explicit main-session user decision before invoking it.
 
 When a mutation newly seals the root, the runtime also writes a complete
-standalone SVG beside `orchestration.xml`. Its filename is the normalized run
+standalone SVG beside `orchestration.xml`. Its filename is the normalized work-order
 name with an `.svg` suffix. A successful completion after `reopen` overwrites
 the same SVG. Every newly sealed checkpoint includes the SVG in the same
 path-scoped commit and restores the previous XML and SVG bytes when rendering,
 writing, or committing fails.
 
-Declared commit artifacts MUST exist inside the same context Git repository as the runtime tree. The runtime never stages unrelated context changes. A failed commit returns `persisted_uncommitted`; files remain available for recovery, but the caller MUST treat the checkpoint as uncommitted.
+Declared commit artifacts MUST exist inside the same workshop Git repository as the runtime tree. The runtime never stages unrelated workshop changes. A failed commit returns `persisted_uncommitted`; files remain available for recovery, but the caller MUST treat the checkpoint as uncommitted.
 
 Configuration is loaded in this order:
 
@@ -90,6 +95,11 @@ CLI --config
 ```
 
 Use `assets/xc-orchestration-runtime.toml` as the configuration starting point.
+
+Runtime identity uses `work_order_id`, lifecycle language uses
+`work_order.document_language`, and workbench locations use the documented
+target paths. Ordinary `orchestration.py` commands expose no alternate managed
+identity fields, path forms, aliases, or fallback discovery.
 
 ## Viewer Interface
 

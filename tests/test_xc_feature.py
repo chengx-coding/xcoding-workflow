@@ -30,30 +30,31 @@ class XcFeatureTests(unittest.TestCase):
     def test_initializes_one_explicit_feature_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            context = root / ".xcoding"
-            context.mkdir()
+            workshop = root / ".xcoding"
+            workshop.mkdir()
             self.run_git(root, "init")
 
-            code, payload = self.invoke("init", "--context-dir", str(context), "--feature-id", "payment-refund")
+            code, payload = self.invoke("init", "--workshop", str(workshop), "--feature-id", "payment-refund")
 
             self.assertEqual(code, 0, payload)
             self.assertEqual(payload["feature_id"], "payment-refund")
-            self.assertTrue((context / "features" / "payment-refund").is_dir())
+            self.assertTrue((workshop / "features" / "payment-refund").is_dir())
+            self.assertEqual(payload["workshop_path"], str(workshop.resolve()))
 
     def test_rejects_implicit_path_traversal_and_existing_directories(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            context = root / ".xcoding"
-            context.mkdir()
+            workshop = root / ".xcoding"
+            workshop.mkdir()
             self.run_git(root, "init")
 
-            code, payload = self.invoke("init", "--context-dir", str(context), "--feature-id", "../outside")
+            code, payload = self.invoke("init", "--workshop", str(workshop), "--feature-id", "../outside")
             self.assertEqual(code, 2)
             self.assertFalse(payload["ok"])
 
-            code, payload = self.invoke("init", "--context-dir", str(context), "--feature-id", "payment-refund")
+            code, payload = self.invoke("init", "--workshop", str(workshop), "--feature-id", "payment-refund")
             self.assertEqual(code, 0, payload)
-            code, payload = self.invoke("init", "--context-dir", str(context), "--feature-id", "payment-refund")
+            code, payload = self.invoke("init", "--workshop", str(workshop), "--feature-id", "payment-refund")
             self.assertEqual(code, 2)
             self.assertFalse(payload["ok"])
 

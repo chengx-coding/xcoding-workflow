@@ -10,14 +10,14 @@ description: "Reviews managed documents, solutions, code changes, or verificatio
 ## Parameters
 
 - `review_kind` - `enum`; required
-  - Allowed values: `contract`, `solution`, `verification`, `run-document`, `code`, `diagnosis`, `general`.
+  - Allowed values: `contract`, `solution`, `verification`, `work-order-document`, `code`, `diagnosis`, `general`.
   - Scope: Selects the relevant review dimensions.
 
 - `inputs` - `path[]`; required
   - Scope: Documents, source paths, diffs, test outputs, or artifacts to assess.
 
 - `artifact_path` - `path`; required
-  - Scope: A node-artifact path under the active run's `artifacts/<node-id>/` directory.
+  - Scope: A node-artifact path under the active workbench's `artifacts/<node-id>/` directory.
 
 - `review_context` - `string`; optional
   - Scope: Acceptance criteria, exclusions, compatibility constraints, or known risks supplied by the caller.

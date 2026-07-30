@@ -5,10 +5,10 @@
     "feature.id": "",
     "feature.title": "",
     "feature.approval_required": "true",
-    "run.document_language": "en",
-    "run.requires_clarification": "false",
-    "run.requires_implementation": "true",
-    "run.requires_verification": "true"
+    "work_order.document_language": "en",
+    "work_order.requires_clarification": "false",
+    "work_order.requires_implementation": "true",
+    "work_order.requires_verification": "true"
   },
   "root": {
     "template_id": "root",
@@ -24,13 +24,13 @@
         "type": "task",
         "role": "feature-prepare",
         "executor": "main",
-        "instructions": "Read the project bridge, create the run through xc-create-run, determine and validate run.document_language through xc-document from the explicit parameter or initiating user request, select an explicit feature ID, and create its empty directory through xc-feature.",
-        "deliverables": "An authoritative run directory and empty managed feature directory.",
-        "acceptance": "The context Git worktree is independent, the feature ID is explicit, run.document_language is set before any document write, and no baseline document exists outside document evolution."
+        "instructions": "Read the project bridge, open the work order through xc-open-work-order, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, select an explicit feature ID, and create its empty directory through xc-feature.",
+        "deliverables": "An authoritative workbench and empty managed feature directory.",
+        "acceptance": "The workshop Git worktree is independent, the feature ID is explicit, work_order.document_language is set before any document write, and no baseline document exists outside document evolution."
       },
       {
         "template_id": "goal-document",
-        "title": "Define run goal",
+        "title": "Define work order goal",
         "type": "composite",
         "role": "dynamic-group",
         "mode": "sequence",
@@ -38,7 +38,7 @@
       },
       {
         "template_id": "analysis-group",
-        "title": "Analyze feature context",
+        "title": "Analyze feature evidence",
         "type": "composite",
         "role": "dynamic-group",
         "mode": "sequence",
@@ -51,11 +51,11 @@
         "role": "dynamic-group",
         "mode": "sequence",
         "executor": "main",
-        "when": "run.requires_clarification == true"
+        "when": "work_order.requires_clarification == true"
       },
       {
-        "template_id": "run-solution-document",
-        "title": "Select run solution",
+        "template_id": "work-order-solution-document",
+        "title": "Select work order solution",
         "type": "composite",
         "role": "dynamic-group",
         "mode": "sequence",
@@ -92,7 +92,7 @@
         "role": "feature-approval",
         "executor": "main",
         "when": "feature.approval_required == true",
-        "instructions": "Present the accepted contract, feature solution, verification baseline, and run solution. Record approval or requested revision through the runtime.",
+        "instructions": "Present the accepted contract, feature solution, verification baseline, and work order solution. Record approval or requested revision through the runtime.",
         "deliverables": "A recorded approval decision or follow-up document-evolution nodes.",
         "acceptance": "The feature baseline is approved or the tree contains explicit revision and review work."
       },
@@ -103,7 +103,7 @@
         "role": "dynamic-group",
         "mode": "sequence",
         "executor": "main",
-        "when": "run.requires_implementation == true"
+        "when": "work_order.requires_implementation == true"
       },
       {
         "template_id": "verification-group",
@@ -112,7 +112,7 @@
         "role": "dynamic-group",
         "mode": "sequence",
         "executor": "main",
-        "when": "run.requires_verification == true"
+        "when": "work_order.requires_verification == true"
       },
       {
         "template_id": "result-document",
@@ -124,13 +124,13 @@
       },
       {
         "template_id": "finalize-feature",
-        "title": "Finalize new feature run",
+        "title": "Finalize new feature work order",
         "type": "task",
         "role": "feature-finalize",
         "executor": "main",
-        "instructions": "Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the run.",
-        "deliverables": "A completed, failed, or blocked run with durable result evidence.",
-        "acceptance": "The runtime tree and declared context artifacts accurately represent the outcome."
+        "instructions": "Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the work order.",
+        "deliverables": "A completed, failed, or blocked work order with durable result evidence.",
+        "acceptance": "The runtime tree and declared workbench artifacts accurately represent the outcome."
       }
     ]
   }

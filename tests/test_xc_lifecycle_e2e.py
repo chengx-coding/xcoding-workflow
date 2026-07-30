@@ -10,64 +10,64 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime" / "scripts" / "orchestration.py"
-RUN = REPOSITORY_ROOT / "skills" / "xc-create-run" / "scripts" / "create_run.py"
+OPEN_WORK_ORDER = REPOSITORY_ROOT / "skills" / "xc-open-work-order" / "scripts" / "open_work_order.py"
 FEATURE = REPOSITORY_ROOT / "skills" / "xc-feature" / "scripts" / "manage_feature.py"
 RENDER = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "render_document.py"
 VALIDATE = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "validate_document.py"
 DOCUMENT_EVOLUTION_TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-document-evolution" / "assets" / "document-evolution-template.xml"
 DOCUMENT_TEMPLATES = REPOSITORY_ROOT / "skills" / "xc-document" / "assets" / "templates"
-RUN_DOCUMENT_HEADINGS = {
-    "run-goal": {
-        "document_title": "Run Goal",
+WORK_ORDER_DOCUMENT_HEADINGS = {
+    "work-order-goal": {
+        "document_title": "Work Order Goal",
         "requested_outcome_heading": "Requested Outcome",
         "scope_and_constraints_heading": "Scope and Constraints",
         "acceptance_conditions_heading": "Acceptance Conditions",
     },
-    "run-analysis": {
-        "document_title": "Run Analysis",
+    "work-order-analysis": {
+        "document_title": "Work Order Analysis",
         "evidence_and_current_state_heading": "Evidence and Current State",
         "reconciliation_heading": "Reconciliation",
         "impact_and_risks_heading": "Impact and Risks",
         "alternatives_heading": "Alternatives",
     },
-    "run-solution": {
-        "document_title": "Run Solution",
+    "work-order-solution": {
+        "document_title": "Work Order Solution",
         "selected_change_heading": "Selected Change",
         "feature_baseline_impact_heading": "Feature Baseline Impact",
         "implementation_and_migration_strategy_heading": "Implementation and Migration Strategy",
         "verification_strategy_heading": "Verification Strategy",
     },
-    "run-result": {
-        "document_title": "Run Result",
+    "work-order-result": {
+        "document_title": "Work Order Result",
         "actual_changes_heading": "Actual Changes",
         "validation_evidence_heading": "Validation Evidence",
         "baseline_synchronization_heading": "Baseline Synchronization",
         "deviations_and_residual_risks_heading": "Deviations and Residual Risks",
     },
 }
-ZH_RUN_DOCUMENT_HEADINGS = {
-    "run-goal": {
-        "document_title": "运行目标",
+ZH_WORK_ORDER_DOCUMENT_HEADINGS = {
+    "work-order-goal": {
+        "document_title": "工作订单目标",
         "requested_outcome_heading": "请求结果",
         "scope_and_constraints_heading": "范围与约束",
         "acceptance_conditions_heading": "验收条件",
     },
-    "run-analysis": {
-        "document_title": "运行分析",
+    "work-order-analysis": {
+        "document_title": "工作订单分析",
         "evidence_and_current_state_heading": "证据与当前状态",
         "reconciliation_heading": "对齐",
         "impact_and_risks_heading": "影响与风险",
         "alternatives_heading": "备选方案",
     },
-    "run-solution": {
-        "document_title": "运行方案",
+    "work-order-solution": {
+        "document_title": "工作订单方案",
         "selected_change_heading": "选定变更",
         "feature_baseline_impact_heading": "Feature 基线影响",
         "implementation_and_migration_strategy_heading": "实施与迁移策略",
         "verification_strategy_heading": "验证策略",
     },
-    "run-result": {
-        "document_title": "运行结果",
+    "work-order-result": {
+        "document_title": "工作订单结果",
         "actual_changes_heading": "实际变更",
         "validation_evidence_heading": "验证证据",
         "baseline_synchronization_heading": "基线同步",
@@ -100,40 +100,40 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         project = root / "project"
         project.mkdir()
         self.run_git(project, "init")
-        context_repo = root / "context"
-        context = context_repo / ".xcoding"
-        context.mkdir(parents=True)
-        self.run_git(context_repo, "init")
-        (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
-        return root, project, context
+        workshop_repo = root / "workshop"
+        workshop = workshop_repo / ".xcoding"
+        workshop.mkdir(parents=True)
+        self.run_git(workshop_repo, "init")
+        (workshop / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+        return root, project, workshop
 
-    def create_run(self, context: Path, project: Path, run_id: str, feature_ids: list[str]) -> dict[str, object]:
+    def open_work_order(self, workshop: Path, project: Path, work_order_id: str, feature_ids: list[str]) -> dict[str, object]:
         args = [
-            "--context-dir",
-            str(context),
+            "--workshop",
+            str(workshop),
             "--project-root",
             str(project),
             "--topic",
-            run_id,
-            "--run-id",
-            run_id,
+            work_order_id,
+            "--work-order-id",
+            work_order_id,
         ]
         for feature_id in feature_ids:
             args.extend(["--feature-id", feature_id])
-        return self.run_json(RUN, *args, cwd=project)
+        return self.run_json(OPEN_WORK_ORDER, *args, cwd=project)
 
-    def initialize_tree(self, project: Path, template: Path, run: dict[str, object]) -> Path:
+    def initialize_tree(self, project: Path, template: Path, work_order: dict[str, object]) -> Path:
         initialized = self.run_json(
             RUNTIME,
             "init",
             "--template",
             str(template),
-            "--runtime-dir",
-            str(run["runtime_dir"]),
-            "--run-id",
-            str(run["run_id"]),
+            "--runtime-path",
+            str(work_order["runtime_path"]),
+            "--work-order-id",
+            str(work_order["work_order_id"]),
             "--name",
-            str(run["run_id"]),
+            str(work_order["work_order_id"]),
             cwd=project,
         )
         return Path(str(initialized["tree_path"]))
@@ -183,7 +183,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         self,
         project: Path,
         tree: Path,
-        run: dict[str, object],
+        work_order: dict[str, object],
         group_template_id: str,
         document_kind: str,
         document_path: Path,
@@ -217,7 +217,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 "document.template": str(DOCUMENT_TEMPLATES / f"{document_kind}.md"),
                 "document.inputs": "none",
                 "document.contract": "none",
-                "document.content_language": content_language if document_kind in RUN_DOCUMENT_HEADINGS else "",
+                "document.content_language": content_language if document_kind in WORK_ORDER_DOCUMENT_HEADINGS else "",
                 "document.review_required": "false",
                 "document.gate_required": "false",
                 "document.review.open_issues": "false",
@@ -241,7 +241,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             "--out",
             str(document_path),
             "--set",
-            f"run_id={run['run_id']}",
+            f"work_order_id={work_order['work_order_id']}",
             "--set",
             f"tree_ref={tree}",
         ]
@@ -256,7 +256,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                     f"node_id={writer['id']}",
                 ]
             )
-        elif document_kind in RUN_DOCUMENT_HEADINGS:
+        elif document_kind in WORK_ORDER_DOCUMENT_HEADINGS:
             render_args.extend(
                 [
                     "--set",
@@ -265,7 +265,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                     f"feature_ids={json.dumps(feature_ids)}",
                 ]
             )
-            headings = ZH_RUN_DOCUMENT_HEADINGS[document_kind] if content_language == "zh-CN" else RUN_DOCUMENT_HEADINGS[document_kind]
+            headings = ZH_WORK_ORDER_DOCUMENT_HEADINGS[document_kind] if content_language == "zh-CN" else WORK_ORDER_DOCUMENT_HEADINGS[document_kind]
             for key, value in headings.items():
                 render_args.extend(["--set", f"{key}={value}"])
         self.run_json(RENDER, *render_args, cwd=project)
@@ -318,107 +318,107 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         self.assertEqual(summary["status"], "complete", summary)
         self.assertEqual(summary["ready"], [], summary)
 
-    def test_new_feature_run_creates_baselines_and_closes(self) -> None:
-        _, project, context = self.create_environment()
+    def test_new_feature_work_order_creates_baselines_and_closes(self) -> None:
+        _, project, workshop = self.create_environment()
         feature_id = "payment-refund"
-        run = self.create_run(context, project, "20260727-1000-new-feature", [feature_id])
-        feature = self.run_json(FEATURE, "init", "--context-dir", str(context), "--feature-id", feature_id, cwd=project)
+        work_order = self.open_work_order(workshop, project, "20260727-1000-new-feature", [feature_id])
+        feature = self.run_json(FEATURE, "init", "--workshop", str(workshop), "--feature-id", feature_id, cwd=project)
         feature_dir = Path(str(feature["feature_dir"]))
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-new-feature" / "assets" / "new-feature-template.xml", run)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-new-feature" / "assets" / "new-feature-template.xml", work_order)
         self.set_values(
             project,
             tree,
             {
                 "feature.approval_required": "false",
-                "run.document_language": "zh-CN",
-                "run.requires_implementation": "false",
-                "run.requires_verification": "false",
+                "work_order.document_language": "zh-CN",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
             },
         )
         self.complete_ready_task(project, tree, "prepare-feature", feature_dir)
-        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [feature_id], content_language="zh-CN")
-        self.complete_document(project, tree, run, "analysis-group", "run-analysis", Path(str(run["run_dir"])) / "analysis.md", [feature_id], content_language="zh-CN")
-        self.complete_document(project, tree, run, "run-solution-document", "run-solution", Path(str(run["run_dir"])) / "solution.md", [feature_id], content_language="zh-CN")
-        self.complete_document(project, tree, run, "feature-contract-document", "feature-contract", feature_dir / "contract.md", [feature_id], feature_id)
-        self.complete_document(project, tree, run, "feature-solution-document", "feature-solution", feature_dir / "solution.md", [feature_id], feature_id)
-        self.complete_document(project, tree, run, "feature-verification-document", "feature-verification", feature_dir / "verification.md", [feature_id], feature_id)
-        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [feature_id], content_language="zh-CN")
-        self.assertIn("content_language: zh-CN", (Path(str(run["run_dir"])) / "goal.md").read_text(encoding="utf-8"))
-        self.assertIn("# 运行结果", (Path(str(run["run_dir"])) / "result.md").read_text(encoding="utf-8"))
+        self.complete_document(project, tree, work_order, "goal-document", "work-order-goal", Path(str(work_order["workbench_path"])) / "goal.md", [feature_id], content_language="zh-CN")
+        self.complete_document(project, tree, work_order, "analysis-group", "work-order-analysis", Path(str(work_order["workbench_path"])) / "analysis.md", [feature_id], content_language="zh-CN")
+        self.complete_document(project, tree, work_order, "work-order-solution-document", "work-order-solution", Path(str(work_order["workbench_path"])) / "solution.md", [feature_id], content_language="zh-CN")
+        self.complete_document(project, tree, work_order, "feature-contract-document", "feature-contract", feature_dir / "contract.md", [feature_id], feature_id)
+        self.complete_document(project, tree, work_order, "feature-solution-document", "feature-solution", feature_dir / "solution.md", [feature_id], feature_id)
+        self.complete_document(project, tree, work_order, "feature-verification-document", "feature-verification", feature_dir / "verification.md", [feature_id], feature_id)
+        self.complete_document(project, tree, work_order, "result-document", "work-order-result", Path(str(work_order["workbench_path"])) / "result.md", [feature_id], content_language="zh-CN")
+        self.assertIn("content_language: zh-CN", (Path(str(work_order["workbench_path"])) / "goal.md").read_text(encoding="utf-8"))
+        self.assertIn("# 工作订单结果", (Path(str(work_order["workbench_path"])) / "result.md").read_text(encoding="utf-8"))
         self.complete_ready_task(project, tree, "finalize-feature")
         self.assert_complete(project, tree)
 
-    def test_feature_adoption_run_creates_code_derived_baselines_and_closes(self) -> None:
-        _, project, context = self.create_environment()
+    def test_feature_adoption_work_order_creates_code_derived_baselines_and_closes(self) -> None:
+        _, project, workshop = self.create_environment()
         feature_id = "legacy-ledger"
-        run = self.create_run(context, project, "20260727-1000-feature-adoption", [feature_id])
-        feature = self.run_json(FEATURE, "init", "--context-dir", str(context), "--feature-id", feature_id, cwd=project)
+        work_order = self.open_work_order(workshop, project, "20260727-1000-feature-adoption", [feature_id])
+        feature = self.run_json(FEATURE, "init", "--workshop", str(workshop), "--feature-id", feature_id, cwd=project)
         feature_dir = Path(str(feature["feature_dir"]))
         tree = self.initialize_tree(
             project,
             REPOSITORY_ROOT / "skills" / "xc-feature-adoption" / "assets" / "feature-adoption-template.xml",
-            run,
+            work_order,
         )
-        self.set_values(project, tree, {"feature.adoption_approval_required": "false", "run.document_language": "zh-CN"})
+        self.set_values(project, tree, {"feature.adoption_approval_required": "false", "work_order.document_language": "zh-CN"})
         self.complete_ready_task(project, tree, "prepare-adoption", feature_dir)
-        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [feature_id], content_language="zh-CN")
-        self.complete_document(project, tree, run, "analysis-group", "run-analysis", Path(str(run["run_dir"])) / "analysis.md", [feature_id], content_language="zh-CN")
-        self.complete_document(project, tree, run, "feature-contract-document", "feature-contract", feature_dir / "contract.md", [feature_id], feature_id)
-        self.complete_document(project, tree, run, "feature-solution-document", "feature-solution", feature_dir / "solution.md", [feature_id], feature_id)
-        self.complete_document(project, tree, run, "feature-verification-document", "feature-verification", feature_dir / "verification.md", [feature_id], feature_id)
-        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [feature_id], content_language="zh-CN")
-        self.assertIn("content_language: zh-CN", (Path(str(run["run_dir"])) / "analysis.md").read_text(encoding="utf-8"))
+        self.complete_document(project, tree, work_order, "goal-document", "work-order-goal", Path(str(work_order["workbench_path"])) / "goal.md", [feature_id], content_language="zh-CN")
+        self.complete_document(project, tree, work_order, "analysis-group", "work-order-analysis", Path(str(work_order["workbench_path"])) / "analysis.md", [feature_id], content_language="zh-CN")
+        self.complete_document(project, tree, work_order, "feature-contract-document", "feature-contract", feature_dir / "contract.md", [feature_id], feature_id)
+        self.complete_document(project, tree, work_order, "feature-solution-document", "feature-solution", feature_dir / "solution.md", [feature_id], feature_id)
+        self.complete_document(project, tree, work_order, "feature-verification-document", "feature-verification", feature_dir / "verification.md", [feature_id], feature_id)
+        self.complete_document(project, tree, work_order, "result-document", "work-order-result", Path(str(work_order["workbench_path"])) / "result.md", [feature_id], content_language="zh-CN")
+        self.assertIn("content_language: zh-CN", (Path(str(work_order["workbench_path"])) / "analysis.md").read_text(encoding="utf-8"))
         self.assertNotIn("content_language:", (feature_dir / "contract.md").read_text(encoding="utf-8"))
         self.complete_ready_task(project, tree, "finalize-adoption")
         self.assert_complete(project, tree)
 
-    def test_ordinary_run_without_feature_closes_without_creating_feature(self) -> None:
-        _, project, context = self.create_environment()
-        run = self.create_run(context, project, "20260727-1000-ordinary-run", [])
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml", run)
+    def test_ordinary_work_order_without_feature_closes_without_creating_feature(self) -> None:
+        _, project, workshop = self.create_environment()
+        work_order = self.open_work_order(workshop, project, "20260727-1000-ordinary-work-order", [])
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml", work_order)
         self.set_values(
             project,
             tree,
             {
-                "run.document_language": "zh-CN",
-                "run.requires_analysis": "false",
-                "run.requires_solution": "false",
-                "run.solution_gate_required": "false",
-                "run.requires_implementation": "false",
-                "run.requires_verification": "false",
+                "work_order.document_language": "zh-CN",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
             },
         )
-        self.complete_ready_task(project, tree, "prepare-run")
-        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [], content_language="zh-CN")
-        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [], content_language="zh-CN")
-        self.complete_ready_task(project, tree, "finalize-run")
-        self.assertFalse((context / "features").exists())
-        self.assertIn("# 运行目标", (Path(str(run["run_dir"])) / "goal.md").read_text(encoding="utf-8"))
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(project, tree, work_order, "goal-document", "work-order-goal", Path(str(work_order["workbench_path"])) / "goal.md", [], content_language="zh-CN")
+        self.complete_document(project, tree, work_order, "result-document", "work-order-result", Path(str(work_order["workbench_path"])) / "result.md", [], content_language="zh-CN")
+        self.complete_ready_task(project, tree, "finalize-work-order")
+        self.assertFalse((workshop / "features").exists())
+        self.assertIn("# 工作订单目标", (Path(str(work_order["workbench_path"])) / "goal.md").read_text(encoding="utf-8"))
         self.assert_complete(project, tree)
 
-    def test_ordinary_run_reconciles_multiple_features_sequentially(self) -> None:
-        _, project, context = self.create_environment()
+    def test_ordinary_work_order_reconciles_multiple_features_sequentially(self) -> None:
+        _, project, workshop = self.create_environment()
         feature_ids = ["payment-refund", "ledger-report"]
         feature_dirs = [
-            Path(str(self.run_json(FEATURE, "init", "--context-dir", str(context), "--feature-id", feature_id, cwd=project)["feature_dir"]))
+            Path(str(self.run_json(FEATURE, "init", "--workshop", str(workshop), "--feature-id", feature_id, cwd=project)["feature_dir"]))
             for feature_id in feature_ids
         ]
-        run = self.create_run(context, project, "20260727-1000-multi-feature", feature_ids)
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml", run)
+        work_order = self.open_work_order(workshop, project, "20260727-1000-multi-feature", feature_ids)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml", work_order)
         self.set_values(
             project,
             tree,
             {
-                "run.has_features": "true",
-                "run.requires_analysis": "false",
-                "run.requires_solution": "false",
-                "run.solution_gate_required": "false",
-                "run.requires_implementation": "false",
-                "run.requires_verification": "false",
+                "work_order.has_features": "true",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
             },
         )
-        self.complete_ready_task(project, tree, "prepare-run")
-        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", feature_ids)
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(project, tree, work_order, "goal-document", "work-order-goal", Path(str(work_order["workbench_path"])) / "goal.md", feature_ids)
         parent = self.find_one(project, tree, "reconciliation-group")
         reconciliation_template = REPOSITORY_ROOT / "skills" / "xc-feature-reconciliation" / "assets" / "feature-reconciliation-template.xml"
 
@@ -451,10 +451,10 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             self.complete_document(
                 project,
                 tree,
-                run,
+                work_order,
                 "analysis-document",
-                "run-analysis",
-                Path(str(run["run_dir"])) / "analysis.md",
+                "work-order-analysis",
+                Path(str(work_order["workbench_path"])) / "analysis.md",
                 feature_ids,
                 instance_id=f"{instance_id}-analysis",
                 parent_instance_id=instance_id,
@@ -462,15 +462,15 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             self.complete_ready_task(project, tree, "finalize-reconciliation")
             self.assertTrue(feature_dirs[index].is_dir())
 
-        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", feature_ids)
-        self.complete_ready_task(project, tree, "finalize-run")
+        self.complete_document(project, tree, work_order, "result-document", "work-order-result", Path(str(work_order["workbench_path"])) / "result.md", feature_ids)
+        self.complete_ready_task(project, tree, "finalize-work-order")
         self.assert_complete(project, tree)
 
-    def test_ordinary_run_synchronizes_evidence_backed_baseline_drift(self) -> None:
-        _, project, context = self.create_environment()
+    def test_ordinary_work_order_synchronizes_evidence_backed_baseline_drift(self) -> None:
+        _, project, workshop = self.create_environment()
         feature_id = "payment-refund"
         feature_dir = Path(
-            str(self.run_json(FEATURE, "init", "--context-dir", str(context), "--feature-id", feature_id, cwd=project)["feature_dir"])
+            str(self.run_json(FEATURE, "init", "--workshop", str(workshop), "--feature-id", feature_id, cwd=project)["feature_dir"])
         )
         contract_path = feature_dir / "contract.md"
         self.run_json(
@@ -480,7 +480,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             "--out",
             str(contract_path),
             "--set",
-            "run_id=20260726-0900-original-baseline",
+            "work_order_id=20260726-0900-original-baseline",
             "--set",
             "tree_ref=none",
             "--set",
@@ -492,22 +492,22 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             cwd=project,
         )
         original_contract = contract_path.read_text(encoding="utf-8")
-        run = self.create_run(context, project, "20260727-1000-baseline-sync", [feature_id])
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml", run)
+        work_order = self.open_work_order(workshop, project, "20260727-1000-baseline-sync", [feature_id])
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml", work_order)
         self.set_values(
             project,
             tree,
             {
-                "run.has_features": "true",
-                "run.requires_analysis": "false",
-                "run.requires_solution": "false",
-                "run.solution_gate_required": "false",
-                "run.requires_implementation": "false",
-                "run.requires_verification": "false",
+                "work_order.has_features": "true",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
             },
         )
-        self.complete_ready_task(project, tree, "prepare-run")
-        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [feature_id])
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(project, tree, work_order, "goal-document", "work-order-goal", Path(str(work_order["workbench_path"])) / "goal.md", [feature_id])
         reconciliation_group = self.find_one(project, tree, "reconciliation-group")
         reconciliation_instance = "reconcile-payment-refund"
         self.run_json(
@@ -537,10 +537,10 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         self.complete_document(
             project,
             tree,
-            run,
+            work_order,
             "analysis-document",
-            "run-analysis",
-            Path(str(run["run_dir"])) / "analysis.md",
+            "work-order-analysis",
+            Path(str(work_order["workbench_path"])) / "analysis.md",
             [feature_id],
             instance_id=f"{reconciliation_instance}-analysis",
             parent_instance_id=reconciliation_instance,
@@ -548,7 +548,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         self.complete_document(
             project,
             tree,
-            run,
+            work_order,
             "baseline-sync",
             "feature-contract",
             contract_path,
@@ -561,32 +561,32 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         self.assertEqual(self.find_one(project, tree, "baseline-sync", reconciliation_instance)["status"], "succeeded")
         self.assertEqual(self.find_one(project, tree, "conflict-gate", reconciliation_instance)["status"], "skipped")
         self.complete_ready_task(project, tree, "finalize-reconciliation")
-        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [feature_id])
-        self.complete_ready_task(project, tree, "finalize-run")
+        self.complete_document(project, tree, work_order, "result-document", "work-order-result", Path(str(work_order["workbench_path"])) / "result.md", [feature_id])
+        self.complete_ready_task(project, tree, "finalize-work-order")
         self.assert_complete(project, tree)
 
-    def test_ordinary_run_resolves_conflict_before_synchronizing_baseline(self) -> None:
-        _, project, context = self.create_environment()
+    def test_ordinary_work_order_resolves_conflict_before_synchronizing_baseline(self) -> None:
+        _, project, workshop = self.create_environment()
         feature_id = "ledger-report"
         feature_dir = Path(
-            str(self.run_json(FEATURE, "init", "--context-dir", str(context), "--feature-id", feature_id, cwd=project)["feature_dir"])
+            str(self.run_json(FEATURE, "init", "--workshop", str(workshop), "--feature-id", feature_id, cwd=project)["feature_dir"])
         )
-        run = self.create_run(context, project, "20260727-1000-conflict-gate", [feature_id])
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml", run)
+        work_order = self.open_work_order(workshop, project, "20260727-1000-conflict-gate", [feature_id])
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml", work_order)
         self.set_values(
             project,
             tree,
             {
-                "run.has_features": "true",
-                "run.requires_analysis": "false",
-                "run.requires_solution": "false",
-                "run.solution_gate_required": "false",
-                "run.requires_implementation": "false",
-                "run.requires_verification": "false",
+                "work_order.has_features": "true",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
             },
         )
-        self.complete_ready_task(project, tree, "prepare-run")
-        self.complete_document(project, tree, run, "goal-document", "run-goal", Path(str(run["run_dir"])) / "goal.md", [feature_id])
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(project, tree, work_order, "goal-document", "work-order-goal", Path(str(work_order["workbench_path"])) / "goal.md", [feature_id])
         reconciliation_group = self.find_one(project, tree, "reconciliation-group")
         reconciliation_instance = "reconcile-ledger-report"
         self.run_json(
@@ -616,10 +616,10 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         self.complete_document(
             project,
             tree,
-            run,
+            work_order,
             "analysis-document",
-            "run-analysis",
-            Path(str(run["run_dir"])) / "analysis.md",
+            "work-order-analysis",
+            Path(str(work_order["workbench_path"])) / "analysis.md",
             [feature_id],
             instance_id=f"{reconciliation_instance}-analysis",
             parent_instance_id=reconciliation_instance,
@@ -637,7 +637,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         self.complete_document(
             project,
             tree,
-            run,
+            work_order,
             "baseline-sync",
             "feature-contract",
             feature_dir / "contract.md",
@@ -647,8 +647,8 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             parent_instance_id=reconciliation_instance,
         )
         self.complete_ready_task(project, tree, "finalize-reconciliation")
-        self.complete_document(project, tree, run, "result-document", "run-result", Path(str(run["run_dir"])) / "result.md", [feature_id])
-        self.complete_ready_task(project, tree, "finalize-run")
+        self.complete_document(project, tree, work_order, "result-document", "work-order-result", Path(str(work_order["workbench_path"])) / "result.md", [feature_id])
+        self.complete_ready_task(project, tree, "finalize-work-order")
         self.assert_complete(project, tree)
 
 

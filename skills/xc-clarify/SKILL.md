@@ -1,6 +1,6 @@
 ---
 name: "xc-clarify"
-description: "Clarifies material human decisions in an existing managed run before solution selection. Invoke when a request or stated plan remains ambiguous after evidence collection, or when the user explicitly asks to clarify or stress-test it."
+description: "Clarifies material human decisions in an existing managed work order before solution selection. Invoke when a request or stated plan remains ambiguous after evidence collection, or when the user explicitly asks to clarify or stress-test it."
 ---
 
 # XC Clarify
@@ -14,8 +14,8 @@ It has two modes:
 
 ## Parameters
 
-- `run_dir` - `path`; required
-  - Scope: Existing managed run that owns the clarification artifacts.
+- `workbench_path` - `path`; required
+  - Scope: Existing managed workbench that owns the clarification artifacts.
 
 - `mode` - `enum`; required
   - Allowed values: `discover`, `challenge`.
@@ -35,7 +35,7 @@ It has two modes:
 
 ## Caller Contract
 
-`xc-clarify` is an embedded subtree, not a standalone run. The caller must create or resume the run, locate its `clarification-group`, and set these short blackboard values before embedding:
+`xc-clarify` is an embedded subtree, not a standalone work order. The caller must open or resume the work order, locate its `clarification-group`, and set these short blackboard values before embedding:
 
 ```text
 clarification.mode
@@ -51,7 +51,7 @@ clarification.session_artifact
 
 Embed `assets/clarify-template.xml` through `xc-orchestration-runtime`. Child-template defaults are not copied into the parent blackboard. Only one clarification instance may be active in a caller group because the blackboard is shared; clarify multiple subjects sequentially.
 
-`clarification.session_artifact` must point to one `node-artifact` document beneath the active run's `artifacts/<open-session-node-id>/` directory.
+`clarification.session_artifact` must point to one `node-artifact` document beneath the active workbench's `artifacts/<open-session-node-id>/` directory.
 
 ## Runtime Flow
 
@@ -87,12 +87,12 @@ Before creating questions `13`, `25`, and each later twelve-question boundary, a
 
 Clarification is ready only when no material decision remains unresolved and every remaining uncertainty is explicitly accepted, deferred, or represented by a bounded experiment. The final worker appends the decision summary, deferred experiments, residual risks, and recommended handoff to the session artifact.
 
-The caller owns document evolution. It uses the session artifact to update `analysis.md` and then selects `solution.md` through its existing approval gate. `xc-clarify` does not modify product code, feature baselines, run solutions, or runtime XML directly.
+The caller owns document evolution. It uses the session artifact to update `analysis.md` and then selects `solution.md` through its existing approval gate. `xc-clarify` does not modify product code, feature baselines, work order solutions, or runtime XML directly.
 
 ## Integration
 
-- `xc-run` embeds this subtree after analysis and any feature reconciliation, before solution selection, when `run.requires_clarification=true`.
-- `xc-new-feature` embeds it after analysis and before the run solution when `run.requires_clarification=true`.
+- `xc-work-order` embeds this subtree after analysis and any feature reconciliation, before solution selection, when `work_order.requires_clarification=true`.
+- `xc-new-feature` embeds it after analysis and before the work order solution when `work_order.requires_clarification=true`.
 - An explicit user request to clarify or stress-test work first enters the appropriate lifecycle, then embeds this subtree.
 
 ## Constraints

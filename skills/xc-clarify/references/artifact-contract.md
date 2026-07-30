@@ -5,7 +5,7 @@
 Each embedded instance uses one session artifact:
 
 ```text
-<run_dir>/artifacts/<open-session-node-id>/decision-session.md
+<workbench_path>/artifacts/<open-session-node-id>/decision-session.md
 ```
 
 It is a validated `node-artifact` document owned by `open-session-record`. The opening worker creates it from the shared `xc-document` node-artifact template. Later fixed workers and main-session Gates append only their session-specific content.
@@ -14,9 +14,9 @@ The artifact frontmatter remains stable:
 
 - `schema_version: 1`
 - `document_kind: node-artifact`
-- The active `run_id`
+- The active `work_order_id`
 - The `open-session-record` runtime node ID
-- Feature IDs from the enclosing run
+- Feature IDs from the enclosing work order
 - The opaque runtime tree reference
 
 ## Required Content

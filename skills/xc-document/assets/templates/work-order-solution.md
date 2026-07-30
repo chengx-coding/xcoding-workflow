@@ -1,8 +1,8 @@
 ---
 schema_version: 1
-document_kind: run-solution
+document_kind: work-order-solution
 content_language: "{{content_language}}"
-run_id: "{{run_id}}"
+work_order_id: "{{work_order_id}}"
 feature_ids: "{{feature_ids}}"
 orchestration:
   main_tree_ref: "{{tree_ref}}"

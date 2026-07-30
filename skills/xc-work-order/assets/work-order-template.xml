@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="work-order" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
+  <meta>
+    <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="f60190ca6411400bba3306b4c424c58f36546819e5968e94bfad99c9c1afeb9f" />
+  </meta>
+  <blackboard>
+    <var key="work_order.has_features">false</var>
+    <var key="work_order.document_language">en</var>
+    <var key="work_order.requires_analysis">true</var>
+    <var key="work_order.requires_clarification">false</var>
+    <var key="work_order.requires_solution">true</var>
+    <var key="work_order.solution_gate_required">true</var>
+    <var key="work_order.requires_implementation">true</var>
+    <var key="work_order.requires_verification">true</var>
+  </blackboard>
+  <node executor="main" mode="sequence" role="root" template_id="root" title="Work Order" type="composite">
+    <children>
+      <node executor="main" role="work-order-prepare" template_id="prepare-work-order" title="Prepare work order" type="task">
+        <instructions>Read the project bridge, open the work order through xc-open-work-order, validate requested feature IDs without creating features, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, and record the requested scope.</instructions>
+        <deliverables>An authoritative workbench and explicit feature associations.</deliverables>
+        <acceptance>The workbench is independent, feature associations are explicit, work_order.document_language is set before any document write, and no unmanaged feature directory was created.</acceptance>
+      </node>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="goal-document" title="Define work order goal" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-group" title="Analyze requested work" type="composite" when="work_order.requires_analysis == true" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="reconciliation-group" title="Reconcile related feature baselines" type="composite" when="work_order.has_features == true" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="clarification-group" title="Clarify material decisions" type="composite" when="work_order.requires_clarification == true" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="work-order-solution-document" title="Select work order solution" type="composite" when="work_order.requires_solution == true" />
+      <node executor="main" role="solution-approval" template_id="approve-work-order-solution" title="Approve work order solution" type="gate" when="work_order.solution_gate_required == true">
+        <instructions>Present the selected change solution, baseline impact, implementation strategy, verification strategy, and unresolved decisions. Record approval or add revision nodes.</instructions>
+        <deliverables>An approval decision or explicit revision work.</deliverables>
+        <acceptance>Implementation cannot proceed on a material unresolved solution decision.</acceptance>
+      </node>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="implementation-group" title="Implement approved change" type="composite" when="work_order.requires_implementation == true" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="verification-group" title="Verify work order outcome" type="composite" when="work_order.requires_verification == true" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record work order result" type="composite" />
+      <node executor="main" role="work-order-finalize" template_id="finalize-work-order" title="Finalize ordinary work order" type="task">
+        <instructions>Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order.</instructions>
+        <deliverables>A completed, failed, or blocked work order with durable evidence.</deliverables>
+        <acceptance>The runtime tree and workbench documents accurately describe the work order outcome.</acceptance>
+      </node>
+    </children>
+  </node>
+</orchestration>

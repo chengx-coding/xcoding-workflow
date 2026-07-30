@@ -1,6 +1,6 @@
 ---
 name: "xc-implementation"
-description: "Executes one approved implementation node in a managed workflow run. Invoke after a run solution and required gates establish the requested code or configuration change."
+description: "Executes one approved implementation node in a managed work order. Invoke after a work order solution and required gates establish the requested code or configuration change."
 ---
 
 # XC Implementation
@@ -9,14 +9,14 @@ description: "Executes one approved implementation node in a managed workflow ru
 
 ## Parameters
 
-- `run_dir` - `path`; required
-  - Scope: Existing run that supplies goal, accepted solution, artifacts, and runtime node contract.
+- `workbench_path` - `path`; required
+  - Scope: Existing workbench that supplies the work order goal, accepted solution, artifacts, and runtime node contract.
 
 - `work_scope` - `string`; required
   - Scope: The node's bounded code, configuration, migration, or documentation change.
 
 - `inputs` - `path[]`; required
-  - Scope: Approved run solution, relevant feature baselines, analysis artifacts, and project bridge references.
+  - Scope: Approved work order solution, relevant feature baselines, analysis artifacts, and project bridge references.
 
 - `artifact_path` - `path`; required
   - Scope: Node artifact recording changed paths, validation, and residual risk.

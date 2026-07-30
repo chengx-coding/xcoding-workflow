@@ -31,7 +31,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "schema_version": 1,
     "git": {
         "auto_commit": True,
-        "commit_message": "chore(orchestration): {operation} {run_id} [{checksum_short}]",
+        "commit_message": "chore(orchestration): {operation} {work_order_id} [{checksum_short}]",
         "on_commit_failure": "warn",
     },
     "integrity": {
@@ -125,6 +125,10 @@ class InvalidTransitionError(RuntimeErrorBase):
 
 class NodeNotReadyError(RuntimeErrorBase):
     code = "node_not_ready"
+
+
+class LegacySchemaError(RuntimeErrorBase):
+    code = "legacy_schema_rejected"
 
 
 def utc_now() -> str:
@@ -562,7 +566,7 @@ def git_root_for(path: Path) -> Optional[Path]:
 def commit_managed_paths(
     paths: Sequence[Path],
     operation: str,
-    run_id: str,
+    work_order_id: str,
     checksum: str,
     config: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -583,7 +587,7 @@ def commit_managed_paths(
         except ValueError:
             return {
                 "status": "failed",
-                "error": f"managed path is outside the context Git repository: {resolved}",
+                "error": f"managed path is outside the workshop Git repository: {resolved}",
             }
         if rel not in rel_paths:
             rel_paths.append(rel)
@@ -608,7 +612,7 @@ def commit_managed_paths(
         message_template = str(config["git"]["commit_message"])
         message = message_template.format(
             operation=operation,
-            run_id=run_id or "template",
+            work_order_id=work_order_id or "template",
             checksum_short=checksum[:12],
         )
         commit = run_git(["commit", "-m", message], repo_root, env)
@@ -657,7 +661,7 @@ def write_managed_tree(
         commit = commit_managed_paths(
             [path, *generated_paths, *(commit_paths or [])],
             operation,
-            root.get("run_id", ""),
+            root.get("work_order_id", ""),
             checksum,
             config,
         )
@@ -689,6 +693,41 @@ def require_writable_integrity(integrity: Dict[str, Any]) -> None:
         raise IntegrityError(
             "integrity mismatch blocks tree modification; inspect then run repair-integrity explicitly",
             {"integrity": integrity},
+        )
+
+
+def require_target_runtime_schema(root: ET.Element) -> None:
+    if root.get("artifact_kind") != "runtime":
+        return
+    legacy_fields = {
+        "run_" + "id",
+        "runtime_" + "dir",
+        "artifacts_" + "dir",
+        "runs_" + "dir",
+        "run" + ".document_language",
+        "run" + ".has_features",
+        "run" + ".requires_analysis",
+        "run" + ".requires_clarification",
+        "run" + ".requires_solution",
+        "run" + ".solution_gate_required",
+        "run" + ".requires_implementation",
+        "run" + ".requires_verification",
+        "context" + ".setup.ready",
+    }
+    legacy_paths: List[str] = []
+    for element in root.iter():
+        for key in element.attrib:
+            if key in legacy_fields:
+                legacy_paths.append(f"{element.tag}/@{key}")
+        if element.tag == "var" and element.get("key") in legacy_fields:
+            legacy_paths.append(f"blackboard/{element.get('key')}")
+    if not root.get("work_order_id") or legacy_paths:
+        raise LegacySchemaError(
+            "ordinary runtime commands accept only the work-order schema",
+            {
+                "required_field": "work_order_id",
+                "legacy_fields": sorted(set(legacy_paths)),
+            },
         )
 
 
@@ -879,6 +918,40 @@ def close_dynamic_group(root: ET.Element, group_id: str) -> ET.Element:
     if state == "closed":
         return group
     group.set("dynamic.state", "closed")
+    group.attrib.pop("recovery.open", None)
+    stabilize(root)
+    return group
+
+
+def reopen_dynamic_group(root: ET.Element, group_id: str, reason: str) -> ET.Element:
+    normalized_reason = reason.strip()
+    if not normalized_reason:
+        raise TreeValidationError("reopen-group reason must not be empty")
+    group = find_node(root, group_id)
+    if not is_dynamic_group(group):
+        raise TreeValidationError("reopen-group requires a dynamic-group composite", {"group_id": group_id})
+    state = dynamic_group_state(group)
+    if state != "closed":
+        raise InvalidTransitionError(
+            "only a closed dynamic group can be reopened",
+            {"group_id": group_id, "state": state},
+        )
+    metadata = find_meta(root)
+    if metadata is None:
+        raise TreeValidationError("runtime metadata is missing")
+    history = ensure_direct(metadata, "dynamic_group_reopen_history")
+    ET.SubElement(
+        history,
+        "reopen",
+        {
+            "group_id": group_id,
+            "reopened_at": utc_now(),
+            "reason": normalized_reason,
+            "revision": str(runtime_revision(root)),
+        },
+    )
+    group.set("dynamic.state", "open")
+    group.set("recovery.open", "true")
     stabilize(root)
     return group
 
@@ -1411,7 +1484,7 @@ def snapshot_from_root(root: ET.Element, path: Path, integrity: Dict[str, Any]) 
         "integrity": integrity,
         "metadata": {
             "name": root.get("name", ""),
-            "run_id": root.get("run_id", ""),
+            "work_order_id": root.get("work_order_id", ""),
             "schema_version": root.get("schema_version", ""),
             "artifact_kind": root.get("artifact_kind", ""),
             "status": root.get("status", "pending"),
@@ -1434,16 +1507,20 @@ def snapshot_from_root(root: ET.Element, path: Path, integrity: Dict[str, Any]) 
 
 def tree_snapshot(path: Path, config: Dict[str, Any]) -> Dict[str, Any]:
     tree, integrity = read_tree_with_integrity(path, config)
+    require_target_runtime_schema(tree.getroot())
     return snapshot_from_root(tree.getroot(), path, integrity)
 
 
-def runtime_svg_filename(name: str, run_id: str) -> str:
-    fallback = slug(run_id, "orchestration")
-    return f"{slug(name or run_id, fallback)}.svg"
+def runtime_svg_filename(name: str, work_order_id: str) -> str:
+    fallback = slug(work_order_id, "orchestration")
+    return f"{slug(name or work_order_id, fallback)}.svg"
 
 
 def runtime_svg_path(tree_path: Path, root: ET.Element) -> Path:
-    return tree_path.parent / runtime_svg_filename(root.get("name", ""), root.get("run_id", ""))
+    return tree_path.parent / runtime_svg_filename(
+        root.get("name", ""),
+        root.get("work_order_id", ""),
+    )
 
 
 def _svg_text(value: Any, limit: int) -> str:
@@ -1520,7 +1597,7 @@ def render_snapshot_svg(snapshot: Dict[str, Any]) -> str:
         f'  <title id="title">{_svg_text(metadata.get("name") or "Orchestration", 160)}</title>',
         (
             '  <desc id="description">Complete orchestration tree for '
-            f'{_svg_text(metadata.get("run_id"), 160)}.</desc>'
+            f'{_svg_text(metadata.get("work_order_id"), 160)}.</desc>'
         ),
         '  <rect width="100%" height="100%" fill="#0b1220"/>',
         (
@@ -1531,7 +1608,8 @@ def render_snapshot_svg(snapshot: Dict[str, Any]) -> str:
         (
             f'  <text x="{SVG_PADDING}" y="53" fill="#94a3b8" '
             'font-family="Segoe UI,Arial,sans-serif" font-size="12">'
-            f'Run {_svg_text(metadata.get("run_id"), 80)} \u00b7 {_svg_text(metadata.get("status"), 24)}</text>'
+            f'Work order {_svg_text(metadata.get("work_order_id"), 80)} '
+            f'\u00b7 {_svg_text(metadata.get("status"), 24)}</text>'
         ),
     ]
     for edge in edges:
@@ -1605,7 +1683,7 @@ def copy_node_payload(template_node: ET.Element, runtime_node: ET.Element) -> No
 
 def instantiate_template_node(
     template_node: ET.Element,
-    run_id: str,
+    work_order_id: str,
     instance_id: str,
     mapping: Dict[str, str],
     pending_references: List[Tuple[ET.Element, List[str]]],
@@ -1614,7 +1692,10 @@ def instantiate_template_node(
     if tid in mapping:
         raise TreeValidationError("duplicate template_id in template instance", {"template_id": tid})
     canonical_type, role = normalize_type(template_node.get("type", "task"), template_node.get("role", ""))
-    runtime_id = f"rt_{slug(run_id, 'run')}__{slug(instance_id, 'instance')}__{tid}"
+    runtime_id = (
+        f"rt_{slug(work_order_id, 'work-order')}__"
+        f"{slug(instance_id, 'instance')}__{tid}"
+    )
     mapping[tid] = runtime_id
     attrs = {
         "id": runtime_id,
@@ -1659,7 +1740,15 @@ def instantiate_template_node(
     if template_children:
         holder = ET.SubElement(node, "children")
         for child in template_children:
-            holder.append(instantiate_template_node(child, run_id, instance_id, mapping, pending_references))
+            holder.append(
+                instantiate_template_node(
+                    child,
+                    work_order_id,
+                    instance_id,
+                    mapping,
+                    pending_references,
+                )
+            )
     return node
 
 
@@ -1679,7 +1768,7 @@ def rewrite_template_references(mapping: Dict[str, str], pending: List[Tuple[ET.
 
 def instantiate_runtime_tree(
     template_tree: ET.ElementTree,
-    run_id: str,
+    work_order_id: str,
     name: str,
     variables: Sequence[Tuple[str, str]],
     config: Dict[str, Any],
@@ -1694,7 +1783,7 @@ def instantiate_runtime_tree(
         {
             "schema_version": "1",
             "name": name or template_root.get("name", "orchestration"),
-            "run_id": run_id,
+            "work_order_id": work_order_id,
             "status": "pending",
             "created_at": utc_now(),
             "revision": "0",
@@ -1706,13 +1795,19 @@ def instantiate_runtime_tree(
         for var in template_bb.findall("var"):
             copied = ET.SubElement(bb, "var", dict(var.attrib))
             copied.text = var.text
-    set_blackboard(runtime_root, "run_id", run_id, "init")
+    set_blackboard(runtime_root, "work_order_id", work_order_id, "init")
     set_blackboard(runtime_root, "today", today(), "init")
     for key, value in variables:
         set_blackboard(runtime_root, key, value, "init")
     mapping: Dict[str, str] = {}
     pending: List[Tuple[ET.Element, List[str]]] = []
-    runtime_node = instantiate_template_node(source_root, run_id, "root", mapping, pending)
+    runtime_node = instantiate_template_node(
+        source_root,
+        work_order_id,
+        "root",
+        mapping,
+        pending,
+    )
     rewrite_template_references(mapping, pending)
     runtime_root.append(runtime_node)
     meta = ensure_managed_metadata(runtime_root, "runtime", config)
@@ -1855,8 +1950,8 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
         return ["runtime root element must be orchestration"]
     if root.get("schema_version") != "1":
         errors.append("runtime schema_version must be 1")
-    if not root.get("run_id"):
-        errors.append("runtime missing run_id")
+    if not root.get("work_order_id"):
+        errors.append("runtime missing work_order_id")
     try:
         runtime_revision(root)
     except TreeValidationError as exc:
@@ -1988,6 +2083,7 @@ def create_dynamic_node(
     deliverables: str = "",
     acceptance: str = "",
     metadata: Optional[Sequence[Tuple[str, str]]] = None,
+    before_id: str = "",
 ) -> ET.Element:
     if not NODE_KEY_RE.match(logical_key):
         raise TreeValidationError("logical_key must be lowercase kebab-case", {"logical_key": logical_key})
@@ -2029,11 +2125,26 @@ def create_dynamic_node(
         if missing_dependencies:
             raise TreeValidationError("dynamic node has unresolved dependencies", {"dependencies": missing_dependencies})
     holder = ensure_direct(parent, "children")
-    run_id = root.get("run_id", "run")
+    insertion_index: Optional[int] = None
+    if before_id:
+        direct_children = list(holder.findall("node"))
+        for index, existing in enumerate(direct_children):
+            if existing.get("id") == before_id:
+                insertion_index = index
+                break
+        if insertion_index is None:
+            raise TreeValidationError(
+                "before node must be a direct child of the dynamic parent",
+                {"parent_id": parent_id, "before_id": before_id},
+            )
+    work_order_id = root.get("work_order_id", "work-order")
     sequence = 1
     while True:
         instance_id = f"dyn-{sequence}"
-        runtime_id = f"rt_{slug(run_id, 'run')}__{instance_id}__{logical_key}"
+        runtime_id = (
+            f"rt_{slug(work_order_id, 'work-order')}__"
+            f"{instance_id}__{logical_key}"
+        )
         if runtime_id not in nodes_by_id(root):
             break
         sequence += 1
@@ -2059,7 +2170,11 @@ def create_dynamic_node(
     for key, value in metadata or []:
         attrs[key] = value
     root.attrib.pop("reopen_pending", None)
-    node = ET.SubElement(holder, "node", attrs)
+    node = ET.Element("node", attrs)
+    if insertion_index is None:
+        holder.append(node)
+    else:
+        holder.insert(insertion_index, node)
     for tag, value in (
         ("instructions", instructions),
         ("inputs", inputs),
@@ -2097,7 +2212,13 @@ def embed_template_subtree(
         raise TreeValidationError("instance_id already exists", {"instance_id": instance})
     mapping: Dict[str, str] = {}
     pending: List[Tuple[ET.Element, List[str]]] = []
-    child_root = instantiate_template_node(root_node(template_tree.getroot()), root.get("run_id", "run"), instance, mapping, pending)
+    child_root = instantiate_template_node(
+        root_node(template_tree.getroot()),
+        root.get("work_order_id", "work-order"),
+        instance,
+        mapping,
+        pending,
+    )
     rewrite_template_references(mapping, pending)
     existing_ids = nodes_by_id(root)
     collisions = sorted(set(mapping.values()) & set(existing_ids))

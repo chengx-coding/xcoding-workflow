@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="workshop-setup" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
+  <meta>
+    <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="4675cf8d0484ab59101e0326703cf29b2a6ed9aaeeedecdcc2f0a6c59da97ecd" />
+  </meta>
+  <blackboard>
+    <var key="workshop.setup.ready">false</var>
+  </blackboard>
+  <node executor="main" mode="sequence" role="root" template_id="root" title="Workshop Setup" type="composite">
+    <children>
+      <node executor="main" role="workshop-prepare" template_id="prepare-workshop" title="Prepare workshop setup" type="task">
+        <instructions>Confirm the workshop Git worktree and project-local facts required by WORKFLOW.md and KNOWLEDGE.md.</instructions>
+        <deliverables>Workshop setup inputs recorded in the blackboard and setup artifacts.</deliverables>
+        <acceptance>The workshop worktree is independent from the business repository and required project-local facts are available or gated.</acceptance>
+      </node>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="workflow-document" title="Create project workflow document" type="composite" />
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="knowledge-document" title="Create project knowledge guidance" type="composite" />
+      <node executor="main" role="workshop-finalize" template_id="finalize-workshop" title="Finalize workshop setup" type="task">
+        <instructions>Verify WORKFLOW.md and KNOWLEDGE.md through xc-document and record both as setup artifacts.</instructions>
+        <deliverables>Validated managed workshop documents.</deliverables>
+        <acceptance>Both workshop documents validate and their document-evolution subtrees are complete.</acceptance>
+      </node>
+    </children>
+  </node>
+</orchestration>

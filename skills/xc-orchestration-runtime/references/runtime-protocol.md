@@ -23,7 +23,7 @@ session appends work or closes the group through the runtime.
 ## Commands
 
 ```text
-init                 Instantiate a managed template in a run runtime directory.
+init                 Instantiate a managed template in a workbench runtime path.
 next                 Return ready nodes.
 start                Mark a ready task or gate as running without a checkpoint commit.
 complete             Mark a task or gate successful and record outputs.
@@ -63,7 +63,7 @@ of whether a caller supplies that optimistic precondition.
 
 ## Node and State Rules
 
-- Runtime IDs are generated as `rt_<run_id>__<instance_id>__<template_id>`.
+- Runtime IDs are generated as `rt_<work_order_id>__<instance_id>__<template_id>`.
 - A runtime node preserves `origin_template_id` and `origin_instance_id`.
 - Dynamic nodes use a caller-provided kebab-case `logical_key`; the runtime assigns the real ID.
 - Only `task` and `gate` leaves can be started, completed, failed, blocked, or unblocked.
@@ -108,17 +108,17 @@ an empty closed group succeeds and `add-node` or `embed-subtree` then return
 
 Use the blackboard only for short control values such as `review.open_issues=false`. Rich reports, review findings, validation outputs, diagnostics, and generated documents are artifacts. The workflow does not create generic raw-log artifacts.
 
-Dynamic nodes may receive scalar `metadata.*` attributes through repeated `add-node --metadata metadata.<key>=value` arguments. Artifact-producing nodes use `metadata.artifact.audience` (`internal` by default) and `metadata.artifact.content_language` (`en` by default). A user-facing artifact declares `audience=user` and `content_language=run.document_language`; its writer resolves that selector before writing document frontmatter.
+Dynamic nodes may receive scalar `metadata.*` attributes through repeated `add-node --metadata metadata.<key>=value` arguments. Artifact-producing nodes use `metadata.artifact.audience` (`internal` by default) and `metadata.artifact.content_language` (`en` by default). A user-facing artifact declares `audience=user` and `content_language=work_order.document_language`; its writer resolves that selector before writing document frontmatter.
 
 Use `artifacts --audience user` to locate previously declared user-facing reports for a language correction. The response includes only paths declared by terminal `complete`, `fail`, or `block` operations, their owner node IDs, and `metadata.artifact.*`; it never discovers files by scanning directories.
 
-When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. Each checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped context commit. A non-terminal mutation that newly seals the root is also a completion checkpoint. Every newly sealed checkpoint includes the generated complete-tree SVG beside `orchestration.xml`. Declared checkpoint artifacts must exist inside the same context Git repository as the tree. Rendering, writing, or commit failure restores the pre-operation XML and SVG bytes; a rejected commit returns `persisted_uncommitted`, and the terminal state, revision, and declarations are not accepted. When `auto_commit=false`, checkpoint creation and checkpoint path validation are disabled; the terminal state, declarations, and newly sealed SVG are persisted without a context commit. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` otherwise persist state but defer commit creation to the next checkpoint.
+When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. Each checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped workshop commit. A non-terminal mutation that newly seals the root is also a completion checkpoint. Every newly sealed checkpoint includes the generated complete-tree SVG beside `orchestration.xml`. Declared checkpoint artifacts must exist inside the same workshop Git repository as the tree. Rendering, writing, or commit failure restores the pre-operation XML and SVG bytes; a rejected commit returns `persisted_uncommitted`, and the terminal state, revision, and declarations are not accepted. When `auto_commit=false`, checkpoint creation and checkpoint path validation are disabled; the terminal state, declarations, and newly sealed SVG are persisted without a workshop commit. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` otherwise persist state but defer commit creation to the next checkpoint.
 
 When the root succeeds, the runtime records `sealed_at` and rejects ordinary
 writes with `tree_sealed`. `reopen --reason` is an explicit main-session
 operation: it records a new epoch before further dynamic work can be appended.
 Domain workflows must collect the required user decision before reopening. A
-newly sealed root writes `<normalized-run-name>.svg` beside the runtime XML.
+newly sealed root writes `<normalized-work-order-name>.svg` beside the runtime XML.
 The SVG contains every node regardless of Viewer collapse state. Reopening
 preserves the last successful SVG; the next successful seal overwrites it.
 
@@ -149,4 +149,4 @@ Read operations return integrity details after direct edits are detected. Normal
 python "$SKILL_DIR/scripts/orchestration.py" repair-integrity --tree <tree_ref> --reason "<reason>"
 ```
 
-The repair operation validates structure, restores managed metadata, recalculates the canonical checksum, reloads the written tree, and follows configured context-commit rules. A failed context commit returns `persisted_uncommitted`; recovery validates existing artifacts and retries or reconciles through the runtime rather than directly editing the tree.
+The repair operation validates structure, restores managed metadata, recalculates the canonical checksum, reloads the written tree, and follows configured workshop-commit rules. A failed workshop commit returns `persisted_uncommitted`; recovery validates existing artifacts and retries or reconciles through the runtime rather than directly editing the tree.

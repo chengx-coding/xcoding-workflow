@@ -48,9 +48,9 @@ const elements = {
   serverStatus: document.querySelector("#server-status"),
   serverStatusLabel: document.querySelector("#server-status-label"),
   overview: document.querySelector("#overview"),
-  runName: document.querySelector("#run-name"),
-  runId: document.querySelector("#run-id"),
-  runStatus: document.querySelector("#run-status"),
+  workOrderName: document.querySelector("#work-order-name"),
+  workOrderId: document.querySelector("#work-order-id"),
+  workOrderStatus: document.querySelector("#work-order-status"),
   integrityStatus: document.querySelector("#integrity-status"),
   graphViewport: document.querySelector("#graph-viewport"),
   graphResizeHandle: document.querySelector("#graph-resize-handle"),
@@ -247,10 +247,10 @@ function renderOverview(snapshot) {
   const metadata = snapshot.metadata || {};
   const integrity = snapshot.integrity || {};
   elements.overview.hidden = false;
-  elements.runName.textContent = metadata.name || "Unnamed run";
-  elements.runId.textContent = metadata.run_id || "n/a";
-  elements.runStatus.textContent = metadata.status || "unknown";
-  elements.runStatus.className = statusClass(metadata.status);
+  elements.workOrderName.textContent = metadata.name || "Unnamed work order";
+  elements.workOrderId.textContent = metadata.work_order_id || "n/a";
+  elements.workOrderStatus.textContent = metadata.status || "unknown";
+  elements.workOrderStatus.className = statusClass(metadata.status);
   elements.integrityStatus.textContent = integrity.status || "unknown";
   elements.integrityStatus.className = statusClass(integrity.status);
   renderBlackboard(snapshot);

@@ -36,7 +36,7 @@ python "$SKILL_DIR/scripts/template_builder.py" build --spec <flow_spec> --out <
 python "$SKILL_DIR/scripts/template_builder.py" validate-template --template <template_path>
 ```
 
-Template build writes access policy and integrity metadata, follows the runtime context-commit rules, and commits only the generated template path.
+Template build writes access policy and integrity metadata, follows the runtime workshop-checkpoint rules, and commits only the generated template path.
 
 ## Quality Rules
 

@@ -13,7 +13,9 @@ RUNTIME = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime" / "scripts" / 
 RENDER = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "render_document.py"
 VALIDATE = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "validate_document.py"
 DOCUMENT_EVOLUTION_TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-document-evolution" / "assets" / "document-evolution-template.xml"
-RUN_GOAL_TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-document" / "assets" / "templates" / "run-goal.md"
+WORK_ORDER_GOAL_TEMPLATE = (
+    REPOSITORY_ROOT / "skills" / "xc-document" / "assets" / "templates" / "work-order-goal.md"
+)
 
 
 class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
@@ -33,31 +35,39 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         result = subprocess.run(["git", *args], cwd=directory, capture_output=True, text=True, encoding="utf-8", check=False)
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
 
-    def create_document_flow(self, run_id: str, review_required: bool, gate_required: bool) -> tuple[Path, Path, Path]:
+    def create_document_flow(
+        self,
+        work_order_id: str,
+        review_required: bool,
+        gate_required: bool,
+    ) -> tuple[Path, Path, Path]:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
         project = root / "project"
         project.mkdir()
         self.run_git(project, "init")
-        context_repo = root / "context"
-        context = context_repo / ".xcoding"
-        context.mkdir(parents=True)
-        self.run_git(context_repo, "init")
-        (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
-        run_dir = context / "runs" / run_id
-        runtime_dir = run_dir / "runtime"
-        runtime_dir.mkdir(parents=True)
-        document_path = run_dir / "goal.md"
+        workshop_repo = root / "workshop"
+        workshop = workshop_repo / ".xcoding"
+        workshop.mkdir(parents=True)
+        self.run_git(workshop_repo, "init")
+        (workshop / "xc-orchestration-runtime.toml").write_text(
+            "[git]\nauto_commit = false\n",
+            encoding="utf-8",
+        )
+        workbench_path = workshop / "work-orders" / work_order_id
+        runtime_path = workbench_path / "runtime"
+        runtime_path.mkdir(parents=True)
+        document_path = workbench_path / "goal.md"
         initialized = self.run_json(
             RUNTIME,
             "init",
             "--template",
             str(DOCUMENT_EVOLUTION_TEMPLATE),
-            "--runtime-dir",
-            str(runtime_dir),
-            "--run-id",
-            run_id,
+            "--runtime-path",
+            str(runtime_path),
+            "--work-order-id",
+            work_order_id,
             "--name",
             "document evolution test",
             cwd=project,
@@ -68,8 +78,8 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
             tree,
             {
                 "document.path": str(document_path),
-                "document.kind": "run-goal",
-                "document.template": str(RUN_GOAL_TEMPLATE),
+                "document.kind": "work-order-goal",
+                "document.template": str(WORK_ORDER_GOAL_TEMPLATE),
                 "document.inputs": "none",
                 "document.contract": "none",
                 "document.content_language": "en",
@@ -122,19 +132,19 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         project: Path,
         document_path: Path,
         tree: Path,
-        run_id: str,
+        work_order_id: str,
         content_language: str = "en",
     ) -> None:
         headings = (
             {
-                "document_title": f"{run_id} Goal",
+                "document_title": f"{work_order_id} Goal",
                 "requested_outcome_heading": "Requested Outcome",
                 "scope_and_constraints_heading": "Scope and Constraints",
                 "acceptance_conditions_heading": "Acceptance Conditions",
             }
             if content_language == "en"
             else {
-                "document_title": "运行目标",
+                "document_title": "工作订单目标",
                 "requested_outcome_heading": "请求结果",
                 "scope_and_constraints_heading": "范围与约束",
                 "acceptance_conditions_heading": "验收条件",
@@ -142,11 +152,11 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         )
         args = [
             "--template",
-            str(RUN_GOAL_TEMPLATE),
+            str(WORK_ORDER_GOAL_TEMPLATE),
             "--out",
             str(document_path),
             "--set",
-            f"run_id={run_id}",
+            f"work_order_id={work_order_id}",
             "--set",
             f"tree_ref={tree}",
             "--set",
@@ -161,11 +171,25 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
             *args,
             cwd=project,
         )
-        self.run_json(VALIDATE, "--document", str(document_path), "--expected-kind", "run-goal", cwd=project)
+        self.run_json(
+            VALIDATE,
+            "--document",
+            str(document_path),
+            "--expected-kind",
+            "work-order-goal",
+            cwd=project,
+        )
 
     def complete_validation(self, project: Path, tree: Path, expected_template_id: str, document_path: Path) -> None:
         node_id = self.start_ready(project, tree, expected_template_id, "xc-document")
-        self.run_json(VALIDATE, "--document", str(document_path), "--expected-kind", "run-goal", cwd=project)
+        self.run_json(
+            VALIDATE,
+            "--document",
+            str(document_path),
+            "--expected-kind",
+            "work-order-goal",
+            cwd=project,
+        )
         self.complete_node(project, tree, node_id, f"{expected_template_id} passed.", "xc-document validation passed")
 
     def assert_complete(self, project: Path, tree: Path) -> None:
@@ -174,16 +198,27 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         self.assertEqual(summary["ready"], [], summary)
 
     def test_recovers_document_written_before_terminal_completion(self) -> None:
-        run_id = "20260727-1100-document-recovery"
-        project, tree, document_path = self.create_document_flow(run_id, review_required=False, gate_required=False)
+        work_order_id = "20260727-1100-document-recovery"
+        project, tree, document_path = self.create_document_flow(
+            work_order_id,
+            review_required=False,
+            gate_required=False,
+        )
         writer = self.start_ready(project, tree, "write-document", "xc-document")
-        self.render_and_validate_goal(project, document_path, tree, run_id)
+        self.render_and_validate_goal(project, document_path, tree, work_order_id)
 
         interrupted = self.run_json(RUNTIME, "show", "--tree", str(tree), "--node", writer, cwd=project)["node"]
         self.assertEqual(interrupted["status"], "running")
         self.assertTrue(document_path.is_file())
 
-        self.run_json(VALIDATE, "--document", str(document_path), "--expected-kind", "run-goal", cwd=project)
+        self.run_json(
+            VALIDATE,
+            "--document",
+            str(document_path),
+            "--expected-kind",
+            "work-order-goal",
+            cwd=project,
+        )
         self.complete_node(
             project,
             tree,
@@ -196,12 +231,16 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         self.complete_validation(project, tree, "validate-final", document_path)
         self.assert_complete(project, tree)
 
-    def test_writes_non_english_run_document_with_declared_language(self) -> None:
-        run_id = "20260727-1100-document-language"
-        project, tree, document_path = self.create_document_flow(run_id, review_required=False, gate_required=False)
+    def test_writes_non_english_work_order_document_with_declared_language(self) -> None:
+        work_order_id = "20260727-1100-document-language"
+        project, tree, document_path = self.create_document_flow(
+            work_order_id,
+            review_required=False,
+            gate_required=False,
+        )
         self.set_values(project, tree, {"document.content_language": "zh-CN"})
         writer = self.start_ready(project, tree, "write-document", "xc-document")
-        self.render_and_validate_goal(project, document_path, tree, run_id, "zh-CN")
+        self.render_and_validate_goal(project, document_path, tree, work_order_id, "zh-CN")
 
         self.complete_node(project, tree, writer, "Wrote the Chinese goal document.", "xc-document validation passed", document_path)
         self.complete_validation(project, tree, "validate-draft", document_path)
@@ -209,14 +248,18 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
 
         content = document_path.read_text(encoding="utf-8")
         self.assertIn("content_language: zh-CN", content)
-        self.assertIn("# 运行目标", content)
+        self.assertIn("# 工作订单目标", content)
         self.assert_complete(project, tree)
 
     def test_review_revision_and_gate_close_document_evolution(self) -> None:
-        run_id = "20260727-1100-document-review"
-        project, tree, document_path = self.create_document_flow(run_id, review_required=True, gate_required=True)
+        work_order_id = "20260727-1100-document-review"
+        project, tree, document_path = self.create_document_flow(
+            work_order_id,
+            review_required=True,
+            gate_required=True,
+        )
         writer = self.start_ready(project, tree, "write-document", "xc-document")
-        self.render_and_validate_goal(project, document_path, tree, run_id)
+        self.render_and_validate_goal(project, document_path, tree, work_order_id)
         self.complete_node(project, tree, writer, "Wrote the initial goal document.", "xc-document validation passed", document_path)
         self.complete_validation(project, tree, "validate-draft", document_path)
 
@@ -229,7 +272,14 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
 
         revision = self.start_ready(project, tree, "revise-document", "xc-document")
         document_path.write_text(document_path.read_text(encoding="utf-8") + "\nRevision applied from review findings.\n", encoding="utf-8")
-        self.run_json(VALIDATE, "--document", str(document_path), "--expected-kind", "run-goal", cwd=project)
+        self.run_json(
+            VALIDATE,
+            "--document",
+            str(document_path),
+            "--expected-kind",
+            "work-order-goal",
+            cwd=project,
+        )
         self.complete_node(project, tree, revision, "Applied the required revision.", "xc-document validation passed", document_path)
 
         review_artifact.write_text("# Review\n\nAll required findings are closed.\n", encoding="utf-8")

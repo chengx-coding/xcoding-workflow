@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convenience wrapper: clean old xc-* skills in a target project and install the latest from this repo.
+"""Replace installed xc-* Skill packages with the canonical target packages.
 
 Usage:
     python install_skills.py --target-skills C:\\dev\\my-project\\.agents\\skills
@@ -16,7 +16,7 @@ from pathlib import Path
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Clean old xc-* skills in a target project and install the latest from this repo."
+        description="Replace installed xc-* Skill packages with the canonical target packages."
     )
     parser.add_argument(
         "--target-skills",
@@ -35,19 +35,19 @@ def main() -> int:
 
     source_root = Path(__file__).resolve().parent
 
-    # Step 1: Clean old xc-* skills
-    old_packages = sorted(
+    # Step 1: Remove the previously installed xc-* package set.
+    installed_packages = sorted(
         d.name for d in target_skills.iterdir()
         if d.is_dir() and d.name.startswith("xc-")
     )
-    if old_packages:
-        print(f"Cleaning {len(old_packages)} old xc-* package(s):")
-        for pkg in old_packages:
+    if installed_packages:
+        print(f"Removing {len(installed_packages)} installed xc-* package(s):")
+        for pkg in installed_packages:
             pkg_path = target_skills / pkg
             shutil.rmtree(str(pkg_path))
             print(f"  removed: {pkg}")
     else:
-        print("No old xc-* packages to clean.")
+        print("No installed xc-* packages to remove.")
 
     # Step 2: Remove stale manifest if present
     if manifest.exists():

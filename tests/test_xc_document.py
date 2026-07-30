@@ -34,19 +34,19 @@ class XcDocumentTests(unittest.TestCase):
         )
         return result.returncode, json.loads(result.stdout)
 
-    def test_accepts_valid_run_document(self) -> None:
+    def test_accepts_valid_work_order_document(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             document = Path(temporary) / "goal.md"
             self.write(
                 document,
                 """---
 schema_version: 1
-document_kind: run-goal
-run_id: 20260727-1200-payment-refund
+document_kind: work-order-goal
+work_order_id: 20260727-1200-payment-refund
 feature_ids:
   - payment-refund
 orchestration:
-  main_tree_ref: xc://run/20260727-1200-payment-refund/main
+  main_tree_ref: xc://work-order/20260727-1200-payment-refund/main
 ---
 
 # Payment Refund Goal
@@ -55,11 +55,11 @@ Implement refund approval limits.
 """,
             )
 
-            code, payload = self.validate(document, "run-goal")
+            code, payload = self.validate(document, "work-order-goal")
 
             self.assertEqual(code, 0)
             self.assertTrue(payload["ok"])
-            self.assertEqual(payload["document_kind"], "run-goal")
+            self.assertEqual(payload["document_kind"], "work-order-goal")
             self.assertEqual(payload["content_language"], "en")
 
     def test_accepts_node_artifact_without_feature_association(self) -> None:
@@ -70,11 +70,11 @@ Implement refund approval limits.
                 """---
 schema_version: 1
 document_kind: node-artifact
-run_id: 20260727-1200-workflow-setup
+work_order_id: 20260727-1200-workshop-setup
 node_id: review-workflow
 feature_ids: []
 orchestration:
-  tree_ref: xc://run/20260727-1200-workflow-setup/main
+  tree_ref: xc://work-order/20260727-1200-workshop-setup/main
 ---
 
 # Workflow Review
@@ -100,11 +100,11 @@ schema_version: 1
 document_kind: node-artifact
 content_language: zh-CN
 audience: user
-run_id: 20260727-1200-workflow-setup
+work_order_id: 20260727-1200-workshop-setup
 node_id: user-report
 feature_ids: []
 orchestration:
-  tree_ref: xc://run/20260727-1200-workflow-setup/main
+  tree_ref: xc://work-order/20260727-1200-workshop-setup/main
 ---
 
 # 用户报告
@@ -125,11 +125,11 @@ orchestration:
 schema_version: 1
 document_kind: node-artifact
 {metadata}
-run_id: 20260727-1200-workflow-setup
+work_order_id: 20260727-1200-workshop-setup
 node_id: review-workflow
 feature_ids: []
 orchestration:
-  tree_ref: xc://run/20260727-1200-workflow-setup/main
+  tree_ref: xc://work-order/20260727-1200-workshop-setup/main
 ---
 
 # Review
@@ -151,7 +151,7 @@ orchestration:
                 self.assertFalse(payload["ok"])
                 self.assertIn(expected_error, payload["errors"])
 
-    def test_validates_explicit_run_language_tags(self) -> None:
+    def test_validates_explicit_work_order_language_tags(self) -> None:
         code, payload = self.validate_language("zh-CN")
         self.assertEqual(code, 0)
         self.assertTrue(payload["ok"])
@@ -172,8 +172,8 @@ document_kind: feature-contract
 feature_id: payment-refund
 orchestration:
   initialized_by:
-    run_id: 20260727-1200-payment-refund
-    tree_ref: xc://run/20260727-1200-payment-refund/main
+    work_order_id: 20260727-1200-payment-refund
+    tree_ref: xc://work-order/20260727-1200-payment-refund/main
     node_id: write-contract
 ---
 
@@ -194,12 +194,12 @@ orchestration:
                 document,
                 """---
 schema_version: 1
-document_kind: run-result
-run_id: 20260727-1200-payment-refund
+document_kind: work-order-result
+work_order_id: 20260727-1200-payment-refund
 feature_ids: []
 status: running
 orchestration:
-  main_tree_ref: xc://run/20260727-1200-payment-refund/main
+  main_tree_ref: xc://work-order/20260727-1200-payment-refund/main
 ---
 
 # Result
@@ -211,6 +211,97 @@ orchestration:
             self.assertEqual(code, 1)
             self.assertFalse(payload["ok"])
             self.assertIn("frontmatter must not duplicate dynamic orchestration state", payload["errors"])
+
+    def test_rejects_retired_work_unit_document_kind(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            document = Path(temporary) / "goal.md"
+            self.write(
+                document,
+                (
+                    """---
+schema_version: 1
+document_kind: """
+                    + "run-"
+                    + """goal
+"""
+                    + "run_"
+                    + """id: retired-contract
+feature_ids: []
+orchestration:
+  main_tree_ref: retired
+---
+
+# Retired Contract
+"""
+                ),
+            )
+
+            code, payload = self.validate(document)
+
+            self.assertEqual(code, 1)
+            self.assertFalse(payload["ok"])
+            self.assertTrue(
+                any(
+                    "document_kind must be one of" in error
+                    for error in payload["errors"]
+                )
+            )
+
+    def test_rejects_previous_identity_in_frontmatter_and_provenance(self) -> None:
+        previous_identity = "run_" + "id"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            work_order_document = root / "goal.md"
+            self.write(
+                work_order_document,
+                f"""---
+schema_version: 1
+document_kind: work-order-goal
+work_order_id: target-order
+{previous_identity}: previous-order
+feature_ids: []
+orchestration:
+  main_tree_ref: target-tree
+---
+
+# Goal
+""",
+            )
+            code, payload = self.validate(work_order_document, "work-order-goal")
+            self.assertEqual(code, 1)
+            self.assertIn(
+                f"frontmatter contains unsupported managed identity field: {previous_identity}",
+                payload["errors"],
+            )
+
+            workshop_document = root / "workflow.md"
+            self.write(
+                workshop_document,
+                f"""---
+schema_version: 1
+document_kind: project-workflow
+orchestration:
+  initialized_by:
+    work_order_id: target-order
+    {previous_identity}: previous-order
+    tree_ref: target-tree
+    node_id: write-workflow
+  last_updated_by:
+    work_order_id: target-order
+    tree_ref: target-tree
+    node_id: write-workflow
+---
+
+# Workflow
+""",
+            )
+            code, payload = self.validate(workshop_document, "project-workflow")
+            self.assertEqual(code, 1)
+            self.assertIn(
+                "orchestration.initialized_by contains unsupported managed "
+                f"identity field: {previous_identity}",
+                payload["errors"],
+            )
 
 
 if __name__ == "__main__":

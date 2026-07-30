@@ -96,7 +96,7 @@ def spec_template() -> Dict[str, Any]:
                     "type": "task",
                     "role": "research",
                     "executor": "subagent",
-                    "instructions": "Inspect the current project context and write a concise report.",
+                    "instructions": "Inspect the current project information and write a concise report.",
                     "deliverables": "artifacts/investigation/analysis.md",
                     "acceptance": "Report exists, cites source files, and distinguishes facts from assumptions.",
                 },
