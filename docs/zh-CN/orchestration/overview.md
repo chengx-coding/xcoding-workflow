@@ -1,4 +1,4 @@
-**语言：** [English (英文)](../../orchestration/overview.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../../orchestration/overview.md) | **简体中文**
 
 # 编排概览
 

@@ -1,6 +1,6 @@
 # Documentation
 
-**Language:** **English** | [Simplified Chinese (简体中文)](zh-CN/index.md)
+**Language:** **English** | [简体中文](zh-CN/index.md)
 
 This is the canonical English documentation for xcoding-workflow. The Chinese tree under `docs/zh-CN/` is a complete semantic mirror with matching page paths.
 

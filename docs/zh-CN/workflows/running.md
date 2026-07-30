@@ -1,4 +1,4 @@
-**语言：** [English (英文)](../../workflows/running.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../../workflows/running.md) | **简体中文**
 
 # 运行受管工作
 

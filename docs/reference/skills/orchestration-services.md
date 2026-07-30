@@ -1,6 +1,6 @@
 # Orchestration Services
 
-**Language:** **English** | [Simplified Chinese (简体中文)](../../zh-CN/reference/skills/orchestration-services.md)
+**Language:** **English** | [简体中文](../../zh-CN/reference/skills/orchestration-services.md)
 
 These services design, run, and visualize managed orchestration without taking ownership of domain work.
 

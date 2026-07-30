@@ -1,20 +1,21 @@
 # Documentation Maintenance
 
-**Language:** **English** | [Simplified Chinese (简体中文)](../zh-CN/development/documentation-maintenance.md)
+**Language:** **English** | [简体中文](../zh-CN/development/documentation-maintenance.md)
 
 ## Language Contract
 
 English README and documentation pages are canonical. Every English page under `docs/` has an exact-path simplified Chinese mirror under `docs/zh-CN/`. The mirror must preserve the topic, factual boundary, navigation, and material information; line-by-line translation is not required.
 
-Every page uses a prominent selector that lists all supported languages:
+Every page uses a prominent selector that lists all supported languages by
+their canonical native names only:
 
 ```markdown
-**Language:** **English** | [Simplified Chinese (简体中文)](<mirror-path>)
+**Language:** **English** | [简体中文](<mirror-path>)
 ```
 
-On the Chinese mirror, make Simplified Chinese the current-language text and
-link English instead. Do not leave a reader with only an unfamiliar native
-language name.
+On the Chinese mirror, make 简体中文 the current-language text and link English
+instead. Do not add translated aliases or parenthetical explanations to
+language names.
 
 Add, move, rename, or delete both language versions in one change. Update all affected navigation, links, anchors, and the documentation checker's approved topology at the same time. Never create a temporary empty mirror to satisfy structural checks.
 

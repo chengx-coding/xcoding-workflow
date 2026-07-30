@@ -1,6 +1,6 @@
 # 功能、文档与知识
 
-**语言：** [English (英文)](../../../reference/skills/features-documents-and-knowledge.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../../../reference/skills/features-documents-and-knowledge.md) | **简体中文**
 
 这些支撑 Skill 负责持久功能、文档和可选知识边界。
 

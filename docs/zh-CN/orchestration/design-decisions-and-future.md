@@ -1,4 +1,4 @@
-**语言：** [English (英文)](../../orchestration/design-decisions-and-future.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../../orchestration/design-decisions-and-future.md) | **简体中文**
 
 # 设计决策与未来可能性
 

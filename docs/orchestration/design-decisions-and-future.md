@@ -1,4 +1,4 @@
-**Language:** **English** | [Simplified Chinese (简体中文)](../zh-CN/orchestration/design-decisions-and-future.md)
+**Language:** **English** | [简体中文](../zh-CN/orchestration/design-decisions-and-future.md)
 
 # Design Decisions and Future Possibilities
 
