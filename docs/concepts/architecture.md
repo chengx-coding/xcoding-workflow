@@ -1,4 +1,4 @@
-[简体中文](../zh-CN/concepts/architecture.md)
+**Language:** **English** | [Simplified Chinese (简体中文)](../zh-CN/concepts/architecture.md)
 
 # Architecture
 

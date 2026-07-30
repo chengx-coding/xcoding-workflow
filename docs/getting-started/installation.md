@@ -1,6 +1,6 @@
 # Installation
 
-[简体中文](../zh-CN/getting-started/installation.md)
+**Language:** **English** | [Simplified Chinese (简体中文)](../zh-CN/getting-started/installation.md)
 
 Install xcoding-workflow from a local checkout into the skills directory used by the consumer Agent host. The examples use `.agents/skills`; substitute the host's actual discovery directory when it differs.
 

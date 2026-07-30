@@ -1,6 +1,6 @@
 # Features, Documents, and Knowledge
 
-[简体中文](../../zh-CN/reference/skills/features-documents-and-knowledge.md)
+**Language:** **English** | [Simplified Chinese (简体中文)](../../zh-CN/reference/skills/features-documents-and-knowledge.md)
 
 These supporting Skills own durable feature, document, and optional knowledge boundaries.
 

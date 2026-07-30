@@ -1,6 +1,6 @@
 # Lifecycle Entry Points
 
-[简体中文](../../zh-CN/reference/skills/lifecycle-entry-points.md)
+**Language:** **English** | [Simplified Chinese (简体中文)](../../zh-CN/reference/skills/lifecycle-entry-points.md)
 
 These Skills select and govern complete workflow lifecycles.
 

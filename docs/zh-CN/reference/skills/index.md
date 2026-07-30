@@ -1,6 +1,6 @@
 # Skill 参考
 
-[English](../../../reference/skills/index.md)
+**语言：** [English (英文)](../../../reference/skills/index.md) | **简体中文 (Simplified Chinese)**
 
 XC 工作流提供两类 Skill：
 

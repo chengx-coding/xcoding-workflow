@@ -1,4 +1,4 @@
-[English](../../concepts/workshops-features.md)
+**语言：** [English (英文)](../../concepts/workshops-features.md) | **简体中文 (Simplified Chinese)**
 
 # Workshop、Work Order 与 Feature
 

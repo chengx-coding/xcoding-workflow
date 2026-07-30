@@ -1,6 +1,6 @@
 # Skill Reference
 
-[简体中文](../../zh-CN/reference/skills/index.md)
+**Language:** **English** | [Simplified Chinese (简体中文)](../../zh-CN/reference/skills/index.md)
 
 The XC workflow exposes two kinds of Skills:
 

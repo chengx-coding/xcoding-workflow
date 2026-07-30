@@ -1,4 +1,4 @@
-[English](../../workflows/evolving.md)
+**语言：** [English (英文)](../../workflows/evolving.md) | **简体中文 (Simplified Chinese)**
 
 # 演进 XC
 
