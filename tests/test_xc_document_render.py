@@ -12,7 +12,9 @@ import yaml
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RENDER_DOCUMENT = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "render_document.py"
-RUN_GOAL_TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-document" / "assets" / "templates" / "run-goal.md"
+WORK_ORDER_GOAL_TEMPLATE = (
+    REPOSITORY_ROOT / "skills" / "xc-document" / "assets" / "templates" / "work-order-goal.md"
+)
 
 
 class XcDocumentRenderTests(unittest.TestCase):
@@ -129,21 +131,21 @@ class XcDocumentRenderTests(unittest.TestCase):
             frontmatter = output.read_text(encoding="utf-8").split("---", 2)[1]
             self.assertEqual(yaml.safe_load(frontmatter)["feature_ids"], ["payment-refund", "ledger"])
 
-    def test_renders_non_english_run_document_headings_without_translation(self) -> None:
+    def test_renders_non_english_work_order_headings_without_translation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "goal.md"
 
             code, payload = self.invoke(
                 "--template",
-                str(RUN_GOAL_TEMPLATE),
+                str(WORK_ORDER_GOAL_TEMPLATE),
                 "--out",
                 str(output),
                 "--set",
                 "content_language=zh-CN",
                 "--set",
-                "run_id=20260727-1200-language",
+                "work_order_id=20260727-1200-language",
                 "--set",
-                "tree_ref=xc://run/20260727-1200-language/main",
+                "tree_ref=xc://work-order/20260727-1200-language/main",
                 "--set",
                 "document_title=语言契约目标",
                 "--set",

@@ -5,15 +5,15 @@ description: "Starts and governs a complete managed workflow for developing a ne
 
 # XC New Feature
 
-`xc-new-feature` is the only normal entry point that creates a new feature directory. It creates one persistent run, establishes approved feature baselines through document evolution, and schedules implementation and verification through a runtime-managed main tree.
+`xc-new-feature` is the only normal entry point that creates a new feature directory. It opens one persistent work order, establishes approved feature baselines through document evolution, and schedules implementation and verification through a runtime-managed main tree.
 
 ## Parameters
 
-- `context_dir` - `path`; required
-  - Scope: The fixed project `.xcoding` directory in an independent context Git worktree.
+- `workshop_path` - `path`; required
+  - Scope: The fixed project `.xcoding` workshop in an independent workshop Git worktree.
 
 - `project_root` - `path`; required
-  - Scope: Business repository root supplied to `xc-create-run` for context-separation validation.
+  - Scope: Business repository root supplied to `xc-open-work-order` for workshop-separation validation.
 
 - `feature_id` - `string`; required
   - Scope: Explicit stable ID. Default projects use a lowercase slug; validate any project-specific override through `WORKFLOW.md`.
@@ -25,17 +25,17 @@ description: "Starts and governs a complete managed workflow for developing a ne
   - Scope: Uses the runtime configuration unless explicitly set by the caller.
 
 - `document_language` - `string`; optional
-  - Scope: Explicit simplified BCP 47 language tag for top-level run documents. When omitted, use the initiating user request's clearly dominant language; if that cannot be decided quickly, use `en`.
+  - Scope: Explicit simplified BCP 47 language tag for top-level work order documents. When omitted, use the initiating user request's clearly dominant language; if that cannot be decided quickly, use `en`.
 
-## Main Run
+## Main Work Order
 
 1. Read `AGENTS.md`, `.xcoding/WORKFLOW.md`, and `.xcoding/KNOWLEDGE.md`.
-2. Call `xc-create-run` with the feature request topic and the selected `feature_id`.
-3. Call `xc-feature init`, then initialize `assets/new-feature-template.xml` in the returned runtime directory. Determine, validate through `xc-document`, and set `run.document_language` before any document write.
+2. Call `xc-open-work-order` with the feature request topic and the selected `feature_id`.
+3. Call `xc-feature init`, then initialize `assets/new-feature-template.xml` in the returned runtime path. Determine, validate through `xc-document`, and set `work_order.document_language` before any document write.
 4. Complete `prepare-feature` with the feature directory as a declared artifact.
-5. Use `find` to locate each dynamic group and embed `xc-document-evolution` for `goal.md`, run `solution.md`, and each feature baseline document. Set `document.content_language` from `run.document_language` only for top-level run documents; use the project bridge for feature-baseline language.
-6. Schedule evidence and synthesis nodes using `xc-analysis`; write the accepted run analysis when needed.
-7. When evidence leaves a material human-owned decision unresolved, or the user explicitly asks to clarify or stress-test the feature, set `run.requires_clarification=true` and embed `xc-clarify` under `clarification-group` before selecting the run solution.
+5. Use `find` to locate each dynamic group and embed `xc-document-evolution` for `goal.md`, work order `solution.md`, and each feature baseline document. Set `document.content_language` from `work_order.document_language` only for top-level work order documents; use the project bridge for feature-baseline language.
+6. Schedule evidence and synthesis nodes using `xc-analysis`; write the accepted work order analysis when needed.
+7. When evidence leaves a material human-owned decision unresolved, or the user explicitly asks to clarify or stress-test the feature, set `work_order.requires_clarification=true` and embed `xc-clarify` under `clarification-group` before selecting the work order solution.
 8. Review and approve the feature `contract.md`, `solution.md`, and `verification.md` through document-evolution loops and `approve-feature-baseline`.
 9. Add bounded implementation nodes under `implementation-group`, then verification nodes under `verification-group`.
 10. Create `result.md` through document evolution and complete `finalize-feature`.
@@ -61,5 +61,5 @@ The implementation may begin only after required approval gates have succeeded. 
 
 - Do not create feature documents outside document-evolution nodes.
 - Do not collapse task progress into `tasks.md` or `status.md`; the runtime tree owns dynamic state.
-- A later explicit language correction updates `run.document_language` and revises only declared top-level run documents and user-facing artifacts; it does not change feature-baseline language.
-- Do not create a project Git commit unless the user or project bridge requires it. Context terminal checkpoints follow runtime configuration.
+- A later explicit language correction updates `work_order.document_language` and revises only declared top-level work order documents and user-facing artifacts; it does not change feature-baseline language.
+- Do not create a project Git commit unless the user or project bridge requires it. Workshop terminal checkpoints follow runtime configuration.

@@ -5,7 +5,7 @@
     "feature.id": "",
     "feature.title": "",
     "feature.adoption_approval_required": "true",
-    "run.document_language": "en"
+    "work_order.document_language": "en"
   },
   "root": {
     "template_id": "root",
@@ -21,9 +21,9 @@
         "type": "task",
         "role": "adoption-prepare",
         "executor": "main",
-        "instructions": "Read the project bridge, create the run through xc-create-run, determine and validate run.document_language through xc-document from the explicit parameter or initiating user request, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.",
-        "deliverables": "An authoritative run directory, explicit code-entry scope, and empty managed feature directory.",
-        "acceptance": "The feature is not already managed, run.document_language is set before any document write, and the adoption scope has enough evidence to begin analysis."
+        "instructions": "Read the project bridge, open the adoption work order through xc-open-work-order, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.",
+        "deliverables": "An authoritative workbench, explicit code-entry scope, and empty managed feature directory.",
+        "acceptance": "The feature is not already managed, work_order.document_language is set before any document write, and the adoption scope has enough evidence to begin analysis."
       },
       {
         "template_id": "goal-document",
@@ -90,9 +90,9 @@
         "type": "task",
         "role": "adoption-finalize",
         "executor": "main",
-        "instructions": "Confirm the adopted feature documents, provenance, artifacts, and unresolved evidence gaps, then close the run.",
-        "deliverables": "A completed, failed, or blocked adoption run with durable result evidence.",
-        "acceptance": "No ordinary run is needed to infer whether the feature was adopted successfully."
+        "instructions": "Confirm the adopted feature documents, provenance, artifacts, and unresolved evidence gaps, then close the work order.",
+        "deliverables": "A completed, failed, or blocked adoption work order with durable result evidence.",
+        "acceptance": "No ordinary work order is needed to infer whether the feature was adopted successfully."
       }
     ]
   }

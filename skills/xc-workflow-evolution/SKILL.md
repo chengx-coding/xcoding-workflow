@@ -1,6 +1,6 @@
 ---
 name: "xc-workflow-evolution"
-description: "Evolves portable XC workflow assets or a project's managed workflow bridge through the standard run and review model. Invoke when workflow contracts, templates, agents, exports, or bridge guidance need deliberate change."
+description: "Evolves portable XC workflow assets or a project's managed workflow bridge through the standard work-order and review model. Invoke when workflow contracts, templates, agents, exports, or bridge guidance need deliberate change."
 ---
 
 # XC Workflow Evolution
@@ -12,17 +12,17 @@ description: "Evolves portable XC workflow assets or a project's managed workflo
 - `scope` - `enum`; required
   - Allowed values: `portable-core`, `project-bridge`, `agent-export`, `orchestration-template`, `health-check`.
 
-- `context_dir` - `path`; required
-  - Scope: The target project's `.xcoding` context directory.
+- `workshop_path` - `path`; required
+  - Scope: The target project's `.xcoding` workshop.
 
 - `request` - `string`; required
   - Scope: Requested workflow change, observed gap, or maintenance objective.
 
 ## Operation
 
-Create or reuse a zero-feature ordinary run unless the task is demonstrably trivial and needs no durable state. Record goal, analysis, selected solution, implementation evidence, and result through the normal run documents.
+Open or reuse a zero-feature ordinary work order unless the task is demonstrably trivial and needs no durable state. Record goal, analysis, selected solution, implementation evidence, and result through the normal work order documents.
 
-For portable-core changes, keep generic assets English, tool-neutral, and free of project paths, commands, frameworks, or business rules. For project-bridge changes, modify only the managed context document through document evolution. For agent changes, update canonical sources, run the exporter, and run exporter check. For orchestration templates, edit the flow specification, rebuild the generated template through `xc-orchestration-author`, and smoke-test the runtime entry path.
+For portable-core changes, keep generic assets English, tool-neutral, and free of project paths, commands, frameworks, or business rules. For project-bridge changes, modify only the managed workshop bridge document through document evolution. For agent changes, update canonical sources, run the exporter, and run exporter check. For orchestration templates, edit the flow specification, rebuild the generated template through `xc-orchestration-author`, and smoke-test the runtime entry path.
 
 ## Controlled Skill Installation
 
@@ -46,7 +46,7 @@ python "$SKILL_DIR/scripts/install_xc_skills.py" `
 The installer copies complete `xc-*` packages, records source revision and
 file hashes, refuses unmanaged target drift, and never manages non-`xc-*`
 packages. `--check` is read-only. Consumer-specific paths, installation
-policy, and deletion gates belong in the consumer bridge or managed run, not
+policy, and deletion gates belong in the consumer bridge or managed work order, not
 in this Skill.
 
 ## Constraints

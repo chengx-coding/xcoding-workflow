@@ -1,0 +1,125 @@
+{
+  "name": "work-order",
+  "schema_version": 1,
+  "blackboard": {
+    "work_order.has_features": "false",
+    "work_order.document_language": "en",
+    "work_order.requires_analysis": "true",
+    "work_order.requires_clarification": "false",
+    "work_order.requires_solution": "true",
+    "work_order.solution_gate_required": "true",
+    "work_order.requires_implementation": "true",
+    "work_order.requires_verification": "true"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Work Order",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "prepare-work-order",
+        "title": "Prepare work order",
+        "type": "task",
+        "role": "work-order-prepare",
+        "executor": "main",
+        "instructions": "Read the project bridge, open the work order through xc-open-work-order, validate requested feature IDs without creating features, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, and record the requested scope.",
+        "deliverables": "An authoritative workbench and explicit feature associations.",
+        "acceptance": "The workbench is independent, feature associations are explicit, work_order.document_language is set before any document write, and no unmanaged feature directory was created."
+      },
+      {
+        "template_id": "goal-document",
+        "title": "Define work order goal",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "analysis-group",
+        "title": "Analyze requested work",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "work_order.requires_analysis == true"
+      },
+      {
+        "template_id": "reconciliation-group",
+        "title": "Reconcile related feature baselines",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "work_order.has_features == true"
+      },
+      {
+        "template_id": "clarification-group",
+        "title": "Clarify material decisions",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "work_order.requires_clarification == true"
+      },
+      {
+        "template_id": "work-order-solution-document",
+        "title": "Select work order solution",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "work_order.requires_solution == true"
+      },
+      {
+        "template_id": "approve-work-order-solution",
+        "title": "Approve work order solution",
+        "type": "gate",
+        "role": "solution-approval",
+        "executor": "main",
+        "when": "work_order.solution_gate_required == true",
+        "instructions": "Present the selected change solution, baseline impact, implementation strategy, verification strategy, and unresolved decisions. Record approval or add revision nodes.",
+        "deliverables": "An approval decision or explicit revision work.",
+        "acceptance": "Implementation cannot proceed on a material unresolved solution decision."
+      },
+      {
+        "template_id": "implementation-group",
+        "title": "Implement approved change",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "work_order.requires_implementation == true"
+      },
+      {
+        "template_id": "verification-group",
+        "title": "Verify work order outcome",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "work_order.requires_verification == true"
+      },
+      {
+        "template_id": "result-document",
+        "title": "Record work order result",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      },
+      {
+        "template_id": "finalize-work-order",
+        "title": "Finalize ordinary work order",
+        "type": "task",
+        "role": "work-order-finalize",
+        "executor": "main",
+        "instructions": "Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order.",
+        "deliverables": "A completed, failed, or blocked work order with durable evidence.",
+        "acceptance": "The runtime tree and workbench documents accurately describe the work order outcome."
+      }
+    ]
+  }
+}

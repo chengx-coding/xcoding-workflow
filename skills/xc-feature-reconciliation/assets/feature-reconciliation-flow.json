@@ -58,7 +58,7 @@
         "role": "reconciliation-conflict",
         "executor": "main",
         "when": "reconciliation.has_ambiguous_conflict == true",
-        "instructions": "Present the code evidence, target baseline, requested run goal, and proposed options. Record the user decision and add required document-evolution nodes.",
+        "instructions": "Present the code evidence, target baseline, requested work order goal, and proposed options. Record the user decision and add required document-evolution nodes.",
         "deliverables": "A structured user decision or an explicit blocked condition.",
         "acceptance": "No ambiguous product-intent conflict proceeds without a recorded decision."
       },
@@ -69,8 +69,8 @@
         "role": "reconciliation-finalize",
         "executor": "main",
         "instructions": "Record the reconciliation disposition, synchronized baseline references, conflicts, and residual evidence gaps.",
-        "deliverables": "A concise reconciliation result for the enclosing ordinary run.",
-        "acceptance": "The enclosing run can select a solution without silently assuming code and baseline agreement."
+        "deliverables": "A concise reconciliation result for the enclosing ordinary work order.",
+        "acceptance": "The enclosing work order can select a solution without silently assuming code and baseline agreement."
       }
     ]
   }

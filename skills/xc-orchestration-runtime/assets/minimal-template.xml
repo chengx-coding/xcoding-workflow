@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
-<orchestration schema_version="1" name="example-workflow" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="2026-07-26T09:20:08+00:00">
+<orchestration schema_version="1" name="example-workflow" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="b5335bcb1818f124092b477d9bc38ac5f71bdc0d0304cb9caa6503cd7fbdb640" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="9d2b77923b970490639595e34ea2eb4a57b4a9ff4718e2a2f4268e6b15dd8f70" />
   </meta>
   <blackboard>
     <var key="scope.confirmed">false</var>
@@ -12,7 +12,7 @@
   <node type="composite" template_id="root" role="root" mode="sequence" title="Example Workflow" executor="main">
     <children>
       <node type="task" template_id="investigation" role="research" title="Investigate context" executor="subagent">
-        <instructions>Inspect the current project context and write a concise report.</instructions>
+        <instructions>Inspect the current project information and write a concise report.</instructions>
         <deliverables>artifacts/investigation/analysis.md</deliverables>
         <acceptance>Report exists, cites source files, and distinguishes facts from assumptions.</acceptance>
       </node>

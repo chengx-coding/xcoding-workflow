@@ -25,7 +25,7 @@ The runtime validates the child template, instantiates it with an isolated insta
 Child runtime IDs follow:
 
 ```text
-rt_<parent-run-id>__<child-instance-id>__<child-template-id>
+rt_<parent-work-order-id>__<child-instance-id>__<child-template-id>
 ```
 
 This preserves the original template ID and the embedding instance ID on every runtime node, so the viewer and operators can trace status back to its source template.
@@ -45,4 +45,4 @@ Child tasks should use artifact paths isolated by instance:
 <artifact-root>/<child-instance-id>/<child-template-id>/
 ```
 
-The current implementation does not provide linked child runs, blackboard scope translation, artifact indexing, or cross-process cancellation.
+The current implementation does not provide linked child work orders, blackboard scope translation, artifact indexing, or cross-process cancellation.

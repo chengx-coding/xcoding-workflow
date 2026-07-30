@@ -10,7 +10,7 @@ The main session provides:
 - One node JSON returned by `next`
 - The `revision` returned with that node batch when the caller requires an optimistic write precondition
 - Domain Skill references and artifact paths named by the node
-- Required user decisions or blackboard values, including `run.document_language` when the node writes a user-facing artifact
+- Required user decisions or blackboard values, including `work_order.document_language` when the node writes a user-facing artifact
 
 ## Rules
 
@@ -19,8 +19,8 @@ The main session provides:
 3. Do not change global control flow unless the node explicitly authorizes `add-node` or `embed-subtree`.
 4. Write important outputs to the declared artifact path or target system; never leave them only in chat.
 5. On completion, call the runtime public command with a concise summary, validation outcome, and artifact paths.
-6. Artifact paths intended for an automatic checkpoint commit must be inside the context Git repository.
-7. Read `metadata.artifact.audience` and `metadata.artifact.content_language` from the supplied node. Default to `internal` and `en`; resolve `run.document_language` only for an explicitly declared user-facing artifact.
+6. Artifact paths intended for an automatic checkpoint commit must be inside the workshop Git repository.
+7. Read `metadata.artifact.audience` and `metadata.artifact.content_language` from the supplied node. Default to `internal` and `en`; resolve `work_order.document_language` only for an explicitly declared user-facing artifact.
 8. Complete, fail, or block only the supplied node after it has been started. Report `state_conflict` or `tree_sealed` to the main session instead of retrying an ambiguous mutation.
 
 ## Worker Prompt Skeleton
@@ -76,6 +76,6 @@ python "$SKILL_DIR/scripts/orchestration.py" block `
 path-scoped checkpoint. A failed checkpoint restores the prior tree and
 returns `persisted_uncommitted`. With `auto_commit=false`, checkpoint path
 validation remains disabled and the terminal declarations persist without a
-context commit.
+workshop commit.
 
 Use `block` rather than `fail` when progress requires user input, external access, or another recoverable prerequisite.

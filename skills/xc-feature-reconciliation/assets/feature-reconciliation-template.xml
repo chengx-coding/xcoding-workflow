@@ -3,7 +3,7 @@
 <orchestration schema_version="1" name="feature-reconciliation" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="500aedc80628594b23460f3c585df81bd25e4f6f57147a9cb9be020627913925" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="fe85ac8809a4a8076136b1ab2b1dbf9d65214575570b35267b0e0cd6e39391a5" />
   </meta>
   <blackboard>
     <var key="reconciliation.feature_id" />
@@ -25,14 +25,14 @@
       <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-document" title="Update reconciliation analysis" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="baseline-sync" title="Synchronize evidence-backed baseline drift" type="composite" when="reconciliation.needs_baseline_sync == true" />
       <node executor="main" role="reconciliation-conflict" template_id="conflict-gate" title="Resolve reconciliation conflict" type="gate" when="reconciliation.has_ambiguous_conflict == true">
-        <instructions>Present the code evidence, target baseline, requested run goal, and proposed options. Record the user decision and add required document-evolution nodes.</instructions>
+        <instructions>Present the code evidence, target baseline, requested work order goal, and proposed options. Record the user decision and add required document-evolution nodes.</instructions>
         <deliverables>A structured user decision or an explicit blocked condition.</deliverables>
         <acceptance>No ambiguous product-intent conflict proceeds without a recorded decision.</acceptance>
       </node>
       <node executor="main" role="reconciliation-finalize" template_id="finalize-reconciliation" title="Finalize feature reconciliation" type="task">
         <instructions>Record the reconciliation disposition, synchronized baseline references, conflicts, and residual evidence gaps.</instructions>
-        <deliverables>A concise reconciliation result for the enclosing ordinary run.</deliverables>
-        <acceptance>The enclosing run can select a solution without silently assuming code and baseline agreement.</acceptance>
+        <deliverables>A concise reconciliation result for the enclosing ordinary work order.</deliverables>
+        <acceptance>The enclosing work order can select a solution without silently assuming code and baseline agreement.</acceptance>
       </node>
     </children>
   </node>

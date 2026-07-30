@@ -9,8 +9,8 @@ description: "Consults or maintains an optional project knowledge source accordi
 
 ## Parameters
 
-- `context_dir` - `path`; required
-  - Scope: Project `.xcoding` directory containing `KNOWLEDGE.md`.
+- `workshop_path` - `path`; required
+  - Scope: Project `.xcoding` workshop containing `KNOWLEDGE.md`.
 
 - `operation` - `enum`; required
   - Allowed values: `consult`, `update`, `status`.
@@ -28,4 +28,4 @@ For a configured source, use its declared access and maintenance rules. Treat re
 
 - This Skill does not prescribe a storage format, directory name, provider, or ownership model.
 - It does not replace `AGENTS.md`, the project workflow bridge, code, tests, or runtime artifacts as their authoritative sources.
-- Knowledge updates are never implicit side effects of a feature or ordinary run.
+- Knowledge updates are never implicit side effects of a feature or ordinary work order.

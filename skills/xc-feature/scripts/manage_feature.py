@@ -24,18 +24,18 @@ def git_root(path: Path) -> Path:
         check=False,
     )
     if result.returncode != 0:
-        raise ValueError(f"context_dir must be inside a Git worktree: {path}")
+        raise ValueError(f"workshop_path must be inside a Git worktree: {path}")
     return Path(result.stdout.strip()).resolve()
 
 
-def initialize_feature(context_dir: Path, feature_id: str) -> dict[str, object]:
-    resolved_context = context_dir.resolve()
-    if resolved_context.name != ".xcoding":
-        raise ValueError(f"context_dir must resolve to a .xcoding directory: {resolved_context}")
+def initialize_feature(workshop_path: Path, feature_id: str) -> dict[str, object]:
+    resolved_workshop = workshop_path.resolve()
+    if resolved_workshop.name != ".xcoding":
+        raise ValueError(f"workshop_path must resolve to a .xcoding directory: {resolved_workshop}")
     if not SAFE_FEATURE_ID.fullmatch(feature_id):
         raise ValueError("feature_id must be a safe single path segment")
-    context_repo_root = git_root(resolved_context)
-    feature_dir = resolved_context / "features" / feature_id
+    workshop_repo_root = git_root(resolved_workshop)
+    feature_dir = resolved_workshop / "features" / feature_id
     if feature_dir.exists():
         raise ValueError(f"feature directory already exists: {feature_dir}")
     feature_dir.mkdir(parents=True)
@@ -43,8 +43,8 @@ def initialize_feature(context_dir: Path, feature_id: str) -> dict[str, object]:
         "ok": True,
         "feature_id": feature_id,
         "feature_dir": str(feature_dir),
-        "context_dir": str(resolved_context),
-        "context_repo_root": str(context_repo_root),
+        "workshop_path": str(resolved_workshop),
+        "workshop_repo_root": str(workshop_repo_root),
     }
 
 
@@ -52,13 +52,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Manage explicit XC feature directories.")
     subparsers = parser.add_subparsers(dest="operation", required=True)
     initialize = subparsers.add_parser("init", help="Create an empty feature directory.")
-    initialize.add_argument("--context-dir", required=True)
+    initialize.add_argument("--workshop", required=True)
     initialize.add_argument("--feature-id", required=True)
     args = parser.parse_args()
     try:
         if args.operation != "init":
             raise ValueError(f"unsupported operation: {args.operation}")
-        payload = initialize_feature(Path(args.context_dir), args.feature_id)
+        payload = initialize_feature(Path(args.workshop), args.feature_id)
     except ValueError as exc:
         print(json.dumps({"ok": False, "error": {"code": "feature_error", "message": str(exc)}}, indent=2))
         return 2

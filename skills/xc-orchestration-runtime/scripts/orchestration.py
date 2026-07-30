@@ -38,6 +38,7 @@ def parse_runtime_for_read(args: argparse.Namespace) -> Tuple[Path, Any, Dict[st
     path = Path(args.tree)
     config = config_for(args, path)
     tree, integrity = core.read_tree_with_integrity(path, config, "runtime")
+    core.require_target_runtime_schema(tree.getroot())
     return path, tree, config, integrity
 
 
@@ -190,23 +191,23 @@ def snapshot_ready(root: Any, limit: int) -> List[Dict[str, Any]]:
 
 
 def cmd_init(args: argparse.Namespace) -> Dict[str, Any]:
-    runtime_dir = Path(args.runtime_dir)
-    config = config_for(args, runtime_dir)
+    runtime_path = Path(args.runtime_path)
+    config = config_for(args, runtime_path)
     template_path = Path(args.template) if args.template else default_template()
-    tree_path = runtime_dir / "orchestration.xml"
+    tree_path = runtime_path / "orchestration.xml"
     with core.runtime_write_lock(tree_path):
         template_tree = core.parse_xml(template_path)
         template_errors = core.validate_template_root(template_tree.getroot())
         if template_errors:
             raise core.TreeValidationError("template validation failed", {"errors": template_errors})
-        run_id = args.run_id or (
+        work_order_id = args.work_order_id or (
             datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:8]
         )
         if tree_path.exists():
             raise core.RuntimeErrorBase("runtime tree already exists", {"path": str(tree_path)})
         tree = core.instantiate_runtime_tree(
             template_tree,
-            run_id,
+            work_order_id,
             args.name,
             core.parse_set_values(args.var),
             config,
@@ -218,7 +219,7 @@ def cmd_init(args: argparse.Namespace) -> Dict[str, Any]:
             config,
             "init",
             {
-                "run_id": run_id,
+                "work_order_id": work_order_id,
                 "name": tree.getroot().get("name", ""),
                 "template": str(template_path),
                 "blackboard": core.blackboard(tree.getroot()),
@@ -351,6 +352,7 @@ def cmd_add_node(args: argparse.Namespace) -> Dict[str, Any]:
             args.deliverables,
             args.acceptance,
             core.parse_metadata_values(args.metadata),
+            args.before,
         )
         core.stabilize(tree.getroot())
         return write_runtime(
@@ -394,6 +396,22 @@ def cmd_close_group(args: argparse.Namespace) -> Dict[str, Any]:
             {
                 "group": core.snapshot_node(tree.getroot(), group),
                 "awaiting_dynamic_groups": core.awaiting_dynamic_groups(tree.getroot()),
+            },
+            commit_on_write=False,
+        )
+
+
+def cmd_reopen_group(args: argparse.Namespace) -> Dict[str, Any]:
+    with runtime_mutation(args, "reopen-group") as (path, tree, config):
+        group = core.reopen_dynamic_group(tree.getroot(), args.group, args.reason)
+        return write_runtime(
+            tree,
+            path,
+            config,
+            "reopen-group",
+            {
+                "group": core.snapshot_node(tree.getroot(), group),
+                "reason": args.reason,
             },
             commit_on_write=False,
         )
@@ -481,6 +499,7 @@ def cmd_integrity_status(args: argparse.Namespace) -> Dict[str, Any]:
     path = Path(args.tree)
     config = config_for(args, path)
     tree = core.parse_xml(path)
+    core.require_target_runtime_schema(tree.getroot())
     return {
         "tree_path": str(path),
         "config_source": config["_source"],
@@ -495,6 +514,7 @@ def cmd_repair_integrity(args: argparse.Namespace) -> Dict[str, Any]:
     with core.runtime_write_lock(path):
         tree = core.parse_xml(path)
         root = tree.getroot()
+        core.require_target_runtime_schema(root)
         core.require_expected_revision(root, args.expected_revision)
         previous_integrity = core.verify_integrity(root, "runtime")
         core.stabilize(root)
@@ -515,6 +535,7 @@ def cmd_validate(args: argparse.Namespace) -> Dict[str, Any]:
     if kind == "template":
         errors = core.validate_template_root(root)
     elif kind == "runtime":
+        core.require_target_runtime_schema(root)
         errors = core.validate_runtime_root(root)
     else:
         errors = [f"unsupported or missing artifact_kind: {kind or '<missing>'}"]
@@ -548,9 +569,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     init = sub.add_parser("init", help="Create a managed runtime tree from a managed template.")
-    init.add_argument("--runtime-dir", required=True)
+    init.add_argument("--runtime-path", required=True)
     init.add_argument("--template", default="")
-    init.add_argument("--run-id", default="")
+    init.add_argument("--work-order-id", default="")
     init.add_argument("--name", default="")
     init.add_argument("--var", action="append", default=[])
     add_config_argument(init)
@@ -617,6 +638,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_node.add_argument("--deliverables", default="")
     add_node.add_argument("--acceptance", default="")
     add_node.add_argument("--metadata", action="append", default=[])
+    add_node.add_argument("--before", default="")
     add_node.set_defaults(func=cmd_add_node)
 
     embed = sub.add_parser("embed-subtree", help="Instantiate a managed template beneath a runtime parent.")
@@ -630,6 +652,15 @@ def build_parser() -> argparse.ArgumentParser:
     add_mutation_tree_argument(close_group)
     close_group.add_argument("--group", required=True)
     close_group.set_defaults(func=cmd_close_group)
+
+    reopen_group = sub.add_parser(
+        "reopen-group",
+        help="Reopen a closed dynamic group for explicitly approved recovery work.",
+    )
+    add_mutation_tree_argument(reopen_group)
+    reopen_group.add_argument("--group", required=True)
+    reopen_group.add_argument("--reason", required=True)
+    reopen_group.set_defaults(func=cmd_reopen_group)
 
     reopen = sub.add_parser("reopen", help="Reopen a sealed successful runtime tree with an auditable reason.")
     add_mutation_tree_argument(reopen)

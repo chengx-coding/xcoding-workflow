@@ -20,6 +20,11 @@ MANIFEST_SCHEMA_VERSION = 1
 INSTALLER_VERSION = "1"
 NOISE_DIRECTORY_NAMES = {"__pycache__"}
 NOISE_FILE_SUFFIXES = {".pyc", ".pyo"}
+RETIRED_SOURCE_PACKAGES = {
+    "xc-" + "context-setup",
+    "xc-" + "create-run",
+    "xc-" + "run",
+}
 
 
 class InstallerError(RuntimeError):
@@ -87,6 +92,13 @@ def package_names(skills_root: Path) -> list[str]:
     packages = sorted(entry.name for entry in skills_root.iterdir() if entry.is_dir() and entry.name.startswith("xc-"))
     if not packages:
         raise InstallerError("missing_xc_packages", "source skills directory contains no xc-* packages")
+    retired = sorted(set(packages).intersection(RETIRED_SOURCE_PACKAGES))
+    if retired:
+        raise InstallerError(
+            "retired_xc_packages",
+            "source skills directory contains retired package names",
+            {"packages": retired},
+        )
     for package in packages:
         skill_file = skills_root / package / "SKILL.md"
         if not skill_file.is_file():

@@ -112,7 +112,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
     def create_terminal_runtime(
         self,
         project: Path,
-        run_id: str,
+        work_order_id: str,
         auto_commit: bool,
     ) -> tuple[Path, Path, str]:
         context = project / ".xcoding"
@@ -132,15 +132,77 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             "init",
             "--template",
             str(template),
-            "--runtime-dir",
-            str(context / "runs" / run_id / "runtime"),
-            "--run-id",
-            run_id,
+            "--runtime-path",
+            str(context / "work-orders" / work_order_id / "runtime"),
+            "--work-order-id",
+            work_order_id,
             cwd=project,
         )
         tree_path = Path(str(initialized["tree_path"]))
         node_id = str(self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]["id"])
         return context, tree_path, node_id
+
+    def test_ordinary_commands_reject_previous_schema_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context, tree_path, _ = self.create_terminal_runtime(
+                project,
+                "previous-schema-rejection",
+                auto_commit=False,
+            )
+            tree = core.parse_xml(tree_path)
+            root = tree.getroot()
+            previous_identity = "run_" + "id"
+            root.set(previous_identity, root.attrib.pop("work_order_id"))
+            for variable in root.findall("./blackboard/var"):
+                if variable.get("key") == "work_order_id":
+                    variable.set("key", previous_identity)
+            core.apply_integrity(root, "runtime", core.load_config(context))
+            core.atomic_write_text(tree_path, core.serialize_xml(root, "runtime"))
+            before = tree_path.read_bytes()
+
+            rejected = self.run_cli_error(
+                "summary",
+                "--tree",
+                str(tree_path),
+                cwd=project,
+            )
+
+            self.assertEqual(rejected["error"]["code"], "legacy_schema_rejected")
+            self.assertEqual(tree_path.read_bytes(), before)
+
+    def test_ordinary_commands_reject_mixed_lifecycle_schema_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context, tree_path, _ = self.create_terminal_runtime(
+                project,
+                "mixed-schema-rejection",
+                auto_commit=False,
+            )
+            tree = core.parse_xml(tree_path)
+            root = tree.getroot()
+            previous_key = "run" + ".requires_verification"
+            variable = ET.SubElement(root.find("./blackboard"), "var", {"key": previous_key})
+            variable.text = "true"
+            core.apply_integrity(root, "runtime", core.load_config(context))
+            core.atomic_write_text(tree_path, core.serialize_xml(root, "runtime"))
+            before = tree_path.read_bytes()
+
+            rejected = self.run_cli_error(
+                "summary",
+                "--tree",
+                str(tree_path),
+                cwd=project,
+            )
+
+            self.assertEqual(rejected["error"]["code"], "legacy_schema_rejected")
+            self.assertTrue(
+                any(
+                    str(field).endswith(previous_key)
+                    for field in rejected["error"]["details"]["legacy_fields"]
+                )
+            )
+            self.assertEqual(tree_path.read_bytes(), before)
 
     def write_conditional_template(self, path: Path, config: dict[str, object], when_policy: str = "") -> None:
         root = ET.Element("orchestration", {"schema_version": "1", "name": "conditional-group"})
@@ -313,22 +375,22 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         project: Path,
         context: Path,
         config: dict[str, object],
-        run_id: str,
+        work_order_id: str,
         child_specs: list[dict[str, object]],
         *,
         mode: str = "sequence",
         blackboard: dict[str, str] | None = None,
     ) -> Path:
-        template = project / f"{run_id}.xml"
+        template = project / f"{work_order_id}.xml"
         self.write_flow_template(template, config, child_specs, mode=mode, blackboard=blackboard)
         initialized = self.run_cli(
             "init",
             "--template",
             str(template),
-            "--runtime-dir",
-            str(context / "runs" / run_id / "runtime"),
-            "--run-id",
-            run_id,
+            "--runtime-path",
+            str(context / "work-orders" / work_order_id / "runtime"),
+            "--work-order-id",
+            work_order_id,
             cwd=project,
         )
         return Path(str(initialized["tree_path"]))
@@ -396,7 +458,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
 
     def test_snapshot_svg_is_complete_parseable_and_escaped(self) -> None:
         snapshot = {
-            "metadata": {"name": "A & B", "run_id": "svg-run", "status": "running"},
+            "metadata": {"name": "A & B", "work_order_id": "svg-run", "status": "running"},
             "root": {
                 "id": "root",
                 "title": "Root <node>",
@@ -439,15 +501,15 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             config = core.load_config(context)
             template = project / "template.xml"
             self.write_template(template, config)
-            run_id = "20260726-1430-outside-artifact"
+            work_order_id = "20260726-1430-outside-artifact"
             initialized = self.run_cli(
                 "init",
                 "--template",
                 str(template),
-                "--runtime-dir",
-                str(context / "runs" / run_id / "runtime"),
-                "--run-id",
-                run_id,
+                "--runtime-path",
+                str(context / "work-orders" / work_order_id / "runtime"),
+                "--work-order-id",
+                work_order_id,
                 cwd=project,
             )
             tree_path = Path(str(initialized["tree_path"]))
@@ -490,11 +552,11 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         for operation, terminal_status in (("fail", "failed"), ("block", "blocked")):
             with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temporary:
                 project = Path(temporary) / "project"
-                run_id = f"terminal-{operation}-artifacts"
-                context, tree_path, node_id = self.create_terminal_runtime(project, run_id, auto_commit=True)
+                work_order_id = f"terminal-{operation}-artifacts"
+                context, tree_path, node_id = self.create_terminal_runtime(project, work_order_id, auto_commit=True)
                 self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
 
-                artifact_dir = context / "runs" / run_id / "artifacts" / operation
+                artifact_dir = context / "work-orders" / work_order_id / "artifacts" / operation
                 artifact_dir.mkdir(parents=True)
                 artifacts = [artifact_dir / "evidence.md", artifact_dir / "diagnostic.txt"]
                 artifacts[0].write_text("# Evidence\n", encoding="utf-8")
@@ -523,7 +585,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 declared = self.run_cli("artifacts", "--tree", str(tree_path), cwd=project)["artifacts"]
                 self.assertEqual([item["path"] for item in declared], [str(path) for path in artifacts])
                 changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
-                self.assertIn(f"runs/{run_id}/runtime/orchestration.xml", changed_paths)
+                self.assertIn(f"work-orders/{work_order_id}/runtime/orchestration.xml", changed_paths)
                 for artifact in artifacts:
                     self.assertIn(artifact.relative_to(context).as_posix(), changed_paths)
                 self.assertNotIn("unrelated-user-file.md", changed_paths)
@@ -665,9 +727,9 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 "init",
                 "--template",
                 str(template),
-                "--runtime-dir",
-                str(context / "runs" / "conditional" / "runtime"),
-                "--run-id",
+                "--runtime-path",
+                str(context / "work-orders" / "conditional" / "runtime"),
+                "--work-order-id",
                 "conditional",
                 "--var",
                 "optional.enabled=false",
@@ -1005,15 +1067,15 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             config = core.load_config(context)
             template = project / "template.xml"
             self.write_template(template, config)
-            run_id = "20260727-1200-artifact-query"
+            work_order_id = "20260727-1200-artifact-query"
             initialized = self.run_cli(
                 "init",
                 "--template",
                 str(template),
-                "--runtime-dir",
-                str(context / "runs" / run_id / "runtime"),
-                "--run-id",
-                run_id,
+                "--runtime-path",
+                str(context / "work-orders" / work_order_id / "runtime"),
+                "--work-order-id",
+                work_order_id,
                 cwd=project,
             )
             tree_path = Path(str(initialized["tree_path"]))
@@ -1036,7 +1098,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 "--metadata",
                 "metadata.artifact.audience=user",
                 "--metadata",
-                "metadata.artifact.content_language=run.document_language",
+                "metadata.artifact.content_language=work_order.document_language",
                 cwd=project,
             )
             self.assertEqual(added["node"]["attributes"]["metadata.artifact.audience"], "user")
@@ -1047,10 +1109,10 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
 
             user_node = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
             self.assertEqual(user_node["logical_key"], "write-user-report")
-            artifact = context / "runs" / run_id / "artifacts" / "user-report.md"
+            artifact = context / "work-orders" / work_order_id / "artifacts" / "user-report.md"
             artifact.parent.mkdir(parents=True)
             artifact.write_text("# User report\n", encoding="utf-8")
-            unrelated = context / "runs" / run_id / "unmanaged.md"
+            unrelated = context / "work-orders" / work_order_id / "unmanaged.md"
             unrelated.write_text("# Unmanaged\n", encoding="utf-8")
             self.run_cli("start", "--tree", str(tree_path), "--node", str(user_node["id"]), cwd=project)
             self.run_cli(
@@ -1070,7 +1132,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 "node_id": str(user_node["id"]),
                 "metadata": {
                     "metadata.artifact.audience": "user",
-                    "metadata.artifact.content_language": "run.document_language",
+                    "metadata.artifact.content_language": "work_order.document_language",
                 },
             }])
 
@@ -1115,9 +1177,9 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 "init",
                 "--template",
                 str(template),
-                "--runtime-dir",
-                str(context / "runs" / "revision" / "runtime"),
-                "--run-id",
+                "--runtime-path",
+                str(context / "work-orders" / "revision" / "runtime"),
+                "--work-order-id",
                 "revision",
                 cwd=project,
             )
@@ -1200,9 +1262,9 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 "init",
                 "--template",
                 str(template),
-                "--runtime-dir",
-                str(context / "runs" / "transition" / "runtime"),
-                "--run-id",
+                "--runtime-path",
+                str(context / "work-orders" / "transition" / "runtime"),
+                "--work-order-id",
                 "transition",
                 cwd=project,
             )
@@ -1236,9 +1298,9 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                     "init",
                     "--template",
                     str(template),
-                    "--runtime-dir",
-                    str(context / "runs" / (policy or "reactive") / "runtime"),
-                    "--run-id",
+                    "--runtime-path",
+                    str(context / "work-orders" / (policy or "reactive") / "runtime"),
+                    "--work-order-id",
                     policy or "reactive",
                     "--var",
                     "optional.enabled=false",
@@ -1270,9 +1332,9 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 "init",
                 "--template",
                 str(template),
-                "--runtime-dir",
-                str(context / "runs" / "dynamic" / "runtime"),
-                "--run-id",
+                "--runtime-path",
+                str(context / "work-orders" / "dynamic" / "runtime"),
+                "--work-order-id",
                 "dynamic",
                 cwd=project,
             )
@@ -1307,6 +1369,81 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 ["finish"],
             )
 
+    def test_closed_dynamic_group_can_reopen_and_insert_approved_recovery_work(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "dynamic-recovery.xml"
+            self.write_dynamic_group_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "dynamic-recovery" / "runtime"),
+                "--work-order-id",
+                "dynamic-recovery",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            group_id = str(
+                self.run_cli("next", "--tree", str(tree_path), cwd=project)["awaiting_dynamic_groups"][0]["id"]
+            )
+            original = self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                group_id,
+                "--logical-key",
+                "blocked-work",
+                "--title",
+                "Blocked work",
+                "--executor",
+                "main",
+                cwd=project,
+            )["node"]
+            self.run_cli("close-group", "--tree", str(tree_path), "--group", group_id, cwd=project)
+
+            reopened = self.run_cli(
+                "reopen-group",
+                "--tree",
+                str(tree_path),
+                "--group",
+                group_id,
+                "--reason",
+                "The user approved explicit recovery work.",
+                cwd=project,
+            )
+            self.assertEqual(reopened["group"]["attributes"]["dynamic.state"], "open")
+            self.assertEqual(reopened["group"]["attributes"]["recovery.open"], "true")
+            recovery = self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                group_id,
+                "--before",
+                str(original["id"]),
+                "--logical-key",
+                "approved-recovery",
+                "--title",
+                "Approved recovery",
+                "--role",
+                "recovery",
+                "--executor",
+                "main",
+                cwd=project,
+            )["node"]
+            ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+            self.assertEqual([node["id"] for node in ready], [recovery["id"]])
+
     def test_successful_trees_require_explicit_reopen_before_new_work(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"
@@ -1320,9 +1457,9 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 "init",
                 "--template",
                 str(template),
-                "--runtime-dir",
-                str(context / "runs" / "sealed" / "runtime"),
-                "--run-id",
+                "--runtime-path",
+                str(context / "work-orders" / "sealed" / "runtime"),
+                "--work-order-id",
                 "sealed",
                 cwd=project,
             )
@@ -1434,8 +1571,8 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.assertTrue(svg_path.is_file())
             self.assertEqual(self.run_cli("summary", "--tree", str(tree_path), cwd=project)["status"], "complete")
             changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
-            self.assertIn("runs/close-group-seal/runtime/orchestration.xml", changed_paths)
-            self.assertIn("runs/close-group-seal/runtime/close-group-seal.svg", changed_paths)
+            self.assertIn("work-orders/close-group-seal/runtime/orchestration.xml", changed_paths)
+            self.assertIn("work-orders/close-group-seal/runtime/close-group-seal.svg", changed_paths)
 
     def test_non_terminal_seal_restores_tree_when_svg_render_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1536,7 +1673,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                         "",
                         "[git]",
                         "auto_commit = true",
-                        'commit_message = "chore(orchestration): {operation} {run_id} [{checksum_short}]"',
+                        'commit_message = "chore(orchestration): {operation} {work_order_id} [{checksum_short}]"',
                         'on_commit_failure = "warn"',
                         "",
                         "[integrity]",
@@ -1559,17 +1696,17 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             config = core.load_config(context)
             template = project / "template.xml"
             self.write_template(template, config)
-            run_id = "20260726-1430-terminal-commit"
-            runtime_dir = context / "runs" / run_id / "runtime"
+            work_order_id = "20260726-1430-terminal-commit"
+            runtime_path = context / "work-orders" / work_order_id / "runtime"
 
             initialized = self.run_cli(
                 "init",
                 "--template",
                 str(template),
-                "--runtime-dir",
-                str(runtime_dir),
-                "--run-id",
-                run_id,
+                "--runtime-path",
+                str(runtime_path),
+                "--work-order-id",
+                work_order_id,
                 cwd=project,
             )
             self.assertEqual(initialized["status"], "persisted")
@@ -1587,7 +1724,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.assertEqual(started["commit"]["status"], "deferred")
             self.assertFalse(self.git_has_head(context))
 
-            artifact = context / "runs" / run_id / "artifacts" / "write-document" / "document.md"
+            artifact = context / "work-orders" / work_order_id / "artifacts" / "write-document" / "document.md"
             artifact.parent.mkdir(parents=True)
             artifact.write_text("# Document\n", encoding="utf-8")
             unrelated = context / "unrelated-user-file.md"
@@ -1618,9 +1755,9 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.assertEqual(self.run_git(context, "rev-list", "--count", "HEAD"), "1")
 
             changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
-            self.assertIn(f"runs/{run_id}/runtime/orchestration.xml", changed_paths)
-            self.assertIn(f"runs/{run_id}/runtime/terminal-commit.svg", changed_paths)
-            self.assertIn(f"runs/{run_id}/artifacts/write-document/document.md", changed_paths)
+            self.assertIn(f"work-orders/{work_order_id}/runtime/orchestration.xml", changed_paths)
+            self.assertIn(f"work-orders/{work_order_id}/runtime/terminal-commit.svg", changed_paths)
+            self.assertIn(f"work-orders/{work_order_id}/artifacts/write-document/document.md", changed_paths)
             self.assertNotIn("unrelated-user-file.md", changed_paths)
             self.assertIn("?? unrelated-user-file.md", self.run_git(context, "status", "--short"))
             self.assertEqual(self.run_git(context, "diff", "--cached", "--name-only"), "")
@@ -1718,6 +1855,39 @@ class ViewerServerTests(unittest.TestCase):
             os.kill(pid, 15)
         except ProcessLookupError:
             return
+
+    def test_readiness_reader_retries_only_transient_access_failures(self) -> None:
+        readiness_path = Path("ready.json")
+        expected = {"ok": True, "url": "http://127.0.0.1:1/", "trees": []}
+        with mock.patch.object(
+            Path,
+            "read_text",
+            side_effect=[
+                FileNotFoundError(errno.ENOENT, "not published yet"),
+                PermissionError(errno.EACCES, "temporary sharing conflict"),
+                json.dumps(expected),
+            ],
+        ):
+            self.assertIsNone(viewer_server.read_readiness(readiness_path))
+            self.assertIsNone(viewer_server.read_readiness(readiness_path))
+            self.assertEqual(viewer_server.read_readiness(readiness_path), expected)
+
+        with mock.patch.object(
+            Path,
+            "read_text",
+            side_effect=OSError(errno.EIO, "persistent read failure"),
+        ):
+            with self.assertRaises(OSError):
+                viewer_server.read_readiness(readiness_path)
+
+    def test_readiness_reader_rejects_malformed_or_non_object_payloads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            readiness_path = Path(temporary) / "ready.json"
+            for payload in ("{", "[]"):
+                with self.subTest(payload=payload):
+                    readiness_path.write_text(payload, encoding="utf-8")
+                    with self.assertRaises(viewer_server.ViewerLaunchError):
+                        viewer_server.read_readiness(readiness_path)
 
     def test_background_launch_returns_one_json_result_and_falls_back_from_occupied_port(self) -> None:
         with tempfile.TemporaryDirectory() as temporary, socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupied:

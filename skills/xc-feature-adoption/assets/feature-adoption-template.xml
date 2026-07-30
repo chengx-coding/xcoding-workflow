@@ -3,20 +3,20 @@
 <orchestration schema_version="1" name="feature-adoption" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="4fc26aa7a0199e959a9e031e46c675802e3d474865663e61074fa30e951ea585" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="23e534c438f2854b29a3d0aecdd39995a70d542357ec35f4931d475332bb281e" />
   </meta>
   <blackboard>
     <var key="feature.id" />
     <var key="feature.title" />
     <var key="feature.adoption_approval_required">true</var>
-    <var key="run.document_language">en</var>
+    <var key="work_order.document_language">en</var>
   </blackboard>
   <node executor="main" mode="sequence" role="root" template_id="root" title="Feature Adoption" type="composite">
     <children>
       <node executor="main" role="adoption-prepare" template_id="prepare-adoption" title="Prepare feature adoption" type="task">
-        <instructions>Read the project bridge, create the run through xc-create-run, determine and validate run.document_language through xc-document from the explicit parameter or initiating user request, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.</instructions>
-        <deliverables>An authoritative run directory, explicit code-entry scope, and empty managed feature directory.</deliverables>
-        <acceptance>The feature is not already managed, run.document_language is set before any document write, and the adoption scope has enough evidence to begin analysis.</acceptance>
+        <instructions>Read the project bridge, open the adoption work order through xc-open-work-order, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, identify existing code boundaries, select an explicit feature ID, and create its empty directory through xc-feature.</instructions>
+        <deliverables>An authoritative workbench, explicit code-entry scope, and empty managed feature directory.</deliverables>
+        <acceptance>The feature is not already managed, work_order.document_language is set before any document write, and the adoption scope has enough evidence to begin analysis.</acceptance>
       </node>
       <node executor="main" mode="sequence" role="dynamic-group" template_id="goal-document" title="Define adoption goal" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-group" title="Analyze current feature behavior" type="composite" />
@@ -30,9 +30,9 @@
       </node>
       <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record adoption result" type="composite" />
       <node executor="main" role="adoption-finalize" template_id="finalize-adoption" title="Finalize feature adoption" type="task">
-        <instructions>Confirm the adopted feature documents, provenance, artifacts, and unresolved evidence gaps, then close the run.</instructions>
-        <deliverables>A completed, failed, or blocked adoption run with durable result evidence.</deliverables>
-        <acceptance>No ordinary run is needed to infer whether the feature was adopted successfully.</acceptance>
+        <instructions>Confirm the adopted feature documents, provenance, artifacts, and unresolved evidence gaps, then close the work order.</instructions>
+        <deliverables>A completed, failed, or blocked adoption work order with durable result evidence.</deliverables>
+        <acceptance>No ordinary work order is needed to infer whether the feature was adopted successfully.</acceptance>
       </node>
     </children>
   </node>

@@ -3,11 +3,11 @@ schema_version: 1
 document_kind: project-workflow
 orchestration:
   initialized_by:
-    run_id: "{{run_id}}"
+    work_order_id: "{{work_order_id}}"
     tree_ref: "{{tree_ref}}"
     node_id: "{{node_id}}"
   last_updated_by:
-    run_id: "{{run_id}}"
+    work_order_id: "{{work_order_id}}"
     tree_ref: "{{tree_ref}}"
     node_id: "{{node_id}}"
 ---
@@ -20,6 +20,6 @@ orchestration:
 
 ## Code Repository and Verification Commands
 
-## Feature and Run Conventions
+## Feature and Work Order Conventions
 
 ## Project-Specific Constraints

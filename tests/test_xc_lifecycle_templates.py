@@ -19,10 +19,10 @@ WORKFLOWS = (
         "write-document",
     ),
     (
-        "context-setup",
-        REPOSITORY_ROOT / "skills" / "xc-context-setup" / "assets" / "context-setup-flow.json",
-        REPOSITORY_ROOT / "skills" / "xc-context-setup" / "assets" / "context-setup-template.xml",
-        "prepare-context",
+        "workshop-setup",
+        REPOSITORY_ROOT / "skills" / "xc-workshop-setup" / "assets" / "workshop-setup-flow.json",
+        REPOSITORY_ROOT / "skills" / "xc-workshop-setup" / "assets" / "workshop-setup-template.xml",
+        "prepare-workshop",
     ),
     (
         "new-feature",
@@ -37,10 +37,10 @@ WORKFLOWS = (
         "prepare-adoption",
     ),
     (
-        "run",
-        REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-flow.json",
-        REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-template.xml",
-        "prepare-run",
+        "work-order",
+        REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-flow.json",
+        REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml",
+        "prepare-work-order",
     ),
     (
         "feature-reconciliation",
@@ -99,11 +99,11 @@ class XcLifecycleTemplateTests(unittest.TestCase):
     def test_templates_initialize_and_expose_first_node(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            context = root / ".xcoding"
-            context.mkdir()
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            workshop = root / ".xcoding"
+            workshop.mkdir()
+            (workshop / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
             for name, _, template, first_template_id in WORKFLOWS:
-                runtime_dir = context / "runs" / name / "runtime"
+                runtime_path = workshop / "work-orders" / name / "runtime"
                 code, initialized = self.run_json(
                     [
                         sys.executable,
@@ -111,9 +111,9 @@ class XcLifecycleTemplateTests(unittest.TestCase):
                         "init",
                         "--template",
                         str(template),
-                        "--runtime-dir",
-                        str(runtime_dir),
-                        "--run-id",
+                        "--runtime-path",
+                        str(runtime_path),
+                        "--work-order-id",
                         f"20260727-1000-{name}",
                     ]
                 )

@@ -9,12 +9,12 @@ description: "Provides a reusable orchestration subtree for writing, validating,
 
 ## Required Blackboard Values
 
-- `document.path`: Target document path inside the context repository.
+- `document.path`: Target document path inside the workshop repository.
 - `document.kind`: Expected `xc-document` document kind.
 - `document.template`: Template path or `none` for an existing document.
 - `document.inputs`: Comma-separated source document and artifact paths.
 - `document.contract`: Path to the domain authoring contract or reference.
-- `document.content_language`: Resolved language tag for the target content. Required for top-level run documents; project and feature document callers may omit it.
+- `document.content_language`: Resolved language tag for the target content. Required for top-level work order documents; project and feature document callers may omit it.
 - `document.review_required`: `true` or `false`.
 - `document.gate_required`: `true` or `false`.
 - `document.review.open_issues`: Set by the review node before loop evaluation.
@@ -43,13 +43,13 @@ scope.
 
 - The write or revise worker uses `xc-document` templates, applies `document.content_language` when present, and writes the target document immediately.
 - Every validator node invokes `xc-document` with `document.path` and `document.kind`.
-- Review workers write node artifacts under the active run's `artifacts/<node-id>/` directory and set `document.review.open_issues`.
+- Review workers write node artifacts under the active workbench's `artifacts/<node-id>/` directory and set `document.review.open_issues`.
 - A revision worker changes only the target document and records its artifact path when completing.
 - User gates are executed by the main session and record short decisions in the blackboard. Long feedback becomes a node artifact.
 
 ## Language Corrections
 
-When a user explicitly corrects `run.document_language`, the owning lifecycle uses the runtime `artifacts` command to select only declared top-level run documents and `metadata.artifact.audience=user` reports. It creates a dynamic correction group and embeds the first revision subtree before requesting the next node. Complete each correction subtree before setting the next `document.*` values and embedding the next subtree; keep review and gate flags false unless the user separately requests review.
+When a user explicitly corrects `work_order.document_language`, the owning lifecycle uses the runtime `artifacts` command to select only declared top-level work order documents and `metadata.artifact.audience=user` reports. It creates a dynamic correction group and embeds the first revision subtree before requesting the next node. Complete each correction subtree before setting the next `document.*` values and embedding the next subtree; keep review and gate flags false unless the user separately requests review.
 
 If the source runtime already succeeded, the owning main session must first
 record the explicit user correction through its gate and call runtime `reopen`

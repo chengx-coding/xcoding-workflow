@@ -13,7 +13,7 @@ AUTHOR = REPOSITORY_ROOT / "skills" / "xc-orchestration-author" / "scripts" / "t
 RUNTIME = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime" / "scripts" / "orchestration.py"
 FLOW = REPOSITORY_ROOT / "skills" / "xc-clarify" / "assets" / "clarify-flow.json"
 TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-clarify" / "assets" / "clarify-template.xml"
-RUN_FLOW = REPOSITORY_ROOT / "skills" / "xc-run" / "assets" / "run-flow.json"
+WORK_ORDER_FLOW = REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-flow.json"
 NEW_FEATURE_FLOW = REPOSITORY_ROOT / "skills" / "xc-new-feature" / "assets" / "new-feature-flow.json"
 
 
@@ -58,9 +58,9 @@ class XcClarifyTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
-        context = root / ".xcoding"
-        context.mkdir()
-        (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+        workshop = root / ".xcoding"
+        workshop.mkdir()
+        (workshop / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
         initialized = self.run_json(
             [
                 sys.executable,
@@ -68,9 +68,9 @@ class XcClarifyTests(unittest.TestCase):
                 "init",
                 "--template",
                 str(TEMPLATE),
-                "--runtime-dir",
-                str(context / "runs" / "clarify" / "runtime"),
-                "--run-id",
+                "--runtime-path",
+                str(workshop / "work-orders" / "clarify" / "runtime"),
+                "--work-order-id",
                 "20260727-1000-clarify",
             ]
         )
@@ -299,18 +299,18 @@ class XcClarifyTests(unittest.TestCase):
         self.assertEqual(summary["status"], "complete", summary)
 
     def test_lifecycle_flows_conditionally_place_clarification_before_solution(self) -> None:
-        run_flow = json.loads(RUN_FLOW.read_text(encoding="utf-8"))
+        work_order_flow = json.loads(WORK_ORDER_FLOW.read_text(encoding="utf-8"))
         new_feature_flow = json.loads(NEW_FEATURE_FLOW.read_text(encoding="utf-8"))
-        self.assertEqual(run_flow["blackboard"]["run.requires_clarification"], "false")
-        self.assertEqual(new_feature_flow["blackboard"]["run.requires_clarification"], "false")
+        self.assertEqual(work_order_flow["blackboard"]["work_order.requires_clarification"], "false")
+        self.assertEqual(new_feature_flow["blackboard"]["work_order.requires_clarification"], "false")
 
-        for flow, preceding in ((run_flow, "reconciliation-group"), (new_feature_flow, "analysis-group")):
+        for flow, preceding in ((work_order_flow, "reconciliation-group"), (new_feature_flow, "analysis-group")):
             children = flow["root"]["children"]
             ids = [child["template_id"] for child in children]
             clarification = children[ids.index("clarification-group")]
             self.assertGreater(ids.index("clarification-group"), ids.index(preceding))
-            self.assertLess(ids.index("clarification-group"), ids.index("run-solution-document"))
-            self.assertEqual(clarification["when"], "run.requires_clarification == true")
+            self.assertLess(ids.index("clarification-group"), ids.index("work-order-solution-document"))
+            self.assertEqual(clarification["when"], "work_order.requires_clarification == true")
 
 
 if __name__ == "__main__":

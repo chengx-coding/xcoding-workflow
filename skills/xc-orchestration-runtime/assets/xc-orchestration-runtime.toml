@@ -2,7 +2,7 @@ schema_version = 1
 
 [git]
 auto_commit = true
-commit_message = "chore(orchestration): {operation} {run_id} [{checksum_short}]"
+commit_message = "chore(orchestration): {operation} {work_order_id} [{checksum_short}]"
 on_commit_failure = "warn"
 
 [integrity]

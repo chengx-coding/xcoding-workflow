@@ -113,7 +113,7 @@ class TreeEntry:
             "tree_id": self.tree_id,
             "path": str(self.path),
             "name": metadata.get("name", self.path.stem),
-            "run_id": metadata.get("run_id", ""),
+            "work_order_id": metadata.get("work_order_id", ""),
             "status": metadata.get("status", "unavailable"),
             "version": (self.snapshot or {}).get("version", ""),
             "updated_at": metadata.get("updated_at", ""),
@@ -349,7 +349,7 @@ class ViewerRequestHandler(BaseHTTPRequestHandler):
                 return
             filename = core.runtime_svg_filename(
                 str(entry.snapshot.get("metadata", {}).get("name", "")),
-                str(entry.snapshot.get("metadata", {}).get("run_id", "")),
+                str(entry.snapshot.get("metadata", {}).get("work_order_id", "")),
             )
             self.send_bytes(
                 HTTPStatus.OK,
@@ -508,8 +508,8 @@ def publish_readiness(path: Path, payload: Dict[str, Any]) -> None:
 
 
 def resolve_server(args: argparse.Namespace, event_sink: Optional[EventSink]) -> tuple[ViewerState, ThreadingHTTPServer, str]:
-    context_path = Path(args.tree[0]) if args.tree else Path.cwd()
-    config = core.load_config(context_path, Path(args.config) if args.config else None)
+    tree_hint = Path(args.tree[0]) if args.tree else Path.cwd()
+    config = core.load_config(tree_hint, Path(args.config) if args.config else None)
     host = args.host or config["viewer"]["host"]
     if host != "127.0.0.1":
         raise ViewerLaunchError("viewer host must be 127.0.0.1")
@@ -580,6 +580,20 @@ def stop_background_process(process: subprocess.Popen[Any]) -> None:
         process.wait(timeout=2)
 
 
+def read_readiness(path: Path) -> Optional[Dict[str, Any]]:
+    try:
+        raw_payload = path.read_text(encoding="utf-8")
+    except (FileNotFoundError, PermissionError):
+        return None
+    try:
+        payload = json.loads(raw_payload)
+    except json.JSONDecodeError as exc:
+        raise ViewerLaunchError("viewer published an invalid readiness response") from exc
+    if not isinstance(payload, dict):
+        raise ViewerLaunchError("viewer published a non-object readiness response")
+    return payload
+
+
 def launch_background(args: argparse.Namespace) -> int:
     ready_dir = Path(tempfile.mkdtemp(prefix="xc-viewer-ready-"))
     readiness_path = ready_dir / "ready.json"
@@ -605,26 +619,22 @@ def launch_background(args: argparse.Namespace) -> int:
     deadline = time.monotonic() + BACKGROUND_START_TIMEOUT_SECONDS
     try:
         while time.monotonic() < deadline:
-            if readiness_path.is_file():
-                try:
-                    payload = json.loads(readiness_path.read_text(encoding="utf-8"))
-                except json.JSONDecodeError:
-                    payload = None
-                if isinstance(payload, dict):
-                    if payload.get("ok"):
-                        result = {
-                            "ok": True,
-                            "mode": "background",
-                            "pid": process.pid,
-                            "url": payload["url"],
-                            "trees": payload["trees"],
-                        }
-                        if not args.no_browser:
-                            webbrowser.open(str(payload["url"]))
-                        print(json.dumps(result, ensure_ascii=False), flush=True)
-                        return 0
-                    message = str(payload.get("error", "viewer failed before startup"))
-                    raise ViewerLaunchError(message)
+            payload = read_readiness(readiness_path)
+            if payload is not None:
+                if payload.get("ok"):
+                    result = {
+                        "ok": True,
+                        "mode": "background",
+                        "pid": process.pid,
+                        "url": payload["url"],
+                        "trees": payload["trees"],
+                    }
+                    if not args.no_browser:
+                        webbrowser.open(str(payload["url"]))
+                    print(json.dumps(result, ensure_ascii=False), flush=True)
+                    return 0
+                message = str(payload.get("error", "viewer failed before startup"))
+                raise ViewerLaunchError(message)
             if process.poll() is not None:
                 raise ViewerLaunchError(f"viewer process exited before startup (code {process.returncode})")
             time.sleep(BACKGROUND_START_POLL_SECONDS)

@@ -10,10 +10,10 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 AUTHOR = REPOSITORY_ROOT / "skills" / "xc-orchestration-author" / "scripts" / "template_builder.py"
-FLOW_SPEC = REPOSITORY_ROOT / "skills" / "xc-context-setup" / "assets" / "context-setup-flow.json"
+FLOW_SPEC = REPOSITORY_ROOT / "skills" / "xc-workshop-setup" / "assets" / "workshop-setup-flow.json"
 
 
-class XcContextSetupTests(unittest.TestCase):
+class XcWorkshopSetupTests(unittest.TestCase):
     def run_author(self, *args: str) -> tuple[int, dict[str, object]]:
         result = subprocess.run(
             [sys.executable, str(AUTHOR), *args],
@@ -25,7 +25,7 @@ class XcContextSetupTests(unittest.TestCase):
         )
         return result.returncode, json.loads(result.stdout)
 
-    def test_context_setup_flow_validates(self) -> None:
+    def test_workshop_setup_flow_validates(self) -> None:
         code, payload = self.run_author("validate-spec", "--spec", str(FLOW_SPEC))
         self.assertEqual(code, 0, payload)
         self.assertTrue(payload["valid"])
@@ -33,7 +33,7 @@ class XcContextSetupTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             config = Path(temporary) / "runtime.toml"
             config.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
-            template = Path(temporary) / "context-setup-template.xml"
+            template = Path(temporary) / "workshop-setup-template.xml"
             code, payload = self.run_author("build", "--spec", str(FLOW_SPEC), "--out", str(template), "--config", str(config))
             self.assertEqual(code, 0, payload)
             self.assertEqual(payload["status"], "persisted")

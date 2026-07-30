@@ -1,26 +1,26 @@
 {
-  "name": "context-setup",
+  "name": "workshop-setup",
   "schema_version": 1,
   "blackboard": {
-    "context.setup.ready": "false"
+    "workshop.setup.ready": "false"
   },
   "root": {
     "template_id": "root",
-    "title": "Context Setup",
+    "title": "Workshop Setup",
     "type": "composite",
     "role": "root",
     "mode": "sequence",
     "executor": "main",
     "children": [
       {
-        "template_id": "prepare-context",
-        "title": "Prepare context setup",
+        "template_id": "prepare-workshop",
+        "title": "Prepare workshop setup",
         "type": "task",
-        "role": "context-prepare",
+        "role": "workshop-prepare",
         "executor": "main",
-        "instructions": "Confirm the context Git worktree and project-local facts required by WORKFLOW.md and KNOWLEDGE.md.",
-        "deliverables": "Context setup inputs recorded in the blackboard and setup artifacts.",
-        "acceptance": "The context worktree is independent from the business repository and required project-local facts are available or gated."
+        "instructions": "Confirm the workshop Git worktree and project-local facts required by WORKFLOW.md and KNOWLEDGE.md.",
+        "deliverables": "Workshop setup inputs recorded in the blackboard and setup artifacts.",
+        "acceptance": "The workshop worktree is independent from the business repository and required project-local facts are available or gated."
       },
       {
         "template_id": "workflow-document",
@@ -39,14 +39,14 @@
         "executor": "main"
       },
       {
-        "template_id": "finalize-context",
-        "title": "Finalize context setup",
+        "template_id": "finalize-workshop",
+        "title": "Finalize workshop setup",
         "type": "task",
-        "role": "context-finalize",
+        "role": "workshop-finalize",
         "executor": "main",
         "instructions": "Verify WORKFLOW.md and KNOWLEDGE.md through xc-document and record both as setup artifacts.",
-        "deliverables": "Validated managed context documents.",
-        "acceptance": "Both context documents validate and their document-evolution subtrees are complete."
+        "deliverables": "Validated managed workshop documents.",
+        "acceptance": "Both workshop documents validate and their document-evolution subtrees are complete."
       }
     ]
   }
