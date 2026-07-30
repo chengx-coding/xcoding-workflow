@@ -1,6 +1,6 @@
 # 实现与质量
 
-**语言：** [English (英文)](../../../reference/skills/implementation-and-quality.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../../../reference/skills/implementation-and-quality.md) | **简体中文**
 
 这些支撑 Skill 执行获批变更并评估其证据。
 

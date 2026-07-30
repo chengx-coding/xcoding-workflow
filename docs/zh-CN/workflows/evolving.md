@@ -1,4 +1,4 @@
-**语言：** [English (英文)](../../workflows/evolving.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../../workflows/evolving.md) | **简体中文**
 
 # 演进 XC
 

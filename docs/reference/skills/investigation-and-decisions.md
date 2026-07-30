@@ -1,6 +1,6 @@
 # Investigation and Decisions
 
-**Language:** **English** | [Simplified Chinese (简体中文)](../../zh-CN/reference/skills/investigation-and-decisions.md)
+**Language:** **English** | [简体中文](../../zh-CN/reference/skills/investigation-and-decisions.md)
 
 These supporting Skills gather evidence or resolve decisions before implementation.
 

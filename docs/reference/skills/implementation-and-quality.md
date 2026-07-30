@@ -1,6 +1,6 @@
 # Implementation and Quality
 
-**Language:** **English** | [Simplified Chinese (简体中文)](../../zh-CN/reference/skills/implementation-and-quality.md)
+**Language:** **English** | [简体中文](../../zh-CN/reference/skills/implementation-and-quality.md)
 
 These supporting Skills execute approved changes and assess their evidence.
 

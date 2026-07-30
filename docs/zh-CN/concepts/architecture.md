@@ -1,4 +1,4 @@
-**语言：** [English (英文)](../../concepts/architecture.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../../concepts/architecture.md) | **简体中文**
 
 # 架构
 

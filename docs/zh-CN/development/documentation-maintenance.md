@@ -1,18 +1,18 @@
 # 文档维护
 
-**语言：** [English (英文)](../../development/documentation-maintenance.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../../development/documentation-maintenance.md) | **简体中文**
 
 ## 语言契约
 
 英文 README 和文档页面是规范版本。`docs/` 下每个英文页面都必须在 `docs/zh-CN/` 下具有相同相对路径的简体中文镜像。镜像必须保持相同主题、事实边界、导航和实质信息，但无需逐行直译。
 
-每个页面都使用显著的语言选择器，列出全部已支持语言：
+每个页面都使用显著的语言选择器，仅列出全部已支持语言自身的规范名称：
 
 ```markdown
-**语言：** [English (英文)](<canonical-path>) | **简体中文 (Simplified Chinese)**
+**语言：** [English](<canonical-path>) | **简体中文**
 ```
 
-中文镜像页应把简体中文显示为当前语言，并链接 English。不要只留下读者可能不认识的母语名称。
+中文镜像页应把简体中文显示为当前语言，并链接 English。不要为语言名称添加翻译别名或括号说明。
 
 新增、移动、重命名或删除页面时，必须在同一变更中处理两种语言，并同时更新受影响的导航、链接、锚点和文档 checker 的获批拓扑。不得用临时空镜像满足结构检查。
 

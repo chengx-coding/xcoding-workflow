@@ -1,4 +1,4 @@
-**语言：** [English (英文)](../../orchestration/viewer.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../../orchestration/viewer.md) | **简体中文**
 
 # 本地编排 Viewer
 

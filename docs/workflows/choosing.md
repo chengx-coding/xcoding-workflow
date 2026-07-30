@@ -1,4 +1,4 @@
-**Language:** **English** | [Simplified Chinese (简体中文)](../zh-CN/workflows/choosing.md)
+**Language:** **English** | [简体中文](../zh-CN/workflows/choosing.md)
 
 # Choosing A Workflow
 

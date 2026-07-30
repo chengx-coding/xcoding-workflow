@@ -1,6 +1,6 @@
 # Quick start
 
-**Language:** **English** | [Simplified Chinese (简体中文)](../zh-CN/getting-started/quick-start.md)
+**Language:** **English** | [简体中文](../zh-CN/getting-started/quick-start.md)
 
 This guide starts from a consumer project whose Agent host can discover the installed `xc-*` Skill packages. If the packages are not installed, follow [Installation](installation.md) first. Consumer installation uses `install_skills.py` or the managed installer; `build_agents.py` is only the development mirror for the xcoding-workflow checkout.
 

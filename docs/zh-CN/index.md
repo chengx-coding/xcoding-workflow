@@ -1,6 +1,6 @@
 # 文档
 
-**语言：** [English (英文)](../index.md) | **简体中文 (Simplified Chinese)**
+**语言：** [English](../index.md) | **简体中文**
 
 这里是 xcoding-workflow 的中文文档。英文文档是规范版本；`docs/zh-CN/` 下的中文树使用对应的页面路径，并完整保持相同主题、事实边界和实质信息。
 
