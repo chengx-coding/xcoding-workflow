@@ -375,7 +375,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
     def test_ordinary_work_order_without_feature_closes_without_creating_feature(self) -> None:
         _, project, workshop = self.create_environment()
         work_order = self.open_work_order(workshop, project, "20260727-1000-ordinary-work-order", [])
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml", work_order)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml", work_order)
         self.set_values(
             project,
             tree,
@@ -404,7 +404,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             for feature_id in feature_ids
         ]
         work_order = self.open_work_order(workshop, project, "20260727-1000-multi-feature", feature_ids)
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml", work_order)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml", work_order)
         self.set_values(
             project,
             tree,
@@ -493,7 +493,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         )
         original_contract = contract_path.read_text(encoding="utf-8")
         work_order = self.open_work_order(workshop, project, "20260727-1000-baseline-sync", [feature_id])
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml", work_order)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml", work_order)
         self.set_values(
             project,
             tree,
@@ -572,7 +572,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             str(self.run_json(FEATURE, "init", "--workshop", str(workshop), "--feature-id", feature_id, cwd=project)["feature_dir"])
         )
         work_order = self.open_work_order(workshop, project, "20260727-1000-conflict-gate", [feature_id])
-        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml", work_order)
+        tree = self.initialize_tree(project, REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml", work_order)
         self.set_values(
             project,
             tree,

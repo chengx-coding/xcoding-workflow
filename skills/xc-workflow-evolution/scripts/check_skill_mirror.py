@@ -15,6 +15,7 @@ RETIRED_PACKAGES = {
     "xc-" + "context-setup",
     "xc-" + "create-run",
     "xc-" + "run",
+    "xc-" + "work-order",
 }
 
 

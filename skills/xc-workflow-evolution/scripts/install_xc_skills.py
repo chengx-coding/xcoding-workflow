@@ -24,6 +24,7 @@ RETIRED_SOURCE_PACKAGES = {
     "xc-" + "context-setup",
     "xc-" + "create-run",
     "xc-" + "run",
+    "xc-" + "work-order",
 }
 
 

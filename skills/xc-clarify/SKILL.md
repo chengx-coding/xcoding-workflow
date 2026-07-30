@@ -91,7 +91,7 @@ The caller owns document evolution. It uses the session artifact to update `anal
 
 ## Integration
 
-- `xc-work-order` embeds this subtree after analysis and any feature reconciliation, before solution selection, when `work_order.requires_clarification=true`.
+- `xc-work` embeds this subtree after analysis and any feature reconciliation, before solution selection, when `work_order.requires_clarification=true`.
 - `xc-new-feature` embeds it after analysis and before the work order solution when `work_order.requires_clarification=true`.
 - An explicit user request to clarify or stress-test work first enters the appropriate lifecycle, then embeds this subtree.
 

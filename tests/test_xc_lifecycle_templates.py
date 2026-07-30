@@ -37,9 +37,9 @@ WORKFLOWS = (
         "prepare-adoption",
     ),
     (
-        "work-order",
-        REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-flow.json",
-        REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-template.xml",
+        "work",
+        REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-flow.json",
+        REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml",
         "prepare-work-order",
     ),
     (
@@ -123,6 +123,12 @@ class XcLifecycleTemplateTests(unittest.TestCase):
                 )
                 self.assertEqual(code, 0, (name, next_payload))
                 self.assertEqual(next_payload["ready"][0]["template_id"], first_template_id, name)
+
+    def test_work_skill_is_canonical_and_previous_package_is_absent(self) -> None:
+        work_skill = REPOSITORY_ROOT / "skills" / "xc-work"
+        self.assertTrue(work_skill.is_dir())
+        self.assertFalse((REPOSITORY_ROOT / "skills" / "xc-work-order").exists())
+        self.assertIn('name: "xc-work"', (work_skill / "SKILL.md").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

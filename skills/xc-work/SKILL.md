@@ -1,11 +1,11 @@
 ---
-name: "xc-work-order"
+name: "xc-work"
 description: "Runs a managed work order for investigation, iteration, repair, review, maintenance, or cross-feature work without implicitly creating a feature. Invoke for persistent work that may relate to zero, one, or multiple existing features."
 ---
 
-# XC Work Order
+# XC Work
 
-`xc-work-order` is the common lifecycle for existing-code work. It always opens a durable work order and creates `goal.md`; `analysis.md` and `solution.md` are created only when their semantic purpose is needed. A work order may reference no feature, one existing feature, or multiple existing features.
+`xc-work` is the common lifecycle for existing-code work. It always opens a durable work order and creates `goal.md`; `analysis.md` and `solution.md` are created only when their semantic purpose is needed. A work order may reference no feature, one existing feature, or multiple existing features.
 
 ## Parameters
 

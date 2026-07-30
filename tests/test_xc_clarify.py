@@ -13,7 +13,7 @@ AUTHOR = REPOSITORY_ROOT / "skills" / "xc-orchestration-author" / "scripts" / "t
 RUNTIME = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime" / "scripts" / "orchestration.py"
 FLOW = REPOSITORY_ROOT / "skills" / "xc-clarify" / "assets" / "clarify-flow.json"
 TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-clarify" / "assets" / "clarify-template.xml"
-WORK_ORDER_FLOW = REPOSITORY_ROOT / "skills" / "xc-work-order" / "assets" / "work-order-flow.json"
+WORK_ORDER_FLOW = REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-flow.json"
 NEW_FEATURE_FLOW = REPOSITORY_ROOT / "skills" / "xc-new-feature" / "assets" / "new-feature-flow.json"
 
 
