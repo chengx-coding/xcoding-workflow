@@ -1,6 +1,6 @@
 # xcoding-workflow
 
-[English](README.md)
+**语言：** [English (英文)](README.md) | **简体中文 (Simplified Chinese)**
 
 xcoding-workflow 是一套可移植、由 Skill 驱动的 Agent 编码工作流的规范源。它覆盖发现、设计、实现、诊断、验证、审查、修复和交付，且不绑定特定编程语言、框架或 Agent 宿主。
 

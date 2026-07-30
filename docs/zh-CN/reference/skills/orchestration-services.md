@@ -1,6 +1,6 @@
 # 编排服务
 
-[English](../../../reference/skills/orchestration-services.md)
+**语言：** [English (英文)](../../../reference/skills/orchestration-services.md) | **简体中文 (Simplified Chinese)**
 
 这些服务设计、运行和可视化受管编排，但不接管领域工作。
 

@@ -1,4 +1,4 @@
-[English](../../orchestration/runtime-model.md)
+**语言：** [English (英文)](../../orchestration/runtime-model.md) | **简体中文 (Simplified Chinese)**
 
 # 运行时模型
 

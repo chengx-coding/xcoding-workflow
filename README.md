@@ -1,6 +1,6 @@
 # xcoding-workflow
 
-[简体中文](README.zh-CN.md)
+**Language:** **English** | [Simplified Chinese (简体中文)](README.zh-CN.md)
 
 xcoding-workflow is the canonical source for a portable, Skill-driven Agent coding workflow. It covers discovery, design, implementation, diagnosis, verification, review, repair, and delivery without tying the workflow to one programming language, framework, or Agent host.
 

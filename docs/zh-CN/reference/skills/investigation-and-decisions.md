@@ -1,6 +1,6 @@
 # 调查与决策
 
-[English](../../../reference/skills/investigation-and-decisions.md)
+**语言：** [English (英文)](../../../reference/skills/investigation-and-decisions.md) | **简体中文 (Simplified Chinese)**
 
 这些支撑 Skill 在实现前收集证据或解决决策。
 

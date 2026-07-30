@@ -1,4 +1,4 @@
-[简体中文](../zh-CN/concepts/workshops-features.md)
+**Language:** **English** | [Simplified Chinese (简体中文)](../zh-CN/concepts/workshops-features.md)
 
 # Workshops, Work Orders, And Features
 

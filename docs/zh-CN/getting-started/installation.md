@@ -1,6 +1,6 @@
 # 安装
 
-[English](../../getting-started/installation.md)
+**语言：** [English (英文)](../../getting-started/installation.md) | **简体中文 (Simplified Chinese)**
 
 从本地 xcoding-workflow 检出把工作流安装到消费端 Agent 宿主使用的 skills 目录。示例使用 `.agents/skills`；如果宿主使用其他发现目录，请替换为实际路径。
 

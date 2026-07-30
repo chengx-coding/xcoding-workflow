@@ -1,4 +1,4 @@
-[简体中文](../zh-CN/orchestration/viewer.md)
+**Language:** **English** | [Simplified Chinese (简体中文)](../zh-CN/orchestration/viewer.md)
 
 # Local Orchestration Viewer
 

@@ -1,6 +1,6 @@
 # 快速开始
 
-[English](../../getting-started/quick-start.md)
+**语言：** [English (英文)](../../getting-started/quick-start.md) | **简体中文 (Simplified Chinese)**
 
 本指南从消费项目开始，并假设其 Agent 宿主已经能够发现安装好的 `xc-*` Skill 包。如果尚未安装，请先阅读[安装](installation.md)。消费端安装使用 `install_skills.py` 或受管安装器；`build_agents.py` 只用于 xcoding-workflow 检出目录的开发镜像。
 

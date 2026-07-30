@@ -1,4 +1,4 @@
-[English](../../workflows/choosing.md)
+**语言：** [English (英文)](../../workflows/choosing.md) | **简体中文 (Simplified Chinese)**
 
 # 选择工作流
 

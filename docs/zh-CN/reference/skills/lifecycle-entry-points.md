@@ -1,6 +1,6 @@
 # 生命周期入口
 
-[English](../../../reference/skills/lifecycle-entry-points.md)
+**语言：** [English (英文)](../../../reference/skills/lifecycle-entry-points.md) | **简体中文 (Simplified Chinese)**
 
 这些 Skill 用于选择并治理完整工作流生命周期。
 
