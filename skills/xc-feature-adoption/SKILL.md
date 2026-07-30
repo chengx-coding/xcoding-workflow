@@ -41,7 +41,7 @@ description: "Explicitly adopts an existing unmanaged feature by deriving durabl
 
 - Adoption does not silently change product behavior or repair code.
 - Baselines should state current evidenced behavior and clearly separate unknowns or target changes.
-- If the user wants a product change after adoption, open a separate `xc-work-order`.
+- If the user wants a product change after adoption, open a separate `xc-work`.
 - The feature directory is created before its baseline documents but becomes useful only after the approval gate or an explicit blocked result.
 
 ## Constraints

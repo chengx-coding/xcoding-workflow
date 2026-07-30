@@ -112,16 +112,19 @@ class SkillMirrorCheckerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             canonical = Path(temporary) / "canonical"
             mirror = Path(temporary) / "mirror"
-            retired_package = "xc-" + "create-run"
-            self.create_package(canonical, retired_package)
-            shutil.copytree(canonical, mirror)
+            for retired_package in ("xc-" + "create-run", "xc-" + "work-order"):
+                with self.subTest(retired_package=retired_package):
+                    self.create_package(canonical, retired_package)
+                    shutil.copytree(canonical, mirror)
 
-            code, payload = self.invoke(canonical, mirror)
+                    code, payload = self.invoke(canonical, mirror)
 
-            self.assertEqual(code, 2)
-            self.assertFalse(payload["ok"])
-            self.assertEqual(payload["error"]["code"], "retired_xc_packages")
-            self.assertEqual(payload["error"]["details"]["packages"], [retired_package])
+                    self.assertEqual(code, 2)
+                    self.assertFalse(payload["ok"])
+                    self.assertEqual(payload["error"]["code"], "retired_xc_packages")
+                    self.assertEqual(payload["error"]["details"]["packages"], [retired_package])
+                    shutil.rmtree(canonical)
+                    shutil.rmtree(mirror)
 
     def test_package_without_skill_contract_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

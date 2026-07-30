@@ -28,7 +28,7 @@ description: "Investigates a reported problem through reproduction and evidence 
 2. Attempt reproduction using project-bridge commands and available tests before introducing instrumentation.
 3. Collect bounded evidence from code, configuration, tests, runtime output, or approved project tools.
 4. Record confirmed cause, suspected causes with confidence, non-reproduced conditions, affected boundaries, and a repair direction in `analysis.md`.
-5. If a repair is requested and evidence is sufficient, return control to `xc-work-order`; do not repair inside the diagnosis node.
+5. If a repair is requested and evidence is sufficient, return control to `xc-work`; do not repair inside the diagnosis node.
 
 Diagnosis node artifacts default to internal English. A caller may explicitly request a user-facing diagnosis report through `metadata.artifact.audience=user` and `metadata.artifact.content_language=work_order.document_language`.
 
