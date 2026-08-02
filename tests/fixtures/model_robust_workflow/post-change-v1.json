@@ -12,7 +12,7 @@
     "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
     "skills/xc-open-work-order/scripts/open_work_order.py": "b9e21c0fad63ab8b670147de3b21377685b61c52dbeb3a284c58d3ba2e957ac7",
     "skills/xc-orchestration-runtime/scripts/orchestration.py": "24930c645fb28bab69d13ce4b8efc22cd08bb11447c3f9857c0a8cae9b4386df",
-    "skills/xc-orchestration-runtime/scripts/runtime_core.py": "c6a13b4fa8f2d1ef13af3902c1b9d6a0ca208293f9829b828d930120c6f23295",
+    "skills/xc-orchestration-runtime/scripts/runtime_core.py": "8ddbd5846a0a3d6c5cddc9ce5714045c760fe49a9c899dbd628d056be885368c",
     "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
     "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
     "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
@@ -23,7 +23,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "be7bac40d953664eef879d36509ba2f9973cfd87",
+  "recording_base_commit": "05eb12f46b586b1e54d86f7b085f208b1853428a",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -134,7 +134,7 @@
       "T1-M": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 90454,
+            "context_bytes": 90534,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -164,7 +164,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 91118,
+            "context_bytes": 91198,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -191,7 +191,7 @@
       "T2": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 125677,
+            "context_bytes": 125757,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -222,7 +222,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 126590,
+            "context_bytes": 126670,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -249,7 +249,7 @@
       "T3": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 190307,
+            "context_bytes": 190448,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -283,7 +283,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 191718,
+            "context_bytes": 191859,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -310,7 +310,7 @@
       "T4": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 216647,
+            "context_bytes": 216788,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -347,7 +347,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 218307,
+            "context_bytes": 218448,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -431,175 +431,175 @@
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
-        "current_value": 90454,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
-        "numeric_delta": 25701
+        "current_value": 90534,
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
+        "numeric_delta": 25781
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
-        "current_value": 91118,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
-        "numeric_delta": 25701
+        "current_value": 91198,
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
+        "numeric_delta": 25781
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
-        "current_value": 125677,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
-        "numeric_delta": 35131
+        "current_value": 125757,
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
+        "numeric_delta": 35211
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
-        "current_value": 126590,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
-        "numeric_delta": 35131
+        "current_value": 126670,
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
+        "numeric_delta": 35211
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
-        "current_value": 190307,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
-        "numeric_delta": 50169
+        "current_value": 190448,
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
+        "numeric_delta": 50310
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
-        "current_value": 191718,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
-        "numeric_delta": 50169
+        "current_value": 191859,
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
+        "numeric_delta": 50310
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
-        "current_value": 216647,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
-        "numeric_delta": 51753
+        "current_value": 216788,
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
+        "numeric_delta": 51894
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
-        "current_value": 218307,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
-        "numeric_delta": 51753
+        "current_value": 218448,
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
+        "numeric_delta": 51894
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+        "explanation": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "Record the approved JSON runtime configuration and bounded YAML frontmatter codec migration.",
+    "reason": "Re-record the approved post-change baseline after adding role/logical_key packet projections for adaptive finalization; previously approved JSON runtime configuration and bounded YAML frontmatter changes remain included.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1104,7 +1104,7 @@
         "T1-M": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 90454,
+              "context_bytes": 90534,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1134,7 +1134,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 91118,
+              "context_bytes": 91198,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1161,7 +1161,7 @@
         "T2": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 125677,
+              "context_bytes": 125757,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1192,7 +1192,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 126590,
+              "context_bytes": 126670,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1219,7 +1219,7 @@
         "T3": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 190307,
+              "context_bytes": 190448,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1253,7 +1253,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 191718,
+              "context_bytes": 191859,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1280,7 +1280,7 @@
         "T4": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 216647,
+              "context_bytes": 216788,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1317,7 +1317,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 218307,
+              "context_bytes": 218448,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1398,7 +1398,7 @@
       "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
       "skills/xc-open-work-order/scripts/open_work_order.py": "b9e21c0fad63ab8b670147de3b21377685b61c52dbeb3a284c58d3ba2e957ac7",
       "skills/xc-orchestration-runtime/scripts/orchestration.py": "24930c645fb28bab69d13ce4b8efc22cd08bb11447c3f9857c0a8cae9b4386df",
-      "skills/xc-orchestration-runtime/scripts/runtime_core.py": "c6a13b4fa8f2d1ef13af3902c1b9d6a0ca208293f9829b828d930120c6f23295",
+      "skills/xc-orchestration-runtime/scripts/runtime_core.py": "8ddbd5846a0a3d6c5cddc9ce5714045c760fe49a9c899dbd628d056be885368c",
       "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
       "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
       "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",

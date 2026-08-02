@@ -18,6 +18,14 @@
 
 顶层 work order 文档是持久记录，不是程序计数器。动态顺序、就绪状态、循环、重试、blocker 和进度都留在运行时树中。
 
+## 自适应受管工作
+
+`xc-work operation=adaptive-run` 需要显式选择；现有 `run` 行为保持不变。Adaptive template 初始只包含 root 和开放的 sequence `work-group`。调用方先验证 plan receipt，添加全部初始 required leaf 和 plan-specific finalizer，再关闭 group 并开始执行。
+
+最小变更使用一个合并 implementation/focused-verification worker 和 finalizer，共两个可执行叶子节点。只有持久目标、证据综合、实质决策、结果留存或 full audit 需要时，才分别增加顶层文档。更复杂事实按稳定顺序添加 capability：goal、analysis 或 diagnosis、clarification、solution、approval、implementation unit、verification scope、独立 review、result 和 finalization。
+
+Worker 发现范围扩大或其他前提时，应在继续修改前 block。主会话可以 reopen group，在被阻塞的直接子节点前插入 re-plan 或 recovery，发布新 plan，再 unblock 原节点继续执行或记录 no-op/rollback 证据。大型任务可以持续增加经过复审的子树，没有全局节点数上限；每个 loop 仍显式有界。
+
 ## 面向人类的文档
 
 除非用户明确要求其他格式或风格，顶层工单文档、受管项目与功能文档、面向用户的 artifact，以及实现节点通过工单交付的项目文档，都遵循 [`xc-document`](../../../skills/xc-document/SKILL.md) 的人类可读默认规则。

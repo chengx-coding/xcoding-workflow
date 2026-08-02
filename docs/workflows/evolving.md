@@ -16,6 +16,8 @@ Workflow maintenance uses the same evidence, approval, implementation, verificat
 
 Broad architecture changes require evidence, viable alternatives, independent review, and an explicit user gate before implementation.
 
+Narrow workflow maintenance may explicitly use `xc-work operation=adaptive-run` after proportional planning. Broad portable-core, orchestration-template, and agent-export changes retain their required analysis, solution, gate, verification, and review capabilities even when the user requests a fast pace. Existing workflow-evolution routing continues to use the full `run` lifecycle by default.
+
 ## Change Canonical Sources First
 
 ### Skills

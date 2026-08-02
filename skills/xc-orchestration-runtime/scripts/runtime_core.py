@@ -1809,6 +1809,7 @@ def _source_projection(node: ET.Element) -> Dict[str, Any]:
     result = result_snapshot(node)
     projected: Dict[str, Any] = {
         "node_id": node.get("id", ""),
+        "logical_key": node.get("logical_key", ""),
         "title": node.get("title", ""),
         "role": node_role(node),
         "status": node.get("status", "pending"),
@@ -2053,6 +2054,8 @@ def build_control_packet(root: ET.Element, node_id: str) -> Dict[str, Any]:
         "schema_version": 1,
         "target": {
             "id": target.get("id", ""),
+            "logical_key": target.get("logical_key", ""),
+            "role": node_role(target),
             "status": target.get("status", "pending"),
             "executor": target.get("executor", ""),
             "path": node_path(root, target),

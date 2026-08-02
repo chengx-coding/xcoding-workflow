@@ -56,6 +56,14 @@ python skills/xc-work/scripts/classify.py [--needs-persistence no|yes|unknown] [
 
 更强的模型可以在 direct 路径的一个主会话中保留更多推理，也可以在选定路径后减少不必要的委派。它不能改变已确认事实、绕过受管控制、削弱 artifact 或验证，也不能用完整树访问替代限定范围的 control packet。治理没有模型专用 profile。
 
+## 成比例的受管投入
+
+治理与受管投入是两个独立决策。省略 operation 和 `operation=run` 保留完整生命周期。显式 `operation=adaptive-run` 从最小 root 与 sequence dynamic group 打开受管工单，再只添加 plan 要求的 capability。
+
+只读的 `operation=plan` 使用六项治理事实，以及 bridge policy、范围、清晰度、风险、验证、协作、持续时间、审计和 `adaptive|fast|thorough` 节奏。Capability 单调合并：更严格的证据或政策可以增加工作，不能删除 required work。`fast` 使用必要下限；`thorough` 可以增加分析、审查、恢复演练和 regression 深度。
+
+最小变更可以只使用一个合并 implementation/focused-verification 叶子节点和一个 plan-specific finalizer，不强制创建 `goal.md`、`analysis.md`、`solution.md` 或 `result.md`。模块级、不确定、高风险、协作、跨会话或 full-audit 事实会逐步增加独立验证、持久文档、gate、review 和 recovery。Adaptive work 没有通用全局节点数上限；单个 loop 仍保持有界。
+
 名为 `context_bytes` 的工作流测量统计归一化 UTF-8 运行时协议 payload 的字节数。它不是 token 数、模型时延、执行时延、成本或质量指标。
 
 ## 选择规则

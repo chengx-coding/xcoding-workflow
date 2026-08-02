@@ -28,11 +28,12 @@ These Skills select and govern complete workflow lifecycles.
 
 [Canonical contract](../../../skills/xc-work/SKILL.md)
 
-- **Invoke when:** governance must be classified from explicit facts, or persistent investigation, change, repair, review, maintenance, or cross-feature work concerns zero or more existing features.
-- **Purpose:** provide the public direct-versus-managed classification boundary and run the ordinary work-order lifecycle with only the stages the selected mode requires.
-- **Public entry:** `operation=run|classify`, defaulting to `run`, with required `request`. `run` also requires `workshop_path` and `project_root` and accepts `feature_ids`, `mode`, and `document_language`. `classify` omits managed paths and accepts `needs_persistence`, `material_impact`, `difficult_rollback`, `crosses_sessions`, `multiple_actors`, and `audit_required`, each as `no|yes|unknown`.
+- **Invoke when:** governance or proportional managed effort must be selected, or persistent investigation, change, repair, review, maintenance, or cross-feature work concerns zero or more existing features.
+- **Purpose:** provide direct-versus-managed classification, deterministic capability planning, the compatibility full lifecycle, and an explicit minimal adaptive managed lifecycle.
+- **Public entry:** `operation=run|classify|plan|adaptive-run`, defaulting to `run`, with required `request`. `run` and `adaptive-run` require `workshop_path` and `project_root`. `plan` accepts governance, bridge-policy, scope, clarity, risk, verification, coordination, duration, audit, pace, and mode facts.
 - **Classification:** execute `python skills/xc-work/scripts/classify.py [fact flags]`. Only six confirmed `no` values return direct. Any `yes` or `unknown` returns managed. Omitted facts become `unknown`; invalid input, missing executable, timeout, low-level nonzero exit, malformed JSON, or unknown schema or route always exits zero with managed `classification_status=escalated` and reason `classification-unavailable`.
-- **Typical managed usage:** omit `operation` or use `operation=run` to create the goal, reconcile existing features when named, clarify material decisions, approve a solution, implement, verify, and close with a result. Explicit `run` never classifies or downgrades to direct.
+- **Planning:** execute `python skills/xc-work/scripts/plan_work.py [planning facts]`. The plan monotonically derives documents, analysis, gates, implementation units, verification scopes, review, recovery, depth, and a request/bridge-bound plan receipt. Invalid or forged output fails closed to the full safe capability set.
+- **Typical managed usage:** omit `operation` or use `operation=run` for the existing full lifecycle. Use explicit `adaptive-run` for a root plus sequence dynamic group whose minimal form has one combined work leaf and one finalizer; more capabilities are added only when facts require them.
 - **Boundaries:** classification is read-only and performs no substantive action. The public adapter validates observable subprocess results but does not authenticate the caller, interpreter, executable bytes, or host and provides no host mediation or attestation. The strict low-level classifier retains nonzero diagnostic errors and is not a lifecycle entry. Managed work never creates or adopts a feature implicitly.
 
 ## `xc-new-feature`

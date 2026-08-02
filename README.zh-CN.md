@@ -9,6 +9,7 @@ xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审�
 - XC 以一组可安装的工作流模块提供，这些模块称为 **Skills**。
 - 小型、低风险的任务可以直接完成。
 - 需要计划、审查、故障恢复或长期留痕的任务使用**受管工单**。工单把目标、决策、进度和证据保存在一起。
+- 显式选择自适应受管工单时，可以从一个合并工作叶子节点和一个 finalizer 开始，再根据已确认事实增加文档、分析、门禁、验证、审查与恢复。
 - 项目中的 `.xcoding` 目录是工作流专用空间。它使用独立的 Git 工作树，也就是专门保存工作流历史的独立工作目录，避免把这些记录混入源码提交历史。
 - 只有在你明确创建或接管时，长期维护的产品功能才会成为受管功能。普通维护不会自动创建功能。
 
@@ -41,6 +42,8 @@ python skills/xc-work/scripts/classify.py [事实参数]
 六个参数分别是 `needs_persistence`、`material_impact`、`difficult_rollback`、`crosses_sessions`、`multiple_actors` 和 `audit_required`。省略的参数会按 `unknown` 处理。输入错误、超时、执行失败或无效输出都会得到受管结果，不会静默放行直接执行。
 
 需要启动受管工单时，调用 [`xc-work`](skills/xc-work/SKILL.md) 并使用 `operation=run`。这个操作始终是受管执行。模型名称、供应商、上下文窗口大小和项目技术栈都不能改变六个答案，也不能取消必要的审查和验证。
+
+`operation=adaptive-run` 是显式选择的受管替代路径。它保留持久 runtime，但允许最小 workbench 不创建强制顶层文档。`operation=plan` 根据治理、项目政策、范围、清晰度、风险、验证、协作、持续时间、审计和 `adaptive|fast|thorough` 节奏事实单调增加 capability。省略 operation 或显式 `run` 仍保持原完整生命周期。
 
 ## 前置条件
 

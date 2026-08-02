@@ -11,7 +11,7 @@ These supporting Skills execute approved changes and assess their evidence.
 - **Invoke when:** an approved solution and required gates have established one bounded implementation change.
 - **Purpose:** execute exactly one runtime implementation node and record changed paths, validation, baseline impact, and residual risk.
 - **Public entry:** required `workbench_path`, `work_scope`, `inputs`, and `artifact_path`.
-- **Typical usage:** read the supplied node contract and approved inputs, make the smallest coherent change, run focused checks, and write the declared artifact.
+- **Typical usage:** read the supplied node contract and approved inputs, make the smallest coherent change, run focused checks, and write the declared artifact. An adaptive minimal node may combine one coherent implementation with focused verification after its immutable plan receipt is validated.
 - **Boundaries:** it does not own decomposition or retries, cannot opportunistically overwrite feature baselines, and reports only through the runtime public command.
 
 ## `xc-review`
@@ -31,5 +31,5 @@ These supporting Skills execute approved changes and assess their evidence.
 - **Invoke when:** implementation, diagnosis, adoption, or a feature baseline needs project-defined validation evidence.
 - **Purpose:** run the smallest sufficient command set, map evidence to acceptance conditions, and record outcomes and coverage gaps.
 - **Public entry:** required `workbench_path`, `verification_scope`, and `artifact_path`; optional `inputs`.
-- **Typical usage:** read project verification policy, run focused checks before broader regression checks, and record every command and unexecuted prerequisite.
+- **Typical usage:** read project verification policy, run focused checks before broader regression checks, and record every command and unexecuted prerequisite. Adaptive regression or multi-environment scopes use separate verification nodes; a fast pace never removes a required scope.
 - **Boundaries:** it does not invent commands or pass criteria, silently weaken acceptance conditions, or modify product behavior to force a pass.

@@ -136,7 +136,9 @@ are generic declaration values.
 never returns siblings, descendants, a full blackboard, source instructions,
 or undeclared artifacts. It returns the target fields, declared source result
 projection, selected blackboard scalars, local readiness blockers, and the
-current control action. Missing declarations return
+current control action. Target and source projections include their runtime
+`role` and immutable `logical_key` so domain validators can bind declared
+evidence to a planned semantic node without reading the full tree. Missing declarations return
 `control_packet_not_declared`; unsatisfied selectors or thresholds return
 `control_packet_unavailable` without changing the revision.
 

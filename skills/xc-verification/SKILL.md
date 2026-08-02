@@ -25,6 +25,15 @@ description: "Executes and records project-defined verification for a workflow n
 
 Read the project bridge before choosing commands. Select the smallest command set that proves the requested acceptance conditions, then broaden it when shared contracts or cross-module behavior changed. Record each command, pass/fail/blocked outcome, relevant assertion coverage, environment prerequisites, and unexecuted checks with reasons.
 
+For `xc-work operation=adaptive-run`, the validated plan supplies an ordered minimum scope:
+
+- `focused` may run inside a combined minimal implementation node.
+- `regression` and `multi-environment` require separate verification nodes.
+- A `fast` pace never removes a plan-required scope.
+- A `thorough` pace may request broader declared checks, but unavailable project commands are recorded as gaps rather than invented.
+
+If a focused check exposes scope expansion or an unexpected non-local failure, the combined worker blocks and returns to re-planning before further product mutation.
+
 When a feature verification baseline exists, map evidence to its requirement IDs. A passing command does not establish an untested requirement; record such gaps explicitly. Failed verification is a workflow result, not an opportunity to silently change acceptance criteria.
 
 Verification artifacts default to internal English. A user-facing verification report must be explicitly marked with `metadata.artifact.audience=user` and uses the resolved `metadata.artifact.content_language`. It follows the public `xc-document` human-readable authoring default and supplied explicit authoring requirements, while preserving commands and raw output exactly.

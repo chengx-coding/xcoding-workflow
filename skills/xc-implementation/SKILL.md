@@ -29,6 +29,20 @@ Any human-facing document created or revised within `work_scope`, including proj
 
 When implementation evidence changes a feature baseline, add a separate document-evolution subtree or user gate through the caller's runtime workflow. Do not overwrite a baseline opportunistically from an implementation node.
 
+## Adaptive Initial Node
+
+An `xc-work operation=adaptive-run` plan may authorize the first minimal implementation node without manufacturing a goal or solution document. Before adding that leaf, the caller:
+
+1. Runs public `xc-work operation=plan`.
+2. Embeds the complete `plan_receipt`, exact request scope, and bridge reference in immutable node metadata or inputs.
+3. Runs `skills/xc-work/scripts/validate_plan_receipt.py` before `start`.
+
+The node may combine one coherent implementation scope with focused verification when the plan does not require `split_implementation` or `separate_verification`. Its artifact records changed paths, the focused command and outcome, rollback evidence, scope expansion, and residual risk.
+
+Missing, stale, forged, or contradictory plan evidence blocks `start`. If evidence reveals a wider scope, uncertain cause, broader verification, additional owner, external wait, or harder rollback, block before further mutation and return to the adaptive caller's re-planning and recovery protocol.
+
+When the plan requires solution or approval capabilities, use the regular terminal-source control packet below. A plan receipt never substitutes for a required human gate.
+
 ## Dynamic Node Contract
 
 Before `add-node`, the caller writes the actual terminal approved-solution source IDs as a compact JSON array to a node-specific blackboard key such as `implementation.sources.<logical-key>`. The dynamic task declares all of:
