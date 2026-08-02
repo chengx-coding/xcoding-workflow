@@ -9,6 +9,7 @@ xcoding-workflow helps coding agents carry work from an initial request to a tes
 - XC is installed as a set of workflow modules called **Skills**.
 - Small, low-risk tasks can be completed directly.
 - Work that needs a plan, review, recovery, or a durable record runs as a **managed work order**. A work order keeps the goal, decisions, progress, and evidence together.
+- An explicitly adaptive managed work order can start with one combined work leaf and one finalizer, then add documents, analysis, gates, verification, review, and recovery as confirmed facts require.
 - The `.xcoding` directory is the project's workflow workspace. It is kept in a separate Git worktree, which is a separate working directory for workflow history, so those records do not mix with source-code history.
 - Long-lived product features are managed only when you explicitly create or adopt them. Ordinary maintenance does not create a feature automatically.
 
@@ -41,6 +42,8 @@ python skills/xc-work/scripts/classify.py [fact flags]
 Its six flags are `needs_persistence`, `material_impact`, `difficult_rollback`, `crosses_sessions`, `multiple_actors`, and `audit_required`. Omitted flags become `unknown`. Invalid input, timeouts, execution failures, and invalid output all produce a managed result instead of silently allowing direct work.
 
 Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed work. This operation is always managed. Model name, vendor, context-window size, and project technology never change the six answers or remove required review and verification.
+
+`operation=adaptive-run` is an explicit managed alternative. It preserves a durable runtime while allowing a minimal workbench with no mandatory top-level documents. `operation=plan` derives monotonic capabilities from governance, project policy, scope, clarity, risk, verification, coordination, duration, audit, and `adaptive|fast|thorough` pace facts. Existing omitted or explicit `run` behavior remains the full lifecycle.
 
 ## Prerequisites
 

@@ -18,6 +18,14 @@ A managed lifecycle preserves decisions and evidence in documents and artifacts 
 
 Top-level work-order documents are durable records, not a program counter. Dynamic ordering, readiness, loops, retries, blockers, and progress remain in the runtime tree.
 
+## Adaptive Managed Work
+
+`xc-work operation=adaptive-run` is explicit; existing `run` behavior remains unchanged. The adaptive template initially contains only a root and an open sequence `work-group`. The caller validates a plan receipt, adds every initial required leaf and a plan-specific finalizer, then closes the group before starting work.
+
+A minimal mutation uses one combined implementation/focused-verification worker and the finalizer, for two executable leaves. Top-level documents are added independently only for durable intent, evidence synthesis, material decisions, retained results, or full audit. More demanding facts add capabilities in stable order: goal, analysis or diagnosis, clarification, solution, approval, implementation units, verification scopes, independent review, result, and finalization.
+
+If a worker discovers wider scope or another prerequisite, it blocks before further mutation. The main session may reopen the group, insert re-planning or recovery before the blocked direct child, publish a new plan, then unblock the original leaf to continue or record no-op/rollback evidence. Large work may add reviewed subtrees without a global node ceiling, while each loop remains explicitly bounded.
+
 ## Human-Readable Documents
 
 Unless the user explicitly requests another format or style, top-level work-order documents, managed project and feature documents, user-facing artifacts, and project documentation delivered by an implementation node follow the [`xc-document`](../../skills/xc-document/SKILL.md) human-readable default.

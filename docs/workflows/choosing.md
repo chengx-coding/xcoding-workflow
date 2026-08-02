@@ -56,6 +56,14 @@ Examples:
 
 A stronger model may keep more direct-path reasoning in one main session and may reduce unnecessary delegation after the route is selected. It cannot change confirmed facts, bypass managed controls, weaken artifacts or verification, or replace a scoped control packet with full-tree access. Governance has no model-specific profiles.
 
+## Proportional Managed Effort
+
+Governance and managed effort are separate decisions. Omitted `operation` and `operation=run` retain the full lifecycle. An explicit `operation=adaptive-run` opens a managed work order from a minimal root and sequence dynamic group, then adds only plan-required capabilities.
+
+The read-only `operation=plan` uses the six governance facts plus bridge policy, scope, clarity, risk, verification, coordination, duration, audit, and `adaptive|fast|thorough` pace. Capabilities merge monotonically: tighter evidence or policy can add work but cannot remove required work. `fast` uses the required minimum; `thorough` may add analysis, review, recovery exercise, and regression depth.
+
+A minimal mutation can use one combined implementation/focused-verification leaf and one plan-specific finalizer, with no mandatory `goal.md`, `analysis.md`, `solution.md`, or `result.md`. Module, uncertain, high-risk, collaborative, cross-session, or full-audit facts progressively add separate verification, durable documents, gates, review, and recovery. Adaptive work has no generic global node ceiling; individual loops remain bounded.
+
 Workflow measurements named `context_bytes` count normalized UTF-8 runtime protocol payload bytes. They are not token counts, model latency, execution latency, cost, or quality measurements.
 
 ## Selection Rules

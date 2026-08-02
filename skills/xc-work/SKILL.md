@@ -1,58 +1,78 @@
 ---
 name: "xc-work"
-description: "Classifies direct-versus-managed governance from six explicit facts or runs a managed work order for investigation, iteration, repair, review, maintenance, or cross-feature work without implicitly creating a feature."
+description: "Classifies governance, plans proportional managed effort, or runs full and adaptive managed work orders for investigation, iteration, repair, review, maintenance, or cross-feature work without implicitly creating a feature."
 ---
 
 # XC Work
 
-`xc-work` is the common lifecycle and governance entry point for existing-code work. Its default `run` operation always opens a durable work order and creates `goal.md`; `analysis.md` and `solution.md` are created only when their semantic purpose is needed. Its read-only `classify` operation evaluates an explicit six-fact vector without creating managed state. A work order may reference no feature, one existing feature, or multiple existing features.
+`xc-work` is the common lifecycle, governance, and proportional-effort entry point for existing-code work. Its default `run` operation preserves the full durable work-order lifecycle. `adaptive-run` opens the same durable workbench but creates only the nodes, documents, gates, and verification capabilities required by an approved plan. The read-only `classify` and `plan` operations create no managed state. A work order may reference no feature, one existing feature, or multiple existing features.
 
 ## Parameters
 
 - `operation` - `enum`; optional, defaults to `run`
-  - Allowed values: `run`, `classify`.
-  - Scope: Selects the existing managed lifecycle or the read-only proportional-governance classifier.
+  - Allowed values: `run`, `classify`, `plan`, `adaptive-run`.
+  - Scope: Selects the full managed lifecycle, governance classifier, read-only effort planner, or minimal adaptive managed lifecycle.
 
-- `workshop_path` - `path`; required for `operation=run`, omitted for `operation=classify`
+- `workshop_path` - `path`; required for `operation=run|adaptive-run`, omitted for `operation=classify|plan`
   - Scope: The fixed project `.xcoding` workshop used only by the managed lifecycle.
 
-- `project_root` - `path`; required for `operation=run`, omitted for `operation=classify`
+- `project_root` - `path`; required for `operation=run|adaptive-run`, omitted for `operation=classify|plan`
   - Scope: Business repository root supplied to `xc-open-work-order`.
 
 - `request` - `string`; required
   - Scope: Requested investigation, change, repair, review, or maintenance outcome.
 
-- `feature_ids` - `string[]`; optional for `operation=run`
+- `feature_ids` - `string[]`; optional for `operation=run|adaptive-run`
   - Scope: Existing related feature identifiers. An empty list is valid.
 
-- `mode` - `enum`; optional for `operation=run`, defaults to `change`
+- `mode` - `enum`; optional for `operation=run|plan|adaptive-run`, defaults to `change`
   - Allowed values: `investigation`, `change`, `repair`, `review`, `maintenance`.
   - Scope: Controls default analysis, solution, implementation, and verification gates. The runtime blackboard remains authoritative for the selected execution path.
 
-- `document_language` - `string`; optional for `operation=run`
+- `document_language` - `string`; optional for `operation=run|adaptive-run`
   - Scope: Explicit simplified BCP 47 language tag for top-level work order documents. When omitted, use the initiating user request's clearly dominant language; if that cannot be decided quickly, use `en`.
 
-- `needs_persistence` - `enum`; optional for `operation=classify`
+- `scope` - `enum`; optional for `operation=plan|adaptive-run`, defaults to `unknown`
+  - Allowed values: `single-location`, `module`, `cross-cutting`, `unknown`.
+- `clarity` - `enum`; optional for `operation=plan|adaptive-run`, defaults to `unknown`
+  - Allowed values: `exact`, `known-root`, `uncertain`, `unknown`.
+- `risk` - `enum`; optional for `operation=plan|adaptive-run`, defaults to `unknown`
+  - Allowed values: `low`, `medium`, `high`, `unknown`.
+- `verification` - `enum`; optional for `operation=plan|adaptive-run`, defaults to `unknown`
+  - Allowed values: `focused`, `regression`, `multi-environment`, `unknown`.
+- `coordination` - `enum`; optional for `operation=plan|adaptive-run`, defaults to `unknown`
+  - Allowed values: `single`, `review`, `multi-party`, `unknown`.
+- `duration` - `enum`; optional for `operation=plan|adaptive-run`, defaults to `unknown`
+  - Allowed values: `single-step`, `multi-step`, `cross-session`, `unknown`.
+- `audit` - `enum`; optional for `operation=plan|adaptive-run`, defaults to `unknown`
+  - Allowed values: `runtime-only`, `result`, `full`, `unknown`.
+- `pace` - `enum`; optional for `operation=plan|adaptive-run`, defaults to `adaptive`
+  - Allowed values: `adaptive`, `fast`, `thorough`.
+- `bridge_policy` - `enum`; optional for `operation=plan|adaptive-run`, defaults to `unknown`
+  - Allowed values: `none`, `commit`, `review`, `approval`, `full`, `unknown`.
+  - Scope: Normalized minimum retained evidence and decision policy from the applicable project bridge.
+
+- `needs_persistence` - `enum`; optional for `operation=classify|plan|adaptive-run`
   - Allowed values: `no`, `yes`, `unknown`.
   - Scope: Whether correct completion requires durable state, recoverable progress, durable documents, or evidence usable beyond the current response.
 
-- `material_impact` - `enum`; optional for `operation=classify`
+- `material_impact` - `enum`; optional for `operation=classify|plan|adaptive-run`
   - Allowed values: `no`, `yes`, `unknown`.
   - Scope: Whether the work changes shared code, public contracts, user data, permissions, production or infrastructure state, security boundaries, or release assets.
 
-- `difficult_rollback` - `enum`; optional for `operation=classify`
+- `difficult_rollback` - `enum`; optional for `operation=classify|plan|adaptive-run`
   - Allowed values: `no`, `yes`, `unknown`.
   - Scope: Whether a complete, lossless, verified one-step recovery is unavailable or the work has an irreversible external side effect.
 
-- `crosses_sessions` - `enum`; optional for `operation=classify`
+- `crosses_sessions` - `enum`; optional for `operation=classify|plan|adaptive-run`
   - Allowed values: `no`, `yes`, `unknown`.
   - Scope: Whether completion requires another session, restart, scheduled wait, asynchronous external result, or cross-run recovery.
 
-- `multiple_actors` - `enum`; optional for `operation=classify`
+- `multiple_actors` - `enum`; optional for `operation=classify|plan|adaptive-run`
   - Allowed values: `no`, `yes`, `unknown`.
   - Scope: Whether at least two independent people, agents, approvers, or external systems own coordinated decisions or deliverables.
 
-- `audit_required` - `enum`; optional for `operation=classify`
+- `audit_required` - `enum`; optional for `operation=classify|plan|adaptive-run`
   - Allowed values: `no`, `yes`, `unknown`.
   - Scope: Whether the user, law, project bridge, Skill, or workflow contract requires retained traceability, approval, verification, review, or a commit.
 
@@ -96,6 +116,71 @@ The public adapter always exits zero with a JSON object. A missing executable, t
 `scripts/classify.py` is the public lifecycle trust boundary. It guarantees deterministic managed escalation for adapter-observable input and subprocess failures, but it does not authenticate the caller, interpreter, executable bytes, or host, and it provides no host mediation or attestation. `scripts/classify_governance.py` remains a strict nonzero-exiting diagnostic tool; lifecycle callers must not invoke it in place of the adapter or interpret its failures themselves.
 
 When the route is managed, invoke public `xc-work operation=run` with the original request and applicable managed parameters. During direct execution, re-confirm all six facts before the next substantive action whenever new evidence appears. If the route becomes managed or classification becomes unavailable, invoke `operation=run` with the original request, completed actions, and current evidence before continuing.
+
+## Planning Operation
+
+`operation=plan` computes the minimum sufficient managed shape without creating a work order. Read the project bridge first, submit the same six governance facts used by classification, normalize its delivery requirements into `bridge_policy`, and supply the observable task facts. Do not infer favorable values from task length, file count, model capability, or confidence.
+
+Invoke the public adapter:
+
+```text
+python skills/xc-work/scripts/plan_work.py \
+  --request <request> \
+  --bridge-sha256 <sha256> \
+  --needs-persistence no|yes|unknown \
+  --material-impact no|yes|unknown \
+  --difficult-rollback no|yes|unknown \
+  --crosses-sessions no|yes|unknown \
+  --multiple-actors no|yes|unknown \
+  --audit-required no|yes|unknown \
+  --bridge-policy none|commit|review|approval|full|unknown \
+  --scope single-location|module|cross-cutting|unknown \
+  --clarity exact|known-root|uncertain|unknown \
+  --risk low|medium|high|unknown \
+  --verification focused|regression|multi-environment|unknown \
+  --coordination single|review|multi-party|unknown \
+  --duration single-step|multi-step|cross-session|unknown \
+  --audit runtime-only|result|full|unknown \
+  --pace adaptive|fast|thorough \
+  --mode investigation|change|repair|review|maintenance
+```
+
+The strict policy merges capability contributions by Boolean OR, minimum implementation units by `max`, verification scopes by stable ordered union, and depth by `max`. Governance and bridge facts establish a floor before task facts. Read-only modes never acquire mutation-only capabilities during fail-closed escalation. `fast` uses the required minimum and cannot remove required work; `thorough` may add analysis, review, recovery exercise, and regression depth. Missing or invalid public input, a low-level failure, or forged output returns the mode-appropriate full safe capability set.
+
+The plan receipt binds the request, bridge bytes, normalized facts, capabilities, counts, depth, and an ordered `required_nodes` manifest. Before the first adaptive implementation node starts, validate the receipt by rerunning the strict policy:
+
+```text
+python skills/xc-work/scripts/validate_plan_receipt.py \
+  --receipt-json <compact-receipt> \
+  --request <original-request> \
+  --bridge <project-.xcoding/WORKFLOW.md>
+```
+
+Before starting the plan-specific finalizer, build a source map from its scoped packet and validate exact required-node coverage:
+
+```text
+python skills/xc-work/scripts/validate_adaptive_manifest.py \
+  --receipt-json <compact-receipt> \
+  --source-map-json <logical-key-to-terminal-source-map>
+```
+
+The manifest validator rejects missing, extra, duplicate, stale, failed, blocked, wrong-role, insufficient-artifact, or missing-verification-scope records and returns the exact source and artifact thresholds for the finalizer.
+
+## Adaptive Run Operation
+
+`operation=adaptive-run` is an explicit opt-in managed lifecycle. Omitted `operation` and `operation=run` retain the full existing lifecycle and document behavior.
+
+1. Read `AGENTS.md`, `.xcoding/WORKFLOW.md`, and `.xcoding/KNOWLEDGE.md`, validate feature IDs, open the work order, fix its document language, and compute a validated plan.
+2. Initialize `assets/adaptive-work-order-template.xml`. Its static topology is only the root and one open sequence `work-group`.
+3. Before starting any leaf, add every initial plan-required node and a plan-specific finalizer, publish source keys, then close the group. A minimal mutation uses one combined implementation/focused-verification worker plus the finalizer.
+4. Embed the plan receipt and request scope in the first worker's immutable node metadata or inputs. Existing solution and approval source rules still apply whenever those capabilities are enabled.
+5. Add top-level work-order documents only when their capability is true. Runtime node results and one compact node artifact are sufficient for a minimal workbench.
+6. Build the dynamic sequence in this order when selected: goal, analysis or diagnosis, clarification, solution, approval, implementation units, verification scopes, independent review, result, finalizer.
+7. The dynamic finalizer declares actual required source IDs and plan-specific source/artifact thresholds. Empty work groups and missing required evidence must not finalize.
+
+The combined minimal worker may perform one coherent edit and focused verification. If scope, cause, risk, ownership, duration, or verification expands, block before further mutation. Reopen a closed group when needed, insert re-planning or recovery before the blocked direct child, publish the new plan, then unblock the original leaf to continue or record a no-op/rollback before successor nodes run. An unsafe rollback or unresolved external prerequisite remains blocked and uses a main-session gate.
+
+Adaptive work has no global node ceiling. Each loop remains bounded, while reviewed dynamic subtrees and recovery groups may be added as evidence requires. A user-requested fast pace limits optional depth only; it never removes required acceptance, verification, approval, audit, or recovery.
 
 ## Run Operation
 

@@ -28,11 +28,12 @@
 
 [规范契约](../../../../skills/xc-work/SKILL.md)
 
-- **何时调用：** 需要根据显式事实分类治理方式，或持久调查、变更、修复、审查、维护或跨功能工作涉及零个或多个现有功能时。
-- **用途：** 提供公开的 direct-versus-managed 分类边界，并且只使用所选模式所需的阶段运行普通工作订单生命周期。
-- **公开入口：** `operation=run|classify`，默认为 `run`；两者都必填 `request`。`run` 还要求 `workshop_path` 和 `project_root`，并接受 `feature_ids`、`mode` 和 `document_language`。`classify` 省略受管路径参数，接受 `needs_persistence`、`material_impact`、`difficult_rollback`、`crosses_sessions`、`multiple_actors` 和 `audit_required`，每项取值为 `no|yes|unknown`。
+- **何时调用：** 需要选择治理方式或成比例的受管投入，或持久调查、变更、修复、审查、维护或跨功能工作涉及零个或多个现有功能时。
+- **用途：** 提供 direct-versus-managed 分类、确定性 capability planning、兼容的完整生命周期，以及显式的最小自适应受管生命周期。
+- **公开入口：** `operation=run|classify|plan|adaptive-run`，默认为 `run`，并必填 `request`。`run` 与 `adaptive-run` 要求 `workshop_path` 和 `project_root`。`plan` 接受治理、bridge policy、范围、清晰度、风险、验证、协作、持续时间、审计、pace 和 mode 事实。
 - **分类：** 执行 `python skills/xc-work/scripts/classify.py [事实参数]`。只有六项已确认的 `no` 才返回 direct；任一 `yes` 或 `unknown` 都返回 managed。省略事实会变成 `unknown`；非法输入、可执行文件缺失、超时、低层非零退出、JSON 畸形或未知 schema/route 都会以零状态退出，并返回带 `classification_status=escalated` 和原因 `classification-unavailable` 的 managed 结果。
-- **典型受管用法：** 省略 `operation` 或使用 `operation=run`，创建目标，按需对账现有功能，澄清关键决策，批准方案，执行实现和验证，最后写结果。显式 `run` 绝不分类，也不降级为 direct。
+- **规划：** 执行 `python skills/xc-work/scripts/plan_work.py [规划事实]`。Plan 会单调推导文档、分析、gate、implementation unit、verification scope、review、recovery、depth，以及绑定 request/bridge 的 plan receipt。非法或伪造输出会 fail closed 到完整安全 capability 集合。
+- **典型受管用法：** 省略 `operation` 或使用 `operation=run` 保持现有完整生命周期。显式使用 `adaptive-run` 时，root 下只有 sequence dynamic group；最小形态包含一个 combined work leaf 和一个 finalizer，其他 capability 只在事实要求时增加。
 - **主要边界：** 分类只读且不执行实质操作。公开适配器会验证可观察的子进程结果，但不认证调用方、解释器、可执行文件字节或宿主，也不提供宿主中介或证明。严格低层分类器保留非零诊断错误，但不是生命周期入口。受管工作不得隐式创建或采用功能。
 
 ## `xc-new-feature`

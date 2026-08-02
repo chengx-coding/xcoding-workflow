@@ -1,0 +1,30 @@
+{
+  "name": "adaptive-work-order",
+  "schema_version": 1,
+  "blackboard": {
+    "work_order.document_language": "en",
+    "work_order.plan_id": "",
+    "work_order.plan_receipt": "{}",
+    "work_order.required_source_ids": "[]",
+    "work_order_id": "",
+    "today": ""
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Adaptive Work Order",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "work-group",
+        "title": "Planned Work",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main"
+      }
+    ]
+  }
+}

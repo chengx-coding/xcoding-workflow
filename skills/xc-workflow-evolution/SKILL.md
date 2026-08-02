@@ -27,6 +27,8 @@ Read the project bridge and use `scope`, `request`, and observable project conte
 
 When classification returns `managed` or becomes unavailable, invoke public `xc-work operation=run` with `workshop_path`, `project_root`, the original `request`, an empty `feature_ids` list, and the applicable `change` or `maintenance` mode. Record goal, analysis, selected solution, implementation evidence, and result through the normal work order documents. Omitting `operation` remains an equivalent managed entry for existing callers, but this routing operation uses the explicit public value.
 
+An explicit caller may choose `xc-work operation=adaptive-run` for narrow workflow maintenance after running the public planner. Broad portable-core architecture, orchestration-template, or agent-export changes still require durable analysis, alternatives, independent review, and a user gate; a `fast` pace cannot remove those capabilities. Default workflow evolution continues to use the full `run` lifecycle for compatibility.
+
 When classification returns `direct`, do not create a work order. Perform only the response-local, non-material action established by the all-`no` vector. If new evidence changes or invalidates any fact, stop before the next substantive action and re-enter through public `xc-work`; a managed or unavailable result proceeds through `operation=run`.
 
 `xc-workflow-evolution` depends only on the documented `xc-work` Skill name and public parameters. It must not import, locate, or invoke another Skill's private scripts or references.

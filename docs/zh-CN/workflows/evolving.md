@@ -16,6 +16,8 @@
 
 大范围架构变更必须在实现前具备证据、可行备选方案、独立评审和显式用户 gate。
 
+窄范围工作流维护可以在成比例规划后显式使用 `xc-work operation=adaptive-run`。广泛的 portable-core、orchestration-template 和 agent-export 变更即使用户要求 fast pace，仍保留 required analysis、solution、gate、verification 和 review capability。现有 workflow-evolution 路由默认继续使用完整 `run` 生命周期。
+
 ## 先修改规范源
 
 ### Skill
