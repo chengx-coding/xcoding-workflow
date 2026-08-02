@@ -45,6 +45,7 @@ def parse_runtime_for_read(args: argparse.Namespace) -> Tuple[Path, Any, Dict[st
 def parse_runtime_for_write(args: argparse.Namespace) -> Tuple[Path, Any, Dict[str, Any]]:
     path, tree, config, integrity = parse_runtime_for_read(args)
     core.require_writable_integrity(integrity)
+    core.require_valid_control_metadata(tree.getroot())
     errors = core.validate_runtime_root(tree.getroot(), check_integrity=False)
     if errors:
         raise core.TreeValidationError("runtime structural validation failed", {"errors": errors})
@@ -197,6 +198,7 @@ def cmd_init(args: argparse.Namespace) -> Dict[str, Any]:
     tree_path = runtime_path / "orchestration.xml"
     with core.runtime_write_lock(tree_path):
         template_tree = core.parse_xml(template_path)
+        core.require_valid_control_metadata(template_tree.getroot())
         template_errors = core.validate_template_root(template_tree.getroot())
         if template_errors:
             raise core.TreeValidationError("template validation failed", {"errors": template_errors})
@@ -265,6 +267,9 @@ def cmd_complete(args: argparse.Namespace) -> Dict[str, Any]:
             args.artifact,
             args.validation,
             core.parse_set_values(args.set),
+            args.check_result_json,
+            args.gate_outcome,
+            args.decision,
         )
         return write_terminal_runtime(
             tree,
@@ -459,6 +464,17 @@ def cmd_show(args: argparse.Namespace) -> Dict[str, Any]:
     }
 
 
+def cmd_control_packet(args: argparse.Namespace) -> Dict[str, Any]:
+    path, tree, _, integrity = parse_runtime_for_read(args)
+    root = tree.getroot()
+    return {
+        "tree_path": str(path),
+        "integrity": integrity,
+        "revision": core.runtime_revision(root),
+        "packet": core.build_control_packet(root, args.node),
+    }
+
+
 def cmd_find(args: argparse.Namespace) -> Dict[str, Any]:
     path, tree, _, integrity = parse_runtime_for_read(args)
     root = tree.getroot()
@@ -531,6 +547,7 @@ def cmd_validate(args: argparse.Namespace) -> Dict[str, Any]:
     config = config_for(args, path)
     tree = core.parse_xml(path)
     root = tree.getroot()
+    core.require_valid_control_metadata(root)
     kind = root.get("artifact_kind", "")
     if kind == "template":
         errors = core.validate_template_root(root)
@@ -596,6 +613,9 @@ def build_parser() -> argparse.ArgumentParser:
     complete.add_argument("--artifact", action="append", default=[])
     complete.add_argument("--validation", default="")
     complete.add_argument("--set", action="append", default=[])
+    complete.add_argument("--check-result-json", action="append", default=[])
+    complete.add_argument("--gate-outcome", default="")
+    complete.add_argument("--decision", default="")
     complete.set_defaults(func=cmd_complete)
 
     fail = sub.add_parser("fail", help="Fail an executable leaf.")
@@ -676,6 +696,14 @@ def build_parser() -> argparse.ArgumentParser:
     add_tree_argument(show)
     show.add_argument("--node", required=True)
     show.set_defaults(func=cmd_show)
+
+    control_packet = sub.add_parser(
+        "control-packet",
+        help="Project the scoped control packet declared by one executable leaf.",
+    )
+    add_tree_argument(control_packet)
+    control_packet.add_argument("--node", required=True)
+    control_packet.set_defaults(func=cmd_control_packet)
 
     find = sub.add_parser("find", help="Find runtime nodes by template ID.")
     add_tree_argument(find)

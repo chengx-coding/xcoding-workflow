@@ -28,11 +28,12 @@
 
 [规范契约](../../../../skills/xc-work/SKILL.md)
 
-- **何时调用：** 持久调查、变更、修复、审查、维护或跨功能工作涉及零个或多个现有功能时。
-- **用途：** 运行普通工作订单生命周期，并仅启用所选模式需要的分析、方案、实现和验证阶段。
-- **公开入口：** 必填 `workshop_path`、`project_root`、`request`；可选 `feature_ids`、`mode` 和 `document_language`。
-- **典型用法：** 创建目标，按需对账现有功能，澄清关键决策，批准方案，执行实现和验证，最后写结果。
-- **主要边界：** 不得隐式创建或采用功能；动态状态留在运行时树中，文档语言由发起请求固定，除非用户明确纠正。
+- **何时调用：** 需要根据显式事实分类治理方式，或持久调查、变更、修复、审查、维护或跨功能工作涉及零个或多个现有功能时。
+- **用途：** 提供公开的 direct-versus-managed 分类边界，并且只使用所选模式所需的阶段运行普通工作订单生命周期。
+- **公开入口：** `operation=run|classify`，默认为 `run`；两者都必填 `request`。`run` 还要求 `workshop_path` 和 `project_root`，并接受 `feature_ids`、`mode` 和 `document_language`。`classify` 省略受管路径参数，接受 `needs_persistence`、`material_impact`、`difficult_rollback`、`crosses_sessions`、`multiple_actors` 和 `audit_required`，每项取值为 `no|yes|unknown`。
+- **分类：** 执行 `python skills/xc-work/scripts/classify.py [事实参数]`。只有六项已确认的 `no` 才返回 direct；任一 `yes` 或 `unknown` 都返回 managed。省略事实会变成 `unknown`；非法输入、可执行文件缺失、超时、低层非零退出、JSON 畸形或未知 schema/route 都会以零状态退出，并返回带 `classification_status=escalated` 和原因 `classification-unavailable` 的 managed 结果。
+- **典型受管用法：** 省略 `operation` 或使用 `operation=run`，创建目标，按需对账现有功能，澄清关键决策，批准方案，执行实现和验证，最后写结果。显式 `run` 绝不分类，也不降级为 direct。
+- **主要边界：** 分类只读且不执行实质操作。公开适配器会验证可观察的子进程结果，但不认证调用方、解释器、可执行文件字节或宿主，也不提供宿主中介或证明。严格低层分类器保留非零诊断错误，但不是生命周期入口。受管工作不得隐式创建或采用功能。
 
 ## `xc-new-feature`
 
@@ -60,6 +61,6 @@
 
 - **何时调用：** 需要审慎变更可移植工作流契约、模板、agent、导出、项目 bridge 指引或健康检查时。
 - **用途：** 将普通工作订单和审查纪律用于工作流维护，同时区分可移植核心与项目专属政策。
-- **公开入口：** 必填 `scope`、`workshop_path`、`request`；`scope` 选择 portable core、project bridge、agent export、orchestration template 或 health check。
-- **典型用法：** 开启零功能工作订单，记录分析和方案，修改规范源，按需重新生成受管输出，并验证受影响接口。
-- **主要边界：** 不得手工修改生成资产或受管运行时状态；广泛架构变更需要备选方案、审查和显式用户门禁。
+- **公开入口：** 必填 `scope`、`workshop_path`、`project_root` 和 `request`；`scope` 选择 portable core、project bridge、agent export、orchestration template 或 health check。
+- **典型用法：** 确认六项治理事实，调用公开 `xc-work operation=classify`，然后只执行全 `no` 所允许的当前响应内动作，或以零 feature 进入公开 `xc-work operation=run`。受管工作会记录分析和方案、修改规范源、按需重新生成受管输出并验证受影响接口。
+- **主要边界：** 只依赖 `xc-work` Skill 名称和公开参数，不调用另一个 Skill 的私有分类脚本或 reference。不得手工修改生成资产或受管运行时状态；广泛架构变更需要备选方案、审查和显式用户门禁。

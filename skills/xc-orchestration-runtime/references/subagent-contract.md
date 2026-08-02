@@ -7,7 +7,8 @@ A subagent is a single-node worker, not an orchestrator.
 The main session provides:
 
 - `tree_ref`
-- One node JSON returned by `next`
+- One node JSON returned by `next`, or its explicitly declared
+  `control-packet` projection
 - The `revision` returned with that node batch when the caller requires an optimistic write precondition
 - Domain Skill references and artifact paths named by the node
 - Required user decisions or blackboard values, including `work_order.document_language` when the node writes a user-facing artifact
@@ -22,6 +23,10 @@ The main session provides:
 6. Artifact paths intended for an automatic checkpoint commit must be inside the workshop Git repository.
 7. Read `metadata.artifact.audience` and `metadata.artifact.content_language` from the supplied node. Default to `internal` and `en`; resolve `work_order.document_language` only for an explicitly declared user-facing artifact.
 8. Complete, fail, or block only the supplied node after it has been started. Report `state_conflict` or `tree_sealed` to the main session instead of retrying an ambiguous mutation.
+9. When completion metadata requires a check, run the declared validator,
+   require its successful process exit and top-level success, extract only its
+   normalized receipt, and pass that receipt through `--check-result-json`.
+   Never pass a validator's legacy outer response.
 
 ## Worker Prompt Skeleton
 
@@ -53,6 +58,10 @@ python "$SKILL_DIR/scripts/orchestration.py" complete `
 ```
 
 Write short cross-node variables with `--set review.open_issues=false`.
+For an opt-in structured gate, add `--gate-outcome <declared-value>` and the
+required `--decision <text>`. For an opt-in completion check, add one
+`--check-result-json '<normalized-receipt>'` per declared check. These receipts
+are untrusted self-reports rather than proof that the validator ran.
 
 ## Fail or Block
 

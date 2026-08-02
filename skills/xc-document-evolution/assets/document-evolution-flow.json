@@ -3,8 +3,11 @@
   "schema_version": 1,
   "blackboard": {
     "document.content_language": "",
+    "document.receipt.content_language": "en",
+    "document.receipt.audience": "",
     "document.review_required": "false",
     "document.gate_required": "false",
+    "document.gate_outcome": "accepted",
     "document.review.open_issues": "false"
   },
   "root": {
@@ -21,6 +24,16 @@
         "type": "task",
         "role": "document-write",
         "executor": "subagent",
+        "metadata": {
+          "completion": {
+            "required_fields": "[\"summary\"]",
+            "artifacts": {
+              "min": "1",
+              "max": "1",
+              "path": "bb:document.path"
+            }
+          }
+        },
         "instructions": "Read document.path, document.template, document.inputs, document.contract, and document.content_language from the supplied blackboard and node references. Write or revise the target document immediately. Preserve valid frontmatter and do not read the runtime XML directly.",
         "deliverables": "The managed document at document.path.",
         "acceptance": "The target document exists, follows its authoring contract, and has complete YAML frontmatter."
@@ -31,6 +44,26 @@
         "type": "task",
         "role": "document-validate",
         "executor": "tool",
+        "metadata": {
+          "completion": {
+            "required_fields": "[\"summary\",\"validation\"]",
+            "artifacts": {
+              "min": "0",
+              "max": "0"
+            },
+            "checks": "[\"xc-document\"]",
+            "check": {
+              "xc-document": {
+                "subject": "bb:document.path",
+                "facts": {
+                  "document_kind": "bb:document.kind",
+                  "content_language": "bb:document.receipt.content_language",
+                  "audience": "bb:document.receipt.audience"
+                }
+              }
+            }
+          }
+        },
         "instructions": "Run xc-document validation for document.path and document.kind.",
         "deliverables": "A validation result recorded in the node result.",
         "acceptance": "xc-document validates the draft without errors."
@@ -59,6 +92,13 @@
               "artifact": {
                 "audience": "internal",
                 "content_language": "en"
+              },
+              "completion": {
+                "required_fields": "[\"summary\"]",
+                "artifacts": {
+                  "min": "1",
+                  "max": "1"
+                }
               }
             },
             "instructions": "Review document.path against the domain review dimensions. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.",
@@ -73,6 +113,16 @@
             "executor": "subagent",
             "when": "document.review.open_issues == true",
             "depends_on_template": "local:review-document",
+            "metadata": {
+              "completion": {
+                "required_fields": "[\"summary\"]",
+                "artifacts": {
+                  "min": "1",
+                  "max": "1",
+                  "path": "bb:document.path"
+                }
+              }
+            },
             "instructions": "Read the latest review artifact and revise only document.path. Preserve document.content_language when it is set, preserve valid frontmatter, and record the updated document as the node artifact.",
             "deliverables": "An updated managed document.",
             "acceptance": "Required review findings are resolved or explicitly escalated to a user gate."
@@ -87,9 +137,28 @@
         "executor": "main",
         "when": "document.gate_required == true",
         "when.policy": "latched",
+        "metadata": {
+          "completion": {
+            "required_fields": "[\"summary\",\"validation\"]"
+          },
+          "gate": {
+            "outcomes": "[\"accepted\",\"rejected\",\"revision-required\"]",
+            "decision_required": "true",
+            "outcome_key": "document.gate_outcome"
+          }
+        },
         "instructions": "Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.",
         "deliverables": "Structured user decisions or an explicit continuation decision.",
         "acceptance": "Required user decisions are recorded and any necessary revision nodes are scheduled."
+      },
+      {
+        "template_id": "document-gate-recovery-group",
+        "title": "Recover non-accepting document decision",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "when": "document.gate_outcome != accepted"
       },
       {
         "template_id": "validate-final",
@@ -97,6 +166,27 @@
         "type": "task",
         "role": "document-validate-final",
         "executor": "tool",
+        "when": "document.gate_outcome == accepted",
+        "metadata": {
+          "completion": {
+            "required_fields": "[\"summary\",\"validation\"]",
+            "artifacts": {
+              "min": "0",
+              "max": "0"
+            },
+            "checks": "[\"xc-document\"]",
+            "check": {
+              "xc-document": {
+                "subject": "bb:document.path",
+                "facts": {
+                  "document_kind": "bb:document.kind",
+                  "content_language": "bb:document.receipt.content_language",
+                  "audience": "bb:document.receipt.audience"
+                }
+              }
+            }
+          }
+        },
         "instructions": "Run xc-document validation for document.path and document.kind after review and user decisions.",
         "deliverables": "A final validation result recorded in the node result.",
         "acceptance": "xc-document validates the final document without errors."

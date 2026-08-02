@@ -20,11 +20,29 @@
 
 ## 执行边界
 
-主会话向[编排运行时](../../../skills/xc-orchestration-runtime/SKILL.md)请求下一个就绪节点或批次，在委派前启动工作，处理用户 gate，并在 worker 返回后核对状态。
+主会话向[编排运行时](../../../skills/xc-orchestration-runtime/SKILL.md)请求下一个就绪节点或批次。对于已 opt-in 的叶子节点，调度顺序是 `next -> control-packet --node <id> -> start`。主会话必须在启动或委派节点前读取 packet，处理用户 gate，并在 worker 返回后核对状态。
 
-每个 worker 只执行一个运行中的节点。它只读取已提供的输入和 reference，写入已声明的 artifact，然后调用 `complete`、`fail` 或 `block`。Worker 不会检查完整树、执行兄弟节点，也不会决定下一次全局转换。
+每个 worker 只执行 packet 中的一个 target 节点。它只读取已提供的输入和 reference，写入已声明的 artifact，然后调用 `complete`、`fail` 或 `block`。Worker 不会检查完整树、执行兄弟节点、把 source ID 当作启动其他节点的权限，也不会决定下一次全局转换。
 
 长篇报告、diff 和日志属于 artifact。Blackboard 只保存影响后续调度或决策的短结构化值。
+
+## 限定范围的交接
+
+叶子节点声明领域命名的来源类别、来源及 artifact 阈值，以及允许投影的 blackboard 键。直接的 `node:` selector 标识一个来源；`bb:` selector 读取一个由终态 runtime 叶子 ID 组成的紧凑 UTF-8 JSON 数组，例如 `["rt_source_a","rt_source_b"]`。它不是 CSV、通配符或权限列表。生命周期调用方必须在请求 packet 前发布真实终态来源 ID，绝不能用 ancestor 或 group ID 替代。
+
+Packet 只包含 target 叶子契约、已声明的来源结果字段与 artifact、选定的 blackboard 标量、局部 readiness blocker 和允许的控制动作。它不继承 ancestor 声明，也不暴露未声明的 sibling 或 future-node 数据、来源 instructions、未声明 artifact、未选择的 blackboard 键、完整 blackboard 或完整树。Source ID 只允许投影证据，不授予控制该来源或任何其他节点的权限。
+
+这个边界限制的是运行时协议披露，不是宿主 mediation。Runtime 无法阻止 agent 在 `start` 前使用普通宿主工具，也不能强制验证实际调用 CLI 的身份；这些边界必须由宿主和调用 Skill 执行。
+
+## 完成与 Gate
+
+Opt-in completion metadata 可以要求非空 `summary` 或 `validation`、artifact 数量上下界、与 literal 或 blackboard selector 完全相同的 artifact 路径，以及已声明的归一化 check receipt。`complete` 通过可重复的 `--check-result-json` 接收每个已声明 check 的 receipt。Receipt 的精确形状是 `{"schema_version":1,"check":"...","ok":true,"subject":"...","facts":{...}}`；runtime 会验证其形状、已声明名称、`ok`、subject 和 fact 值，并且只保存归一化 receipt。
+
+调用方必须实际运行已声明 validator，要求进程退出成功且顶层结果成功，并只提取其归一化 receipt。即便如此，receipt 仍是未签名、未绑定 claimant 的调用方自报告；它既不能证明验证确实运行过，也不能证明运行者身份。完全匹配已声明结构和预期值的伪造 receipt 会被接受。Runtime 检查提高的是结果一致性，不会建立 trusted execution。
+
+Opt-in structured gate 会声明允许的 lowercase-kebab outcome、是否要求非空 decision，以及可选的 outcome blackboard key。主会话通过 `--gate-outcome` 和按需提供的 `--decision` 完成 gate；结果与可选 blackboard 写入是原子操作。没有这些声明的 legacy gate 保持原有完成行为。
+
+Runtime 会验证并发布 outcome，但不会根据字符串拼写赋予领域接受语义。因此，当前生命周期模板通过 fail-closed 拓扑路由已发布值：接受结果选择正常后续路径；拒绝、需要修订、尚未解决的澄清，或 reconciliation 的 `revise-goal` 结果都会暴露一个开放 recovery group，并阻止实现、验证、最终文档校验、结果写入或最终完成。Recovery group 中的修订工作和后继 gate 必须先发布接受值，流程才能继续。被跳过的可选 gate 使用所属模板显式声明的安全默认值，而不是空 outcome。
 
 ## 恢复工作
 

@@ -13,6 +13,7 @@ import errno
 import html
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -72,6 +73,16 @@ VALID_EXECUTORS = {"main", "subagent", "tool", "service"}
 VALID_WHEN_POLICIES = {"reactive", "latched"}
 VALID_DYNAMIC_GROUP_STATES = {"open", "closed"}
 NODE_KEY_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+CONTROL_CATEGORY_RE = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
+CHECK_NAME_RE = CONTROL_CATEGORY_RE
+CHECK_FACT_RE = re.compile(r"^[a-z][a-z0-9_]*$")
+BLACKBOARD_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+CONTROL_METADATA_PREFIXES = (
+    "metadata.control_packet.",
+    "metadata.completion.",
+    "metadata.gate.",
+)
+CHECK_RESULT_MAX_BYTES = 8192
 ATOMIC_REPLACE_ATTEMPTS = 5
 ATOMIC_REPLACE_RETRY_DELAY_SECONDS = 0.05
 TRANSIENT_REPLACE_WINERRORS = {5, 32}
@@ -129,6 +140,46 @@ class NodeNotReadyError(RuntimeErrorBase):
 
 class LegacySchemaError(RuntimeErrorBase):
     code = "legacy_schema_rejected"
+
+
+class InvalidControlMetadataError(RuntimeErrorBase):
+    code = "invalid_control_metadata"
+
+
+class ControlPacketNotDeclaredError(RuntimeErrorBase):
+    code = "control_packet_not_declared"
+
+
+class ControlPacketUnavailableError(RuntimeErrorBase):
+    code = "control_packet_unavailable"
+
+
+class InvalidCheckResultError(RuntimeErrorBase):
+    code = "invalid_check_result"
+
+
+class CompletionRequirementsFailedError(RuntimeErrorBase):
+    code = "completion_requirements_failed"
+
+
+class GateOutcomeRequiredError(RuntimeErrorBase):
+    code = "gate_outcome_required"
+
+
+class InvalidGateOutcomeError(RuntimeErrorBase):
+    code = "invalid_gate_outcome"
+
+
+class GateDecisionRequiredError(RuntimeErrorBase):
+    code = "gate_decision_required"
+
+
+class GateOutcomeConflictError(RuntimeErrorBase):
+    code = "gate_outcome_conflict"
+
+
+class GateOutcomeNotAllowedError(RuntimeErrorBase):
+    code = "gate_outcome_not_allowed"
 
 
 def utc_now() -> str:
@@ -253,6 +304,285 @@ def parse_metadata_values(values: Optional[Sequence[str]]) -> List[Tuple[str, st
         seen.add(key)
         result.append((key, value))
     return result
+
+
+def _json_string_list(value: str, *, nonempty: bool = False) -> Optional[List[str]]:
+    try:
+        parsed = json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if (
+        not isinstance(parsed, list)
+        or (nonempty and not parsed)
+        or any(not isinstance(item, str) or not item for item in parsed)
+        or json.dumps(parsed, ensure_ascii=False, separators=(",", ":")) != value
+    ):
+        return None
+    return parsed
+
+
+def _non_negative_integer(value: str) -> Optional[int]:
+    if not re.fullmatch(r"0|[1-9][0-9]*", value):
+        return None
+    return int(value)
+
+
+def _value_selector_valid(value: str) -> bool:
+    if value.startswith("bb:"):
+        return bool(BLACKBOARD_KEY_RE.fullmatch(value[3:]))
+    return value.startswith("literal:") and bool(value[8:])
+
+
+def _source_selector_valid(value: str) -> bool:
+    if value.startswith("node:"):
+        return bool(value[5:])
+    if value.startswith("bb:"):
+        return bool(BLACKBOARD_KEY_RE.fullmatch(value[3:]))
+    return False
+
+
+def _control_violation(key: str, code: str) -> Dict[str, str]:
+    return {"key": key, "code": code}
+
+
+def _deduplicate_control_violations(violations: Sequence[Dict[str, str]]) -> List[Dict[str, str]]:
+    unique = {(item["key"], item["code"]) for item in violations}
+    return [{"key": key, "code": code} for key, code in sorted(unique)]
+
+
+def validate_control_metadata_for_node(node: ET.Element) -> List[Dict[str, str]]:
+    metadata = {
+        key: value
+        for key, value in node.attrib.items()
+        if key.startswith(CONTROL_METADATA_PREFIXES)
+    }
+    if not metadata:
+        return []
+    violations: List[Dict[str, str]] = []
+    leaf_owner = node_type(node) in {"task", "gate"} and not children(node)
+    for key in metadata:
+        if not leaf_owner:
+            violations.append(_control_violation(key, "invalid_metadata_owner"))
+
+    control_keys = {
+        key: value
+        for key, value in metadata.items()
+        if key.startswith("metadata.control_packet.")
+    }
+    category_members: Dict[str, Dict[str, Tuple[str, str]]] = {}
+    blackboard_key = "metadata.control_packet.blackboard_keys"
+    for key, value in control_keys.items():
+        match = re.fullmatch(
+            r"metadata\.control_packet\.category\.([^.]+)\.(selectors|min_sources|artifact_min)",
+            key,
+        )
+        if match:
+            category, member = match.groups()
+            if not CONTROL_CATEGORY_RE.fullmatch(category):
+                violations.append(_control_violation(key, "invalid_control_packet_category"))
+            category_members.setdefault(category, {})[member] = (key, value)
+        elif key == blackboard_key:
+            parsed = _json_string_list(value)
+            if (
+                parsed is None
+                or len(parsed) != len(set(parsed))
+                or any(not BLACKBOARD_KEY_RE.fullmatch(item) for item in parsed)
+            ):
+                violations.append(_control_violation(key, "invalid_blackboard_keys"))
+        else:
+            violations.append(_control_violation(key, "unknown_control_metadata_key"))
+    if control_keys and not category_members:
+        violations.append(
+            _control_violation(
+                sorted(control_keys)[0],
+                "missing_control_packet_category_member",
+            )
+        )
+    for category, members in category_members.items():
+        category_prefix = f"metadata.control_packet.category.{category}"
+        for member in ("selectors", "min_sources", "artifact_min"):
+            if member not in members:
+                violations.append(
+                    _control_violation(
+                        f"{category_prefix}.{member}",
+                        "missing_control_packet_category_member",
+                    )
+                )
+        if "selectors" in members:
+            key, value = members["selectors"]
+            selectors = _json_string_list(value, nonempty=True)
+            if selectors is None or any(not _source_selector_valid(item) for item in selectors):
+                violations.append(_control_violation(key, "invalid_selector_list"))
+            elif len(selectors) != len(set(selectors)):
+                violations.append(_control_violation(key, "duplicate_selector"))
+        if "min_sources" in members:
+            key, value = members["min_sources"]
+            if _non_negative_integer(value) is None:
+                violations.append(_control_violation(key, "invalid_min_sources"))
+        if "artifact_min" in members:
+            key, value = members["artifact_min"]
+            if _non_negative_integer(value) is None:
+                violations.append(_control_violation(key, "invalid_artifact_min"))
+
+    completion_keys = {
+        key: value
+        for key, value in metadata.items()
+        if key.startswith("metadata.completion.")
+    }
+    completion_allowed = {
+        "metadata.completion.required_fields",
+        "metadata.completion.artifacts.min",
+        "metadata.completion.artifacts.max",
+        "metadata.completion.artifacts.path",
+        "metadata.completion.checks",
+    }
+    check_subjects: Dict[str, Tuple[str, str]] = {}
+    check_facts: Dict[str, Dict[str, Tuple[str, str]]] = {}
+    for key, value in completion_keys.items():
+        subject_match = re.fullmatch(r"metadata\.completion\.check\.([^.]+)\.subject", key)
+        fact_match = re.fullmatch(r"metadata\.completion\.check\.([^.]+)\.facts\.([^.]+)", key)
+        if key in completion_allowed:
+            continue
+        if subject_match:
+            check_subjects[subject_match.group(1)] = (key, value)
+        elif fact_match:
+            check, fact = fact_match.groups()
+            check_facts.setdefault(check, {})[fact] = (key, value)
+        else:
+            violations.append(_control_violation(key, "unknown_control_metadata_key"))
+    required_fields_key = "metadata.completion.required_fields"
+    if required_fields_key in completion_keys:
+        fields = _json_string_list(completion_keys[required_fields_key])
+        if (
+            fields is None
+            or len(fields) != len(set(fields))
+            or any(item not in {"summary", "validation"} for item in fields)
+        ):
+            violations.append(_control_violation(required_fields_key, "invalid_required_fields"))
+    minimum_key = "metadata.completion.artifacts.min"
+    maximum_key = "metadata.completion.artifacts.max"
+    minimum = _non_negative_integer(completion_keys.get(minimum_key, ""))
+    maximum = _non_negative_integer(completion_keys.get(maximum_key, ""))
+    if minimum_key in completion_keys or maximum_key in completion_keys:
+        if (
+            minimum_key not in completion_keys
+            or maximum_key not in completion_keys
+            or minimum is None
+            or maximum is None
+            or minimum > maximum
+        ):
+            violations.extend(
+                _control_violation(key, "invalid_artifact_bounds")
+                for key in (minimum_key, maximum_key)
+                if key in completion_keys
+            )
+    path_key = "metadata.completion.artifacts.path"
+    if path_key in completion_keys:
+        if minimum_key not in completion_keys or maximum_key not in completion_keys:
+            violations.append(_control_violation(path_key, "invalid_artifact_bounds"))
+        if not _value_selector_valid(completion_keys[path_key]):
+            violations.append(_control_violation(path_key, "invalid_artifact_path_selector"))
+    checks_key = "metadata.completion.checks"
+    declared_checks: Optional[List[str]] = []
+    if checks_key in completion_keys:
+        declared_checks = _json_string_list(completion_keys[checks_key])
+        if (
+            declared_checks is None
+            or len(declared_checks) != len(set(declared_checks))
+            or any(not CHECK_NAME_RE.fullmatch(item) for item in declared_checks)
+        ):
+            violations.append(_control_violation(checks_key, "invalid_check_names"))
+            declared_checks = None
+    referenced_checks = set(check_subjects) | set(check_facts)
+    declared_check_set = set(declared_checks or [])
+    for check in sorted(referenced_checks | declared_check_set):
+        check_entries = [
+            entry
+            for entry in (
+                [check_subjects.get(check)]
+                + list(check_facts.get(check, {}).values())
+            )
+            if entry is not None
+        ]
+        if not CHECK_NAME_RE.fullmatch(check):
+            for key, _ in check_entries:
+                violations.append(_control_violation(key, "invalid_check_names"))
+        if check not in declared_check_set:
+            for key, _ in check_entries:
+                violations.append(_control_violation(key, "invalid_check_names"))
+        if check in declared_check_set and check not in check_subjects:
+            violations.append(
+                _control_violation(
+                    f"metadata.completion.check.{check}.subject",
+                    "missing_check_subject",
+                )
+            )
+    for check, (key, value) in check_subjects.items():
+        if not _value_selector_valid(value):
+            violations.append(_control_violation(key, "invalid_check_subject_selector"))
+    for facts in check_facts.values():
+        for fact, (key, value) in facts.items():
+            if not CHECK_FACT_RE.fullmatch(fact):
+                violations.append(_control_violation(key, "invalid_check_fact_name"))
+            if not _value_selector_valid(value):
+                violations.append(_control_violation(key, "invalid_check_fact_selector"))
+
+    gate_keys = {
+        key: value
+        for key, value in metadata.items()
+        if key.startswith("metadata.gate.")
+    }
+    gate_allowed = {
+        "metadata.gate.outcomes",
+        "metadata.gate.decision_required",
+        "metadata.gate.outcome_key",
+    }
+    for key in gate_keys:
+        if key not in gate_allowed:
+            violations.append(_control_violation(key, "unknown_control_metadata_key"))
+    if gate_keys and (node_type(node) != "gate" or children(node)):
+        violations.extend(_control_violation(key, "invalid_metadata_owner") for key in gate_keys)
+    outcomes_key = "metadata.gate.outcomes"
+    outcomes = _json_string_list(gate_keys.get(outcomes_key, ""), nonempty=True)
+    if gate_keys and (
+        outcomes_key not in gate_keys
+        or outcomes is None
+        or len(outcomes) != len(set(outcomes))
+        or any(not CONTROL_CATEGORY_RE.fullmatch(item) for item in outcomes)
+    ):
+        violations.append(_control_violation(outcomes_key, "invalid_gate_outcomes"))
+    decision_key = "metadata.gate.decision_required"
+    if gate_keys and gate_keys.get(decision_key) not in {"true", "false"}:
+        violations.append(_control_violation(decision_key, "invalid_gate_decision_required"))
+    outcome_key = "metadata.gate.outcome_key"
+    if outcome_key in gate_keys and not BLACKBOARD_KEY_RE.fullmatch(gate_keys[outcome_key]):
+        violations.append(_control_violation(outcome_key, "invalid_gate_outcome_key"))
+    return _deduplicate_control_violations(violations)
+
+
+def validate_control_metadata_tree(root: ET.Element) -> List[Dict[str, str]]:
+    violations: List[Dict[str, str]] = []
+    for node in iter_nodes(root):
+        node_id = node.get("id") or node.get("template_id") or "<unknown>"
+        for violation in validate_control_metadata_for_node(node):
+            violations.append({"node": node_id, **violation})
+    unique = {
+        (item["node"], item["key"], item["code"])
+        for item in violations
+    }
+    return [
+        {"node": node, "key": key, "code": code}
+        for node, key, code in sorted(unique, key=lambda item: (item[1], item[2], item[0]))
+    ]
+
+
+def require_valid_control_metadata(root: ET.Element) -> None:
+    violations = validate_control_metadata_tree(root)
+    if violations:
+        raise InvalidControlMetadataError(
+            "control metadata declaration is invalid",
+            {"violations": violations},
+        )
 
 
 def parse_xml(path: Path) -> ET.ElementTree:
@@ -1388,9 +1718,313 @@ def result_snapshot(node: ET.Element) -> Dict[str, Any]:
     for child in list(result):
         if child.tag == "artifacts":
             payload["artifacts"] = [artifact.get("path", "") for artifact in child.findall("artifact")]
+        elif child.tag == "checks":
+            payload["checks"] = [
+                json.loads((check.text or "").strip())
+                for check in child.findall("check")
+            ]
         else:
             payload[child.tag] = (child.text or "").strip()
     return payload
+
+
+def _packet_violation(
+    code: str,
+    *,
+    category: str = "",
+    selector: str = "",
+    source_index: int = -1,
+    **extra: Any,
+) -> Dict[str, Any]:
+    return {
+        "category": category,
+        "selector": selector,
+        "source_index": source_index,
+        "code": code,
+        **extra,
+    }
+
+
+def _sorted_packet_violations(violations: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return sorted(
+        violations,
+        key=lambda item: (
+            str(item.get("category", "")),
+            str(item.get("selector", "")),
+            int(item.get("source_index", -1)),
+            str(item.get("code", "")),
+        ),
+    )
+
+
+def _parse_source_list(value: str) -> Optional[List[str]]:
+    parsed = _json_string_list(value, nonempty=True)
+    if parsed is None or len(parsed) != len(set(parsed)):
+        return None
+    return parsed
+
+
+def _source_projection(node: ET.Element) -> Dict[str, Any]:
+    result = result_snapshot(node)
+    projected: Dict[str, Any] = {
+        "node_id": node.get("id", ""),
+        "title": node.get("title", ""),
+        "role": node_role(node),
+        "status": node.get("status", "pending"),
+    }
+    for key in (
+        "summary",
+        "artifacts",
+        "gate_outcome",
+        "decision",
+        "failure_reason",
+        "checks",
+    ):
+        if key in result:
+            projected[key] = result[key]
+    if node.get("block_reason"):
+        projected["block_reason"] = node.get("block_reason", "")
+    return projected
+
+
+def _target_blockers(root: ET.Element, node: ET.Element) -> List[Dict[str, Any]]:
+    status = node.get("status", "pending")
+    if status == "blocked":
+        return [{"reason": "node_status", "block_reason": node.get("block_reason", "")}]
+    if status not in RUNNABLE_STATUSES:
+        return []
+    blocker = node_readiness_blocker(root, node)
+    if blocker is None:
+        return []
+    allowed = {
+        key: blocker[key]
+        for key in ("reason", "blocker_node_id", "blocker_status", "dependency_ids")
+        if key in blocker
+    }
+    return [allowed]
+
+
+def _control_projection(root: ET.Element, node: ET.Element) -> Dict[str, Any]:
+    status = node.get("status", "pending")
+    ready = status in RUNNABLE_STATUSES and node_readiness_blocker(root, node) is None
+    if ready:
+        action = "start"
+    elif status == "running":
+        action = "finish"
+    elif status == "blocked":
+        action = "resolve-and-unblock"
+    elif status in TERMINAL_STATUSES:
+        action = "none"
+    else:
+        action = "wait"
+    return {
+        "action": action,
+        "ready": ready,
+        "expected_revision": runtime_revision(root),
+        "allowed_terminal_operations": (
+            ["complete", "fail", "block"] if status == "running" else []
+        ),
+    }
+
+
+def build_control_packet(root: ET.Element, node_id: str) -> Dict[str, Any]:
+    target = require_executable_leaf(root, node_id)
+    require_valid_control_metadata(root)
+    control_metadata = {
+        key: value
+        for key, value in target.attrib.items()
+        if key.startswith("metadata.control_packet.")
+    }
+    if not control_metadata:
+        raise ControlPacketNotDeclaredError(
+            "target leaf does not declare a control packet",
+            {"node_id": node_id},
+        )
+    categories: Dict[str, Dict[str, Any]] = {}
+    for key, value in control_metadata.items():
+        match = re.fullmatch(
+            r"metadata\.control_packet\.category\.([^.]+)\.(selectors|min_sources|artifact_min)",
+            key,
+        )
+        if match:
+            category, member = match.groups()
+            categories.setdefault(category, {})[member] = value
+
+    lookup = nodes_by_id(root)
+    bb = blackboard(root)
+    violations: List[Dict[str, Any]] = []
+    source_categories: List[Dict[str, Any]] = []
+    for category in sorted(categories):
+        declaration = categories[category]
+        selectors = _json_string_list(declaration["selectors"], nonempty=True) or []
+        expanded: List[Tuple[str, str, int]] = []
+        for selector in selectors:
+            if selector.startswith("node:"):
+                expanded.append((selector[5:], selector, len(expanded)))
+                continue
+            key = selector[3:]
+            if key not in bb:
+                violations.append(
+                    _packet_violation(
+                        "blackboard_source_missing",
+                        category=category,
+                        selector=selector,
+                        source_index=len(expanded),
+                        key=key,
+                    )
+                )
+                continue
+            source_ids = _parse_source_list(bb[key])
+            if source_ids is None:
+                violations.append(
+                    _packet_violation(
+                        "invalid_blackboard_source_list",
+                        category=category,
+                        selector=selector,
+                        source_index=len(expanded),
+                        key=key,
+                    )
+                )
+                continue
+            first_source_index = len(expanded)
+            expanded.extend(
+                (source_id, selector, first_source_index + index)
+                for index, source_id in enumerate(source_ids)
+            )
+
+        occurrences: Dict[str, List[Tuple[str, int]]] = {}
+        for source_id, selector, source_index in expanded:
+            occurrences.setdefault(source_id, []).append((selector, source_index))
+        for source_id, entries in occurrences.items():
+            if len(entries) > 1:
+                violations.extend(
+                    _packet_violation(
+                        "duplicate_source",
+                        category=category,
+                        selector=selector,
+                        source_index=source_index,
+                        source_id=source_id,
+                    )
+                    for selector, source_index in entries
+                )
+
+        sources: List[Dict[str, Any]] = []
+        artifact_count = 0
+        for source_id, selector, source_index in expanded:
+            source = lookup.get(source_id)
+            if source is None:
+                violations.append(
+                    _packet_violation(
+                        "source_not_found",
+                        category=category,
+                        selector=selector,
+                        source_index=source_index,
+                        source_id=source_id,
+                    )
+                )
+                continue
+            if source.get("status", "pending") not in TERMINAL_STATUSES:
+                violations.append(
+                    _packet_violation(
+                        "source_not_terminal",
+                        category=category,
+                        selector=selector,
+                        source_index=source_index,
+                        source_id=source_id,
+                        status=source.get("status", "pending"),
+                    )
+                )
+                continue
+            projected = _source_projection(source)
+            if not any(
+                key in projected
+                for key in (
+                    "summary",
+                    "gate_outcome",
+                    "decision",
+                    "failure_reason",
+                    "block_reason",
+                )
+            ):
+                violations.append(
+                    _packet_violation(
+                        "source_has_no_projectable_result",
+                        category=category,
+                        selector=selector,
+                        source_index=source_index,
+                        source_id=source_id,
+                    )
+                )
+                continue
+            artifact_count += len(projected.get("artifacts", []))
+            sources.append(projected)
+        minimum = int(declaration["min_sources"])
+        artifact_minimum = int(declaration["artifact_min"])
+        if len(set(source_id for source_id, _, _ in expanded)) < minimum:
+            violations.append(
+                _packet_violation(
+                    "min_sources_not_met",
+                    category=category,
+                    minimum=minimum,
+                    actual=len(set(source_id for source_id, _, _ in expanded)),
+                )
+            )
+        if artifact_count < artifact_minimum:
+            violations.append(
+                _packet_violation(
+                    "artifact_min_not_met",
+                    category=category,
+                    minimum=artifact_minimum,
+                    actual=artifact_count,
+                )
+            )
+        source_categories.append(
+            {
+                "name": category,
+                "min_sources": minimum,
+                "artifact_min": artifact_minimum,
+                "sources": sources,
+            }
+        )
+
+    selected_blackboard: List[Dict[str, str]] = []
+    blackboard_keys = _json_string_list(
+        control_metadata.get("metadata.control_packet.blackboard_keys", "[]")
+    ) or []
+    for index, key in enumerate(blackboard_keys):
+        if key not in bb:
+            violations.append(
+                _packet_violation(
+                    "blackboard_key_missing",
+                    selector=f"bb:{key}",
+                    source_index=index,
+                    key=key,
+                )
+            )
+        else:
+            selected_blackboard.append({"key": key, "value": bb[key]})
+    if violations:
+        raise ControlPacketUnavailableError(
+            "control packet requirements are not satisfied",
+            {"node_id": node_id, "violations": _sorted_packet_violations(violations)},
+        )
+    return {
+        "schema_version": 1,
+        "target": {
+            "id": target.get("id", ""),
+            "status": target.get("status", "pending"),
+            "executor": target.get("executor", ""),
+            "path": node_path(root, target),
+            "instructions": child_text(target, "instructions"),
+            "inputs": child_text(target, "inputs"),
+            "deliverables": child_text(target, "deliverables"),
+            "acceptance": child_text(target, "acceptance"),
+        },
+        "source_categories": source_categories,
+        "blackboard": selected_blackboard,
+        "blockers": _target_blockers(root, target),
+        "control": _control_projection(root, target),
+    }
 
 
 def declared_artifacts(root: ET.Element, audience: str = "") -> List[Dict[str, Any]]:
@@ -1840,6 +2474,10 @@ def validate_template_root(root: ET.Element, check_integrity: bool = True) -> Li
         template_root = root_node(root)
     except TreeValidationError as exc:
         return errors + [str(exc)]
+    errors.extend(
+        f"{item['node']}: {item['key']}: {item['code']}"
+        for item in validate_control_metadata_tree(root)
+    )
     seen: set[str] = set()
     references: List[Tuple[str, str]] = []
     for node in iter_nodes(template_root):
@@ -1964,6 +2602,10 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
         runtime_root = root_node(root)
     except TreeValidationError as exc:
         return errors + [str(exc)]
+    errors.extend(
+        f"{item['node']}: {item['key']}: {item['code']}"
+        for item in validate_control_metadata_tree(root)
+    )
     ids: set[str] = set()
     logical_keys: set[str] = set()
     references: List[Tuple[str, str]] = []
@@ -2124,19 +2766,6 @@ def create_dynamic_node(
         ]
         if missing_dependencies:
             raise TreeValidationError("dynamic node has unresolved dependencies", {"dependencies": missing_dependencies})
-    holder = ensure_direct(parent, "children")
-    insertion_index: Optional[int] = None
-    if before_id:
-        direct_children = list(holder.findall("node"))
-        for index, existing in enumerate(direct_children):
-            if existing.get("id") == before_id:
-                insertion_index = index
-                break
-        if insertion_index is None:
-            raise TreeValidationError(
-                "before node must be a direct child of the dynamic parent",
-                {"parent_id": parent_id, "before_id": before_id},
-            )
     work_order_id = root.get("work_order_id", "work-order")
     sequence = 1
     while True:
@@ -2169,8 +2798,34 @@ def create_dynamic_node(
         attrs["depends_on"] = depends_on
     for key, value in metadata or []:
         attrs[key] = value
-    root.attrib.pop("reopen_pending", None)
     node = ET.Element("node", attrs)
+    violations = validate_control_metadata_for_node(node)
+    if violations:
+        raise InvalidControlMetadataError(
+            "control metadata declaration is invalid",
+            {
+                "violations": [
+                    {"node": logical_key, **violation}
+                    for violation in violations
+                ]
+            },
+        )
+    holder = find_direct(parent, "children")
+    insertion_index: Optional[int] = None
+    if before_id:
+        direct_children = list(holder.findall("node")) if holder is not None else []
+        for index, existing in enumerate(direct_children):
+            if existing.get("id") == before_id:
+                insertion_index = index
+                break
+        if insertion_index is None:
+            raise TreeValidationError(
+                "before node must be a direct child of the dynamic parent",
+                {"parent_id": parent_id, "before_id": before_id},
+            )
+    if holder is None:
+        holder = ET.SubElement(parent, "children")
+    root.attrib.pop("reopen_pending", None)
     if insertion_index is None:
         holder.append(node)
     else:
@@ -2194,6 +2849,7 @@ def embed_template_subtree(
     config: Dict[str, Any],
     instance_id: Optional[str] = None,
 ) -> ET.Element:
+    require_valid_control_metadata(template_tree.getroot())
     validation_errors = validate_template_root(template_tree.getroot())
     if validation_errors:
         raise TreeValidationError("template validation failed", {"errors": validation_errors})
@@ -2273,6 +2929,279 @@ def append_result_artifacts(result: ET.Element, artifacts: Optional[Sequence[str
         ET.SubElement(holder, "artifact", {"path": artifact})
 
 
+def append_result_checks(result: ET.Element, receipts: Sequence[Dict[str, Any]]) -> None:
+    if not receipts:
+        return
+    holder = ET.SubElement(result, "checks")
+    for receipt in receipts:
+        check = ET.SubElement(holder, "check")
+        check.text = json.dumps(receipt, ensure_ascii=False, separators=(",", ":"))
+
+
+def _load_receipt_json(raw: str) -> Any:
+    def reject_duplicate_keys(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate key: {key}")
+            result[key] = value
+        return result
+
+    return json.loads(
+        raw,
+        object_pairs_hook=reject_duplicate_keys,
+        parse_constant=lambda value: (_ for _ in ()).throw(ValueError(f"invalid number: {value}")),
+    )
+
+
+def parse_check_results(values: Optional[Sequence[str]]) -> List[Dict[str, Any]]:
+    receipts: List[Dict[str, Any]] = []
+    seen: set[str] = set()
+    violations: List[Dict[str, Any]] = []
+    expected_keys = {"schema_version", "check", "ok", "subject", "facts"}
+    for index, raw in enumerate(values or []):
+        if len(raw.encode("utf-8")) > CHECK_RESULT_MAX_BYTES:
+            violations.append({"index": index, "code": "check_result_too_large"})
+            continue
+        try:
+            parsed = _load_receipt_json(raw)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            violations.append({"index": index, "code": "malformed_check_result"})
+            continue
+        if not isinstance(parsed, dict) or set(parsed) != expected_keys:
+            violations.append({"index": index, "code": "invalid_check_result_shape"})
+            continue
+        check = parsed.get("check")
+        facts = parsed.get("facts")
+        if (
+            type(parsed.get("schema_version")) is not int
+            or parsed["schema_version"] != 1
+            or not isinstance(check, str)
+            or not CHECK_NAME_RE.fullmatch(check)
+            or type(parsed.get("ok")) is not bool
+            or not isinstance(parsed.get("subject"), str)
+            or not isinstance(facts, dict)
+            or any(not isinstance(key, str) or not CHECK_FACT_RE.fullmatch(key) for key in facts)
+            or any(isinstance(value, (dict, list)) for value in facts.values())
+            or any(isinstance(value, float) and not math.isfinite(value) for value in facts.values())
+        ):
+            violations.append({"index": index, "code": "invalid_check_result_shape"})
+            continue
+        if check in seen:
+            violations.append({"index": index, "check": check, "code": "duplicate_check_result"})
+            continue
+        seen.add(check)
+        receipts.append(
+            {
+                "schema_version": 1,
+                "check": check,
+                "ok": parsed["ok"],
+                "subject": parsed["subject"],
+                "facts": {key: facts[key] for key in sorted(facts)},
+            }
+        )
+    if violations:
+        raise InvalidCheckResultError(
+            "one or more check results are invalid",
+            {"violations": violations},
+        )
+    return receipts
+
+
+def _resolve_value_selector(root: ET.Element, selector: str) -> Tuple[bool, str]:
+    if selector.startswith("literal:"):
+        return True, selector[8:]
+    key = selector[3:]
+    values = blackboard(root)
+    return (key in values, values.get(key, ""))
+
+
+def _completion_metadata(node: ET.Element) -> Dict[str, str]:
+    return {
+        key: value
+        for key, value in node.attrib.items()
+        if key.startswith("metadata.completion.")
+    }
+
+
+def validate_completion_requirements(
+    root: ET.Element,
+    node: ET.Element,
+    summary: str,
+    artifacts: Sequence[str],
+    validation: str,
+    receipts: Sequence[Dict[str, Any]],
+) -> None:
+    metadata = _completion_metadata(node)
+    if not metadata:
+        if receipts:
+            raise InvalidCheckResultError(
+                "check results are not declared for this node",
+                {"violations": [{"code": "check_result_not_declared"}]},
+            )
+        return
+    violations: List[Dict[str, Any]] = []
+    required_fields = _json_string_list(
+        metadata.get("metadata.completion.required_fields", "[]")
+    ) or []
+    for field, value in (("summary", summary), ("validation", validation)):
+        if field in required_fields and not value.strip():
+            violations.append({"code": "required_field_missing", "field": field})
+
+    minimum_key = "metadata.completion.artifacts.min"
+    maximum_key = "metadata.completion.artifacts.max"
+    if minimum_key in metadata:
+        minimum = int(metadata[minimum_key])
+        maximum = int(metadata[maximum_key])
+        if not minimum <= len(artifacts) <= maximum:
+            violations.append(
+                {
+                    "code": "artifact_cardinality_mismatch",
+                    "minimum": minimum,
+                    "maximum": maximum,
+                    "actual": len(artifacts),
+                }
+            )
+    path_selector = metadata.get("metadata.completion.artifacts.path")
+    if path_selector:
+        available, expected_path = _resolve_value_selector(root, path_selector)
+        if not available:
+            violations.append(
+                {"code": "artifact_path_source_missing", "selector": path_selector}
+            )
+        else:
+            for index, artifact in enumerate(artifacts):
+                if artifact != expected_path:
+                    violations.append(
+                        {
+                            "code": "artifact_path_mismatch",
+                            "index": index,
+                            "expected": expected_path,
+                            "actual": artifact,
+                        }
+                    )
+
+    declared_checks = _json_string_list(metadata.get("metadata.completion.checks", "[]")) or []
+    receipt_by_check = {receipt["check"]: receipt for receipt in receipts}
+    unexpected = sorted(set(receipt_by_check).difference(declared_checks))
+    if unexpected:
+        raise InvalidCheckResultError(
+            "check results include undeclared checks",
+            {"violations": [{"code": "unexpected_check", "check": check} for check in unexpected]},
+        )
+    for check in declared_checks:
+        receipt = receipt_by_check.get(check)
+        if receipt is None:
+            violations.append({"code": "required_check_missing", "check": check})
+            continue
+        if not receipt["ok"]:
+            violations.append({"code": "required_check_failed", "check": check})
+        subject_selector = metadata[f"metadata.completion.check.{check}.subject"]
+        available, expected_subject = _resolve_value_selector(root, subject_selector)
+        if not available:
+            violations.append(
+                {
+                    "code": "check_subject_source_missing",
+                    "check": check,
+                    "selector": subject_selector,
+                }
+            )
+        elif receipt["subject"] != expected_subject:
+            violations.append(
+                {
+                    "code": "check_subject_mismatch",
+                    "check": check,
+                    "expected": expected_subject,
+                    "actual": receipt["subject"],
+                }
+            )
+        fact_prefix = f"metadata.completion.check.{check}.facts."
+        expected_fact_selectors = {
+            key[len(fact_prefix) :]: value
+            for key, value in metadata.items()
+            if key.startswith(fact_prefix)
+        }
+        if set(receipt["facts"]) != set(expected_fact_selectors):
+            violations.append(
+                {
+                    "code": "check_facts_shape_mismatch",
+                    "check": check,
+                    "expected": sorted(expected_fact_selectors),
+                    "actual": sorted(receipt["facts"]),
+                }
+            )
+            continue
+        for fact, selector in sorted(expected_fact_selectors.items()):
+            available, expected_value = _resolve_value_selector(root, selector)
+            if not available:
+                violations.append(
+                    {
+                        "code": "check_fact_source_missing",
+                        "check": check,
+                        "fact": fact,
+                        "selector": selector,
+                    }
+                )
+            elif receipt["facts"][fact] != expected_value:
+                violations.append(
+                    {
+                        "code": "check_fact_mismatch",
+                        "check": check,
+                        "fact": fact,
+                        "expected": expected_value,
+                        "actual": receipt["facts"][fact],
+                    }
+                )
+    if violations:
+        raise CompletionRequirementsFailedError(
+            "completion requirements are not satisfied",
+            {"violations": violations},
+        )
+
+
+def validate_gate_completion(
+    node: ET.Element,
+    gate_outcome: str,
+    decision: str,
+    variables: Sequence[Tuple[str, str]],
+) -> str:
+    metadata = {
+        key: value
+        for key, value in node.attrib.items()
+        if key.startswith("metadata.gate.")
+    }
+    if not metadata:
+        if gate_outcome or decision:
+            raise GateOutcomeNotAllowedError(
+                "structured gate fields are not allowed for this node",
+                {"node_id": node.get("id", "")},
+            )
+        return ""
+    outcomes = _json_string_list(metadata["metadata.gate.outcomes"], nonempty=True) or []
+    if not gate_outcome:
+        raise GateOutcomeRequiredError(
+            "gate outcome is required",
+            {"node_id": node.get("id", ""), "allowed": outcomes},
+        )
+    if gate_outcome not in outcomes:
+        raise InvalidGateOutcomeError(
+            "gate outcome is not allowed",
+            {"node_id": node.get("id", ""), "outcome": gate_outcome, "allowed": outcomes},
+        )
+    if metadata["metadata.gate.decision_required"] == "true" and not decision.strip():
+        raise GateDecisionRequiredError(
+            "gate decision is required",
+            {"node_id": node.get("id", "")},
+        )
+    outcome_key = metadata.get("metadata.gate.outcome_key", "")
+    if outcome_key and any(key == outcome_key for key, _ in variables):
+        raise GateOutcomeConflictError(
+            "gate outcome key conflicts with an explicit blackboard update",
+            {"node_id": node.get("id", ""), "key": outcome_key},
+        )
+    return outcome_key
+
+
 def complete_node(
     root: ET.Element,
     node_id: str,
@@ -2280,6 +3209,9 @@ def complete_node(
     artifacts: Optional[Sequence[str]] = None,
     validation: str = "",
     variables: Optional[Sequence[Tuple[str, str]]] = None,
+    check_results: Optional[Sequence[str]] = None,
+    gate_outcome: str = "",
+    decision: str = "",
 ) -> ET.Element:
     node = require_executable_leaf(root, node_id)
     if node.get("status") != "running":
@@ -2287,16 +3219,41 @@ def complete_node(
             "complete requires a running node",
             {"node_id": node_id, "status": node.get("status", "pending")},
         )
+    require_valid_control_metadata(root)
+    artifact_values = list(artifacts or [])
+    variable_values = list(variables or [])
+    receipts = parse_check_results(check_results)
+    validate_completion_requirements(
+        root,
+        node,
+        summary,
+        artifact_values,
+        validation,
+        receipts,
+    )
+    outcome_key = validate_gate_completion(
+        node,
+        gate_outcome,
+        decision,
+        variable_values,
+    )
     node.set("status", "succeeded")
     node.set("completed_at", utc_now())
     result = ensure_node_child(node, "result")
     if summary:
         ensure_node_child(result, "summary").text = summary
-    append_result_artifacts(result, artifacts)
+    append_result_artifacts(result, artifact_values)
     if validation:
         ensure_node_child(result, "validation").text = validation
-    for key, value in variables or []:
+    append_result_checks(result, receipts)
+    if gate_outcome:
+        ensure_node_child(result, "gate_outcome").text = gate_outcome
+    if decision:
+        ensure_node_child(result, "decision").text = decision
+    for key, value in variable_values:
         set_blackboard(root, key, value, node_id)
+    if outcome_key:
+        set_blackboard(root, outcome_key, gate_outcome, node_id)
     stabilize(root)
     return node
 

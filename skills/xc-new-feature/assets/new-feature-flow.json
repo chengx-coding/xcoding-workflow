@@ -5,6 +5,8 @@
     "feature.id": "",
     "feature.title": "",
     "feature.approval_required": "true",
+    "feature.baseline_source_ids": "[]",
+    "feature.baseline_gate_outcome": "approved",
     "work_order.document_language": "en",
     "work_order.requires_clarification": "false",
     "work_order.requires_implementation": "true",
@@ -92,45 +94,85 @@
         "role": "feature-approval",
         "executor": "main",
         "when": "feature.approval_required == true",
+        "metadata": {
+          "control_packet": {
+            "category": {
+              "feature-baseline": {
+                "selectors": "[\"bb:feature.baseline_source_ids\"]",
+                "min_sources": "4",
+                "artifact_min": "4"
+              }
+            },
+            "blackboard_keys": "[\"feature.id\",\"feature.title\"]"
+          },
+          "completion": {
+            "required_fields": "[\"summary\",\"validation\"]"
+          },
+          "gate": {
+            "outcomes": "[\"approved\",\"rejected\",\"revision-required\"]",
+            "decision_required": "true",
+            "outcome_key": "feature.baseline_gate_outcome"
+          }
+        },
         "instructions": "Present the accepted contract, feature solution, verification baseline, and work order solution. Record approval or requested revision through the runtime.",
         "deliverables": "A recorded approval decision or follow-up document-evolution nodes.",
         "acceptance": "The feature baseline is approved or the tree contains explicit revision and review work."
       },
       {
-        "template_id": "implementation-group",
-        "title": "Implement feature",
+        "template_id": "baseline-recovery-group",
+        "title": "Recover non-accepting baseline decision",
         "type": "composite",
         "role": "dynamic-group",
         "mode": "sequence",
         "executor": "main",
-        "when": "work_order.requires_implementation == true"
+        "when": "feature.baseline_gate_outcome != approved"
       },
       {
-        "template_id": "verification-group",
-        "title": "Verify feature",
+        "template_id": "approved-baseline-continuation",
+        "title": "Continue approved feature",
         "type": "composite",
-        "role": "dynamic-group",
+        "role": "gate-continuation",
         "mode": "sequence",
         "executor": "main",
-        "when": "work_order.requires_verification == true"
-      },
-      {
-        "template_id": "result-document",
-        "title": "Record feature result",
-        "type": "composite",
-        "role": "dynamic-group",
-        "mode": "sequence",
-        "executor": "main"
-      },
-      {
-        "template_id": "finalize-feature",
-        "title": "Finalize new feature work order",
-        "type": "task",
-        "role": "feature-finalize",
-        "executor": "main",
-        "instructions": "Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the work order.",
-        "deliverables": "A completed, failed, or blocked work order with durable result evidence.",
-        "acceptance": "The runtime tree and declared workbench artifacts accurately represent the outcome."
+        "when": "feature.baseline_gate_outcome == approved",
+        "children": [
+          {
+            "template_id": "implementation-group",
+            "title": "Implement feature",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main",
+            "when": "work_order.requires_implementation == true"
+          },
+          {
+            "template_id": "verification-group",
+            "title": "Verify feature",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main",
+            "when": "work_order.requires_verification == true"
+          },
+          {
+            "template_id": "result-document",
+            "title": "Record feature result",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main"
+          },
+          {
+            "template_id": "finalize-feature",
+            "title": "Finalize new feature work order",
+            "type": "task",
+            "role": "feature-finalize",
+            "executor": "main",
+            "instructions": "Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the work order.",
+            "deliverables": "A completed, failed, or blocked work order with durable result evidence.",
+            "acceptance": "The runtime tree and declared workbench artifacts accurately represent the outcome."
+          }
+        ]
       }
     ]
   }

@@ -1,0 +1,411 @@
+{
+  "schema_version": 1,
+  "fixture_id": "model-robust-workflow-scenarios-v1",
+  "fact_order": [
+    "needs_persistence",
+    "material_impact",
+    "difficult_rollback",
+    "crosses_sessions",
+    "multiple_actors",
+    "audit_required"
+  ],
+  "fact_values": [
+    "no",
+    "yes",
+    "unknown"
+  ],
+  "scenarios": [
+    {
+      "id": "T0",
+      "raw_request": "只在本次回复中修正这段临时文本的一个拼写，不写文件。",
+      "evidence": {
+        "needs_persistence": {
+          "source": "request",
+          "statement": "The corrected text is consumed only in the current response and no durable state is written."
+        },
+        "material_impact": {
+          "source": "request",
+          "statement": "The request changes only transient text and does not affect shared code, data, permissions, or infrastructure."
+        },
+        "difficult_rollback": {
+          "source": "request",
+          "statement": "The response-only text transformation has no persistent side effect to roll back."
+        },
+        "crosses_sessions": {
+          "source": "request",
+          "statement": "All input is present and the result is delivered in one response."
+        },
+        "multiple_actors": {
+          "source": "request",
+          "statement": "One responder performs the isolated text correction without approval or handoff."
+        },
+        "audit_required": {
+          "source": "request-and-policy",
+          "statement": "No applicable request or policy requires a durable audit record for the response-only correction."
+        }
+      },
+      "confirmed_facts": {
+        "needs_persistence": "no",
+        "material_impact": "no",
+        "difficult_rollback": "no",
+        "crosses_sessions": "no",
+        "multiple_actors": "no",
+        "audit_required": "no"
+      },
+      "expected_route": "direct",
+      "expected_reason_codes": [
+        "all-facts-no"
+      ],
+      "profile": "direct-zero",
+      "dynamic_nodes": {
+        "count": 0,
+        "description": "No managed tree is created."
+      },
+      "maintenance_families": [
+        "entry-policy"
+      ]
+    },
+    {
+      "id": "T1",
+      "raw_request": "解释已提供的代码片段，不写仓库、外部系统或留存报告。",
+      "evidence": {
+        "needs_persistence": {
+          "source": "request",
+          "statement": "The explanation is consumed in the current interaction and no repository, external system, or report is written."
+        },
+        "material_impact": {
+          "source": "request",
+          "statement": "The supplied snippet is read only and no shared state is changed."
+        },
+        "difficult_rollback": {
+          "source": "request",
+          "statement": "Read-only explanation has no persistent effect requiring rollback."
+        },
+        "crosses_sessions": {
+          "source": "request",
+          "statement": "The supplied snippet is sufficient for one continuous response."
+        },
+        "multiple_actors": {
+          "source": "request",
+          "statement": "No approval, handoff, external system decision, or second actor is required."
+        },
+        "audit_required": {
+          "source": "request-and-policy",
+          "statement": "No applicable request or policy requires a retained report or verification record."
+        }
+      },
+      "confirmed_facts": {
+        "needs_persistence": "no",
+        "material_impact": "no",
+        "difficult_rollback": "no",
+        "crosses_sessions": "no",
+        "multiple_actors": "no",
+        "audit_required": "no"
+      },
+      "expected_route": "direct",
+      "expected_reason_codes": [
+        "all-facts-no"
+      ],
+      "profile": "direct-zero",
+      "dynamic_nodes": {
+        "count": 0,
+        "description": "No managed tree is created."
+      },
+      "maintenance_families": [
+        "entry-policy"
+      ]
+    },
+    {
+      "id": "T1-M",
+      "raw_request": "解释已提供的代码片段，不写仓库、外部系统或留存报告；调用方显式选择 xc-work operation=run。",
+      "evidence": {
+        "needs_persistence": {
+          "source": "request",
+          "statement": "The underlying explanation does not require persistence."
+        },
+        "material_impact": {
+          "source": "request",
+          "statement": "The supplied snippet remains read only."
+        },
+        "difficult_rollback": {
+          "source": "request",
+          "statement": "The explanation has no persistent effect requiring rollback."
+        },
+        "crosses_sessions": {
+          "source": "request",
+          "statement": "The explanation can complete in one continuous response."
+        },
+        "multiple_actors": {
+          "source": "request",
+          "statement": "No second actor is intrinsically required by the explanation."
+        },
+        "audit_required": {
+          "source": "request-and-policy",
+          "statement": "The underlying explanation has no independent audit requirement."
+        }
+      },
+      "confirmed_facts": {
+        "needs_persistence": "no",
+        "material_impact": "no",
+        "difficult_rollback": "no",
+        "crosses_sessions": "no",
+        "multiple_actors": "no",
+        "audit_required": "no"
+      },
+      "governance_selection": "explicit-run",
+      "expected_route": "managed",
+      "expected_reason_codes": [
+        "explicit-managed-run"
+      ],
+      "profile": "lean-managed",
+      "dynamic_nodes": {
+        "count": 0,
+        "description": "The lean profile embeds goal and result document-evolution subtrees but adds no implementation or verification workers."
+      },
+      "maintenance_families": [
+        "entry-policy",
+        "lifecycle",
+        "runtime",
+        "document"
+      ]
+    },
+    {
+      "id": "T2",
+      "raw_request": "在项目中修复并持续追踪缺陷，保留验证与结果。",
+      "evidence": {
+        "needs_persistence": {
+          "source": "request",
+          "statement": "The defect repair must be tracked durably with retained verification and result evidence."
+        },
+        "material_impact": {
+          "source": "request",
+          "statement": "The requested repair changes project code."
+        },
+        "difficult_rollback": {
+          "source": "request",
+          "statement": "The project change is assumed to use ordinary version-control rollback and no irreversible external side effect is stated."
+        },
+        "crosses_sessions": {
+          "source": "request",
+          "statement": "The request requires continued tracking but does not establish whether execution crosses sessions."
+        },
+        "multiple_actors": {
+          "source": "request",
+          "statement": "No independent approver or second delivery actor is explicitly required."
+        },
+        "audit_required": {
+          "source": "request",
+          "statement": "Retained verification and result evidence are explicitly required."
+        }
+      },
+      "confirmed_facts": {
+        "needs_persistence": "yes",
+        "material_impact": "yes",
+        "difficult_rollback": "no",
+        "crosses_sessions": "unknown",
+        "multiple_actors": "no",
+        "audit_required": "yes"
+      },
+      "expected_route": "managed",
+      "expected_reason_codes": [
+        "fact-yes:needs_persistence",
+        "fact-yes:material_impact",
+        "fact-unknown:crosses_sessions",
+        "fact-yes:audit_required"
+      ],
+      "profile": "persistent-tracking",
+      "dynamic_nodes": {
+        "count": 0,
+        "description": "The profile embeds goal, analysis, and result document-evolution subtrees without implementation or verification workers."
+      },
+      "maintenance_families": [
+        "entry-policy",
+        "lifecycle",
+        "runtime",
+        "document",
+        "analysis"
+      ]
+    },
+    {
+      "id": "T3",
+      "raw_request": "本次会话内轮换生产凭据并更新依赖方。",
+      "evidence": {
+        "needs_persistence": {
+          "source": "request",
+          "statement": "Credential rotation and dependent updates change durable external state."
+        },
+        "material_impact": {
+          "source": "request",
+          "statement": "Production credentials and dependent systems are materially affected."
+        },
+        "difficult_rollback": {
+          "source": "request",
+          "statement": "Credential invalidation and propagation cannot be proven recoverable by one deterministic, lossless step."
+        },
+        "crosses_sessions": {
+          "source": "request",
+          "statement": "The request explicitly constrains execution to the current session."
+        },
+        "multiple_actors": {
+          "source": "request",
+          "statement": "Dependent systems act independently during credential propagation."
+        },
+        "audit_required": {
+          "source": "security-policy",
+          "statement": "A production credential change requires retained approval and verification evidence."
+        }
+      },
+      "confirmed_facts": {
+        "needs_persistence": "yes",
+        "material_impact": "yes",
+        "difficult_rollback": "yes",
+        "crosses_sessions": "no",
+        "multiple_actors": "yes",
+        "audit_required": "yes"
+      },
+      "expected_route": "managed",
+      "expected_reason_codes": [
+        "fact-yes:needs_persistence",
+        "fact-yes:material_impact",
+        "fact-yes:difficult_rollback",
+        "fact-yes:multiple_actors",
+        "fact-yes:audit_required"
+      ],
+      "profile": "high-risk",
+      "dynamic_nodes": {
+        "count": 2,
+        "description": "One implementation worker and one verification worker are added to their declared dynamic groups."
+      },
+      "maintenance_families": [
+        "entry-policy",
+        "lifecycle",
+        "runtime",
+        "document",
+        "analysis",
+        "gate",
+        "implementation",
+        "verification"
+      ]
+    },
+    {
+      "id": "T4",
+      "raw_request": "由多个参与者跨阶段完成方案、实现、验证和批准。",
+      "evidence": {
+        "needs_persistence": {
+          "source": "request",
+          "statement": "The multi-stage outcome and handoffs require durable state and evidence."
+        },
+        "material_impact": {
+          "source": "request",
+          "statement": "The implementation stage changes shared project behavior."
+        },
+        "difficult_rollback": {
+          "source": "request",
+          "statement": "No complete one-step rollback evidence is supplied for the multi-stage change."
+        },
+        "crosses_sessions": {
+          "source": "request",
+          "statement": "The request explicitly spans multiple stages and handoffs."
+        },
+        "multiple_actors": {
+          "source": "request",
+          "statement": "Multiple independent participants own solution, implementation, verification, and approval work."
+        },
+        "audit_required": {
+          "source": "request",
+          "statement": "Approval and verification require traceable decisions and evidence."
+        }
+      },
+      "confirmed_facts": {
+        "needs_persistence": "yes",
+        "material_impact": "yes",
+        "difficult_rollback": "unknown",
+        "crosses_sessions": "yes",
+        "multiple_actors": "yes",
+        "audit_required": "yes"
+      },
+      "expected_route": "managed",
+      "expected_reason_codes": [
+        "fact-yes:needs_persistence",
+        "fact-yes:material_impact",
+        "fact-unknown:difficult_rollback",
+        "fact-yes:crosses_sessions",
+        "fact-yes:multiple_actors",
+        "fact-yes:audit_required"
+      ],
+      "profile": "multi-actor",
+      "dynamic_nodes": {
+        "count": 5,
+        "description": "Three implementation workers and two verification workers are added to their declared dynamic groups."
+      },
+      "maintenance_families": [
+        "entry-policy",
+        "lifecycle",
+        "runtime",
+        "document",
+        "analysis",
+        "gate",
+        "implementation",
+        "verification"
+      ]
+    },
+    {
+      "id": "T-U",
+      "raw_request": "修改一个短脚本；未提供受影响系统、项目 bridge 或回滚证据。",
+      "evidence": {
+        "needs_persistence": {
+          "source": "missing-context",
+          "statement": "The request does not establish whether the script change must be retained."
+        },
+        "material_impact": {
+          "source": "missing-context",
+          "statement": "The affected systems and consumers are not identified."
+        },
+        "difficult_rollback": {
+          "source": "missing-context",
+          "statement": "No rollback procedure or recovery evidence is supplied."
+        },
+        "crosses_sessions": {
+          "source": "missing-context",
+          "statement": "The execution boundary and required follow-up are not established."
+        },
+        "multiple_actors": {
+          "source": "missing-context",
+          "statement": "Ownership, approval, and handoff requirements are not established."
+        },
+        "audit_required": {
+          "source": "missing-context",
+          "statement": "The applicable project bridge and audit policy are unavailable."
+        }
+      },
+      "confirmed_facts": {
+        "needs_persistence": "unknown",
+        "material_impact": "unknown",
+        "difficult_rollback": "unknown",
+        "crosses_sessions": "unknown",
+        "multiple_actors": "unknown",
+        "audit_required": "unknown"
+      },
+      "expected_route": "managed",
+      "expected_reason_codes": [
+        "fact-unknown:needs_persistence",
+        "fact-unknown:material_impact",
+        "fact-unknown:difficult_rollback",
+        "fact-unknown:crosses_sessions",
+        "fact-unknown:multiple_actors",
+        "fact-unknown:audit_required"
+      ],
+      "profile": "safe-managed-escalation",
+      "dynamic_nodes": {
+        "count": 0,
+        "description": "Phase 0 records the fail-closed route but does not materialize an overhead profile for unresolved scope."
+      },
+      "maintenance_families": [
+        "entry-policy",
+        "lifecycle",
+        "runtime",
+        "document"
+      ]
+    }
+  ]
+}

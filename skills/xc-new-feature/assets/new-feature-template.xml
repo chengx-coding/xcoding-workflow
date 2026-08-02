@@ -3,12 +3,14 @@
 <orchestration schema_version="1" name="new-feature" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="1d965382cb3431f79dc0ea279b752e2418b87cbf1aada75b24c90209f7aa2ed5" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="6797bd6635bc8037a3de6a0c2eef63a8811030241ebb3a55f5588d5c2ff8bc74" />
   </meta>
   <blackboard>
     <var key="feature.id" />
     <var key="feature.title" />
     <var key="feature.approval_required">true</var>
+    <var key="feature.baseline_source_ids">[]</var>
+    <var key="feature.baseline_gate_outcome">approved</var>
     <var key="work_order.document_language">en</var>
     <var key="work_order.requires_clarification">false</var>
     <var key="work_order.requires_implementation">true</var>
@@ -28,18 +30,23 @@
       <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-contract-document" title="Establish feature contract" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-solution-document" title="Establish feature solution" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-verification-document" title="Establish feature verification" type="composite" />
-      <node executor="main" role="feature-approval" template_id="approve-feature-baseline" title="Approve feature baseline" type="gate" when="feature.approval_required == true">
+      <node executor="main" role="feature-approval" template_id="approve-feature-baseline" title="Approve feature baseline" type="gate" when="feature.approval_required == true" metadata.control_packet.category.feature-baseline.selectors="[&quot;bb:feature.baseline_source_ids&quot;]" metadata.control_packet.category.feature-baseline.min_sources="4" metadata.control_packet.category.feature-baseline.artifact_min="4" metadata.control_packet.blackboard_keys="[&quot;feature.id&quot;,&quot;feature.title&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;approved&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="feature.baseline_gate_outcome">
         <instructions>Present the accepted contract, feature solution, verification baseline, and work order solution. Record approval or requested revision through the runtime.</instructions>
         <deliverables>A recorded approval decision or follow-up document-evolution nodes.</deliverables>
         <acceptance>The feature baseline is approved or the tree contains explicit revision and review work.</acceptance>
       </node>
-      <node executor="main" mode="sequence" role="dynamic-group" template_id="implementation-group" title="Implement feature" type="composite" when="work_order.requires_implementation == true" />
-      <node executor="main" mode="sequence" role="dynamic-group" template_id="verification-group" title="Verify feature" type="composite" when="work_order.requires_verification == true" />
-      <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record feature result" type="composite" />
-      <node executor="main" role="feature-finalize" template_id="finalize-feature" title="Finalize new feature work order" type="task">
-        <instructions>Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the work order.</instructions>
-        <deliverables>A completed, failed, or blocked work order with durable result evidence.</deliverables>
-        <acceptance>The runtime tree and declared workbench artifacts accurately represent the outcome.</acceptance>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="baseline-recovery-group" title="Recover non-accepting baseline decision" type="composite" when="feature.baseline_gate_outcome != approved" />
+      <node executor="main" mode="sequence" role="gate-continuation" template_id="approved-baseline-continuation" title="Continue approved feature" type="composite" when="feature.baseline_gate_outcome == approved">
+        <children>
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="implementation-group" title="Implement feature" type="composite" when="work_order.requires_implementation == true" />
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="verification-group" title="Verify feature" type="composite" when="work_order.requires_verification == true" />
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record feature result" type="composite" />
+          <node executor="main" role="feature-finalize" template_id="finalize-feature" title="Finalize new feature work order" type="task">
+            <instructions>Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the work order.</instructions>
+            <deliverables>A completed, failed, or blocked work order with durable result evidence.</deliverables>
+            <acceptance>The runtime tree and declared workbench artifacts accurately represent the outcome.</acceptance>
+          </node>
+        </children>
       </node>
     </children>
   </node>

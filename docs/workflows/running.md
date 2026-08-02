@@ -20,11 +20,29 @@ Top-level work-order documents are durable records, not a program counter. Dynam
 
 ## Execution Boundaries
 
-The main session asks the [orchestration runtime](../../skills/xc-orchestration-runtime/SKILL.md) for the next ready node or batch, starts work before delegation, handles user gates, and verifies state after workers return.
+The main session asks the [orchestration runtime](../../skills/xc-orchestration-runtime/SKILL.md) for the next ready node or batch. For an opt-in leaf, the dispatch sequence is `next -> control-packet --node <id> -> start`. The main session reads the packet before starting or delegating the node, handles user gates, and verifies state after workers return.
 
-Each worker executes exactly one running node. It reads only supplied inputs and references, writes the declared artifact, then calls `complete`, `fail`, or `block`. A worker does not inspect the complete tree, execute sibling work, or decide the next global transition.
+Each worker executes exactly the packet's one target node. It reads only supplied inputs and references, writes the declared artifact, then calls `complete`, `fail`, or `block`. A worker does not inspect the complete tree, execute sibling work, use source IDs as authority to start other nodes, or decide the next global transition.
 
 Long reports, diffs, and logs belong in artifacts. The blackboard contains short structured values that influence later scheduling or decisions.
+
+## Scoped Handoffs
+
+A leaf declares domain-named source categories, source and artifact thresholds, and any blackboard keys that may be projected. A direct `node:` selector identifies one source. A `bb:` selector reads a compact UTF-8 JSON array of terminal runtime leaf IDs, such as `["rt_source_a","rt_source_b"]`; it is not a CSV value, wildcard, or permission list. Lifecycle callers publish the actual terminal source IDs before requesting the packet and never substitute an ancestor or group ID.
+
+The packet contains only the target leaf contract, declared source result fields and artifacts, selected blackboard scalars, local readiness blockers, and the permitted control action. It does not inherit ancestor declarations or expose undeclared sibling or future-node data, source instructions, undeclared artifacts, unselected blackboard keys, the complete blackboard, or the complete tree. A source ID grants evidence projection only, not authority over that source or any other node.
+
+This boundary limits runtime protocol disclosure; it is not host mediation. The runtime cannot prevent an agent from using ordinary host tools before `start`, and it cannot enforce which identity actually invokes the CLI. Hosts and calling Skills must enforce those boundaries.
+
+## Completion And Gates
+
+Opt-in completion metadata can require non-empty `summary` or `validation`, artifact minimum and maximum counts, an exact literal or blackboard-selected artifact path, and declared normalized check receipts. `complete` accepts one repeated `--check-result-json` value per declared check. A receipt has the exact shape `{"schema_version":1,"check":"...","ok":true,"subject":"...","facts":{...}}`; the runtime validates its shape, declared name, `ok`, subject, and fact values, then stores only the normalized receipt.
+
+The caller must actually run the declared validator, require a successful process exit and top-level success, and extract only its normalized receipt. The receipt is nevertheless unsigned, unbound caller self-report, not proof that validation ran or proof of who ran it. A fabricated receipt that exactly matches the declared structure and expected values is accepted. Runtime checks improve result consistency; they do not establish trusted execution.
+
+An opt-in structured gate declares allowed lowercase-kebab outcomes, whether a non-empty decision is required, and optionally an outcome blackboard key. The main session completes it with `--gate-outcome` and, when required, `--decision`; the result and optional blackboard write occur atomically. A legacy gate without these declarations keeps its existing completion behavior.
+
+The runtime validates and publishes an outcome but does not assign domain acceptance semantics to its spelling. Current lifecycle templates therefore route the published value through fail-closed topology: accepting outcomes select normal continuation; rejection, required revision, an unresolved clarification, or the reconciliation `revise-goal` outcome exposes an open recovery group and keeps implementation, verification, final validation, result writing, or finalization unavailable. The recovery group contains revision work and a successor gate that must publish an accepting value before continuation. An optional skipped gate uses its owning template's explicit safe default rather than an empty outcome.
 
 ## Resuming Work
 

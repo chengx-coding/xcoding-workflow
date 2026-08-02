@@ -70,24 +70,66 @@
         "executor": "main"
       },
       {
-        "template_id": "synthesize-session",
-        "title": "Synthesize clarified decisions",
-        "type": "task",
-        "role": "clarification-synthesis",
-        "executor": "subagent",
-        "instructions": "After question-group closes, append the final decision summary, bounded experiments, accepted risks, residual risks, and caller handoff readiness to clarification.session_artifact.",
-        "deliverables": "A complete clarification session artifact.",
-        "acceptance": "The artifact states whether the caller may select a solution without hidden material decisions."
-      },
-      {
-        "template_id": "finalize-clarification",
-        "title": "Finalize clarification",
-        "type": "task",
-        "role": "clarification-finalize",
+        "template_id": "clarification-continuation",
+        "title": "Route clarification readiness",
+        "type": "composite",
+        "role": "gate-continuation",
+        "mode": "switch",
         "executor": "main",
-        "instructions": "Confirm clarification.status and clarification.outcome from the accepted session artifact. Record the artifact path and concise handoff result through the runtime public interface.",
-        "deliverables": "A completed, deferred, or blocked clarification disposition.",
-        "acceptance": "The caller can safely continue to analysis synthesis or solution selection without reading runtime XML."
+        "switch.key": "clarification.pending_material",
+        "switch.no_match": "blocked",
+        "children": [
+          {
+            "template_id": "clarification-recovery-case",
+            "title": "Recover unresolved clarification",
+            "type": "composite",
+            "role": "case",
+            "mode": "sequence",
+            "executor": "main",
+            "case.value": "true",
+            "children": [
+              {
+                "template_id": "clarification-recovery-group",
+                "title": "Resolve remaining material decisions",
+                "type": "composite",
+                "role": "dynamic-group",
+                "mode": "sequence",
+                "executor": "main"
+              }
+            ]
+          },
+          {
+            "template_id": "clarification-ready-case",
+            "title": "Continue clarified work",
+            "type": "composite",
+            "role": "case",
+            "mode": "sequence",
+            "executor": "main",
+            "case.value": "false",
+            "children": [
+              {
+                "template_id": "synthesize-session",
+                "title": "Synthesize clarified decisions",
+                "type": "task",
+                "role": "clarification-synthesis",
+                "executor": "subagent",
+                "instructions": "After question-group closes, append the final decision summary, bounded experiments, accepted risks, residual risks, and caller handoff readiness to clarification.session_artifact.",
+                "deliverables": "A complete clarification session artifact.",
+                "acceptance": "The artifact states whether the caller may select a solution without hidden material decisions."
+              },
+              {
+                "template_id": "finalize-clarification",
+                "title": "Finalize clarification",
+                "type": "task",
+                "role": "clarification-finalize",
+                "executor": "main",
+                "instructions": "Confirm clarification.status and clarification.outcome from the accepted session artifact. Record the artifact path and concise handoff result through the runtime public interface.",
+                "deliverables": "A completed, deferred, or blocked clarification disposition.",
+                "acceptance": "The caller can safely continue to analysis synthesis or solution selection without reading runtime XML."
+              }
+            ]
+          }
+        ]
       }
     ]
   }

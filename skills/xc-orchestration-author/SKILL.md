@@ -21,6 +21,12 @@ no future dynamic work.
 
 The runtime supports sequence, parallel, switch/case, simple `when` conditions, explicit dependencies, dynamic nodes, and end-of-iteration loop conditions. Loop-local `break` and `continue` signals are not part of the current contract.
 
+## Control Metadata
+
+Flow-spec leaves may opt in to the runtime's `metadata.control_packet.*`, `metadata.completion.*`, and `metadata.gate.*` contracts. Values that represent arrays MUST be compact JSON array strings. Control-packet and completion declarations belong only to `task` or `gate` leaves; gate declarations belong only to `gate` leaves.
+
+The author validates every recognized key, owner, required pairing, and value during `validate-spec`, before any template is built. A recognized-prefix error returns `invalid_control_metadata` with stable, key-sorted `details.violations`; `build` rejects the same declaration without creating or replacing its output. Unknown metadata outside the three recognized prefixes remains valid and is preserved.
+
 ## Workflow
 
 1. Extract phases, serial and parallel work, gates, review loops, artifacts, and blackboard variables from the approved workflow design.
@@ -47,6 +53,7 @@ Template build writes access policy and integrity metadata, follows the runtime 
 - A loop MUST define `loop.max_iterations` and `loop.on_limit`.
 - A switch MUST define `switch.key` and mutually exclusive `role=case` or `role=default` children.
 - Large documents and reports belong in artifacts; only short cross-node control values belong on the blackboard.
+- Recognized control metadata MUST pass author validation before template generation and runtime validation after generation.
 
 ## References
 

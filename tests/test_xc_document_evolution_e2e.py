@@ -83,8 +83,11 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
                 "document.inputs": "none",
                 "document.contract": "none",
                 "document.content_language": "en",
+                "document.receipt.content_language": "en",
+                "document.receipt.audience": "",
                 "document.review_required": str(review_required).lower(),
                 "document.gate_required": str(gate_required).lower(),
+                "document.gate_outcome": "accepted",
                 "document.review.open_issues": "false",
             },
         )
@@ -111,6 +114,9 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         summary: str,
         validation: str,
         artifact: Path | None = None,
+        check_receipt: dict[str, object] | None = None,
+        gate_outcome: str = "",
+        decision: str = "",
     ) -> None:
         args = [
             "complete",
@@ -125,6 +131,12 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         ]
         if artifact:
             args.extend(["--artifact", str(artifact)])
+        if check_receipt:
+            args.extend(["--check-result-json", json.dumps(check_receipt, separators=(",", ":"))])
+        if gate_outcome:
+            args.extend(["--gate-outcome", gate_outcome])
+        if decision:
+            args.extend(["--decision", decision])
         self.run_json(RUNTIME, *args, cwd=project)
 
     def render_and_validate_goal(
@@ -182,7 +194,7 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
 
     def complete_validation(self, project: Path, tree: Path, expected_template_id: str, document_path: Path) -> None:
         node_id = self.start_ready(project, tree, expected_template_id, "xc-document")
-        self.run_json(
+        validated = self.run_json(
             VALIDATE,
             "--document",
             str(document_path),
@@ -190,7 +202,14 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
             "work-order-goal",
             cwd=project,
         )
-        self.complete_node(project, tree, node_id, f"{expected_template_id} passed.", "xc-document validation passed")
+        self.complete_node(
+            project,
+            tree,
+            node_id,
+            f"{expected_template_id} passed.",
+            "xc-document validation passed",
+            check_receipt=validated["receipt"],
+        )
 
     def assert_complete(self, project: Path, tree: Path) -> None:
         summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
@@ -239,6 +258,7 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
             gate_required=False,
         )
         self.set_values(project, tree, {"document.content_language": "zh-CN"})
+        self.set_values(project, tree, {"document.receipt.content_language": "zh-CN"})
         writer = self.start_ready(project, tree, "write-document", "xc-document")
         self.render_and_validate_goal(project, document_path, tree, work_order_id, "zh-CN")
 
@@ -289,12 +309,181 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
 
         gate = self.start_ready(project, tree, "document-gate", "main")
         gate_summary = "User confirmed the revised document."
-        self.complete_node(project, tree, gate, gate_summary, "user decision recorded")
+        self.complete_node(
+            project,
+            tree,
+            gate,
+            gate_summary,
+            "user decision recorded",
+            gate_outcome="accepted",
+            decision="Accept the revised document.",
+        )
         gate_node = self.run_json(RUNTIME, "show", "--tree", str(tree), "--node", gate, cwd=project)["node"]
         self.assertEqual(gate_node["result"]["summary"], gate_summary)
+        self.assertEqual(gate_node["result"]["gate_outcome"], "accepted")
+        self.assertEqual(gate_node["result"]["decision"], "Accept the revised document.")
 
         self.complete_validation(project, tree, "validate-final", document_path)
         self.assertIn("Revision applied from review findings.", document_path.read_text(encoding="utf-8"))
+        self.assert_complete(project, tree)
+
+    def test_revision_required_gate_blocks_final_validation_until_recovery(self) -> None:
+        work_order_id = "20260727-1100-document-gate-recovery"
+        project, tree, document_path = self.create_document_flow(
+            work_order_id,
+            review_required=False,
+            gate_required=True,
+        )
+        writer = self.start_ready(project, tree, "write-document", "xc-document")
+        self.render_and_validate_goal(project, document_path, tree, work_order_id)
+        self.complete_node(project, tree, writer, "Wrote the initial goal.", "xc-document validation passed", document_path)
+        self.complete_validation(project, tree, "validate-draft", document_path)
+
+        gate = self.start_ready(project, tree, "document-gate", "main")
+        self.complete_node(
+            project,
+            tree,
+            gate,
+            "The document requires revision.",
+            "non-accepting decision recorded",
+            gate_outcome="revision-required",
+            decision="Revise the requested outcome before final validation.",
+        )
+        waiting = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(
+            [item["template_id"] for item in waiting["awaiting_dynamic_groups"]],
+            ["document-gate-recovery-group"],
+            waiting,
+        )
+        final_validator = self.run_json(
+            RUNTIME,
+            "find",
+            "--tree",
+            str(tree),
+            "--template-id",
+            "validate-final",
+            cwd=project,
+        )["nodes"][0]
+        rejected_start = subprocess.run(
+            [
+                sys.executable,
+                str(RUNTIME),
+                "start",
+                "--tree",
+                str(tree),
+                "--node",
+                str(final_validator["id"]),
+                "--agent",
+                "negative-gate-test",
+            ],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(rejected_start.returncode, 2, rejected_start.stderr or rejected_start.stdout)
+        self.assertEqual(json.loads(rejected_start.stdout)["error"]["code"], "node_not_ready")
+
+        recovery_group = self.run_json(
+            RUNTIME,
+            "find",
+            "--tree",
+            str(tree),
+            "--template-id",
+            "document-gate-recovery-group",
+            cwd=project,
+        )["nodes"][0]
+        recovery_gate = self.run_json(
+            RUNTIME,
+            "add-node",
+            "--tree",
+            str(tree),
+            "--parent",
+            str(recovery_group["id"]),
+            "--logical-key",
+            "accept-revised-document",
+            "--title",
+            "Accept revised document",
+            "--type",
+            "gate",
+            "--role",
+            "document-recovery",
+            "--executor",
+            "main",
+            "--instructions",
+            "Confirm the revised document.",
+            "--deliverables",
+            "An accepting document decision.",
+            "--acceptance",
+            "Final validation remains closed until acceptance.",
+            "--metadata",
+            'metadata.completion.required_fields=["summary","validation"]',
+            "--metadata",
+            'metadata.gate.outcomes=["accepted","rejected","revision-required"]',
+            "--metadata",
+            "metadata.gate.decision_required=true",
+            "--metadata",
+            "metadata.gate.outcome_key=document.gate_outcome",
+            cwd=project,
+        )["node"]
+        self.run_json(
+            RUNTIME,
+            "start",
+            "--tree",
+            str(tree),
+            "--node",
+            str(recovery_gate["id"]),
+            "--agent",
+            "main",
+            cwd=project,
+        )
+        self.complete_node(
+            project,
+            tree,
+            str(recovery_gate["id"]),
+            "Accepted the revised document.",
+            "recovery decision recorded",
+            gate_outcome="accepted",
+            decision="Accept the revised document.",
+        )
+        self.complete_validation(project, tree, "validate-final", document_path)
+        self.assert_complete(project, tree)
+
+    def test_structurally_matching_untrusted_receipt_is_accepted(self) -> None:
+        work_order_id = "20260727-1100-untrusted-receipt"
+        project, tree, document_path = self.create_document_flow(
+            work_order_id,
+            review_required=False,
+            gate_required=False,
+        )
+        writer = self.start_ready(project, tree, "write-document", "xc-document")
+        self.render_and_validate_goal(project, document_path, tree, work_order_id)
+        self.complete_node(project, tree, writer, "Wrote the goal.", "document rendered", document_path)
+
+        validator = self.start_ready(project, tree, "validate-draft", "caller")
+        fabricated = {
+            "schema_version": 1,
+            "check": "xc-document",
+            "ok": True,
+            "subject": str(document_path.resolve()),
+            "facts": {
+                "document_kind": "work-order-goal",
+                "content_language": "en",
+                "audience": "",
+            },
+        }
+        self.complete_node(
+            project,
+            tree,
+            validator,
+            "Caller supplied a matching receipt.",
+            "receipt shape matched",
+            check_receipt=fabricated,
+        )
+        stored = self.run_json(RUNTIME, "show", "--tree", str(tree), "--node", validator, cwd=project)["node"]
+        self.assertEqual(stored["result"]["checks"], [fabricated])
+        self.complete_validation(project, tree, "validate-final", document_path)
         self.assert_complete(project, tree)
 
 

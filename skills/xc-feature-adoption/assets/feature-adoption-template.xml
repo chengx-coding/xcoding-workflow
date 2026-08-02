@@ -3,12 +3,14 @@
 <orchestration schema_version="1" name="feature-adoption" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="23e534c438f2854b29a3d0aecdd39995a70d542357ec35f4931d475332bb281e" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="8db3bfd5d5df0fd793b110d0fbdc96d8290f46f77f6bd6f462c383af03dfc8b1" />
   </meta>
   <blackboard>
     <var key="feature.id" />
     <var key="feature.title" />
     <var key="feature.adoption_approval_required">true</var>
+    <var key="feature.adoption_source_ids">[]</var>
+    <var key="feature.adoption_gate_outcome">approved</var>
     <var key="work_order.document_language">en</var>
   </blackboard>
   <node executor="main" mode="sequence" role="root" template_id="root" title="Feature Adoption" type="composite">
@@ -23,16 +25,21 @@
       <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-contract-document" title="Document adopted feature contract" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-solution-document" title="Document adopted feature solution" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="feature-verification-document" title="Document adopted feature verification" type="composite" />
-      <node executor="main" role="adoption-approval" template_id="approve-adopted-baseline" title="Approve adopted feature baseline" type="gate" when="feature.adoption_approval_required == true">
+      <node executor="main" role="adoption-approval" template_id="approve-adopted-baseline" title="Approve adopted feature baseline" type="gate" when="feature.adoption_approval_required == true" metadata.control_packet.category.adopted-baseline.selectors="[&quot;bb:feature.adoption_source_ids&quot;]" metadata.control_packet.category.adopted-baseline.min_sources="3" metadata.control_packet.category.adopted-baseline.artifact_min="3" metadata.control_packet.blackboard_keys="[&quot;feature.id&quot;,&quot;feature.title&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;approved&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="feature.adoption_gate_outcome">
         <instructions>Present the code-derived baseline, evidence gaps, and any target-versus-current differences. Record approval, required revision, or an explicit unresolved conflict.</instructions>
         <deliverables>An adoption decision and any required follow-up nodes.</deliverables>
         <acceptance>The feature baseline is approved as current evidence or the workflow is blocked on an explicit product decision.</acceptance>
       </node>
-      <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record adoption result" type="composite" />
-      <node executor="main" role="adoption-finalize" template_id="finalize-adoption" title="Finalize feature adoption" type="task">
-        <instructions>Confirm the adopted feature documents, provenance, artifacts, and unresolved evidence gaps, then close the work order.</instructions>
-        <deliverables>A completed, failed, or blocked adoption work order with durable result evidence.</deliverables>
-        <acceptance>No ordinary work order is needed to infer whether the feature was adopted successfully.</acceptance>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="adoption-recovery-group" title="Recover non-accepting adoption decision" type="composite" when="feature.adoption_gate_outcome != approved" />
+      <node executor="main" mode="sequence" role="gate-continuation" template_id="approved-adoption-continuation" title="Continue approved adoption" type="composite" when="feature.adoption_gate_outcome == approved">
+        <children>
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record adoption result" type="composite" />
+          <node executor="main" role="adoption-finalize" template_id="finalize-adoption" title="Finalize feature adoption" type="task">
+            <instructions>Confirm the adopted feature documents, provenance, artifacts, and unresolved evidence gaps, then close the work order.</instructions>
+            <deliverables>A completed, failed, or blocked adoption work order with durable result evidence.</deliverables>
+            <acceptance>No ordinary work order is needed to infer whether the feature was adopted successfully.</acceptance>
+          </node>
+        </children>
       </node>
     </children>
   </node>

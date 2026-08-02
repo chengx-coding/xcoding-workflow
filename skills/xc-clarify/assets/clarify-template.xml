@@ -3,7 +3,7 @@
 <orchestration schema_version="1" name="clarify" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="88571b1160e2b7f158b31be36d3faef0771aa7790a60e408ed85f3afed969814" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="bd0423d3f495ffa5a8e92fcfc1c2551757f68f8b3208a8c390904966b6723d50" />
   </meta>
   <blackboard>
     <var key="clarification.mode" />
@@ -40,15 +40,28 @@
         <acceptance>The next runtime query exposes an executable main Gate and question-group cannot block as an empty composite.</acceptance>
       </node>
       <node executor="main" mode="sequence" role="dynamic-group" template_id="question-group" title="Resolve material decisions" type="composite" />
-      <node executor="subagent" role="clarification-synthesis" template_id="synthesize-session" title="Synthesize clarified decisions" type="task">
-        <instructions>After question-group closes, append the final decision summary, bounded experiments, accepted risks, residual risks, and caller handoff readiness to clarification.session_artifact.</instructions>
-        <deliverables>A complete clarification session artifact.</deliverables>
-        <acceptance>The artifact states whether the caller may select a solution without hidden material decisions.</acceptance>
-      </node>
-      <node executor="main" role="clarification-finalize" template_id="finalize-clarification" title="Finalize clarification" type="task">
-        <instructions>Confirm clarification.status and clarification.outcome from the accepted session artifact. Record the artifact path and concise handoff result through the runtime public interface.</instructions>
-        <deliverables>A completed, deferred, or blocked clarification disposition.</deliverables>
-        <acceptance>The caller can safely continue to analysis synthesis or solution selection without reading runtime XML.</acceptance>
+      <node executor="main" mode="switch" role="gate-continuation" switch.key="clarification.pending_material" switch.no_match="blocked" template_id="clarification-continuation" title="Route clarification readiness" type="composite">
+        <children>
+          <node case.value="true" executor="main" mode="sequence" role="case" template_id="clarification-recovery-case" title="Recover unresolved clarification" type="composite">
+            <children>
+              <node executor="main" mode="sequence" role="dynamic-group" template_id="clarification-recovery-group" title="Resolve remaining material decisions" type="composite" />
+            </children>
+          </node>
+          <node case.value="false" executor="main" mode="sequence" role="case" template_id="clarification-ready-case" title="Continue clarified work" type="composite">
+            <children>
+              <node executor="subagent" role="clarification-synthesis" template_id="synthesize-session" title="Synthesize clarified decisions" type="task">
+                <instructions>After question-group closes, append the final decision summary, bounded experiments, accepted risks, residual risks, and caller handoff readiness to clarification.session_artifact.</instructions>
+                <deliverables>A complete clarification session artifact.</deliverables>
+                <acceptance>The artifact states whether the caller may select a solution without hidden material decisions.</acceptance>
+              </node>
+              <node executor="main" role="clarification-finalize" template_id="finalize-clarification" title="Finalize clarification" type="task">
+                <instructions>Confirm clarification.status and clarification.outcome from the accepted session artifact. Record the artifact path and concise handoff result through the runtime public interface.</instructions>
+                <deliverables>A completed, deferred, or blocked clarification disposition.</deliverables>
+                <acceptance>The caller can safely continue to analysis synthesis or solution selection without reading runtime XML.</acceptance>
+              </node>
+            </children>
+          </node>
+        </children>
       </node>
     </children>
   </node>

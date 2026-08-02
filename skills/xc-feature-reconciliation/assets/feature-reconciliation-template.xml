@@ -3,31 +3,58 @@
 <orchestration schema_version="1" name="feature-reconciliation" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="fe85ac8809a4a8076136b1ab2b1dbf9d65214575570b35267b0e0cd6e39391a5" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="cb4d1e76e0c39948be53bbacf6d55c754a32c20724bf101adedaa896cda4a753" />
   </meta>
   <blackboard>
     <var key="reconciliation.feature_id" />
     <var key="reconciliation.needs_baseline_sync">false</var>
     <var key="reconciliation.has_ambiguous_conflict">false</var>
+    <var key="reconciliation.provenance_source_ids">[]</var>
+    <var key="reconciliation.conflict_source_ids">[]</var>
+    <var key="reconciliation.conflict_outcome">not-required</var>
   </blackboard>
   <node executor="main" mode="sequence" role="root" template_id="root" title="Feature Reconciliation" type="composite">
     <children>
-      <node executor="subagent" role="reconciliation-provenance" template_id="load-feature-provenance" title="Load feature provenance" type="task">
+      <node executor="subagent" role="reconciliation-provenance" template_id="load-feature-provenance" title="Load feature provenance" type="task" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
         <instructions>Read the feature baseline frontmatter and query referenced runtime trees only through xc-orchestration-runtime. Record provenance and current baseline references in the declared artifact.</instructions>
         <deliverables>A provenance artifact for reconciliation.feature_id.</deliverables>
         <acceptance>The artifact identifies feature document provenance without directly reading runtime XML.</acceptance>
       </node>
-      <node executor="subagent" role="reconciliation-inspection" template_id="inspect-current-state" title="Inspect current implementation state" type="task">
+      <node executor="subagent" role="reconciliation-inspection" template_id="inspect-current-state" title="Inspect current implementation state" type="task" metadata.control_packet.category.feature-provenance.selectors="[&quot;bb:reconciliation.provenance_source_ids&quot;]" metadata.control_packet.category.feature-provenance.min_sources="1" metadata.control_packet.category.feature-provenance.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;reconciliation.feature_id&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
         <instructions>Compare code, executable tests, Git evidence, and feature baselines. Distinguish current implementation facts, approved target intent, evidence-backed drift, and ambiguous conflicts.</instructions>
         <deliverables>A current-state artifact with evidence and a proposed reconciliation disposition.</deliverables>
         <acceptance>Every proposed difference is traceable and marked as synchronizable, conflicting, or unresolved.</acceptance>
       </node>
       <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-document" title="Update reconciliation analysis" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="baseline-sync" title="Synchronize evidence-backed baseline drift" type="composite" when="reconciliation.needs_baseline_sync == true" />
-      <node executor="main" role="reconciliation-conflict" template_id="conflict-gate" title="Resolve reconciliation conflict" type="gate" when="reconciliation.has_ambiguous_conflict == true">
+      <node executor="main" role="reconciliation-conflict" template_id="conflict-gate" title="Resolve reconciliation conflict" type="gate" when="reconciliation.has_ambiguous_conflict == true" metadata.control_packet.category.supporting-records.selectors="[&quot;bb:reconciliation.conflict_source_ids&quot;]" metadata.control_packet.category.supporting-records.min_sources="3" metadata.control_packet.category.supporting-records.artifact_min="3" metadata.control_packet.blackboard_keys="[&quot;reconciliation.feature_id&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;code-authoritative&quot;,&quot;baseline-authoritative&quot;,&quot;revise-goal&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="reconciliation.conflict_outcome">
         <instructions>Present the code evidence, target baseline, requested work order goal, and proposed options. Record the user decision and add required document-evolution nodes.</instructions>
         <deliverables>A structured user decision or an explicit blocked condition.</deliverables>
         <acceptance>No ambiguous product-intent conflict proceeds without a recorded decision.</acceptance>
+      </node>
+      <node executor="main" mode="switch" role="gate-continuation" switch.key="reconciliation.conflict_outcome" switch.no_match="blocked" template_id="conflict-continuation" title="Route reconciliation decision" type="composite">
+        <children>
+          <node case.value="not-required" executor="main" mode="sequence" role="case" template_id="no-conflict-case" title="Continue without conflict" type="composite">
+            <children>
+              <node dynamic.state="closed" executor="main" mode="sequence" role="dynamic-group" template_id="no-conflict-continuation" title="No conflict recovery required" type="composite" />
+            </children>
+          </node>
+          <node case.value="code-authoritative" executor="main" mode="sequence" role="case" template_id="code-authoritative-case" title="Continue with code authority" type="composite">
+            <children>
+              <node dynamic.state="closed" executor="main" mode="sequence" role="dynamic-group" template_id="code-authoritative-continuation" title="Code-authoritative recovery complete" type="composite" />
+            </children>
+          </node>
+          <node case.value="baseline-authoritative" executor="main" mode="sequence" role="case" template_id="baseline-authoritative-case" title="Continue with baseline authority" type="composite">
+            <children>
+              <node dynamic.state="closed" executor="main" mode="sequence" role="dynamic-group" template_id="baseline-authoritative-continuation" title="Baseline-authoritative recovery complete" type="composite" />
+            </children>
+          </node>
+          <node case.value="revise-goal" executor="main" mode="sequence" role="case" template_id="revise-goal-case" title="Recover revised work order goal" type="composite">
+            <children>
+              <node executor="main" mode="sequence" role="dynamic-group" template_id="conflict-recovery-group" title="Revise goal and resolve reconciliation conflict" type="composite" />
+            </children>
+          </node>
+        </children>
       </node>
       <node executor="main" role="reconciliation-finalize" template_id="finalize-reconciliation" title="Finalize feature reconciliation" type="task">
         <instructions>Record the reconciliation disposition, synchronized baseline references, conflicts, and residual evidence gaps.</instructions>

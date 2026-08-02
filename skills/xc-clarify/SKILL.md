@@ -63,11 +63,13 @@ open session record
 -> map decisions
 -> seed questioning
 -> dynamic question group
+-> readiness switch and recovery group
 -> synthesize session
 -> finalize clarification
 ```
 
 The opening worker creates the single session artifact. The following fixed workers append evidence and the decision map to it.
+Each fixed worker that writes the session record declares `clarification.session_artifact` on terminal completion. Before `seed-questioning` adds a gate, it publishes the terminal decision-map node ID as the first gate's compact JSON source array.
 
 `seed-questioning` is a main-executor task. It reads the decision map and, before it completes, adds the first main-executor Gate beneath the empty dynamic `question-group`. When no material decision remains, it adds a closing confirmation Gate instead. This prevents an empty dynamic group from blocking the sequence.
 
@@ -82,6 +84,25 @@ For every decision Gate, the main session:
 The main session must not batch questions, silently reconcile contradictions, or accept a recommended option by default. A user may choose another option, record accepted risk, or request a bounded experiment with an owner, trigger, and acceptance condition.
 
 Before creating questions `13`, `25`, and each later twelve-question boundary, add a budget Gate. The user decides whether to close the session, defer or reframe work as a bounded experiment, or continue. Continuing increases `clarification.limit` by `12`.
+
+## Dynamic Gate Contract
+
+Every dynamic gate uses a node-specific blackboard key such as `clarification.sources.<logical-key>`. Set that key to a compact JSON array of terminal source leaf IDs before `add-node`; the first gate uses the decision-map node and each successor includes the immediately preceding gate. Add the gate with complete leaf metadata:
+
+```text
+metadata.control_packet.category.decision-context.selectors=["bb:clarification.sources.<logical-key>"]
+metadata.control_packet.category.decision-context.min_sources=1
+metadata.control_packet.category.decision-context.artifact_min=1
+metadata.control_packet.blackboard_keys=["clarification.mode","clarification.subject","clarification.pending_material"]
+metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.completion.artifacts.path=bb:clarification.session_artifact
+metadata.gate.decision_required=true
+metadata.gate.outcome_key=clarification.outcome
+```
+
+Decision gates declare `metadata.gate.outcomes=["accepted-recommendation","selected-alternative","accepted-risk","bounded-experiment","deferred"]`; budget gates declare `["close-session","bounded-experiment","continue"]`; closing confirmation gates declare `["confirmed","revision-required"]`. Read the gate's control packet before `start`. Append the full user response to the session artifact, then complete with one declared outcome, a non-empty decision, summary, validation, and exactly that artifact. Keep `clarification.pending_material=true` while any material decision or requested revision remains. Set it to `false` atomically only when the completed gate establishes a safe handoff. If the question group closes while it remains true, `clarification-recovery-group` opens and synthesis stays unavailable; add the successor decision or closing gate there. Do not invent a source ID or lower a threshold when the decision map or predecessor is unavailable.
 
 ## Completion and Handoff
 

@@ -30,7 +30,14 @@ class XcClarifyTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
         return json.loads(result.stdout)
 
-    def start_and_complete(self, tree: Path, expected_template_id: str, *, values: list[str] | None = None) -> dict[str, object]:
+    def start_and_complete(
+        self,
+        tree: Path,
+        expected_template_id: str,
+        *,
+        values: list[str] | None = None,
+        artifact: Path | None = None,
+    ) -> dict[str, object]:
         ready = self.run_json([sys.executable, str(RUNTIME), "next", "--tree", str(tree)])["ready"]
         self.assertEqual(ready[0]["template_id"], expected_template_id, ready)
         node = ready[0]
@@ -51,10 +58,12 @@ class XcClarifyTests(unittest.TestCase):
         ]
         for value in values or []:
             command.extend(["--set", value])
+        if artifact:
+            command.extend(["--artifact", str(artifact)])
         self.run_json(command)
         return node
 
-    def initialize_until_seed(self) -> tuple[Path, Path]:
+    def initialize_until_seed(self) -> tuple[Path, Path, Path, str]:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name)
@@ -75,8 +84,29 @@ class XcClarifyTests(unittest.TestCase):
             ]
         )
         tree = Path(str(initialized["tree_path"]))
+        session_artifact = workshop / "work-orders" / "clarify" / "artifacts" / "open-session-record" / "decision-session.md"
+        session_artifact.parent.mkdir(parents=True)
+        session_artifact.write_text("# Decision Session\n\nClarification evidence.\n", encoding="utf-8")
+        self.run_json(
+            [
+                sys.executable,
+                str(RUNTIME),
+                "set",
+                "--tree",
+                str(tree),
+                "--set",
+                "clarification.mode=discover",
+                "--set",
+                "clarification.subject=Choose a compatible behavior",
+                "--set",
+                f"clarification.session_artifact={session_artifact}",
+            ]
+        )
+        map_id = ""
         for template_id in ("open-session-record", "gather-context", "map-decisions"):
-            self.start_and_complete(tree, template_id)
+            node = self.start_and_complete(tree, template_id, artifact=session_artifact)
+            if template_id == "map-decisions":
+                map_id = str(node["id"])
         ready = self.run_json([sys.executable, str(RUNTIME), "next", "--tree", str(tree)])["ready"]
         self.assertEqual(ready[0]["template_id"], "seed-questioning", ready)
         seed = ready[0]
@@ -96,9 +126,31 @@ class XcClarifyTests(unittest.TestCase):
         group = self.run_json(
             [sys.executable, str(RUNTIME), "find", "--tree", str(tree), "--template-id", "question-group"]
         )["nodes"][0]
-        return tree, Path(str(group["id"]))
+        return tree, Path(str(group["id"])), session_artifact, map_id
 
-    def add_gate(self, tree: Path, group_id: Path, logical_key: str, title: str, depends_on: str = "") -> dict[str, object]:
+    def add_gate(
+        self,
+        tree: Path,
+        group_id: Path,
+        logical_key: str,
+        title: str,
+        source_ids: list[str],
+        *,
+        outcomes: list[str],
+        depends_on: str = "",
+    ) -> dict[str, object]:
+        source_key = f"clarification.sources.{logical_key}"
+        self.run_json(
+            [
+                sys.executable,
+                str(RUNTIME),
+                "set",
+                "--tree",
+                str(tree),
+                "--set",
+                f"{source_key}={json.dumps(source_ids, separators=(',', ':'))}",
+            ]
+        )
         command = [
             sys.executable,
             str(RUNTIME),
@@ -123,6 +175,28 @@ class XcClarifyTests(unittest.TestCase):
             "A recorded user decision.",
             "--acceptance",
             "The decision is explicit.",
+            "--metadata",
+            f'metadata.control_packet.category.decision-context.selectors=["bb:{source_key}"]',
+            "--metadata",
+            "metadata.control_packet.category.decision-context.min_sources=1",
+            "--metadata",
+            "metadata.control_packet.category.decision-context.artifact_min=1",
+            "--metadata",
+            'metadata.control_packet.blackboard_keys=["clarification.mode","clarification.subject","clarification.pending_material"]',
+            "--metadata",
+            'metadata.completion.required_fields=["summary","validation"]',
+            "--metadata",
+            "metadata.completion.artifacts.min=1",
+            "--metadata",
+            "metadata.completion.artifacts.max=1",
+            "--metadata",
+            "metadata.completion.artifacts.path=bb:clarification.session_artifact",
+            "--metadata",
+            f"metadata.gate.outcomes={json.dumps(outcomes, separators=(',', ':'))}",
+            "--metadata",
+            "metadata.gate.decision_required=true",
+            "--metadata",
+            "metadata.gate.outcome_key=clarification.outcome",
         ]
         if depends_on:
             command.extend(["--depends-on", depends_on])
@@ -172,12 +246,30 @@ class XcClarifyTests(unittest.TestCase):
             self.assertEqual(rebuilt.read_bytes(), TEMPLATE.read_bytes())
 
     def test_seeded_dynamic_gates_run_sequentially_before_synthesis(self) -> None:
-        tree, group_id = self.initialize_until_seed()
-        first = self.add_gate(tree, group_id, "clarify-first", "Clarify first decision")
+        tree, group_id, session_artifact, map_id = self.initialize_until_seed()
+        decision_outcomes = [
+            "accepted-recommendation",
+            "selected-alternative",
+            "accepted-risk",
+            "bounded-experiment",
+            "deferred",
+        ]
+        first = self.add_gate(
+            tree,
+            group_id,
+            "clarify-first",
+            "Clarify first decision",
+            [map_id],
+            outcomes=decision_outcomes,
+        )
         self.complete_seed(tree)
 
         ready = self.run_json([sys.executable, str(RUNTIME), "next", "--tree", str(tree)])["ready"]
         self.assertEqual(ready[0]["logical_key"], "clarify-first", ready)
+        first_packet = self.run_json(
+            [sys.executable, str(RUNTIME), "control-packet", "--tree", str(tree), "--node", str(first["id"])]
+        )["packet"]
+        self.assertEqual(first_packet["source_categories"][0]["sources"][0]["node_id"], map_id)
         self.run_json(
             [
                 sys.executable,
@@ -196,6 +288,8 @@ class XcClarifyTests(unittest.TestCase):
             group_id,
             "clarify-second",
             "Clarify second decision",
+            [str(first["id"])],
+            outcomes=decision_outcomes,
             depends_on=str(first["id"]),
         )
         self.run_json(
@@ -213,11 +307,21 @@ class XcClarifyTests(unittest.TestCase):
                 "successor was created before completion",
                 "--set",
                 "clarification.question_count=1",
+                "--artifact",
+                str(session_artifact),
+                "--gate-outcome",
+                "selected-alternative",
+                "--decision",
+                "Use the compatible alternative.",
             ]
         )
 
         ready = self.run_json([sys.executable, str(RUNTIME), "next", "--tree", str(tree)])["ready"]
         self.assertEqual(ready[0]["logical_key"], "clarify-second", ready)
+        second_packet = self.run_json(
+            [sys.executable, str(RUNTIME), "control-packet", "--tree", str(tree), "--node", str(second["id"])]
+        )["packet"]
+        self.assertEqual(second_packet["source_categories"][0]["sources"][0]["node_id"], first["id"])
         self.run_json(
             [
                 sys.executable,
@@ -248,19 +352,40 @@ class XcClarifyTests(unittest.TestCase):
                 "clarification.status=ready",
                 "--set",
                 "clarification.pending_material=false",
+                "--artifact",
+                str(session_artifact),
+                "--gate-outcome",
+                "accepted-recommendation",
+                "--decision",
+                "Accept the recommended final decision.",
             ]
         )
-        self.start_and_complete(tree, "synthesize-session")
-        self.start_and_complete(tree, "finalize-clarification")
+        completed_second = self.run_json(
+            [sys.executable, str(RUNTIME), "show", "--tree", str(tree), "--node", str(second["id"])]
+        )["node"]
+        self.assertEqual(completed_second["result"]["gate_outcome"], "accepted-recommendation")
+        self.start_and_complete(tree, "synthesize-session", artifact=session_artifact)
+        self.start_and_complete(tree, "finalize-clarification", artifact=session_artifact)
         summary = self.run_json([sys.executable, str(RUNTIME), "summary", "--tree", str(tree)])
         self.assertEqual(summary["status"], "complete", summary)
 
     def test_seeded_no_material_confirmation_closes_question_group(self) -> None:
-        tree, group_id = self.initialize_until_seed()
-        closing = self.add_gate(tree, group_id, "clarify-no-material", "Confirm no material decision")
+        tree, group_id, session_artifact, map_id = self.initialize_until_seed()
+        closing = self.add_gate(
+            tree,
+            group_id,
+            "clarify-no-material",
+            "Confirm no material decision",
+            [map_id],
+            outcomes=["confirmed", "revision-required"],
+        )
         self.complete_seed(tree)
         ready = self.run_json([sys.executable, str(RUNTIME), "next", "--tree", str(tree)])["ready"]
         self.assertEqual(ready[0]["logical_key"], "clarify-no-material", ready)
+        packet = self.run_json(
+            [sys.executable, str(RUNTIME), "control-packet", "--tree", str(tree), "--node", str(closing["id"])]
+        )["packet"]
+        self.assertEqual(packet["blackboard"][0]["key"], "clarification.mode")
         self.run_json(
             [
                 sys.executable,
@@ -291,10 +416,145 @@ class XcClarifyTests(unittest.TestCase):
                 "clarification.status=ready",
                 "--set",
                 "clarification.pending_material=false",
+                "--artifact",
+                str(session_artifact),
+                "--gate-outcome",
+                "confirmed",
+                "--decision",
+                "Confirm that no material decision remains.",
             ]
         )
-        self.start_and_complete(tree, "synthesize-session")
-        self.start_and_complete(tree, "finalize-clarification")
+        self.start_and_complete(tree, "synthesize-session", artifact=session_artifact)
+        self.start_and_complete(tree, "finalize-clarification", artifact=session_artifact)
+        summary = self.run_json([sys.executable, str(RUNTIME), "summary", "--tree", str(tree)])
+        self.assertEqual(summary["status"], "complete", summary)
+
+    def test_revision_required_clarification_opens_recovery_before_synthesis(self) -> None:
+        tree, group_id, session_artifact, map_id = self.initialize_until_seed()
+        closing = self.add_gate(
+            tree,
+            group_id,
+            "clarify-revision-required",
+            "Confirm no material decision",
+            [map_id],
+            outcomes=["confirmed", "revision-required"],
+        )
+        self.complete_seed(tree)
+        self.run_json(
+            [
+                sys.executable,
+                str(RUNTIME),
+                "start",
+                "--tree",
+                str(tree),
+                "--node",
+                str(closing["id"]),
+                "--agent",
+                "test",
+            ]
+        )
+        self.run_json(
+            [
+                sys.executable,
+                str(RUNTIME),
+                "complete",
+                "--tree",
+                str(tree),
+                "--node",
+                str(closing["id"]),
+                "--summary",
+                "A material revision is still required.",
+                "--validation",
+                "clarification remains unresolved",
+                "--artifact",
+                str(session_artifact),
+                "--gate-outcome",
+                "revision-required",
+                "--decision",
+                "Revise the decision map before handoff.",
+            ]
+        )
+        waiting = self.run_json([sys.executable, str(RUNTIME), "summary", "--tree", str(tree)])
+        self.assertEqual(
+            [item["template_id"] for item in waiting["awaiting_dynamic_groups"]],
+            ["clarification-recovery-group"],
+            waiting,
+        )
+        synthesis = self.run_json(
+            [sys.executable, str(RUNTIME), "find", "--tree", str(tree), "--template-id", "synthesize-session"]
+        )["nodes"][0]
+        rejected = subprocess.run(
+            [
+                sys.executable,
+                str(RUNTIME),
+                "start",
+                "--tree",
+                str(tree),
+                "--node",
+                str(synthesis["id"]),
+                "--agent",
+                "negative-gate-test",
+            ],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(rejected.returncode, 2, rejected.stderr or rejected.stdout)
+        self.assertEqual(json.loads(rejected.stdout)["error"]["code"], "node_not_ready")
+
+        recovery_group = self.run_json(
+            [sys.executable, str(RUNTIME), "find", "--tree", str(tree), "--template-id", "clarification-recovery-group"]
+        )["nodes"][0]
+        recovered = self.add_gate(
+            tree,
+            Path(str(recovery_group["id"])),
+            "clarify-recovered",
+            "Confirm recovered clarification",
+            [str(closing["id"])],
+            outcomes=["confirmed", "revision-required"],
+        )
+        self.run_json(
+            [
+                sys.executable,
+                str(RUNTIME),
+                "start",
+                "--tree",
+                str(tree),
+                "--node",
+                str(recovered["id"]),
+                "--agent",
+                "test",
+            ]
+        )
+        self.run_json(
+            [
+                sys.executable,
+                str(RUNTIME),
+                "complete",
+                "--tree",
+                str(tree),
+                "--node",
+                str(recovered["id"]),
+                "--summary",
+                "Confirmed recovered clarification.",
+                "--validation",
+                "no material decision remains",
+                "--set",
+                "clarification.status=ready",
+                "--set",
+                "clarification.pending_material=false",
+                "--artifact",
+                str(session_artifact),
+                "--gate-outcome",
+                "confirmed",
+                "--decision",
+                "Confirm the revised decision map.",
+            ]
+        )
+        self.start_and_complete(tree, "synthesize-session", artifact=session_artifact)
+        self.start_and_complete(tree, "finalize-clarification", artifact=session_artifact)
         summary = self.run_json([sys.executable, str(RUNTIME), "summary", "--tree", str(tree)])
         self.assertEqual(summary["status"], "complete", summary)
 
