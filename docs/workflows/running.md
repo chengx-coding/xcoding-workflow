@@ -18,6 +18,18 @@ A managed lifecycle preserves decisions and evidence in documents and artifacts 
 
 Top-level work-order documents are durable records, not a program counter. Dynamic ordering, readiness, loops, retries, blockers, and progress remain in the runtime tree.
 
+## Human-Readable Documents
+
+Unless the user explicitly requests another format or style, top-level work-order documents, managed project and feature documents, user-facing artifacts, and project documentation delivered by an implementation node follow the [`xc-document`](../../skills/xc-document/SKILL.md) human-readable default.
+
+Writers lead with purpose, conclusion, or required reader action, then add technical depth after the reader has context. Necessary terms are explained briefly at first use. Repetition and process narration are removed without dropping material facts, constraints, evidence, risks, compatibility impact, or unresolved decisions.
+
+Callers pass concise explicit requirements through `document.authoring_requirements` before embedding document evolution. Long requirements remain in an input document or artifact. Explicit user requirements override style defaults, but not truth, safety, managed structure, provenance, or mandatory evidence.
+
+Exact commands, identifiers, paths, logs, and machine output remain literal when accuracy requires it. Their surrounding explanation and summary remain human-readable. Internal technical artifacts may retain specialist depth for their intended audience.
+
+Readability is a semantic review dimension, not a word-count or sentence-length release score. Reviewers check audience fit, progressive disclosure, first-use explanations, concision, and preservation of key information.
+
 ## Execution Boundaries
 
 The main session asks the [orchestration runtime](../../skills/xc-orchestration-runtime/SKILL.md) for the next ready node or batch. For an opt-in leaf, the dispatch sequence is `next -> control-packet --node <id> -> start`. The main session reads the packet before starting or delegating the node, handles user gates, and verifies state after workers return.

@@ -30,7 +30,7 @@ description: "Investigates a reported problem through reproduction and evidence 
 4. Record confirmed cause, suspected causes with confidence, non-reproduced conditions, affected boundaries, and a repair direction in `analysis.md`.
 5. If a repair is requested and evidence is sufficient, return control to `xc-work`; do not repair inside the diagnosis node.
 
-Diagnosis node artifacts default to internal English. A caller may explicitly request a user-facing diagnosis report through `metadata.artifact.audience=user` and `metadata.artifact.content_language=work_order.document_language`.
+Diagnosis node artifacts default to internal English. A caller may explicitly request a user-facing diagnosis report through `metadata.artifact.audience=user` and `metadata.artifact.content_language=work_order.document_language`. User-facing reports follow the public `xc-document` human-readable authoring default and supplied explicit authoring requirements while preserving exact reproduction and evidence details.
 
 ## Instrumentation
 

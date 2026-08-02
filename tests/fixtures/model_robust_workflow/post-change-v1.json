@@ -14,7 +14,7 @@
     "skills/xc-orchestration-runtime/scripts/orchestration.py": "479820097a4cf0bd2279c6c77254606ed4d711237c78cc69c2886e2f418dea88",
     "skills/xc-orchestration-runtime/scripts/runtime_core.py": "09cedcef6d7684f436894345b36ca8c7af3aab12c36eba431dbbc751150f2097",
     "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
-    "skills/xc-document-evolution/assets/document-evolution-template.xml": "a1260b99ce0df29dae1ede87bf585f70ea11f929659463b5b6c9dd728d18d0fb",
+    "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
     "skills/xc-document/scripts/render_document.py": "b6249f84544d85006cfa62ef8f879e93d3f812c1d35a05d902df3c70612c66e1",
     "skills/xc-document/scripts/validate_document.py": "dd6d7db27a0161cb1425dc607f2c0a0fbe82d91d2b5d91a45c6fe162ecbdc105",
     "skills/xc-document/assets/templates/work-order-goal.md": "94bea7ac8b9d4af8c1a7e07f22114bb417480de161ae7d91590f62e4e2077f79",
@@ -23,7 +23,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "c30d2484824b841f8e6325f186a6194f5f8d135d",
+  "recording_base_commit": "945827e584ed1a6a2da701ff9a4a7d3986269213",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -134,7 +134,7 @@
       "T1-M": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 86580,
+            "context_bytes": 90454,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -164,7 +164,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 87244,
+            "context_bytes": 91118,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -191,7 +191,7 @@
       "T2": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 119866,
+            "context_bytes": 125677,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -222,7 +222,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 120779,
+            "context_bytes": 126590,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -249,7 +249,7 @@
       "T3": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 182559,
+            "context_bytes": 190307,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -283,7 +283,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 183970,
+            "context_bytes": 191718,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -310,7 +310,7 @@
       "T4": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 208899,
+            "context_bytes": 216647,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -347,7 +347,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 210559,
+            "context_bytes": 218307,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -431,175 +431,175 @@
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
-        "current_value": 86580,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
-        "numeric_delta": 21827
+        "current_value": 90454,
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
+        "numeric_delta": 25701
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
-        "current_value": 87244,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
-        "numeric_delta": 21827
+        "current_value": 91118,
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
+        "numeric_delta": 25701
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
-        "current_value": 119866,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
-        "numeric_delta": 29320
+        "current_value": 125677,
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
+        "numeric_delta": 35131
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
-        "current_value": 120779,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
-        "numeric_delta": 29320
+        "current_value": 126590,
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
+        "numeric_delta": 35131
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
-        "current_value": 182559,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
-        "numeric_delta": 42421
+        "current_value": 190307,
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
+        "numeric_delta": 50169
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
-        "current_value": 183970,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
-        "numeric_delta": 42421
+        "current_value": 191718,
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
+        "numeric_delta": 50169
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
-        "current_value": 208899,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
-        "numeric_delta": 44005
+        "current_value": 216647,
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
+        "numeric_delta": 51753
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
-        "current_value": 210559,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
-        "numeric_delta": 44005
+        "current_value": 218307,
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
+        "numeric_delta": 51753
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+        "explanation": "Record the approved human-readable document contract and regenerated document-evolution template.",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "Add explicit and omitted/defaulted unknown-to-no public adapter regression coverage for all six governance facts without changing workflow measurements.",
+    "reason": "Record the approved human-readable document contract and regenerated document-evolution template.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1104,7 +1104,7 @@
         "T1-M": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 86580,
+              "context_bytes": 90454,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1134,7 +1134,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 87244,
+              "context_bytes": 91118,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1161,7 +1161,7 @@
         "T2": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 119866,
+              "context_bytes": 125677,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1192,7 +1192,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 120779,
+              "context_bytes": 126590,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1219,7 +1219,7 @@
         "T3": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 182559,
+              "context_bytes": 190307,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1253,7 +1253,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 183970,
+              "context_bytes": 191718,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1280,7 +1280,7 @@
         "T4": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 208899,
+              "context_bytes": 216647,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1317,7 +1317,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 210559,
+              "context_bytes": 218307,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1400,7 +1400,7 @@
       "skills/xc-orchestration-runtime/scripts/orchestration.py": "479820097a4cf0bd2279c6c77254606ed4d711237c78cc69c2886e2f418dea88",
       "skills/xc-orchestration-runtime/scripts/runtime_core.py": "09cedcef6d7684f436894345b36ca8c7af3aab12c36eba431dbbc751150f2097",
       "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
-      "skills/xc-document-evolution/assets/document-evolution-template.xml": "a1260b99ce0df29dae1ede87bf585f70ea11f929659463b5b6c9dd728d18d0fb",
+      "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
       "skills/xc-document/scripts/render_document.py": "b6249f84544d85006cfa62ef8f879e93d3f812c1d35a05d902df3c70612c66e1",
       "skills/xc-document/scripts/validate_document.py": "dd6d7db27a0161cb1425dc607f2c0a0fbe82d91d2b5d91a45c6fe162ecbdc105",
       "skills/xc-document/assets/templates/work-order-goal.md": "94bea7ac8b9d4af8c1a7e07f22114bb417480de161ae7d91590f62e4e2077f79",

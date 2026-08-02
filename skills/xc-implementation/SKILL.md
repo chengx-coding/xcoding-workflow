@@ -25,6 +25,8 @@ description: "Executes one approved implementation node in a managed work order.
 
 Read the supplied node contract and approved inputs, make the smallest coherent change, and preserve unrelated worktree changes. Run focused verification before reporting success. Record changed paths, validation commands and outcomes, baseline impact, and any unresolved issue in the declared artifact. Implementation artifacts default to internal English; localize only an explicitly declared `metadata.artifact.audience=user` report using its resolved artifact language.
 
+Any human-facing document created or revised within `work_scope`, including project documentation delivered through the work order, follows the public `xc-document` human-readable authoring default and supplied explicit authoring requirements. A user-facing implementation report follows the same contract. Preserve exact paths, commands, logs, machine output, and outcomes where literal accuracy matters.
+
 When implementation evidence changes a feature baseline, add a separate document-evolution subtree or user gate through the caller's runtime workflow. Do not overwrite a baseline opportunistically from an implementation node.
 
 ## Dynamic Node Contract

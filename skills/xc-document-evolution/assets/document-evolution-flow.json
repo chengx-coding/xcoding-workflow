@@ -3,6 +3,7 @@
   "schema_version": 1,
   "blackboard": {
     "document.content_language": "",
+    "document.authoring_requirements": "",
     "document.receipt.content_language": "en",
     "document.receipt.audience": "",
     "document.review_required": "false",
@@ -34,9 +35,9 @@
             }
           }
         },
-        "instructions": "Read document.path, document.template, document.inputs, document.contract, and document.content_language from the supplied blackboard and node references. Write or revise the target document immediately. Preserve valid frontmatter and do not read the runtime XML directly.",
+        "instructions": "Read document.path, document.template, document.inputs, document.contract, document.content_language, and document.authoring_requirements from the supplied blackboard and node references. Follow the public xc-document human-readable authoring default unless explicit document.authoring_requirements override its style preferences. Preserve exact commands, identifiers, paths, logs, and machine output where literal accuracy matters. Write or revise the target document immediately, preserve valid frontmatter, and do not read the runtime XML directly.",
         "deliverables": "The managed document at document.path.",
-        "acceptance": "The target document exists, follows its authoring contract, and has complete YAML frontmatter."
+        "acceptance": "The target document exists, follows its domain and human-readable authoring contracts plus explicit user requirements, preserves key information, and has complete YAML frontmatter."
       },
       {
         "template_id": "validate-draft",
@@ -101,9 +102,9 @@
                 }
               }
             },
-            "instructions": "Review document.path against the domain review dimensions. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.",
+            "instructions": "Review document.path against the domain review dimensions, explicit document.authoring_requirements, and the public xc-document human-readable dimensions: audience fit, progressive disclosure, first-use terminology explanations, concision, and preservation of key information. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.",
             "deliverables": "A review artifact with prioritized findings and closure criteria.",
-            "acceptance": "The review distinguishes required findings from optional observations and sets document.review.open_issues."
+            "acceptance": "The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues."
           },
           {
             "template_id": "revise-document",
@@ -123,9 +124,9 @@
                 }
               }
             },
-            "instructions": "Read the latest review artifact and revise only document.path. Preserve document.content_language when it is set, preserve valid frontmatter, and record the updated document as the node artifact.",
+            "instructions": "Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.",
             "deliverables": "An updated managed document.",
-            "acceptance": "Required review findings are resolved or explicitly escalated to a user gate."
+            "acceptance": "Required domain and human-readability findings are resolved or explicitly escalated to a user gate."
           }
         ]
       },

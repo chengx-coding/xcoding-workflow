@@ -216,6 +216,26 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         self.assertEqual(summary["status"], "complete", summary)
         self.assertEqual(summary["ready"], [], summary)
 
+    def test_authoring_requirements_default_and_explicit_override_are_available(self) -> None:
+        project, tree, _ = self.create_document_flow(
+            "20260727-1050-authoring-requirements",
+            review_required=False,
+            gate_required=False,
+        )
+
+        summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(summary["blackboard"]["document.authoring_requirements"], "")
+
+        requirement = "Lead with a decision table and keep the report under two pages."
+        self.set_values(project, tree, {"document.authoring_requirements": requirement})
+        updated = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(updated["blackboard"]["document.authoring_requirements"], requirement)
+
+        writer = self.start_ready(project, tree, "write-document", "xc-document")
+        node = self.run_json(RUNTIME, "show", "--tree", str(tree), "--node", writer, cwd=project)["node"]
+        self.assertIn("document.authoring_requirements", node["instructions"])
+        self.assertIn("human-readable authoring default", node["instructions"])
+
     def test_recovers_document_written_before_terminal_completion(self) -> None:
         work_order_id = "20260727-1100-document-recovery"
         project, tree, document_path = self.create_document_flow(
