@@ -29,10 +29,10 @@ These supporting Skills own durable feature, document, and optional knowledge bo
 [Canonical contract](../../../skills/xc-document/SKILL.md)
 
 - **Invoke when:** a workflow creates, renders, or validates a managed workshop, feature, work-order, or node-artifact Markdown document.
-- **Purpose:** enforce frontmatter, identity, language, audience, association, and provenance contracts.
+- **Purpose:** define the default human-readable authoring contract and enforce frontmatter, identity, language, audience, association, and provenance.
 - **Public entry:** `validate_document.py` with `document_path` and optional `expected_kind`; also exposes language validation and deterministic template rendering.
-- **Typical usage:** render a template with explicit values, write the body in the resolved language, then validate the expected managed document kind.
-- **Boundaries:** it does not author content, approve documents, inspect opaque tree references, or store dynamic task state in frontmatter.
+- **Typical usage:** render a template with explicit values, write the body for its intended audience, lead with purpose or outcome before technical depth, apply explicit user authoring requirements, then validate the expected managed document kind.
+- **Boundaries:** it does not author content, approve documents, inspect opaque tree references, store dynamic task state in frontmatter, or claim to mechanically prove semantic readability.
 
 ## `xc-document-evolution`
 
@@ -40,8 +40,8 @@ These supporting Skills own durable feature, document, and optional knowledge bo
 
 - **Invoke when:** managed documents need durable writing, validation, review, revision, and optional user approval.
 - **Purpose:** provide the reusable orchestration subtree for the complete document lifecycle.
-- **Public entry:** set the documented `document.*` blackboard values and embed `document-evolution-template.xml`.
-- **Typical usage:** write, validate, loop through review and revision when enabled, pass an optional gate, and validate the final document.
+- **Public entry:** set the documented `document.*` blackboard values, including optional concise `document.authoring_requirements`, and embed `document-evolution-template.xml`.
+- **Typical usage:** apply the `xc-document` human-readable default or explicit user requirements, write and validate, loop through semantic review and revision when enabled, pass an optional gate, and validate the final document.
 - **Boundaries:** callers serialize instances sharing blackboard keys; bodies and reports stay in artifacts, and sealed-tree corrections require the owning gate and runtime reopen operation.
 
 ## `xc-knowledge`

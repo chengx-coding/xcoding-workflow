@@ -83,6 +83,23 @@ node-artifact
 
 Every managed document uses YAML frontmatter with `schema_version: 1` and `document_kind`. Feature documents carry `feature_id` and initialization/update provenance. Work order documents carry `work_order_id`, `feature_ids`, and a main tree reference. Node artifacts carry `work_order_id`, `node_id`, feature identifiers, and a tree reference.
 
+## Default Human-Readable Authoring
+
+Unless the user supplies explicit authoring requirements, managed documents intended for human use follow this default:
+
+1. Lead with the document's purpose, conclusion, or required reader action.
+2. Establish reader context before specialized terminology, interfaces, fields, or implementation details.
+3. Explain necessary terms briefly at first use.
+4. Remove repetition and process narration that does not help understanding or decisions.
+5. Preserve material facts, constraints, evidence, risks, compatibility impact, and unresolved decisions.
+6. Match technical depth to the intended audience while remaining accurate and professional.
+
+Explicit user requirements for format, tone, length, terminology density, or audience override these style defaults. They do not override truthfulness, safety, required frontmatter or document structure, provenance, or mandatory evidence.
+
+Preserve exact commands, identifiers, paths, logs, and machine output when literal accuracy matters. Apply the default to their surrounding explanation and summary. Internal technical artifacts may retain specialist density for their intended audience, but should still open with a concise, comprehensible summary.
+
+This is an authoring and semantic-review contract. `validate_document.py` does not claim to score or mechanically prove readability.
+
 ## Content Language and Audience
 
 `content_language` is an optional simplified BCP 47 tag. When omitted, validation treats it as `en` without modifying the document. Work order lifecycles must explicitly set it from their fixed `work_order.document_language` before writing a top-level work order document.

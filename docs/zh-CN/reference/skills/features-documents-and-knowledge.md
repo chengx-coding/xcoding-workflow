@@ -29,10 +29,10 @@
 [规范契约](../../../../skills/xc-document/SKILL.md)
 
 - **何时调用：** 工作流创建、渲染或验证受管 workshop、功能、工作订单或 node-artifact Markdown 文档时。
-- **用途：** 强制执行 frontmatter、身份、语言、受众、关联和来源契约。
+- **用途：** 定义默认的人类可读写作契约，并强制执行 frontmatter、身份、语言、受众、关联和来源契约。
 - **公开入口：** `validate_document.py`，传入 `document_path` 和可选 `expected_kind`；另提供语言验证和确定性模板渲染。
-- **典型用法：** 用显式值渲染模板，以已解析语言编写正文，再验证预期的受管文档类型。
-- **主要边界：** 不编写正文、不批准文档、不检查不透明 tree reference，也不在 frontmatter 中存放动态任务状态。
+- **典型用法：** 用显式值渲染模板，面向预期受众编写正文，先说明目的或结果再展开技术细节，应用用户明确提出的写作要求，最后验证预期的受管文档类型。
+- **主要边界：** 不编写正文、不批准文档、不检查不透明 tree reference、不在 frontmatter 中存放动态任务状态，也不声称可以机械证明语义可读性。
 
 ## `xc-document-evolution`
 
@@ -40,8 +40,8 @@
 
 - **何时调用：** 受管文档需要持久写作、验证、审查、修订和可选用户批准时。
 - **用途：** 为完整文档生命周期提供可复用编排子树。
-- **公开入口：** 设置契约定义的 `document.*` blackboard 值并嵌入 `document-evolution-template.xml`。
-- **典型用法：** 写作、验证，按配置循环审查和修订，通过可选门禁，最后验证最终文档。
+- **公开入口：** 设置契约定义的 `document.*` blackboard 值，包括可选的简短 `document.authoring_requirements`，再嵌入 `document-evolution-template.xml`。
+- **典型用法：** 应用 `xc-document` 的人类可读默认规则或用户明确要求，完成写作和验证，按配置进行语义审查与修订，通过可选门禁，最后验证最终文档。
 - **主要边界：** 调用方必须串行处理共享 blackboard 键的实例；正文和报告留在 artifact，已封闭树的纠正需要所属门禁和 runtime reopen。
 
 ## `xc-knowledge`
