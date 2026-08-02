@@ -2,59 +2,84 @@
 
 **Language:** **English** | [简体中文](README.zh-CN.md)
 
-xcoding-workflow is the canonical source for a portable, Skill-driven Agent coding workflow. It covers discovery, design, implementation, diagnosis, verification, review, repair, and delivery without tying the workflow to one programming language, framework, or Agent host.
+xcoding-workflow helps coding agents carry work from an initial request to a tested, reviewed result. It works across programming languages, frameworks, and the applications that run coding agents, known here as **Agent hosts**.
 
-## Core model
+## What It Does
 
-- Canonical `xc-*` Skill packages define public workflow entry points and reusable services.
-- Each consumer project exposes a fixed `.xcoding` workshop backed by a Git worktree that is independent from the project's source repository.
-- Durable work runs as a work order. Runtime orchestration owns scheduling and state; concise blackboard values coordinate decisions, while documents and other substantial evidence remain artifacts.
-- Managed features are explicit. Use the new-feature workflow to create one, the adoption workflow to baseline existing code, and the ordinary work workflow for changes that may relate to zero, one, or multiple existing features.
+- XC is installed as a set of workflow modules called **Skills**.
+- Small, low-risk tasks can be completed directly.
+- Work that needs a plan, review, recovery, or a durable record runs as a **managed work order**. A work order keeps the goal, decisions, progress, and evidence together.
+- The `.xcoding` directory is the project's workflow workspace. It is kept in a separate Git worktree, which is a separate working directory for workflow history, so those records do not mix with source-code history.
+- Long-lived product features are managed only when you explicitly create or adopt them. Ordinary maintenance does not create a feature automatically.
 
 ## Choose Direct Or Managed Work
 
-XC selects governance from six confirmed facts: `needs_persistence`, `material_impact`, `difficult_rollback`, `crosses_sessions`, `multiple_actors`, and `audit_required`. Each fact is `no`, `yes`, or `unknown`. Work may remain direct only when all six are confirmed `no`; any `yes`, any `unknown`, or unavailable classification enters the managed [`xc-work`](skills/xc-work/SKILL.md) lifecycle. An explicit `xc-work operation=run` is always managed.
+Before changing anything, XC decides whether the task is safe to finish as a one-off action. It asks six questions:
 
-Use `xc-work operation=classify` through the executable `python skills/xc-work/scripts/classify.py [fact flags]` boundary. It fills omitted facts with `unknown` and always returns successful managed escalation when input, execution, timeout, or output validation fails; the strict low-level classifier remains diagnostic-only. This boundary validates observable process results but does not authenticate the caller, interpreter, executable bytes, or host. Applicable project policy is read before confirming the facts, and a project bridge may only tighten them. If direct work reveals new evidence, reclassify before the next substantive action and escalate through `xc-work operation=run` when the result is no longer all `no`.
+1. Must progress or evidence be kept for later?
+2. Could the task affect shared code, a public contract, data, permissions, security, infrastructure, or a release?
+3. Is a complete one-step rollback unavailable?
+4. Must the task wait, restart, or continue in another session?
+5. Must multiple people, agents, or external systems coordinate?
+6. Is a retained review, approval, verification, or audit record required?
 
-A stronger model may perform more reasoning in the main session or avoid unnecessary decomposition on a direct path. Model name, vendor, context window, and project technology do not change the facts or permit bypassing managed gates, artifacts, scoped control packets, or verification.
+Each answer is `yes`, `no`, or `unknown`.
+
+- Use **direct work** only when all six answers are confirmed `no`.
+- Use a **managed work order** when any answer is `yes`, `unknown`, or cannot be checked.
+
+Project rules may require managed work even when the general rules allow direct work. If new information appears during a direct task, answer the six questions again before continuing.
+
+### Automation
+
+The public classifier is:
+
+```console
+python skills/xc-work/scripts/classify.py [fact flags]
+```
+
+Its six flags are `needs_persistence`, `material_impact`, `difficult_rollback`, `crosses_sessions`, `multiple_actors`, and `audit_required`. Omitted flags become `unknown`. Invalid input, timeouts, execution failures, and invalid output all produce a managed result instead of silently allowing direct work.
+
+Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed work. This operation is always managed. Model name, vendor, context-window size, and project technology never change the six answers or remove required review and verification.
 
 ## Prerequisites
 
-- Git, including a configured identity when workshop checkpoint commits are enabled.
+- Git. Configure a Git identity if you want XC to save automatic workflow checkpoints.
 - Python and `pip` to run the repository scripts and install [the declared dependencies](requirements.txt).
-- An Agent host that can discover and invoke installed Skill packages.
+- An Agent host that can load and run Skill packages.
 
 The project does not yet publish a formal Python-version or Agent-host compatibility matrix. Validate the workflow with the Python runtime and host used in your environment.
 
-## Install the Skills
+## Install XC
 
-From a checkout of this repository, install its Python dependencies:
+First install the Python dependencies from this repository:
 
 ```console
 python -m pip install -r requirements.txt
 ```
 
-Create the consumer host's target skills directory, then run the root installer:
+Next choose the directory where your Agent host loads Skills, create it if needed, and install XC into it:
 
 ```console
 python install_skills.py --target-skills /absolute/path/to/consumer/.agents/skills
 ```
 
-**This command performs a full replacement of the target `xc-*` package set.** It deletes every directory whose name starts with `xc-` from the target skills directory, removes the previous XC install manifest, and installs complete packages from this checkout. Local changes inside target `xc-*` packages are not preserved. Packages that do not start with `xc-` are left untouched.
+**This command replaces every existing package whose name starts with `xc-`.** Local changes inside those packages are deleted. Packages with other names are not changed.
 
-For managed updates that must detect drift before replacing packages, use the installer owned by [`xc-workflow-evolution`](skills/xc-workflow-evolution/SKILL.md):
+For later updates, the following installer can detect local changes before replacing files:
 
 ```console
 python skills/xc-workflow-evolution/scripts/install_xc_skills.py --source-root /absolute/path/to/xcoding-workflow --target-root /absolute/path/to/consumer/.agents --manifest /absolute/path/to/consumer/.agents/.xc-skill-install-manifest.json
 python skills/xc-workflow-evolution/scripts/install_xc_skills.py --source-root /absolute/path/to/xcoding-workflow --target-root /absolute/path/to/consumer/.agents --manifest /absolute/path/to/consumer/.agents/.xc-skill-install-manifest.json --check
 ```
 
-The managed installer copies complete packages, preserves non-`xc-*` packages, records source and file hashes, and refuses changed, missing, or unexpected target `xc-*` content. A first managed install requires a clean target with no unmanaged `xc-*` packages; an installation created by the root installer already has the required manifest.
+It records which XC files were installed. The `--check` form reports changed, missing, or unexpected files without replacing them. Run the root installer once before using this update path so the installation record exists.
 
-## Create the workshop
+## Create the Workflow Workspace
 
-Run these commands from the consumer project's root only when `.xcoding` does not already exist. They create a separate workshop repository beside the project and expose its workshop directory at the fixed project path.
+XC stores plans, progress, decisions, and evidence in `.xcoding`. Keep that directory in a separate Git repository so workflow history does not mix with source-code history.
+
+Run one of the following examples from your project root only when `.xcoding` does not already exist. The commands create a sibling repository and connect its `.xcoding` directory to the project.
 
 POSIX shell:
 
@@ -76,19 +101,19 @@ git -C $WorkshopRoot init
 New-Item -ItemType Junction -Path (Join-Path $ProjectRoot ".xcoding") -Target (Join-Path $WorkshopRoot ".xcoding") | Out-Null
 ```
 
-Do not replace an existing `.xcoding` path without first identifying and preserving the workshop it references.
+If `.xcoding` already exists, find out what it points to and preserve that workspace instead of replacing it.
 
-## Start managed work
+## Start Your First Managed Task
 
-First invoke [`xc-workshop-setup`](skills/xc-workshop-setup/SKILL.md) with the consumer project root and its `.xcoding` workshop. It establishes the project-specific workflow bridge and knowledge guidance without inventing project commands or conventions.
+Run [`xc-workshop-setup`](skills/xc-workshop-setup/SKILL.md) once. Give it the project root and the `.xcoding` path. It records the project's real build, test, documentation, and commit rules.
 
-Then invoke one lifecycle entry point:
+Then choose one entry point:
 
-- [`xc-work`](skills/xc-work/SKILL.md) for investigation, iteration, repair, review, maintenance, or cross-feature work.
-- [`xc-new-feature`](skills/xc-new-feature/SKILL.md) to create a new explicitly managed feature and its approved baselines.
-- [`xc-feature-adoption`](skills/xc-feature-adoption/SKILL.md) to derive managed baselines for an existing unmanaged feature before future changes.
+- [`xc-work`](skills/xc-work/SKILL.md) for ordinary investigation, repair, review, or maintenance.
+- [`xc-new-feature`](skills/xc-new-feature/SKILL.md) when you are starting a long-lived product feature and want XC to manage it explicitly.
+- [`xc-feature-adoption`](skills/xc-feature-adoption/SKILL.md) when an existing feature should become managed before future changes.
 
-Agent-host invocation syntax varies. Pass the public parameters documented by the selected Skill, including `workshop_path` and `project_root`.
+Agent hosts use different invocation syntax. Follow your host's normal Skill syntax and pass the `project_root` and `workshop_path` parameters documented by the selected entry point.
 
 ## Documentation
 
@@ -96,7 +121,7 @@ Agent-host invocation syntax varies. Pass the public parameters documented by th
 - [Installation](docs/getting-started/installation.md)
 - [Quick start](docs/getting-started/quick-start.md)
 
-Consumer installation is separate from `build_agents.py`. That development helper mirrors this repository's canonical `skills/` tree into this checkout's local Agent discovery directory; it is not the consumer installer.
+`build_agents.py` is only for developing this repository. It refreshes this checkout's local Skill mirror; it does not install XC into another project.
 
 ## License
 
