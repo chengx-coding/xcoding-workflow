@@ -83,6 +83,32 @@ node-artifact
 
 Every managed document uses YAML frontmatter with `schema_version: 1` and `document_kind`. Feature documents carry `feature_id` and initialization/update provenance. Work order documents carry `work_order_id`, `feature_ids`, and a main tree reference. Node artifacts carry `work_order_id`, `node_id`, feature identifiers, and a tree reference.
 
+## Supported Frontmatter YAML
+
+`xc-document` uses its own bounded YAML subset codec and has no external YAML
+package dependency. The supported data model is sufficient for managed
+frontmatter and `--set-json` values:
+
+- String-keyed block mappings and block sequences.
+- Nested flow mappings and sequences using `{...}` and `[...]`.
+- Plain, single-quoted, and double-quoted strings, including standard control,
+  hexadecimal, and Unicode escapes in double-quoted strings.
+- Decimal integers, finite decimal or exponent floats, lowercase
+  `true`/`false`, and `null`.
+- Full-line and whitespace-separated inline comments outside quoted values.
+
+Mapping insertion order is preserved. Rendering uses two-space indentation,
+canonical lowercase booleans and null, finite numbers, deterministic string
+quoting, and one trailing newline.
+
+The codec rejects duplicate keys, tab indentation, indentation jumps,
+non-string or complex keys, ambiguous numeric forms, malformed flow
+collections or escapes, non-finite numbers, and mixed mapping/sequence
+structure. General YAML extensions are outside the contract: tags, anchors,
+aliases, merge keys, block scalars, directives, and multiple documents are
+rejected. Frontmatter is limited to 64 KiB of UTF-8, 2,048 lines, 32 nesting
+levels, 4,096 nodes, 16 KiB per scalar, and 4,096 decimal digits per integer.
+
 ## Default Human-Readable Authoring
 
 Unless the user supplies explicit authoring requirements, managed documents intended for human use follow this default:

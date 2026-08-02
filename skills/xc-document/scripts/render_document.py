@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import yaml
+from frontmatter_yaml import FrontmatterYamlError, dumps, loads
 
 
 PLACEHOLDER = re.compile(r"\{\{([a-z][a-z0-9_]*)\}\}")
@@ -87,17 +87,12 @@ def render(template: Path, output: Path, values: dict[str, Any]) -> dict[str, ob
         lines = content.splitlines()
         _, closing_index = bounds
         try:
-            frontmatter = yaml.safe_load("\n".join(lines[1:closing_index]))
-        except yaml.YAMLError as exc:
+            frontmatter = loads("\n".join(lines[1:closing_index]))
+        except FrontmatterYamlError as exc:
             raise ValueError(f"invalid YAML frontmatter template: {exc}") from exc
         if not isinstance(frontmatter, dict):
             raise ValueError("frontmatter template must be a YAML object")
-        rendered_frontmatter = yaml.safe_dump(
-            replace_placeholders(frontmatter, values),
-            allow_unicode=False,
-            default_flow_style=False,
-            sort_keys=False,
-        ).rstrip()
+        rendered_frontmatter = dumps(replace_placeholders(frontmatter, values)).rstrip()
         rendered_body = PLACEHOLDER.sub(lambda match: text_replacement(match, values), "\n".join(lines[closing_index + 1 :]))
         rendered = f"---\n{rendered_frontmatter}\n---\n{rendered_body}"
     output.parent.mkdir(parents=True, exist_ok=True)

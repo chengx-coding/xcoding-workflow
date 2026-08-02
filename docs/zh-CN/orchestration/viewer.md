@@ -22,7 +22,9 @@ Viewer API 包含 registry、snapshot、refresh、SVG download、client、heartb
 python <runtime-skill-dir>/scripts/viewer_server.py --tree <tree-ref>
 ```
 
-Server 只绑定 `127.0.0.1`，首选默认端口为 `20668`；端口被占用时使用可用的临时端口。默认值来自最近的 `.xcoding/xc-orchestration-runtime.toml`，runtime 随附配置是参考：
+Server 只绑定 `127.0.0.1`，首选默认端口为 `20668`；端口被占用时使用可用的
+临时端口。默认值来自最近的 `.xcoding/xc-orchestration-runtime.json`，
+runtime 随附的 JSON 配置是参考：
 
 ```text
 watch interval: 1 秒

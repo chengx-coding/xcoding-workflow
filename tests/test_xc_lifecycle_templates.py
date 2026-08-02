@@ -72,8 +72,8 @@ class XcLifecycleTemplateTests(unittest.TestCase):
     def test_flow_specs_rebuild_current_templates(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            config = root / "runtime.toml"
-            config.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = root / "runtime.json"
+            config.write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             for name, spec, template, _ in WORKFLOWS:
                 code, payload = self.run_json([sys.executable, str(AUTHOR), "validate-spec", "--spec", str(spec)])
                 self.assertEqual(code, 0, (name, payload))
@@ -101,7 +101,7 @@ class XcLifecycleTemplateTests(unittest.TestCase):
             root = Path(temporary)
             workshop = root / ".xcoding"
             workshop.mkdir()
-            (workshop / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (workshop / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             for name, _, template, first_template_id in WORKFLOWS:
                 runtime_path = workshop / "work-orders" / name / "runtime"
                 code, initialized = self.run_json(

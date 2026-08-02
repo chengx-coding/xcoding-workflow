@@ -45,20 +45,15 @@ Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed w
 ## Prerequisites
 
 - Git. Configure a Git identity if you want XC to save automatic workflow checkpoints.
-- Python and `pip` to run the repository scripts and install [the declared dependencies](requirements.txt).
+- Python to run the repository scripts. XC has no third-party Python runtime package dependency.
 - An Agent host that can load and run Skill packages.
 
 The project does not yet publish a formal Python-version or Agent-host compatibility matrix. Validate the workflow with the Python runtime and host used in your environment.
 
 ## Install XC
 
-First install the Python dependencies from this repository:
-
-```console
-python -m pip install -r requirements.txt
-```
-
-Next choose the directory where your Agent host loads Skills, create it if needed, and install XC into it:
+Choose the directory where your Agent host loads Skills, create it if needed,
+and install XC into it:
 
 ```console
 python install_skills.py --target-skills /absolute/path/to/consumer/.agents/skills

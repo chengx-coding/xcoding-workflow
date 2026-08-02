@@ -19,7 +19,6 @@ import re
 import subprocess
 import tempfile
 import time
-import tomllib
 import uuid
 import xml.etree.ElementTree as ET
 from contextlib import contextmanager
@@ -88,6 +87,8 @@ ATOMIC_REPLACE_RETRY_DELAY_SECONDS = 0.05
 TRANSIENT_REPLACE_WINERRORS = {5, 32}
 RUNTIME_LOCK_TIMEOUT_SECONDS = 15
 RUNTIME_LOCK_RETRY_SECONDS = 0.05
+CONFIG_FILENAME = "xc-orchestration-runtime.json"
+LEGACY_CONFIG_FILENAME = "xc-orchestration-runtime.toml"
 SVG_NODE_WIDTH = 232
 SVG_NODE_HEIGHT = 86
 SVG_COLUMN_GAP = 112
@@ -213,6 +214,36 @@ def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]
     return result
 
 
+def strict_json_object(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    result: Dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate object key: {key}")
+        result[key] = value
+    return result
+
+
+def reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-finite number is not allowed: {value}")
+
+
+def parse_json_config(source_path: Path) -> Dict[str, Any]:
+    try:
+        data = json.loads(
+            source_path.read_text(encoding="utf-8-sig"),
+            object_pairs_hook=strict_json_object,
+            parse_constant=reject_json_constant,
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ConfigError(
+            "invalid JSON configuration",
+            {"path": str(source_path), "error": str(exc)},
+        ) from exc
+    if not isinstance(data, dict):
+        raise ConfigError("configuration root must be an object", {"path": str(source_path)})
+    return data
+
+
 def find_workspace_config(tree_path: Optional[Path]) -> Optional[Path]:
     if tree_path is None:
         current = Path.cwd().resolve()
@@ -220,12 +251,22 @@ def find_workspace_config(tree_path: Optional[Path]) -> Optional[Path]:
         resolved = tree_path.resolve()
         current = resolved if resolved.is_dir() else resolved.parent
     while True:
-        candidates = [current / ".xcoding" / "xc-orchestration-runtime.toml"]
+        candidates = [(current / ".xcoding" / CONFIG_FILENAME, current / ".xcoding" / LEGACY_CONFIG_FILENAME)]
         if current.name == ".xcoding":
-            candidates.insert(0, current / "xc-orchestration-runtime.toml")
-        for candidate in candidates:
+            candidates.insert(0, (current / CONFIG_FILENAME, current / LEGACY_CONFIG_FILENAME))
+        for candidate, legacy_candidate in candidates:
+            if candidate.exists() and legacy_candidate.exists():
+                raise ConfigError(
+                    "both JSON and legacy TOML configuration files exist",
+                    {"path": str(candidate), "legacy_path": str(legacy_candidate)},
+                )
             if candidate.exists():
                 return candidate
+            if legacy_candidate.exists():
+                raise ConfigError(
+                    "legacy TOML configuration is no longer supported; migrate it to JSON",
+                    {"path": str(legacy_candidate), "expected_path": str(candidate)},
+                )
         if current.parent == current:
             return None
         current = current.parent
@@ -267,12 +308,12 @@ def load_config(tree_path: Optional[Path] = None, config_path: Optional[Path] = 
     if source_path:
         if not source_path.exists():
             raise ConfigError("config file not found", {"path": str(source_path)})
-        try:
-            data = tomllib.loads(source_path.read_text(encoding="utf-8-sig"))
-        except tomllib.TOMLDecodeError as exc:
-            raise ConfigError("invalid TOML configuration", {"path": str(source_path), "error": str(exc)}) from exc
-        if not isinstance(data, dict):
-            raise ConfigError("configuration root must be an object", {"path": str(source_path)})
+        if source_path.suffix.lower() != ".json":
+            raise ConfigError(
+                "configuration path must use JSON",
+                {"path": str(source_path), "expected_suffix": ".json"},
+            )
+        data = parse_json_config(source_path)
         config = deep_merge(config, data)
         source = str(source_path)
     validate_config(config, source)

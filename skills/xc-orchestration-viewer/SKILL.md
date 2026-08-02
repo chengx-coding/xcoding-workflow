@@ -52,4 +52,7 @@ dedicated helper process without opening a console window on Windows.
 - The server closes after the configured idle period without active clients, including when it runs in the default background mode.
 - The server polls for changes, preserves the last valid snapshot after parse errors, and reports tree health to the page.
 
-User-editable defaults are loaded from the nearest `.xcoding/xc-orchestration-runtime.toml`. See `xc-orchestration-runtime/assets/xc-orchestration-runtime.toml` for the supported configuration.
+User-editable defaults are loaded from the nearest
+`.xcoding/xc-orchestration-runtime.json`. See
+`xc-orchestration-runtime/assets/xc-orchestration-runtime.json` for the
+supported configuration.

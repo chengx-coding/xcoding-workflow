@@ -56,8 +56,8 @@ class ControlPacketRuntimeTests(unittest.TestCase):
             self.run_git(context, "init")
             self.run_git(context, "config", "user.name", "XC Test")
             self.run_git(context, "config", "user.email", "xc-test@example.invalid")
-        (context / "xc-orchestration-runtime.toml").write_text(
-            f"[git]\nauto_commit = {'true' if auto_commit else 'false'}\n",
+        (context / "xc-orchestration-runtime.json").write_text(
+            json.dumps({"git": {"auto_commit": auto_commit}}) + "\n",
             encoding="utf-8",
         )
         return context, core.load_config(context)

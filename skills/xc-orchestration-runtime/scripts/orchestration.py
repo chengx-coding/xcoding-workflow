@@ -567,7 +567,7 @@ def cmd_validate(args: argparse.Namespace) -> Dict[str, Any]:
 
 
 def add_config_argument(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--config", default="", help="Optional xc-orchestration-runtime TOML path.")
+    parser.add_argument("--config", default="", help="Optional xc-orchestration-runtime JSON path.")
 
 
 def add_tree_argument(parser: argparse.ArgumentParser) -> None:

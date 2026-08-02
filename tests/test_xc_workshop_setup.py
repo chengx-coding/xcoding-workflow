@@ -31,8 +31,8 @@ class XcWorkshopSetupTests(unittest.TestCase):
         self.assertTrue(payload["valid"])
 
         with tempfile.TemporaryDirectory() as temporary:
-            config = Path(temporary) / "runtime.toml"
-            config.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = Path(temporary) / "runtime.json"
+            config.write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             template = Path(temporary) / "workshop-setup-template.xml"
             code, payload = self.run_author("build", "--spec", str(FLOW_SPEC), "--out", str(template), "--config", str(config))
             self.assertEqual(code, 0, payload)

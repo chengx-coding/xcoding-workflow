@@ -22,7 +22,10 @@ Launch the runtime-owned server:
 python <runtime-skill-dir>/scripts/viewer_server.py --tree <tree-ref>
 ```
 
-The server binds only to `127.0.0.1`. Its preferred default port is `20668`; if occupied, it uses an available ephemeral port. Defaults come from the nearest `.xcoding/xc-orchestration-runtime.toml`, with the runtime's shipped configuration as the reference:
+The server binds only to `127.0.0.1`. Its preferred default port is `20668`;
+if occupied, it uses an available ephemeral port. Defaults come from the
+nearest `.xcoding/xc-orchestration-runtime.json`, with the runtime's shipped
+JSON configuration as the reference:
 
 ```text
 watch interval: 1 second
