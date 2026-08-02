@@ -112,7 +112,50 @@ Managed trees contain an access policy and canonical SHA-256 integrity metadata.
 
 ## Persistence, Checkpoints, and Sealing
 
-Configuration precedence is explicit `--config`, then the nearest `.xcoding/xc-orchestration-runtime.toml`, then built-in defaults.
+Configuration precedence is explicit `--config`, then the nearest
+`.xcoding/xc-orchestration-runtime.json`, then built-in defaults. JSON
+configuration rejects duplicate keys, non-finite numbers, and non-object
+roots. Explicit paths must end in `.json`. A discovered retired TOML file
+produces migration guidance instead of silently using defaults; JSON and TOML
+at the same discovery level are rejected as ambiguous.
+
+### Migrate a legacy runtime configuration
+
+To migrate an existing workshop:
+
+1. Copy `skills/xc-orchestration-runtime/assets/xc-orchestration-runtime.json`
+   to `.xcoding/xc-orchestration-runtime.json`.
+2. Transfer customized values from TOML `[git]`, `[integrity]`, and `[viewer]`
+   sections into the corresponding JSON objects. Preserve values such as
+   `git.auto_commit`, the commit message, and a customized Viewer port.
+3. Remove `.xcoding/xc-orchestration-runtime.toml` before running another
+   runtime or Viewer command. Keeping both files is rejected as ambiguous.
+
+The JSON shape is:
+
+```json
+{
+  "schema_version": 1,
+  "git": {
+    "auto_commit": true,
+    "commit_message": "chore(orchestration): {operation} {work_order_id} [{checksum_short}]",
+    "on_commit_failure": "warn"
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "canonicalization": "orchestration-tree-v1",
+    "on_mismatch_read": "warn",
+    "on_mismatch_write": "block"
+  },
+  "viewer": {
+    "host": "127.0.0.1",
+    "port": 20668,
+    "watch_interval_seconds": 1,
+    "heartbeat_seconds": 15,
+    "idle_shutdown_seconds": 120
+  }
+}
+```
 
 With `auto_commit=true`, terminal operations checkpoint the tree and declared artifacts in one path-scoped workshop commit. A checkpoint that newly seals the root also includes a complete standalone SVG. If rendering, writing, or committing fails, runtime restores the previous tree and SVG and returns `persisted_uncommitted`; the terminal transition and artifact declarations are not accepted.
 

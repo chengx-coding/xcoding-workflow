@@ -107,8 +107,8 @@ class XcOrchestrationAuthorTests(unittest.TestCase):
             )
 
     def initialize_dynamic_group(self, root: Path) -> tuple[Path, str]:
-        config = root / "runtime.toml"
-        config.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+        config = root / "runtime.json"
+        config.write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
         flow = {
             "name": "author-runtime-parity",
             "schema_version": 1,
@@ -151,8 +151,8 @@ class XcOrchestrationAuthorTests(unittest.TestCase):
         self.assertEqual(code, 0, built)
         runtime_path = root / ".xcoding" / "work-orders" / "parity" / "runtime"
         runtime_path.mkdir(parents=True)
-        (root / ".xcoding" / "xc-orchestration-runtime.toml").write_text(
-            "[git]\nauto_commit = false\n",
+        (root / ".xcoding" / "xc-orchestration-runtime.json").write_text(
+            json.dumps({"git": {"auto_commit": False}}) + "\n",
             encoding="utf-8",
         )
         code, initialized = self.run_json(
@@ -220,7 +220,7 @@ class XcOrchestrationAuthorTests(unittest.TestCase):
                                 "--out",
                                 str(output),
                                 "--config",
-                                str(root / "runtime.toml"),
+                                str(root / "runtime.json"),
                             ]
                         )
                         self.assertEqual(build_code, 0, built)
@@ -256,7 +256,7 @@ class XcOrchestrationAuthorTests(unittest.TestCase):
                             "--out",
                             str(output),
                             "--config",
-                            str(root / "runtime.toml"),
+                            str(root / "runtime.json"),
                         ]
                     )
                     self.assertEqual(build_code, 2, build_payload)
@@ -309,8 +309,8 @@ class XcOrchestrationAuthorTests(unittest.TestCase):
         )
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            config = root / "runtime.toml"
-            config.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = root / "runtime.json"
+            config.write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             spec = root / "ordinary.json"
             spec.write_text(json.dumps(self.flow_for_case(case)), encoding="utf-8")
             template = root / "ordinary.xml"
@@ -330,8 +330,8 @@ class XcOrchestrationAuthorTests(unittest.TestCase):
             self.assertEqual(code, 0, built)
             workshop = root / ".xcoding"
             workshop.mkdir()
-            (workshop / "xc-orchestration-runtime.toml").write_text(
-                "[git]\nauto_commit = false\n",
+            (workshop / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n",
                 encoding="utf-8",
             )
             code, initialized = self.run_json(
@@ -395,8 +395,8 @@ class XcOrchestrationAuthorTests(unittest.TestCase):
                 ]
             )
             self.assertEqual(code, 0, validated)
-            config = root / "runtime.toml"
-            config.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            config = root / "runtime.json"
+            config.write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             template = root / "template.xml"
             code, built = self.run_json(
                 [

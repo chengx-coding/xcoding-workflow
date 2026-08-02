@@ -444,22 +444,26 @@ def create_environment(root: Path, auto_commit: bool) -> tuple[Path, Path]:
     run_git(workshop_repository, "init", "--quiet")
     run_git(workshop_repository, "config", "user.name", "XC Baseline")
     run_git(workshop_repository, "config", "user.email", "xc-baseline@example.invalid")
-    config = workshop / "xc-orchestration-runtime.toml"
+    config = workshop / "xc-orchestration-runtime.json"
     config.write_text(
-        "\n".join(
-            [
-                "schema_version = 1",
-                "",
-                "[git]",
-                f"auto_commit = {'true' if auto_commit else 'false'}",
-                'commit_message = "test(orchestration): {operation} {work_order_id} [{checksum_short}]"',
-                'on_commit_failure = "warn"',
-                "",
-            ]
-        ),
+        json.dumps(
+            {
+                "schema_version": 1,
+                "git": {
+                    "auto_commit": auto_commit,
+                    "commit_message": (
+                        "test(orchestration): {operation} {work_order_id} "
+                        "[{checksum_short}]"
+                    ),
+                    "on_commit_failure": "warn",
+                },
+            },
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
-    run_git(workshop_repository, "add", ".xcoding/xc-orchestration-runtime.toml")
+    run_git(workshop_repository, "add", ".xcoding/xc-orchestration-runtime.json")
     run_git(workshop_repository, "commit", "--quiet", "-m", "Initialize baseline workshop")
     return project, workshop
 

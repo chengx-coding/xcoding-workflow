@@ -102,11 +102,17 @@ Configuration is loaded in this order:
 
 ```text
 CLI --config
-> nearest .xcoding/xc-orchestration-runtime.toml found upward from the tree
+> nearest .xcoding/xc-orchestration-runtime.json found upward from the tree
 > builtin defaults
 ```
 
-Use `assets/xc-orchestration-runtime.toml` as the configuration starting point.
+Use `assets/xc-orchestration-runtime.json` as the configuration starting
+point. Configuration parsing rejects duplicate object keys, non-finite
+numbers, and non-object roots. An explicit `--config` path must use `.json`.
+Automatic discovery fails with migration guidance when it finds only the
+retired `xc-orchestration-runtime.toml`, and fails as ambiguous when JSON and
+TOML files coexist at the same discovery level; it never silently falls back
+from a legacy file to builtin defaults.
 
 Runtime identity uses `work_order_id`, lifecycle language uses
 `work_order.document_language`, and workbench locations use the documented
@@ -142,7 +148,7 @@ requests.
 ## References
 
 - `assets/minimal-template.xml`: managed starter template.
-- `assets/xc-orchestration-runtime.toml`: configuration template.
+- `assets/xc-orchestration-runtime.json`: configuration template.
 - `references/runtime-protocol.md`: public runtime protocol.
 - `references/subagent-contract.md`: single-node worker contract.
 - `references/subtree-embedding.md`: embedded template protocol.

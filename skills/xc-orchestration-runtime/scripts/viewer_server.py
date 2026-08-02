@@ -660,7 +660,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Launch the local, read-only orchestration viewer.")
     parser.add_argument("--tree", action="append", default=[], help="Initial managed runtime XML tree. May be repeated.")
     parser.add_argument("--allow-root", action="append", default=[], help="Directory eligible for later tree registration. May be repeated.")
-    parser.add_argument("--config", default="", help="Optional xc-orchestration-runtime TOML path.")
+    parser.add_argument("--config", default="", help="Optional xc-orchestration-runtime JSON path.")
     parser.add_argument("--host", default="", help="Loopback host override; only 127.0.0.1 is accepted.")
     parser.add_argument("--port", type=int, default=None, help="Preferred port; occupied ports fall back to an ephemeral port.")
     parser.add_argument("--no-browser", action="store_true", help="Do not open the browser automatically.")

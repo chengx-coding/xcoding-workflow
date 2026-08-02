@@ -112,7 +112,48 @@ Worker 遇到 `state_conflict` 或 `tree_sealed` 时应上报，而不是重试�
 
 ## 持久化、检查点与封存
 
-配置优先级为显式 `--config`、从运行树向上找到的最近 `.xcoding/xc-orchestration-runtime.toml`、内置默认值。
+配置优先级为显式 `--config`、从运行树向上找到的最近
+`.xcoding/xc-orchestration-runtime.json`、内置默认值。JSON 配置拒绝重复键、
+非有限数和非对象根；显式路径必须以 `.json` 结尾。自动发现已弃用 TOML
+文件时会返回迁移说明，不会静默使用默认值；同一发现层级同时存在 JSON 和
+TOML 时按歧义配置拒绝。
+
+### 迁移旧版运行时配置
+
+迁移现有 workshop：
+
+1. 把 `skills/xc-orchestration-runtime/assets/xc-orchestration-runtime.json`
+   复制到 `.xcoding/xc-orchestration-runtime.json`。
+2. 将 TOML 的 `[git]`、`[integrity]` 和 `[viewer]` 节中的自定义值转移到
+   对应 JSON 对象。保留 `git.auto_commit`、提交消息和自定义 Viewer 端口等值。
+3. 再次运行 runtime 或 Viewer 命令前，删除
+   `.xcoding/xc-orchestration-runtime.toml`；同时保留两个文件会因歧义被拒绝。
+
+JSON 结构如下：
+
+```json
+{
+  "schema_version": 1,
+  "git": {
+    "auto_commit": true,
+    "commit_message": "chore(orchestration): {operation} {work_order_id} [{checksum_short}]",
+    "on_commit_failure": "warn"
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "canonicalization": "orchestration-tree-v1",
+    "on_mismatch_read": "warn",
+    "on_mismatch_write": "block"
+  },
+  "viewer": {
+    "host": "127.0.0.1",
+    "port": 20668,
+    "watch_interval_seconds": 1,
+    "heartbeat_seconds": 15,
+    "idle_shutdown_seconds": 120
+  }
+}
+```
 
 当 `auto_commit=true` 时，终态操作把运行树和声明的 artifacts 放入同一个 path-scoped workshop commit。使根节点新近 sealed 的检查点还包含完整独立 SVG。如果渲染、写入或 commit 失败，runtime 会恢复原有运行树和 SVG，并返回 `persisted_uncommitted`；终态转换和 artifact 声明均不被接受。
 

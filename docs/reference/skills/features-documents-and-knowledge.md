@@ -34,6 +34,13 @@ These supporting Skills own durable feature, document, and optional knowledge bo
 - **Typical usage:** render a template with explicit values, write the body for its intended audience, lead with purpose or outcome before technical depth, apply explicit user authoring requirements, then validate the expected managed document kind.
 - **Boundaries:** it does not author content, approve documents, inspect opaque tree references, store dynamic task state in frontmatter, or claim to mechanically prove semantic readability.
 
+Managed frontmatter uses the package-local bounded YAML subset codec rather
+than an external YAML library. It supports string-keyed block and flow
+collections, quoted and plain strings, finite JSON-compatible scalar values,
+comments, and deterministic rendering. It rejects duplicate keys, unsafe YAML
+extensions, ambiguous structure, and inputs beyond documented resource limits;
+it is not a general YAML implementation.
+
 ## `xc-document-evolution`
 
 [Canonical contract](../../../skills/xc-document-evolution/SKILL.md)

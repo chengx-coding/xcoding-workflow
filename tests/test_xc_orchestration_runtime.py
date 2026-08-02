@@ -128,8 +128,8 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.run_git(context, "init")
             self.run_git(context, "config", "user.name", "XC Test")
             self.run_git(context, "config", "user.email", "xc-test@example.invalid")
-        (context / "xc-orchestration-runtime.toml").write_text(
-            f"[git]\nauto_commit = {'true' if auto_commit else 'false'}\n",
+        (context / "xc-orchestration-runtime.json").write_text(
+            json.dumps({"git": {"auto_commit": auto_commit}}) + "\n",
             encoding="utf-8",
         )
         config = core.load_config(context)
@@ -426,13 +426,53 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             context = Path(temporary) / ".xcoding"
             context.mkdir()
-            config_path = context / "xc-orchestration-runtime.toml"
-            config_path.write_bytes(b"\xef\xbb\xbfschema_version = 1\n[git]\nauto_commit = false\n")
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_bytes(
+                b'\xef\xbb\xbf{"schema_version":1,"git":{"auto_commit":false}}\n'
+            )
 
             config = core.load_config(context)
 
             self.assertFalse(config["git"]["auto_commit"])
             self.assertEqual(config["_source"], str(config_path))
+
+    def test_config_rejects_unsafe_or_ambiguous_json(self) -> None:
+        cases = (
+            ('{"git":{"auto_commit":false,"auto_commit":true}}', "duplicate object key"),
+            ('{"viewer":{"port":NaN}}', "non-finite number"),
+            ("[]", "configuration root must be an object"),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            for content, expected in cases:
+                with self.subTest(expected=expected):
+                    config_path.write_text(content, encoding="utf-8")
+                    with self.assertRaises(core.ConfigError) as raised:
+                        core.load_config(context)
+                    self.assertIn(expected, str(raised.exception) + str(raised.exception.details))
+
+    def test_config_rejects_legacy_toml_and_dual_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            legacy = context / "xc-orchestration-runtime.toml"
+            legacy.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(context)
+            self.assertIn("legacy TOML", str(raised.exception))
+
+            current = context / "xc-orchestration-runtime.json"
+            current.write_text('{"git":{"auto_commit":false}}', encoding="utf-8")
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(context)
+            self.assertIn("both JSON and legacy TOML", str(raised.exception))
+
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(config_path=legacy)
+            self.assertIn("must use JSON", str(raised.exception))
 
     def test_atomic_write_retries_transient_replace_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -503,8 +543,8 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.run_git(context, "init")
             self.run_git(context, "config", "user.name", "XC Test")
             self.run_git(context, "config", "user.email", "xc-test@example.invalid")
-            config_path = context / "xc-orchestration-runtime.toml"
-            config_path.write_text("[git]\nauto_commit = true\n", encoding="utf-8")
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(json.dumps({"git": {"auto_commit": True}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
             template = project / "template.xml"
             self.write_template(template, config)
@@ -725,7 +765,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
             template = project / "template.xml"
             self.write_conditional_template(template, config)
@@ -765,7 +805,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
 
             sequence_tree = self.init_flow(
@@ -926,7 +966,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
 
             for terminal_command, reason in (("fail", "ancestor_failed"), ("block", "ancestor_blocked")):
@@ -1000,7 +1040,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
 
             leaf_tree = self.init_flow(
@@ -1070,7 +1110,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
             template = project / "template.xml"
             self.write_template(template, config)
@@ -1176,7 +1216,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
             template = project / "template.xml"
             self.write_template(template, config)
@@ -1261,7 +1301,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
             template = project / "template.xml"
             self.write_template(template, config)
@@ -1298,8 +1338,8 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 project = Path(temporary) / "project"
                 context = project / ".xcoding"
                 context.mkdir(parents=True)
-                config_path = context / "xc-orchestration-runtime.toml"
-                config_path.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+                config_path = context / "xc-orchestration-runtime.json"
+                config_path.write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
                 config = core.load_config(context)
                 template = project / "case.xml"
                 spec = {
@@ -1370,8 +1410,8 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                         self.run_git(context, "init")
                         self.run_git(context, "config", "user.name", "XC Test")
                         self.run_git(context, "config", "user.email", "xc-test@example.invalid")
-                    (context / "xc-orchestration-runtime.toml").write_text(
-                        f"[git]\nauto_commit = {'true' if auto_commit else 'false'}\n",
+                    (context / "xc-orchestration-runtime.json").write_text(
+                        json.dumps({"git": {"auto_commit": auto_commit}}) + "\n",
                         encoding="utf-8",
                     )
                     config = core.load_config(context)
@@ -1457,7 +1497,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
 
             def ready_after_enable(policy: str) -> list[str]:
@@ -1493,7 +1533,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
             template = project / "dynamic.xml"
             self.write_dynamic_group_template(template, config)
@@ -1543,7 +1583,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
             template = project / "dynamic-recovery.xml"
             self.write_dynamic_group_template(template, config)
@@ -1618,7 +1658,7 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
             config = core.load_config(context)
             template = project / "template.xml"
             self.write_template(template, config)
@@ -1697,8 +1737,8 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.run_git(context, "init")
             self.run_git(context, "config", "user.name", "XC Test")
             self.run_git(context, "config", "user.email", "xc-test@example.invalid")
-            (context / "xc-orchestration-runtime.toml").write_text(
-                "[git]\nauto_commit = true\n",
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": True}}) + "\n",
                 encoding="utf-8",
             )
             config = core.load_config(context)
@@ -1748,8 +1788,8 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             project = Path(temporary) / "project"
             context = project / ".xcoding"
             context.mkdir(parents=True)
-            (context / "xc-orchestration-runtime.toml").write_text(
-                "[git]\nauto_commit = false\n",
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n",
                 encoding="utf-8",
             )
             config = core.load_config(context)
@@ -1834,32 +1874,9 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.run_git(context, "init")
             self.run_git(context, "config", "user.name", "XC Test")
             self.run_git(context, "config", "user.email", "xc-test@example.invalid")
-            config_path = context / "xc-orchestration-runtime.toml"
+            config_path = context / "xc-orchestration-runtime.json"
             config_path.write_text(
-                "\n".join(
-                    [
-                        "schema_version = 1",
-                        "",
-                        "[git]",
-                        "auto_commit = true",
-                        'commit_message = "chore(orchestration): {operation} {work_order_id} [{checksum_short}]"',
-                        'on_commit_failure = "warn"',
-                        "",
-                        "[integrity]",
-                        'algorithm = "sha256"',
-                        'canonicalization = "orchestration-tree-v1"',
-                        'on_mismatch_read = "warn"',
-                        'on_mismatch_write = "block"',
-                        "",
-                        "[viewer]",
-                        'host = "127.0.0.1"',
-                        "port = 20668",
-                        "watch_interval_seconds = 1",
-                        "heartbeat_seconds = 15",
-                        "idle_shutdown_seconds = 120",
-                        "",
-                    ]
-                ),
+                json.dumps(core.DEFAULT_CONFIG, indent=2) + "\n",
                 encoding="utf-8",
             )
             config = core.load_config(context)
@@ -1938,18 +1955,19 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
 
 class ViewerServerTests(unittest.TestCase):
     def write_config(self, directory: Path, idle_shutdown_seconds: int) -> Path:
-        config_path = directory / "viewer.toml"
+        config_path = directory / "viewer.json"
         config_path.write_text(
-            "\n".join(
-                [
-                    "[viewer]",
-                    "port = 0",
-                    "watch_interval_seconds = 1",
-                    "heartbeat_seconds = 1",
-                    f"idle_shutdown_seconds = {idle_shutdown_seconds}",
-                    "",
-                ]
-            ),
+            json.dumps(
+                {
+                    "viewer": {
+                        "port": 0,
+                        "watch_interval_seconds": 1,
+                        "heartbeat_seconds": 1,
+                        "idle_shutdown_seconds": idle_shutdown_seconds,
+                    }
+                }
+            )
+            + "\n",
             encoding="utf-8",
         )
         return config_path

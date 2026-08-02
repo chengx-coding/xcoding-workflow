@@ -6,19 +6,15 @@ Install xcoding-workflow from a local checkout into the skills directory used by
 
 ## Requirements
 
-You need Git, Python with `pip`, and an Agent host capable of discovering and invoking Skill packages. A configured Git identity is also needed when managed workshop checkpoints are set to create commits.
+You need Git, Python, and an Agent host capable of discovering and invoking Skill packages. A configured Git identity is also needed when managed workshop checkpoints are set to create commits.
 
-There is currently no formal Python-version or Agent-host compatibility matrix. The repository declares its Python package requirements in [`requirements.txt`](../../requirements.txt), but that dependency declaration is not a host support guarantee. Validate the selected Python runtime and Agent host in your environment.
+There is currently no formal Python-version or Agent-host compatibility matrix. Validate the selected Python runtime and Agent host in your environment.
 
-## Install repository dependencies
+## Python dependencies
 
-Run this command from the xcoding-workflow checkout:
-
-```console
-python -m pip install -r requirements.txt
-```
-
-The current dependency set includes the YAML parser used by workflow document and template tooling.
+XC currently uses only the Python standard library and requires no
+third-party runtime package installation. Managed-document frontmatter is
+handled by the bounded YAML subset codec shipped inside `xc-document`.
 
 ## Full-replacement consumer installation
 

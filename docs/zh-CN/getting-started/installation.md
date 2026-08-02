@@ -6,19 +6,14 @@
 
 ## 环境要求
 
-需要 Git、带有 `pip` 的 Python，以及能够发现并调用 Skill 包的 Agent 宿主。如果受管 workshop 检查点被配置为创建提交，还需要有效的 Git 身份配置。
+需要 Git、Python，以及能够发现并调用 Skill 包的 Agent 宿主。如果受管 workshop 检查点被配置为创建提交，还需要有效的 Git 身份配置。
 
-目前尚无正式的 Python 版本或 Agent 宿主兼容矩阵。仓库在 [`requirements.txt`](../../../requirements.txt) 中声明 Python 包依赖，但依赖声明不代表宿主支持保证。请在实际环境中验证所选 Python 运行时和 Agent 宿主。
+目前尚无正式的 Python 版本或 Agent 宿主兼容矩阵。请在实际环境中验证所选 Python 运行时和 Agent 宿主。
 
-## 安装仓库依赖
+## Python 依赖
 
-在 xcoding-workflow 检出目录中运行：
-
-```console
-python -m pip install -r requirements.txt
-```
-
-当前依赖包含工作流文档和模板工具所使用的 YAML 解析器。
+XC 当前只使用 Python 标准库，不需要安装第三方运行时包。受管文档
+frontmatter 由 `xc-document` 随附的有界 YAML 子集 codec 处理。
 
 ## 完整替换式消费端安装
 

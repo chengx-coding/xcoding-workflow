@@ -51,8 +51,8 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         workshop = workshop_repo / ".xcoding"
         workshop.mkdir(parents=True)
         self.run_git(workshop_repo, "init")
-        (workshop / "xc-orchestration-runtime.toml").write_text(
-            "[git]\nauto_commit = false\n",
+        (workshop / "xc-orchestration-runtime.json").write_text(
+            json.dumps({"git": {"auto_commit": False}}) + "\n",
             encoding="utf-8",
         )
         workbench_path = workshop / "work-orders" / work_order_id

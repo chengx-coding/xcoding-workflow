@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import yaml
+from frontmatter_yaml import FrontmatterYamlError, loads
 
 
 DOCUMENT_KINDS = {
@@ -49,8 +49,8 @@ def parse_document(path: Path) -> tuple[dict[str, Any], str, list[str]]:
     if closing_index is None:
         return {}, text, ["missing YAML frontmatter closing delimiter"]
     try:
-        metadata = yaml.safe_load("\n".join(lines[1:closing_index]))
-    except yaml.YAMLError as exc:
+        metadata = loads("\n".join(lines[1:closing_index]))
+    except FrontmatterYamlError as exc:
         return {}, text, [f"invalid YAML frontmatter: {exc}"]
     if not isinstance(metadata, dict):
         return {}, text, ["frontmatter must be a YAML object"]
