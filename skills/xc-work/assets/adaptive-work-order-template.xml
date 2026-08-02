@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="adaptive-work-order" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
+  <meta>
+    <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="1ebadc40dcece24c4cfb4771a7f7a097c13d7fb689506c8583a88505e6c153ba" />
+  </meta>
+  <blackboard>
+    <var key="work_order.document_language">en</var>
+    <var key="work_order.plan_id" />
+    <var key="work_order.plan_receipt">{}</var>
+    <var key="work_order.required_source_ids">[]</var>
+    <var key="work_order_id" />
+    <var key="today" />
+  </blackboard>
+  <node executor="main" mode="sequence" role="root" template_id="root" title="Adaptive Work Order" type="composite">
+    <children>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="work-group" title="Planned Work" type="composite" />
+    </children>
+  </node>
+</orchestration>
