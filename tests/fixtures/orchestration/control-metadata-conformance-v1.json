@@ -1,0 +1,288 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "valid-task-all-families",
+      "node_type": "task",
+      "metadata": {
+        "metadata.control_packet.category.supporting-records.selectors": "[\"node:rt_source\",\"bb:source.ids\"]",
+        "metadata.control_packet.category.supporting-records.min_sources": "0",
+        "metadata.control_packet.category.supporting-records.artifact_min": "0",
+        "metadata.control_packet.blackboard_keys": "[\"decision.outcome\"]",
+        "metadata.completion.required_fields": "[\"summary\",\"validation\"]",
+        "metadata.completion.artifacts.min": "0",
+        "metadata.completion.artifacts.max": "1",
+        "metadata.completion.artifacts.path": "bb:document.path",
+        "metadata.completion.checks": "[\"xc-document\"]",
+        "metadata.completion.check.xc-document.subject": "bb:document.path",
+        "metadata.completion.check.xc-document.facts.document_kind": "literal:node-artifact"
+      },
+      "valid": true,
+      "violations": []
+    },
+    {
+      "id": "valid-structured-gate",
+      "node_type": "gate",
+      "metadata": {
+        "metadata.gate.outcomes": "[\"approved\",\"revision-required\"]",
+        "metadata.gate.decision_required": "true",
+        "metadata.gate.outcome_key": "gate.outcome"
+      },
+      "valid": true,
+      "violations": []
+    },
+    {
+      "id": "valid-unknown-ordinary-metadata",
+      "node_type": "task",
+      "metadata": {
+        "metadata.domain.arbitrary": "preserved"
+      },
+      "valid": true,
+      "violations": []
+    },
+    {
+      "id": "invalid-unknown-control-packet-key",
+      "node_type": "task",
+      "metadata": {
+        "metadata.control_packet.unknown": "value"
+      },
+      "valid": false,
+      "violations": [
+        {"key": "metadata.control_packet.unknown", "code": "missing_control_packet_category_member"},
+        {"key": "metadata.control_packet.unknown", "code": "unknown_control_metadata_key"}
+      ]
+    },
+    {
+      "id": "invalid-control-packet-owner",
+      "node_type": "composite",
+      "metadata": {
+        "metadata.control_packet.category.records.selectors": "[\"node:rt_source\"]",
+        "metadata.control_packet.category.records.min_sources": "1",
+        "metadata.control_packet.category.records.artifact_min": "0"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_metadata_owner"]
+    },
+    {
+      "id": "invalid-category-name",
+      "node_type": "task",
+      "metadata": {
+        "metadata.control_packet.category.Bad_Name.selectors": "[\"node:rt_source\"]",
+        "metadata.control_packet.category.Bad_Name.min_sources": "1",
+        "metadata.control_packet.category.Bad_Name.artifact_min": "0"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_control_packet_category"]
+    },
+    {
+      "id": "invalid-missing-category-members",
+      "node_type": "task",
+      "metadata": {
+        "metadata.control_packet.category.records.selectors": "[\"node:rt_source\"]"
+      },
+      "valid": false,
+      "violations": [
+        {"key": "metadata.control_packet.category.records.artifact_min", "code": "missing_control_packet_category_member"},
+        {"key": "metadata.control_packet.category.records.min_sources", "code": "missing_control_packet_category_member"}
+      ]
+    },
+    {
+      "id": "invalid-selector-list",
+      "node_type": "task",
+      "metadata": {
+        "metadata.control_packet.category.records.selectors": "{\"source\":\"rt_source\"}",
+        "metadata.control_packet.category.records.min_sources": "1",
+        "metadata.control_packet.category.records.artifact_min": "0"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_selector_list"]
+    },
+    {
+      "id": "invalid-duplicate-selector",
+      "node_type": "task",
+      "metadata": {
+        "metadata.control_packet.category.records.selectors": "[\"node:rt_source\",\"node:rt_source\"]",
+        "metadata.control_packet.category.records.min_sources": "1",
+        "metadata.control_packet.category.records.artifact_min": "0"
+      },
+      "valid": false,
+      "violation_codes": ["duplicate_selector"]
+    },
+    {
+      "id": "invalid-min-sources",
+      "node_type": "task",
+      "metadata": {
+        "metadata.control_packet.category.records.selectors": "[\"node:rt_source\"]",
+        "metadata.control_packet.category.records.min_sources": "-1",
+        "metadata.control_packet.category.records.artifact_min": "0"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_min_sources"]
+    },
+    {
+      "id": "invalid-artifact-min",
+      "node_type": "task",
+      "metadata": {
+        "metadata.control_packet.category.records.selectors": "[\"node:rt_source\"]",
+        "metadata.control_packet.category.records.min_sources": "1",
+        "metadata.control_packet.category.records.artifact_min": "many"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_artifact_min"]
+    },
+    {
+      "id": "invalid-blackboard-keys",
+      "node_type": "task",
+      "metadata": {
+        "metadata.control_packet.category.records.selectors": "[\"node:rt_source\"]",
+        "metadata.control_packet.category.records.min_sources": "1",
+        "metadata.control_packet.category.records.artifact_min": "0",
+        "metadata.control_packet.blackboard_keys": "[\"selected.key\",\"selected.key\"]"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_blackboard_keys"]
+    },
+    {
+      "id": "invalid-required-fields",
+      "node_type": "task",
+      "metadata": {
+        "metadata.completion.required_fields": "[\"summary\",\"evidence\"]"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_required_fields"]
+    },
+    {
+      "id": "invalid-artifact-bounds",
+      "node_type": "task",
+      "metadata": {
+        "metadata.completion.artifacts.min": "2",
+        "metadata.completion.artifacts.max": "1"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_artifact_bounds"]
+    },
+    {
+      "id": "invalid-artifact-path-selector",
+      "node_type": "task",
+      "metadata": {
+        "metadata.completion.artifacts.min": "1",
+        "metadata.completion.artifacts.max": "1",
+        "metadata.completion.artifacts.path": "document.path"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_artifact_path_selector"]
+    },
+    {
+      "id": "invalid-check-names",
+      "node_type": "task",
+      "metadata": {
+        "metadata.completion.checks": "[\"xc-document\",\"xc-document\"]",
+        "metadata.completion.check.xc-document.subject": "literal:document.md"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_check_names"]
+    },
+    {
+      "id": "invalid-missing-check-subject",
+      "node_type": "task",
+      "metadata": {
+        "metadata.completion.checks": "[\"xc-document\"]"
+      },
+      "valid": false,
+      "violation_codes": ["missing_check_subject"]
+    },
+    {
+      "id": "invalid-check-subject-selector",
+      "node_type": "task",
+      "metadata": {
+        "metadata.completion.checks": "[\"xc-document\"]",
+        "metadata.completion.check.xc-document.subject": "document.md"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_check_subject_selector"]
+    },
+    {
+      "id": "invalid-check-fact-name",
+      "node_type": "task",
+      "metadata": {
+        "metadata.completion.checks": "[\"xc-document\"]",
+        "metadata.completion.check.xc-document.subject": "literal:document.md",
+        "metadata.completion.check.xc-document.facts.bad-name": "literal:value"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_check_fact_name"]
+    },
+    {
+      "id": "invalid-check-fact-selector",
+      "node_type": "task",
+      "metadata": {
+        "metadata.completion.checks": "[\"xc-document\"]",
+        "metadata.completion.check.xc-document.subject": "literal:document.md",
+        "metadata.completion.check.xc-document.facts.document_kind": "document-kind"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_check_fact_selector"]
+    },
+    {
+      "id": "invalid-unknown-completion-key",
+      "node_type": "task",
+      "metadata": {
+        "metadata.completion.unknown": "value"
+      },
+      "valid": false,
+      "violation_codes": ["unknown_control_metadata_key"]
+    },
+    {
+      "id": "invalid-gate-outcomes",
+      "node_type": "gate",
+      "metadata": {
+        "metadata.gate.outcomes": "[\"Approved\"]",
+        "metadata.gate.decision_required": "true"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_gate_outcomes"]
+    },
+    {
+      "id": "invalid-gate-decision-required",
+      "node_type": "gate",
+      "metadata": {
+        "metadata.gate.outcomes": "[\"approved\"]",
+        "metadata.gate.decision_required": "yes"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_gate_decision_required"]
+    },
+    {
+      "id": "invalid-gate-outcome-key",
+      "node_type": "gate",
+      "metadata": {
+        "metadata.gate.outcomes": "[\"approved\"]",
+        "metadata.gate.decision_required": "false",
+        "metadata.gate.outcome_key": "bad key"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_gate_outcome_key"]
+    },
+    {
+      "id": "invalid-gate-owner",
+      "node_type": "task",
+      "metadata": {
+        "metadata.gate.outcomes": "[\"approved\"]",
+        "metadata.gate.decision_required": "false"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_metadata_owner"]
+    },
+    {
+      "id": "invalid-unknown-gate-key",
+      "node_type": "gate",
+      "metadata": {
+        "metadata.gate.outcomes": "[\"approved\"]",
+        "metadata.gate.decision_required": "false",
+        "metadata.gate.unknown": "value"
+      },
+      "valid": false,
+      "violation_codes": ["unknown_control_metadata_key"]
+    }
+  ]
+}

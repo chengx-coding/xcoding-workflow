@@ -1,0 +1,1230 @@
+{
+  "schema_version": 1,
+  "manifest_id": "model-robust-workflow-baseline-v1",
+  "normalization_version": 1,
+  "python_version": "3.12.10",
+  "baseline_commit": "c30d2484824b841f8e6325f186a6194f5f8d135d",
+  "input_hashes": {
+    "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
+    "tests/workflow_scenario_harness.py": "ee4ded91f575449c5db36b5a8074d2d566462537f4b0bd6d2724639999cebde5",
+    "tests/test_xc_workflow_governance.py": "3b0d80d121b76598c78e5e6850432acc1a4368673055a64aa99c43dac9a8d753",
+    "skills/xc-open-work-order/scripts/open_work_order.py": "b9e21c0fad63ab8b670147de3b21377685b61c52dbeb3a284c58d3ba2e957ac7",
+    "skills/xc-orchestration-runtime/scripts/orchestration.py": "479820097a4cf0bd2279c6c77254606ed4d711237c78cc69c2886e2f418dea88",
+    "skills/xc-orchestration-runtime/scripts/runtime_core.py": "09cedcef6d7684f436894345b36ca8c7af3aab12c36eba431dbbc751150f2097",
+    "skills/xc-work/assets/work-order-template.xml": "30bf3f10742f58567f6a4946f7a4b98acd753e3946710191912b399cd13bb3df",
+    "skills/xc-document-evolution/assets/document-evolution-template.xml": "beb26e040bfc87ea6afe7c911adb84c72a53ccbdfe1c20e6acc55792617db86e",
+    "skills/xc-document/scripts/render_document.py": "b6249f84544d85006cfa62ef8f879e93d3f812c1d35a05d902df3c70612c66e1",
+    "skills/xc-document/scripts/validate_document.py": "dd6d7db27a0161cb1425dc607f2c0a0fbe82d91d2b5d91a45c6fe162ecbdc105",
+    "skills/xc-document/assets/templates/work-order-goal.md": "94bea7ac8b9d4af8c1a7e07f22114bb417480de161ae7d91590f62e4e2077f79",
+    "skills/xc-document/assets/templates/work-order-analysis.md": "68140d901ceb976d0e0ea53efd9cc4c7182ca6e54f931f159217b1348fdace0d",
+    "skills/xc-document/assets/templates/work-order-solution.md": "c2bdce10714f5a8e3230c557114a4003af81609d73d0140a23ed7a1c42f54b88",
+    "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
+    "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
+  },
+  "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
+  "measurements": {
+    "profiles": {
+      "T0": {
+        "auto_commit_false": {
+          "metrics": {
+            "context_bytes": 0,
+            "runtime_calls": 0,
+            "explicit_transitions": 0,
+            "delegations": 0,
+            "subagent_delegations": 0,
+            "tool_delegations": 0,
+            "nodes": 0,
+            "executable_nodes": 0,
+            "artifacts": 0,
+            "documents": 0,
+            "gates": 0,
+            "terminal_operations": 0,
+            "checkpoint_commits": 0,
+            "maintenance_families": 1,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": []
+          }
+        },
+        "auto_commit_true": {
+          "metrics": {
+            "context_bytes": 0,
+            "runtime_calls": 0,
+            "explicit_transitions": 0,
+            "delegations": 0,
+            "subagent_delegations": 0,
+            "tool_delegations": 0,
+            "nodes": 0,
+            "executable_nodes": 0,
+            "artifacts": 0,
+            "documents": 0,
+            "gates": 0,
+            "terminal_operations": 0,
+            "checkpoint_commits": 0,
+            "maintenance_families": 1,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": []
+          }
+        }
+      },
+      "T1": {
+        "auto_commit_false": {
+          "metrics": {
+            "context_bytes": 0,
+            "runtime_calls": 0,
+            "explicit_transitions": 0,
+            "delegations": 0,
+            "subagent_delegations": 0,
+            "tool_delegations": 0,
+            "nodes": 0,
+            "executable_nodes": 0,
+            "artifacts": 0,
+            "documents": 0,
+            "gates": 0,
+            "terminal_operations": 0,
+            "checkpoint_commits": 0,
+            "maintenance_families": 1,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": []
+          }
+        },
+        "auto_commit_true": {
+          "metrics": {
+            "context_bytes": 0,
+            "runtime_calls": 0,
+            "explicit_transitions": 0,
+            "delegations": 0,
+            "subagent_delegations": 0,
+            "tool_delegations": 0,
+            "nodes": 0,
+            "executable_nodes": 0,
+            "artifacts": 0,
+            "documents": 0,
+            "gates": 0,
+            "terminal_operations": 0,
+            "checkpoint_commits": 0,
+            "maintenance_families": 1,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": []
+          }
+        }
+      },
+      "T1-M": {
+        "auto_commit_false": {
+          "metrics": {
+            "context_bytes": 64753,
+            "runtime_calls": 33,
+            "explicit_transitions": 16,
+            "delegations": 6,
+            "subagent_delegations": 2,
+            "tool_delegations": 4,
+            "nodes": 28,
+            "executable_nodes": 15,
+            "artifacts": 2,
+            "documents": 2,
+            "gates": 0,
+            "terminal_operations": 8,
+            "checkpoint_commits": 0,
+            "maintenance_families": 4,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": [
+              ".xcoding/work-orders/baseline-t1m/goal.md",
+              ".xcoding/work-orders/baseline-t1m/result.md",
+              ".xcoding/work-orders/baseline-t1m/runtime/baseline-t1-m.svg",
+              ".xcoding/work-orders/baseline-t1m/runtime/orchestration.xml"
+            ]
+          }
+        },
+        "auto_commit_true": {
+          "metrics": {
+            "context_bytes": 65417,
+            "runtime_calls": 33,
+            "explicit_transitions": 16,
+            "delegations": 6,
+            "subagent_delegations": 2,
+            "tool_delegations": 4,
+            "nodes": 28,
+            "executable_nodes": 15,
+            "artifacts": 2,
+            "documents": 2,
+            "gates": 0,
+            "terminal_operations": 8,
+            "checkpoint_commits": 8,
+            "maintenance_families": 4,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": []
+          }
+        }
+      },
+      "T2": {
+        "auto_commit_false": {
+          "metrics": {
+            "context_bytes": 90546,
+            "runtime_calls": 45,
+            "explicit_transitions": 22,
+            "delegations": 9,
+            "subagent_delegations": 3,
+            "tool_delegations": 6,
+            "nodes": 36,
+            "executable_nodes": 21,
+            "artifacts": 3,
+            "documents": 3,
+            "gates": 0,
+            "terminal_operations": 11,
+            "checkpoint_commits": 0,
+            "maintenance_families": 5,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": [
+              ".xcoding/work-orders/baseline-t2/analysis.md",
+              ".xcoding/work-orders/baseline-t2/goal.md",
+              ".xcoding/work-orders/baseline-t2/result.md",
+              ".xcoding/work-orders/baseline-t2/runtime/baseline-t2.svg",
+              ".xcoding/work-orders/baseline-t2/runtime/orchestration.xml"
+            ]
+          }
+        },
+        "auto_commit_true": {
+          "metrics": {
+            "context_bytes": 91459,
+            "runtime_calls": 45,
+            "explicit_transitions": 22,
+            "delegations": 9,
+            "subagent_delegations": 3,
+            "tool_delegations": 6,
+            "nodes": 36,
+            "executable_nodes": 21,
+            "artifacts": 3,
+            "documents": 3,
+            "gates": 0,
+            "terminal_operations": 11,
+            "checkpoint_commits": 11,
+            "maintenance_families": 5,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": []
+          }
+        }
+      },
+      "T3": {
+        "auto_commit_false": {
+          "metrics": {
+            "context_bytes": 140138,
+            "runtime_calls": 70,
+            "explicit_transitions": 34,
+            "delegations": 14,
+            "subagent_delegations": 6,
+            "tool_delegations": 8,
+            "nodes": 46,
+            "executable_nodes": 29,
+            "artifacts": 6,
+            "documents": 4,
+            "gates": 1,
+            "terminal_operations": 17,
+            "checkpoint_commits": 0,
+            "maintenance_families": 8,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": [
+              ".xcoding/work-orders/baseline-t3/analysis.md",
+              ".xcoding/work-orders/baseline-t3/artifacts/implementation/implementation-1.md",
+              ".xcoding/work-orders/baseline-t3/artifacts/verification/verification-1.md",
+              ".xcoding/work-orders/baseline-t3/goal.md",
+              ".xcoding/work-orders/baseline-t3/result.md",
+              ".xcoding/work-orders/baseline-t3/runtime/baseline-t3.svg",
+              ".xcoding/work-orders/baseline-t3/runtime/orchestration.xml",
+              ".xcoding/work-orders/baseline-t3/solution.md"
+            ]
+          }
+        },
+        "auto_commit_true": {
+          "metrics": {
+            "context_bytes": 141549,
+            "runtime_calls": 70,
+            "explicit_transitions": 34,
+            "delegations": 14,
+            "subagent_delegations": 6,
+            "tool_delegations": 8,
+            "nodes": 46,
+            "executable_nodes": 29,
+            "artifacts": 6,
+            "documents": 4,
+            "gates": 1,
+            "terminal_operations": 17,
+            "checkpoint_commits": 17,
+            "maintenance_families": 8,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": []
+          }
+        }
+      },
+      "T4": {
+        "auto_commit_false": {
+          "metrics": {
+            "context_bytes": 164894,
+            "runtime_calls": 85,
+            "explicit_transitions": 40,
+            "delegations": 17,
+            "subagent_delegations": 9,
+            "tool_delegations": 8,
+            "nodes": 49,
+            "executable_nodes": 32,
+            "artifacts": 9,
+            "documents": 4,
+            "gates": 1,
+            "terminal_operations": 20,
+            "checkpoint_commits": 0,
+            "maintenance_families": 8,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": [
+              ".xcoding/work-orders/baseline-t4/analysis.md",
+              ".xcoding/work-orders/baseline-t4/artifacts/implementation/implementation-1.md",
+              ".xcoding/work-orders/baseline-t4/artifacts/implementation/implementation-2.md",
+              ".xcoding/work-orders/baseline-t4/artifacts/implementation/implementation-3.md",
+              ".xcoding/work-orders/baseline-t4/artifacts/verification/verification-1.md",
+              ".xcoding/work-orders/baseline-t4/artifacts/verification/verification-2.md",
+              ".xcoding/work-orders/baseline-t4/goal.md",
+              ".xcoding/work-orders/baseline-t4/result.md",
+              ".xcoding/work-orders/baseline-t4/runtime/baseline-t4.svg",
+              ".xcoding/work-orders/baseline-t4/runtime/orchestration.xml",
+              ".xcoding/work-orders/baseline-t4/solution.md"
+            ]
+          }
+        },
+        "auto_commit_true": {
+          "metrics": {
+            "context_bytes": 166554,
+            "runtime_calls": 85,
+            "explicit_transitions": 40,
+            "delegations": 17,
+            "subagent_delegations": 9,
+            "tool_delegations": 8,
+            "nodes": 49,
+            "executable_nodes": 32,
+            "artifacts": 9,
+            "documents": 4,
+            "gates": 1,
+            "terminal_operations": 20,
+            "checkpoint_commits": 20,
+            "maintenance_families": 8,
+            "snapshot_calls": 0,
+            "direct_runtime_xml_reads": 0
+          },
+          "cleanup": {
+            "project_undeclared_paths": [],
+            "workshop_undeclared_paths": [],
+            "workshop_declared_dirty_paths": []
+          }
+        }
+      }
+    },
+    "checkpoint_commits": {
+      "auto_commit_false": {
+        "T0": 0,
+        "T1": 0,
+        "T1-M": 0,
+        "T2": 0,
+        "T3": 0,
+        "T4": 0
+      },
+      "auto_commit_true": {
+        "T0": 0,
+        "T1": 0,
+        "T1-M": 8,
+        "T2": 11,
+        "T3": 17,
+        "T4": 20
+      }
+    },
+    "semantic_negative_baseline": {
+      "sibling_count": 128,
+      "target_projection_count": 1,
+      "target_forbidden_sibling_id_occurrences": 0,
+      "manual_source_ids_required": 5,
+      "target_to_source_bindings": 0,
+      "scoped_decision_bindings": 0,
+      "scoped_evidence_bindings": 0,
+      "scoped_blocker_recovery_bindings": 0,
+      "full_blackboard_exposes_unselected_value": true,
+      "snapshot_calls": 0,
+      "direct_runtime_xml_reads": 0,
+      "category_access": {
+        "target": "show-by-manual-node-id",
+        "confirmed_decisions": "show-by-manual-node-id-or-full-blackboard",
+        "supporting_records": "show-by-two-manual-node-ids",
+        "blocker_recovery": "show-by-two-manual-node-ids"
+      },
+      "cleanup": {
+        "project_undeclared_paths": [],
+        "workshop_undeclared_paths": [],
+        "workshop_declared_dirty_paths": [
+          ".xcoding/work-orders/baseline-semantic-negative/runtime/orchestration.xml"
+        ]
+      }
+    },
+    "classification_only_scenarios": [
+      "T-U"
+    ]
+  },
+  "change_note": {
+    "reason": "Record phase-2/3 runtime and document primitive input hashes without changing baseline measurements.",
+    "old_value": {
+      "profiles": {
+        "T0": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 0,
+              "runtime_calls": 0,
+              "explicit_transitions": 0,
+              "delegations": 0,
+              "subagent_delegations": 0,
+              "tool_delegations": 0,
+              "nodes": 0,
+              "executable_nodes": 0,
+              "artifacts": 0,
+              "documents": 0,
+              "gates": 0,
+              "terminal_operations": 0,
+              "checkpoint_commits": 0,
+              "maintenance_families": 1,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 0,
+              "runtime_calls": 0,
+              "explicit_transitions": 0,
+              "delegations": 0,
+              "subagent_delegations": 0,
+              "tool_delegations": 0,
+              "nodes": 0,
+              "executable_nodes": 0,
+              "artifacts": 0,
+              "documents": 0,
+              "gates": 0,
+              "terminal_operations": 0,
+              "checkpoint_commits": 0,
+              "maintenance_families": 1,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T1": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 0,
+              "runtime_calls": 0,
+              "explicit_transitions": 0,
+              "delegations": 0,
+              "subagent_delegations": 0,
+              "tool_delegations": 0,
+              "nodes": 0,
+              "executable_nodes": 0,
+              "artifacts": 0,
+              "documents": 0,
+              "gates": 0,
+              "terminal_operations": 0,
+              "checkpoint_commits": 0,
+              "maintenance_families": 1,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 0,
+              "runtime_calls": 0,
+              "explicit_transitions": 0,
+              "delegations": 0,
+              "subagent_delegations": 0,
+              "tool_delegations": 0,
+              "nodes": 0,
+              "executable_nodes": 0,
+              "artifacts": 0,
+              "documents": 0,
+              "gates": 0,
+              "terminal_operations": 0,
+              "checkpoint_commits": 0,
+              "maintenance_families": 1,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T1-M": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 64753,
+              "runtime_calls": 33,
+              "explicit_transitions": 16,
+              "delegations": 6,
+              "subagent_delegations": 2,
+              "tool_delegations": 4,
+              "nodes": 28,
+              "executable_nodes": 15,
+              "artifacts": 2,
+              "documents": 2,
+              "gates": 0,
+              "terminal_operations": 8,
+              "checkpoint_commits": 0,
+              "maintenance_families": 4,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": [
+                ".xcoding/work-orders/baseline-t1m/goal.md",
+                ".xcoding/work-orders/baseline-t1m/result.md",
+                ".xcoding/work-orders/baseline-t1m/runtime/baseline-t1-m.svg",
+                ".xcoding/work-orders/baseline-t1m/runtime/orchestration.xml"
+              ]
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 65417,
+              "runtime_calls": 33,
+              "explicit_transitions": 16,
+              "delegations": 6,
+              "subagent_delegations": 2,
+              "tool_delegations": 4,
+              "nodes": 28,
+              "executable_nodes": 15,
+              "artifacts": 2,
+              "documents": 2,
+              "gates": 0,
+              "terminal_operations": 8,
+              "checkpoint_commits": 8,
+              "maintenance_families": 4,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T2": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 90546,
+              "runtime_calls": 45,
+              "explicit_transitions": 22,
+              "delegations": 9,
+              "subagent_delegations": 3,
+              "tool_delegations": 6,
+              "nodes": 36,
+              "executable_nodes": 21,
+              "artifacts": 3,
+              "documents": 3,
+              "gates": 0,
+              "terminal_operations": 11,
+              "checkpoint_commits": 0,
+              "maintenance_families": 5,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": [
+                ".xcoding/work-orders/baseline-t2/analysis.md",
+                ".xcoding/work-orders/baseline-t2/goal.md",
+                ".xcoding/work-orders/baseline-t2/result.md",
+                ".xcoding/work-orders/baseline-t2/runtime/baseline-t2.svg",
+                ".xcoding/work-orders/baseline-t2/runtime/orchestration.xml"
+              ]
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 91459,
+              "runtime_calls": 45,
+              "explicit_transitions": 22,
+              "delegations": 9,
+              "subagent_delegations": 3,
+              "tool_delegations": 6,
+              "nodes": 36,
+              "executable_nodes": 21,
+              "artifacts": 3,
+              "documents": 3,
+              "gates": 0,
+              "terminal_operations": 11,
+              "checkpoint_commits": 11,
+              "maintenance_families": 5,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T3": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 140138,
+              "runtime_calls": 70,
+              "explicit_transitions": 34,
+              "delegations": 14,
+              "subagent_delegations": 6,
+              "tool_delegations": 8,
+              "nodes": 46,
+              "executable_nodes": 29,
+              "artifacts": 6,
+              "documents": 4,
+              "gates": 1,
+              "terminal_operations": 17,
+              "checkpoint_commits": 0,
+              "maintenance_families": 8,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": [
+                ".xcoding/work-orders/baseline-t3/analysis.md",
+                ".xcoding/work-orders/baseline-t3/artifacts/implementation/implementation-1.md",
+                ".xcoding/work-orders/baseline-t3/artifacts/verification/verification-1.md",
+                ".xcoding/work-orders/baseline-t3/goal.md",
+                ".xcoding/work-orders/baseline-t3/result.md",
+                ".xcoding/work-orders/baseline-t3/runtime/baseline-t3.svg",
+                ".xcoding/work-orders/baseline-t3/runtime/orchestration.xml",
+                ".xcoding/work-orders/baseline-t3/solution.md"
+              ]
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 141549,
+              "runtime_calls": 70,
+              "explicit_transitions": 34,
+              "delegations": 14,
+              "subagent_delegations": 6,
+              "tool_delegations": 8,
+              "nodes": 46,
+              "executable_nodes": 29,
+              "artifacts": 6,
+              "documents": 4,
+              "gates": 1,
+              "terminal_operations": 17,
+              "checkpoint_commits": 17,
+              "maintenance_families": 8,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T4": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 164894,
+              "runtime_calls": 85,
+              "explicit_transitions": 40,
+              "delegations": 17,
+              "subagent_delegations": 9,
+              "tool_delegations": 8,
+              "nodes": 49,
+              "executable_nodes": 32,
+              "artifacts": 9,
+              "documents": 4,
+              "gates": 1,
+              "terminal_operations": 20,
+              "checkpoint_commits": 0,
+              "maintenance_families": 8,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": [
+                ".xcoding/work-orders/baseline-t4/analysis.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/implementation/implementation-1.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/implementation/implementation-2.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/implementation/implementation-3.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/verification/verification-1.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/verification/verification-2.md",
+                ".xcoding/work-orders/baseline-t4/goal.md",
+                ".xcoding/work-orders/baseline-t4/result.md",
+                ".xcoding/work-orders/baseline-t4/runtime/baseline-t4.svg",
+                ".xcoding/work-orders/baseline-t4/runtime/orchestration.xml",
+                ".xcoding/work-orders/baseline-t4/solution.md"
+              ]
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 166554,
+              "runtime_calls": 85,
+              "explicit_transitions": 40,
+              "delegations": 17,
+              "subagent_delegations": 9,
+              "tool_delegations": 8,
+              "nodes": 49,
+              "executable_nodes": 32,
+              "artifacts": 9,
+              "documents": 4,
+              "gates": 1,
+              "terminal_operations": 20,
+              "checkpoint_commits": 20,
+              "maintenance_families": 8,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        }
+      },
+      "checkpoint_commits": {
+        "auto_commit_false": {
+          "T0": 0,
+          "T1": 0,
+          "T1-M": 0,
+          "T2": 0,
+          "T3": 0,
+          "T4": 0
+        },
+        "auto_commit_true": {
+          "T0": 0,
+          "T1": 0,
+          "T1-M": 8,
+          "T2": 11,
+          "T3": 17,
+          "T4": 20
+        }
+      },
+      "semantic_negative_baseline": {
+        "sibling_count": 128,
+        "target_projection_count": 1,
+        "target_forbidden_sibling_id_occurrences": 0,
+        "manual_source_ids_required": 5,
+        "target_to_source_bindings": 0,
+        "scoped_decision_bindings": 0,
+        "scoped_evidence_bindings": 0,
+        "scoped_blocker_recovery_bindings": 0,
+        "full_blackboard_exposes_unselected_value": true,
+        "snapshot_calls": 0,
+        "direct_runtime_xml_reads": 0,
+        "category_access": {
+          "target": "show-by-manual-node-id",
+          "confirmed_decisions": "show-by-manual-node-id-or-full-blackboard",
+          "supporting_records": "show-by-two-manual-node-ids",
+          "blocker_recovery": "show-by-two-manual-node-ids"
+        },
+        "cleanup": {
+          "project_undeclared_paths": [],
+          "workshop_undeclared_paths": [],
+          "workshop_declared_dirty_paths": [
+            ".xcoding/work-orders/baseline-semantic-negative/runtime/orchestration.xml"
+          ]
+        }
+      },
+      "classification_only_scenarios": [
+        "T-U"
+      ]
+    },
+    "new_value": {
+      "profiles": {
+        "T0": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 0,
+              "runtime_calls": 0,
+              "explicit_transitions": 0,
+              "delegations": 0,
+              "subagent_delegations": 0,
+              "tool_delegations": 0,
+              "nodes": 0,
+              "executable_nodes": 0,
+              "artifacts": 0,
+              "documents": 0,
+              "gates": 0,
+              "terminal_operations": 0,
+              "checkpoint_commits": 0,
+              "maintenance_families": 1,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 0,
+              "runtime_calls": 0,
+              "explicit_transitions": 0,
+              "delegations": 0,
+              "subagent_delegations": 0,
+              "tool_delegations": 0,
+              "nodes": 0,
+              "executable_nodes": 0,
+              "artifacts": 0,
+              "documents": 0,
+              "gates": 0,
+              "terminal_operations": 0,
+              "checkpoint_commits": 0,
+              "maintenance_families": 1,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T1": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 0,
+              "runtime_calls": 0,
+              "explicit_transitions": 0,
+              "delegations": 0,
+              "subagent_delegations": 0,
+              "tool_delegations": 0,
+              "nodes": 0,
+              "executable_nodes": 0,
+              "artifacts": 0,
+              "documents": 0,
+              "gates": 0,
+              "terminal_operations": 0,
+              "checkpoint_commits": 0,
+              "maintenance_families": 1,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 0,
+              "runtime_calls": 0,
+              "explicit_transitions": 0,
+              "delegations": 0,
+              "subagent_delegations": 0,
+              "tool_delegations": 0,
+              "nodes": 0,
+              "executable_nodes": 0,
+              "artifacts": 0,
+              "documents": 0,
+              "gates": 0,
+              "terminal_operations": 0,
+              "checkpoint_commits": 0,
+              "maintenance_families": 1,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T1-M": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 64753,
+              "runtime_calls": 33,
+              "explicit_transitions": 16,
+              "delegations": 6,
+              "subagent_delegations": 2,
+              "tool_delegations": 4,
+              "nodes": 28,
+              "executable_nodes": 15,
+              "artifacts": 2,
+              "documents": 2,
+              "gates": 0,
+              "terminal_operations": 8,
+              "checkpoint_commits": 0,
+              "maintenance_families": 4,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": [
+                ".xcoding/work-orders/baseline-t1m/goal.md",
+                ".xcoding/work-orders/baseline-t1m/result.md",
+                ".xcoding/work-orders/baseline-t1m/runtime/baseline-t1-m.svg",
+                ".xcoding/work-orders/baseline-t1m/runtime/orchestration.xml"
+              ]
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 65417,
+              "runtime_calls": 33,
+              "explicit_transitions": 16,
+              "delegations": 6,
+              "subagent_delegations": 2,
+              "tool_delegations": 4,
+              "nodes": 28,
+              "executable_nodes": 15,
+              "artifacts": 2,
+              "documents": 2,
+              "gates": 0,
+              "terminal_operations": 8,
+              "checkpoint_commits": 8,
+              "maintenance_families": 4,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T2": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 90546,
+              "runtime_calls": 45,
+              "explicit_transitions": 22,
+              "delegations": 9,
+              "subagent_delegations": 3,
+              "tool_delegations": 6,
+              "nodes": 36,
+              "executable_nodes": 21,
+              "artifacts": 3,
+              "documents": 3,
+              "gates": 0,
+              "terminal_operations": 11,
+              "checkpoint_commits": 0,
+              "maintenance_families": 5,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": [
+                ".xcoding/work-orders/baseline-t2/analysis.md",
+                ".xcoding/work-orders/baseline-t2/goal.md",
+                ".xcoding/work-orders/baseline-t2/result.md",
+                ".xcoding/work-orders/baseline-t2/runtime/baseline-t2.svg",
+                ".xcoding/work-orders/baseline-t2/runtime/orchestration.xml"
+              ]
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 91459,
+              "runtime_calls": 45,
+              "explicit_transitions": 22,
+              "delegations": 9,
+              "subagent_delegations": 3,
+              "tool_delegations": 6,
+              "nodes": 36,
+              "executable_nodes": 21,
+              "artifacts": 3,
+              "documents": 3,
+              "gates": 0,
+              "terminal_operations": 11,
+              "checkpoint_commits": 11,
+              "maintenance_families": 5,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T3": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 140138,
+              "runtime_calls": 70,
+              "explicit_transitions": 34,
+              "delegations": 14,
+              "subagent_delegations": 6,
+              "tool_delegations": 8,
+              "nodes": 46,
+              "executable_nodes": 29,
+              "artifacts": 6,
+              "documents": 4,
+              "gates": 1,
+              "terminal_operations": 17,
+              "checkpoint_commits": 0,
+              "maintenance_families": 8,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": [
+                ".xcoding/work-orders/baseline-t3/analysis.md",
+                ".xcoding/work-orders/baseline-t3/artifacts/implementation/implementation-1.md",
+                ".xcoding/work-orders/baseline-t3/artifacts/verification/verification-1.md",
+                ".xcoding/work-orders/baseline-t3/goal.md",
+                ".xcoding/work-orders/baseline-t3/result.md",
+                ".xcoding/work-orders/baseline-t3/runtime/baseline-t3.svg",
+                ".xcoding/work-orders/baseline-t3/runtime/orchestration.xml",
+                ".xcoding/work-orders/baseline-t3/solution.md"
+              ]
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 141549,
+              "runtime_calls": 70,
+              "explicit_transitions": 34,
+              "delegations": 14,
+              "subagent_delegations": 6,
+              "tool_delegations": 8,
+              "nodes": 46,
+              "executable_nodes": 29,
+              "artifacts": 6,
+              "documents": 4,
+              "gates": 1,
+              "terminal_operations": 17,
+              "checkpoint_commits": 17,
+              "maintenance_families": 8,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        },
+        "T4": {
+          "auto_commit_false": {
+            "metrics": {
+              "context_bytes": 164894,
+              "runtime_calls": 85,
+              "explicit_transitions": 40,
+              "delegations": 17,
+              "subagent_delegations": 9,
+              "tool_delegations": 8,
+              "nodes": 49,
+              "executable_nodes": 32,
+              "artifacts": 9,
+              "documents": 4,
+              "gates": 1,
+              "terminal_operations": 20,
+              "checkpoint_commits": 0,
+              "maintenance_families": 8,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": [
+                ".xcoding/work-orders/baseline-t4/analysis.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/implementation/implementation-1.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/implementation/implementation-2.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/implementation/implementation-3.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/verification/verification-1.md",
+                ".xcoding/work-orders/baseline-t4/artifacts/verification/verification-2.md",
+                ".xcoding/work-orders/baseline-t4/goal.md",
+                ".xcoding/work-orders/baseline-t4/result.md",
+                ".xcoding/work-orders/baseline-t4/runtime/baseline-t4.svg",
+                ".xcoding/work-orders/baseline-t4/runtime/orchestration.xml",
+                ".xcoding/work-orders/baseline-t4/solution.md"
+              ]
+            }
+          },
+          "auto_commit_true": {
+            "metrics": {
+              "context_bytes": 166554,
+              "runtime_calls": 85,
+              "explicit_transitions": 40,
+              "delegations": 17,
+              "subagent_delegations": 9,
+              "tool_delegations": 8,
+              "nodes": 49,
+              "executable_nodes": 32,
+              "artifacts": 9,
+              "documents": 4,
+              "gates": 1,
+              "terminal_operations": 20,
+              "checkpoint_commits": 20,
+              "maintenance_families": 8,
+              "snapshot_calls": 0,
+              "direct_runtime_xml_reads": 0
+            },
+            "cleanup": {
+              "project_undeclared_paths": [],
+              "workshop_undeclared_paths": [],
+              "workshop_declared_dirty_paths": []
+            }
+          }
+        }
+      },
+      "checkpoint_commits": {
+        "auto_commit_false": {
+          "T0": 0,
+          "T1": 0,
+          "T1-M": 0,
+          "T2": 0,
+          "T3": 0,
+          "T4": 0
+        },
+        "auto_commit_true": {
+          "T0": 0,
+          "T1": 0,
+          "T1-M": 8,
+          "T2": 11,
+          "T3": 17,
+          "T4": 20
+        }
+      },
+      "semantic_negative_baseline": {
+        "sibling_count": 128,
+        "target_projection_count": 1,
+        "target_forbidden_sibling_id_occurrences": 0,
+        "manual_source_ids_required": 5,
+        "target_to_source_bindings": 0,
+        "scoped_decision_bindings": 0,
+        "scoped_evidence_bindings": 0,
+        "scoped_blocker_recovery_bindings": 0,
+        "full_blackboard_exposes_unselected_value": true,
+        "snapshot_calls": 0,
+        "direct_runtime_xml_reads": 0,
+        "category_access": {
+          "target": "show-by-manual-node-id",
+          "confirmed_decisions": "show-by-manual-node-id-or-full-blackboard",
+          "supporting_records": "show-by-two-manual-node-ids",
+          "blocker_recovery": "show-by-two-manual-node-ids"
+        },
+        "cleanup": {
+          "project_undeclared_paths": [],
+          "workshop_undeclared_paths": [],
+          "workshop_declared_dirty_paths": [
+            ".xcoding/work-orders/baseline-semantic-negative/runtime/orchestration.xml"
+          ]
+        }
+      },
+      "classification_only_scenarios": [
+        "T-U"
+      ]
+    },
+    "input_hashes": {
+      "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
+      "tests/workflow_scenario_harness.py": "ee4ded91f575449c5db36b5a8074d2d566462537f4b0bd6d2724639999cebde5",
+      "tests/test_xc_workflow_governance.py": "3b0d80d121b76598c78e5e6850432acc1a4368673055a64aa99c43dac9a8d753",
+      "skills/xc-open-work-order/scripts/open_work_order.py": "b9e21c0fad63ab8b670147de3b21377685b61c52dbeb3a284c58d3ba2e957ac7",
+      "skills/xc-orchestration-runtime/scripts/orchestration.py": "479820097a4cf0bd2279c6c77254606ed4d711237c78cc69c2886e2f418dea88",
+      "skills/xc-orchestration-runtime/scripts/runtime_core.py": "09cedcef6d7684f436894345b36ca8c7af3aab12c36eba431dbbc751150f2097",
+      "skills/xc-work/assets/work-order-template.xml": "30bf3f10742f58567f6a4946f7a4b98acd753e3946710191912b399cd13bb3df",
+      "skills/xc-document-evolution/assets/document-evolution-template.xml": "beb26e040bfc87ea6afe7c911adb84c72a53ccbdfe1c20e6acc55792617db86e",
+      "skills/xc-document/scripts/render_document.py": "b6249f84544d85006cfa62ef8f879e93d3f812c1d35a05d902df3c70612c66e1",
+      "skills/xc-document/scripts/validate_document.py": "dd6d7db27a0161cb1425dc607f2c0a0fbe82d91d2b5d91a45c6fe162ecbdc105",
+      "skills/xc-document/assets/templates/work-order-goal.md": "94bea7ac8b9d4af8c1a7e07f22114bb417480de161ae7d91590f62e4e2077f79",
+      "skills/xc-document/assets/templates/work-order-analysis.md": "68140d901ceb976d0e0ea53efd9cc4c7182ca6e54f931f159217b1348fdace0d",
+      "skills/xc-document/assets/templates/work-order-solution.md": "c2bdce10714f5a8e3230c557114a4003af81609d73d0140a23ed7a1c42f54b88",
+      "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
+      "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
+    }
+  }
+}

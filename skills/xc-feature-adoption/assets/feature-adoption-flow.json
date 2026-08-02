@@ -5,6 +5,8 @@
     "feature.id": "",
     "feature.title": "",
     "feature.adoption_approval_required": "true",
+    "feature.adoption_source_ids": "[]",
+    "feature.adoption_gate_outcome": "approved",
     "work_order.document_language": "en"
   },
   "root": {
@@ -72,27 +74,67 @@
         "role": "adoption-approval",
         "executor": "main",
         "when": "feature.adoption_approval_required == true",
+        "metadata": {
+          "control_packet": {
+            "category": {
+              "adopted-baseline": {
+                "selectors": "[\"bb:feature.adoption_source_ids\"]",
+                "min_sources": "3",
+                "artifact_min": "3"
+              }
+            },
+            "blackboard_keys": "[\"feature.id\",\"feature.title\"]"
+          },
+          "completion": {
+            "required_fields": "[\"summary\",\"validation\"]"
+          },
+          "gate": {
+            "outcomes": "[\"approved\",\"rejected\",\"revision-required\"]",
+            "decision_required": "true",
+            "outcome_key": "feature.adoption_gate_outcome"
+          }
+        },
         "instructions": "Present the code-derived baseline, evidence gaps, and any target-versus-current differences. Record approval, required revision, or an explicit unresolved conflict.",
         "deliverables": "An adoption decision and any required follow-up nodes.",
         "acceptance": "The feature baseline is approved as current evidence or the workflow is blocked on an explicit product decision."
       },
       {
-        "template_id": "result-document",
-        "title": "Record adoption result",
+        "template_id": "adoption-recovery-group",
+        "title": "Recover non-accepting adoption decision",
         "type": "composite",
         "role": "dynamic-group",
         "mode": "sequence",
-        "executor": "main"
+        "executor": "main",
+        "when": "feature.adoption_gate_outcome != approved"
       },
       {
-        "template_id": "finalize-adoption",
-        "title": "Finalize feature adoption",
-        "type": "task",
-        "role": "adoption-finalize",
+        "template_id": "approved-adoption-continuation",
+        "title": "Continue approved adoption",
+        "type": "composite",
+        "role": "gate-continuation",
+        "mode": "sequence",
         "executor": "main",
-        "instructions": "Confirm the adopted feature documents, provenance, artifacts, and unresolved evidence gaps, then close the work order.",
-        "deliverables": "A completed, failed, or blocked adoption work order with durable result evidence.",
-        "acceptance": "No ordinary work order is needed to infer whether the feature was adopted successfully."
+        "when": "feature.adoption_gate_outcome == approved",
+        "children": [
+          {
+            "template_id": "result-document",
+            "title": "Record adoption result",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main"
+          },
+          {
+            "template_id": "finalize-adoption",
+            "title": "Finalize feature adoption",
+            "type": "task",
+            "role": "adoption-finalize",
+            "executor": "main",
+            "instructions": "Confirm the adopted feature documents, provenance, artifacts, and unresolved evidence gaps, then close the work order.",
+            "deliverables": "A completed, failed, or blocked adoption work order with durable result evidence.",
+            "acceptance": "No ordinary work order is needed to infer whether the feature was adopted successfully."
+          }
+        ]
       }
     ]
   }

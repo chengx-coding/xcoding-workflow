@@ -61,6 +61,33 @@ Implement refund approval limits.
             self.assertTrue(payload["ok"])
             self.assertEqual(payload["document_kind"], "work-order-goal")
             self.assertEqual(payload["content_language"], "en")
+            self.assertEqual(payload["path"], str(document.resolve()))
+            self.assertEqual(
+                payload["receipt"],
+                {
+                    "schema_version": 1,
+                    "check": "xc-document",
+                    "ok": True,
+                    "subject": str(document.resolve()),
+                    "facts": {
+                        "document_kind": "work-order-goal",
+                        "content_language": "en",
+                        "audience": "",
+                    },
+                },
+            )
+            self.assertEqual(
+                set(payload),
+                {
+                    "ok",
+                    "path",
+                    "document_kind",
+                    "content_language",
+                    "audience",
+                    "errors",
+                    "receipt",
+                },
+            )
 
     def test_accepts_node_artifact_without_feature_association(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -211,6 +238,16 @@ orchestration:
             self.assertEqual(code, 1)
             self.assertFalse(payload["ok"])
             self.assertIn("frontmatter must not duplicate dynamic orchestration state", payload["errors"])
+            self.assertFalse(payload["receipt"]["ok"])
+            self.assertEqual(payload["receipt"]["subject"], payload["path"])
+            self.assertEqual(
+                set(payload["receipt"]),
+                {"schema_version", "check", "ok", "subject", "facts"},
+            )
+            self.assertEqual(
+                set(payload["receipt"]["facts"]),
+                {"document_kind", "content_language", "audience"},
+            )
 
     def test_rejects_retired_work_unit_document_kind(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

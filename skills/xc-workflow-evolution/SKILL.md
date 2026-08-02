@@ -15,12 +15,21 @@ description: "Evolves portable XC workflow assets or a project's managed workflo
 - `workshop_path` - `path`; required
   - Scope: The target project's `.xcoding` workshop.
 
+- `project_root` - `path`; required
+  - Scope: The target project root forwarded to the managed `xc-work` operation.
+
 - `request` - `string`; required
   - Scope: Requested workflow change, observed gap, or maintenance objective.
 
 ## Operation
 
-Open or reuse a zero-feature ordinary work order unless the task is demonstrably trivial and needs no durable state. Record goal, analysis, selected solution, implementation evidence, and result through the normal work order documents.
+Read the project bridge and use `scope`, `request`, and observable project context to confirm the six public `xc-work` facts. Invoke `xc-work` through its public Skill boundary with `operation=classify`, the original `request`, and `needs_persistence`, `material_impact`, `difficult_rollback`, `crosses_sessions`, `multiple_actors`, and `audit_required`. Apply the evidence, unknown, project-tightening, and unavailable-classification rules owned by `xc-work`; do not infer a direct route from task size or model capability.
+
+When classification returns `managed` or becomes unavailable, invoke public `xc-work operation=run` with `workshop_path`, `project_root`, the original `request`, an empty `feature_ids` list, and the applicable `change` or `maintenance` mode. Record goal, analysis, selected solution, implementation evidence, and result through the normal work order documents. Omitting `operation` remains an equivalent managed entry for existing callers, but this routing operation uses the explicit public value.
+
+When classification returns `direct`, do not create a work order. Perform only the response-local, non-material action established by the all-`no` vector. If new evidence changes or invalidates any fact, stop before the next substantive action and re-enter through public `xc-work`; a managed or unavailable result proceeds through `operation=run`.
+
+`xc-workflow-evolution` depends only on the documented `xc-work` Skill name and public parameters. It must not import, locate, or invoke another Skill's private scripts or references.
 
 For portable-core changes, keep generic assets English, tool-neutral, and free of project paths, commands, frameworks, or business rules. For project-bridge changes, modify only the managed workshop bridge document through document evolution. For agent changes, update canonical sources, run the exporter, and run exporter check. For orchestration templates, edit the flow specification, rebuild the generated template through `xc-orchestration-author`, and smoke-test the runtime entry path.
 

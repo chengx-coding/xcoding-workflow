@@ -51,10 +51,12 @@ python "$SKILL_DIR/scripts/orchestration.py" block `
 
 Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`,
 `embed-subtree`, `close-group`, `reopen-group`, `reopen`, `summary`, `show`,
-`find`, `artifacts`, `snapshot`, `integrity-status`, `repair-integrity`, and
-`validate`. `reopen-group --reason` is an auditable recovery operation for a
-closed dynamic group. `add-node --before` may then insert explicitly approved
-recovery work before a blocked direct child.
+`find`, `artifacts`, `control-packet`, `snapshot`, `integrity-status`,
+`repair-integrity`, and `validate`. `control-packet --node` returns only the
+target leaf's declared sources, selected blackboard values, readiness blockers,
+and control projection. `reopen-group --reason` is an auditable recovery
+operation for a closed dynamic group. `add-node --before` may then insert
+explicitly approved recovery work before a blocked direct child.
 
 An unreachable or otherwise non-runnable start returns `node_not_ready` with a
 stable `details.reason` and does not change node state or runtime revision.
@@ -64,6 +66,16 @@ revisions remain `state_conflict`; successful sealed trees remain
 `tree_sealed`.
 
 `add-node` accepts repeated `--metadata metadata.<key>=value` values for dynamic node metadata. Use `metadata.artifact.audience=internal|user` and `metadata.artifact.content_language=en|work_order.document_language` to declare an artifact's audience and language selector. `artifacts --audience user` lists only paths declared through terminal `complete`, `fail`, or `block` operations and their node metadata; it never scans the workshop repository.
+
+The runtime fail-closes recognized `metadata.control_packet.*`,
+`metadata.completion.*`, and `metadata.gate.*` declarations during template
+validation, initialization, and dynamic node creation. Other `metadata.*`
+remains domain-owned. Control packets are leaf-only and never inherit ancestor
+metadata. Opt-in completion may require fields, artifact cardinality and path,
+and normalized `--check-result-json` receipts. Receipts are untrusted caller
+self-reports: exact structural matches are accepted even when fabricated.
+Opt-in gates require a declared `--gate-outcome` and may require `--decision`
+while atomically publishing an outcome key.
 
 Every write response returns a monotonic `revision`. Callers MAY pass it back as `--expected-revision <value>` on a later write; a mismatch returns `state_conflict`. The runtime serializes writes for one local tree even when callers omit that option.
 

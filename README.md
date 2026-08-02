@@ -11,6 +11,14 @@ xcoding-workflow is the canonical source for a portable, Skill-driven Agent codi
 - Durable work runs as a work order. Runtime orchestration owns scheduling and state; concise blackboard values coordinate decisions, while documents and other substantial evidence remain artifacts.
 - Managed features are explicit. Use the new-feature workflow to create one, the adoption workflow to baseline existing code, and the ordinary work workflow for changes that may relate to zero, one, or multiple existing features.
 
+## Choose Direct Or Managed Work
+
+XC selects governance from six confirmed facts: `needs_persistence`, `material_impact`, `difficult_rollback`, `crosses_sessions`, `multiple_actors`, and `audit_required`. Each fact is `no`, `yes`, or `unknown`. Work may remain direct only when all six are confirmed `no`; any `yes`, any `unknown`, or unavailable classification enters the managed [`xc-work`](skills/xc-work/SKILL.md) lifecycle. An explicit `xc-work operation=run` is always managed.
+
+Use `xc-work operation=classify` through the executable `python skills/xc-work/scripts/classify.py [fact flags]` boundary. It fills omitted facts with `unknown` and always returns successful managed escalation when input, execution, timeout, or output validation fails; the strict low-level classifier remains diagnostic-only. This boundary validates observable process results but does not authenticate the caller, interpreter, executable bytes, or host. Applicable project policy is read before confirming the facts, and a project bridge may only tighten them. If direct work reveals new evidence, reclassify before the next substantive action and escalate through `xc-work operation=run` when the result is no longer all `no`.
+
+A stronger model may perform more reasoning in the main session or avoid unnecessary decomposition on a direct path. Model name, vendor, context window, and project technology do not change the facts or permit bypassing managed gates, artifacts, scoped control packets, or verification.
+
 ## Prerequisites
 
 - Git, including a configured identity when workshop checkpoint commits are enabled.

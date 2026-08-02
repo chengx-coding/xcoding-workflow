@@ -11,8 +11,8 @@
 - **何时调用：** 获批工作流需要新的受管模板，或需要把 prose 流程转为 runtime 控制时。
 - **用途：** 设计并验证 JSON flow specification，构建带完整性保护的 schema-version-1 模板。
 - **公开入口：** `template_builder.py` 的 `new-spec`、`validate-spec`、`build`、`validate-template` 命令。
-- **典型用法：** 建模阶段、依赖、门禁、动态组和有界循环；构建模板并 smoke-test `init -> next`。
-- **主要边界：** 不执行运行时节点；领域数据应使用 metadata 和 artifact，不得新增运行时节点类型或把大段内容放入 blackboard。
+- **典型用法：** 建模阶段、依赖、gate、dynamic group、有界循环和叶子节点自有 control metadata；验证 flow spec，构建生成模板，验证模板并 smoke-test `init -> next`。
+- **主要边界：** JSON flow spec 是可编辑源，生成的 XML 不得手工修改。Author 不执行运行时节点；领域数据应使用 metadata 和 artifact，不得新增运行时节点类型或把大段内容放入 blackboard。
 
 ## `xc-orchestration-runtime`
 
@@ -20,9 +20,21 @@
 
 - **何时调用：** 工作流需要调度、节点转换、受控状态更新、嵌入子树、完整性操作、快照或持久化时。
 - **用途：** 为受管运行时树和事务性 workshop checkpoint 提供领域中立控制面。
-- **公开入口：** `orchestration.py` 的 `init`、`next`、`start`、`complete`、`fail`、`block` 等生命周期命令，以及已记录的查询和恢复命令。
-- **典型用法：** 从模板初始化，请求 ready work，仅启动可执行叶节点，并用简洁证据和声明 artifact 终止 running 节点。
-- **主要边界：** 绝不直接读取或编辑受管 XML；worker 只执行一个节点，完整性无效时需显式修复，成功树在获批 reopen 前保持 sealed。
+- **公开入口：** `orchestration.py` 的 `init`、`next`、`control-packet`、`start`、`complete`、`fail`、`block` 等生命周期命令，以及已记录的查询和恢复命令。Opt-in completion 增加可重复的 `--check-result-json`；opt-in gate 增加 `--gate-outcome` 和 `--decision`。
+- **典型用法：** 从模板初始化，请求 ready work，读取所选叶子节点的 scoped packet，仅启动该可执行叶子，并用简洁证据和声明 artifact 终止它。
+- **主要边界：** 绝不直接读取或编辑受管 XML；worker 只执行一个节点，来源投影不是 start 权限，完整性无效时需显式修复，成功树在获批 reopen 前保持 sealed。
+
+### 控制契约
+
+`metadata.control_packet.*` 声明仅属于叶子节点的来源类别、阈值和选定 blackboard 标量。缺少声明时返回 `control_packet_not_declared`；selector 无法解析、来源未终止、来源或 artifact 数量不足，或选定键缺失时，返回 `control_packet_unavailable`，且不返回残缺 packet。
+
+`metadata.completion.*` 可以要求 `summary`、`validation`、artifact 数量与路径，以及归一化 check receipt。Receipt 畸形、过大、重复或未声明时返回 `invalid_check_result`；字段、artifact、必需 check、subject 或 fact 不满足时返回 `completion_requirements_failed`。Receipt 是不可信的未签名自报告。Runtime 会比较形状和声明值，但不会运行 validator、绑定 claimant 或证明执行；完全匹配的伪造值会被接受。
+
+`metadata.gate.*` 声明允许的结构化 outcome、是否要求 decision，以及可选 outcome key。完成操作可能返回 `gate_outcome_required`、`invalid_gate_outcome`、`gate_decision_required`、`gate_outcome_conflict` 或 `gate_outcome_not_allowed`。Outcome 与其声明的 blackboard key 原子写入，但 runtime 不认证 CLI 调用者。
+
+在 author 验证、runtime 验证与初始化以及动态 `add-node` 时，这三个已识别前缀都会针对未知键、非法 owner、畸形值或不完整声明 fail closed，并返回 `invalid_control_metadata`。这些扩展是 `schema_version=1` 内的 opt-in 能力：不带新 metadata 的现有 schema-version-1 节点保留 legacy 命令与结果行为；更早 schema 格式仍不受支持。
+
+Runtime 不提供 trusted execution、claim binding、typed blackboard、宿主工具 mediation 或模型专用 profile，也不能阻止 `start` 前使用普通宿主工具；这些仍由宿主和调用方负责。
 
 ## `xc-orchestration-viewer`
 

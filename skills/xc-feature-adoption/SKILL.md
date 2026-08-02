@@ -34,13 +34,14 @@ description: "Explicitly adopts an existing unmanaged feature by deriving durabl
 3. Initialize `assets/feature-adoption-template.xml` in the returned runtime path and complete `prepare-adoption`.
 4. Create `goal.md` and evidence-driven `analysis.md` through document-evolution nodes, setting `document.content_language` from `work_order.document_language`. Record code boundaries, tests, behavior, uncertainty, and any product-intent gap.
 5. Build feature `contract.md`, `solution.md`, and `verification.md` through separate document-evolution subtrees.
-6. Present the resulting baseline through `approve-adopted-baseline`. Add revision, review, or user-gate nodes when evidence is incomplete or intended behavior cannot be derived safely.
-7. Create `result.md` and complete `finalize-adoption`.
+6. Publish the terminal writer IDs for feature `contract.md`, `solution.md`, and `verification.md` as a compact JSON array in `feature.adoption_source_ids`. Read the `approve-adopted-baseline` control packet, then complete the gate with `--gate-outcome approved|rejected|revision-required` and a non-empty decision. The default `feature.adoption_gate_outcome=approved` applies only when the optional gate is skipped. A non-approved outcome opens `adoption-recovery-group`; add revision, review, and a successor approval gate there, republish only accepted terminal writer IDs, and let that gate publish `approved`.
+7. Create `result.md` and complete `finalize-adoption` only after `approved-adoption-continuation` is selected.
 
 ## Adoption Rules
 
 - Adoption does not silently change product behavior or repair code.
 - Baselines should state current evidenced behavior and clearly separate unknowns or target changes.
+- Approval packet sources are terminal writer leaves with declared baseline artifacts; do not publish group IDs, non-terminal nodes, or guessed references.
 - If the user wants a product change after adoption, open a separate `xc-work`.
 - The feature directory is created before its baseline documents but becomes useful only after the approval gate or an explicit blocked result.
 

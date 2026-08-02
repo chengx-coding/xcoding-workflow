@@ -3,46 +3,50 @@
 <orchestration schema_version="1" name="document-evolution" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="4b977d0a81ff0d5a1db0ea7f6ed5a87f4af4a467f2386eb469dd11917128b198" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="c522bde8c58a1f6a680889f6e5caecf89a520b201679ee50edb8f87945c35729" />
   </meta>
   <blackboard>
     <var key="document.content_language" />
+    <var key="document.receipt.content_language">en</var>
+    <var key="document.receipt.audience" />
     <var key="document.review_required">false</var>
     <var key="document.gate_required">false</var>
+    <var key="document.gate_outcome">accepted</var>
     <var key="document.review.open_issues">false</var>
   </blackboard>
   <node executor="main" mode="sequence" role="root" template_id="root" title="Document Evolution" type="composite">
     <children>
-      <node executor="subagent" role="document-write" template_id="write-document" title="Write or revise document" type="task">
+      <node executor="subagent" role="document-write" template_id="write-document" title="Write or revise document" type="task" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path">
         <instructions>Read document.path, document.template, document.inputs, document.contract, and document.content_language from the supplied blackboard and node references. Write or revise the target document immediately. Preserve valid frontmatter and do not read the runtime XML directly.</instructions>
         <deliverables>The managed document at document.path.</deliverables>
         <acceptance>The target document exists, follows its authoring contract, and has complete YAML frontmatter.</acceptance>
       </node>
-      <node executor="tool" role="document-validate" template_id="validate-draft" title="Validate draft document" type="task">
+      <node executor="tool" role="document-validate" template_id="validate-draft" title="Validate draft document" type="task" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience">
         <instructions>Run xc-document validation for document.path and document.kind.</instructions>
         <deliverables>A validation result recorded in the node result.</deliverables>
         <acceptance>xc-document validates the draft without errors.</acceptance>
       </node>
       <node executor="main" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" role="document-review-loop" template_id="review-loop" title="Review and revise document" type="loop" when="document.review_required == true" when.policy="latched">
         <children>
-          <node executor="subagent" role="document-review" template_id="review-document" title="Review document" type="task" metadata.artifact.audience="internal" metadata.artifact.content_language="en">
+          <node executor="subagent" role="document-review" template_id="review-document" title="Review document" type="task" metadata.artifact.audience="internal" metadata.artifact.content_language="en" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
             <instructions>Review document.path against the domain review dimensions. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
             <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
             <acceptance>The review distinguishes required findings from optional observations and sets document.review.open_issues.</acceptance>
           </node>
-          <node depends_on_template="local:review-document" executor="subagent" role="document-revise" template_id="revise-document" title="Revise document from review" type="task" when="document.review.open_issues == true">
+          <node depends_on_template="local:review-document" executor="subagent" role="document-revise" template_id="revise-document" title="Revise document from review" type="task" when="document.review.open_issues == true" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path">
             <instructions>Read the latest review artifact and revise only document.path. Preserve document.content_language when it is set, preserve valid frontmatter, and record the updated document as the node artifact.</instructions>
             <deliverables>An updated managed document.</deliverables>
             <acceptance>Required review findings are resolved or explicitly escalated to a user gate.</acceptance>
           </node>
         </children>
       </node>
-      <node executor="main" role="document-confirmation" template_id="document-gate" title="Confirm document decisions" type="gate" when="document.gate_required == true" when.policy="latched">
+      <node executor="main" role="document-confirmation" template_id="document-gate" title="Confirm document decisions" type="gate" when="document.gate_required == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;accepted&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="document.gate_outcome">
         <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
         <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
         <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
       </node>
-      <node executor="tool" role="document-validate-final" template_id="validate-final" title="Validate final document" type="task">
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="document-gate-recovery-group" title="Recover non-accepting document decision" type="composite" when="document.gate_outcome != accepted" />
+      <node executor="tool" role="document-validate-final" template_id="validate-final" title="Validate final document" type="task" when="document.gate_outcome == accepted" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience">
         <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
         <deliverables>A final validation result recorded in the node result.</deliverables>
         <acceptance>xc-document validates the final document without errors.</acceptance>

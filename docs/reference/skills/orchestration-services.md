@@ -11,8 +11,8 @@ These services design, run, and visualize managed orchestration without taking o
 - **Invoke when:** an approved workflow needs a new managed template or a prose flow must become runtime-controlled.
 - **Purpose:** design and validate JSON flow specifications and build integrity-protected schema-version-1 templates.
 - **Public entry:** `template_builder.py` commands `new-spec`, `validate-spec`, `build`, and `validate-template`.
-- **Typical usage:** model phases, dependencies, gates, dynamic groups, and bounded loops; build the template and smoke-test `init -> next`.
-- **Boundaries:** it does not execute runtime nodes; domain data uses metadata and artifacts rather than new runtime node types or large blackboard values.
+- **Typical usage:** model phases, dependencies, gates, dynamic groups, bounded loops, and leaf-owned control metadata; validate the flow spec, build the generated template, validate it, and smoke-test `init -> next`.
+- **Boundaries:** the JSON flow specification is the editable source and generated XML is not hand-edited. The author does not execute runtime nodes; domain data uses metadata and artifacts rather than new runtime node types or large blackboard values.
 
 ## `xc-orchestration-runtime`
 
@@ -20,9 +20,21 @@ These services design, run, and visualize managed orchestration without taking o
 
 - **Invoke when:** a workflow needs scheduling, node transitions, controlled state updates, subtree embedding, integrity operations, snapshots, or persistence.
 - **Purpose:** provide the domain-neutral control plane for managed runtime trees and transactional workshop checkpoints.
-- **Public entry:** `orchestration.py` lifecycle commands such as `init`, `next`, `start`, `complete`, `fail`, and `block`, plus documented query and recovery commands.
-- **Typical usage:** initialize a template, request ready work, start only an executable leaf, and terminate a running node with concise evidence and declared artifacts.
-- **Boundaries:** managed XML is never read or edited directly; workers execute exactly one node, invalid integrity requires explicit repair, and successful trees remain sealed until an approved reopen.
+- **Public entry:** `orchestration.py` lifecycle commands such as `init`, `next`, `control-packet`, `start`, `complete`, `fail`, and `block`, plus documented query and recovery commands. Opt-in completion adds repeated `--check-result-json`; opt-in gates add `--gate-outcome` and `--decision`.
+- **Typical usage:** initialize a template, request ready work, read the selected leaf's scoped packet, start only that executable leaf, and terminate it with concise evidence and declared artifacts.
+- **Boundaries:** managed XML is never read or edited directly; workers execute exactly one node, source projection is not start authority, invalid integrity requires explicit repair, and successful trees remain sealed until an approved reopen.
+
+### Control Contracts
+
+`metadata.control_packet.*` declares leaf-only source categories, thresholds, and selected blackboard scalars. Missing declarations return `control_packet_not_declared`; unresolved selectors, non-terminal sources, insufficient source or artifact counts, or missing selected keys return `control_packet_unavailable` without a partial packet.
+
+`metadata.completion.*` may require `summary`, `validation`, artifact cardinality and path, and normalized check receipts. Malformed, oversized, duplicate, or undeclared receipts return `invalid_check_result`; unmet fields, artifacts, required checks, subjects, or facts return `completion_requirements_failed`. Receipts are untrusted unsigned self-reports. The runtime compares shape and declared values but does not run validators, bind a claimant, or prove execution; a fabricated exact match is accepted.
+
+`metadata.gate.*` declares allowed structured outcomes, whether a decision is required, and an optional outcome key. Completion can return `gate_outcome_required`, `invalid_gate_outcome`, `gate_decision_required`, `gate_outcome_conflict`, or `gate_outcome_not_allowed`. The outcome and its declared blackboard key are written atomically, but runtime does not authenticate the CLI caller.
+
+All three recognized prefixes fail closed with `invalid_control_metadata` for unknown keys, invalid owners, malformed values, or incomplete declarations during author validation, runtime validation and initialization, and dynamic `add-node`. These extensions are opt-in within `schema_version=1`: existing schema-version-1 nodes without the new metadata retain legacy command and result behavior. Earlier schema formats remain unsupported.
+
+The runtime provides no trusted execution, claim binding, typed blackboard, host-tool mediation, or model-specific profile. It also cannot prevent ordinary host-tool use before `start`; these remain host and caller responsibilities.
 
 ## `xc-orchestration-viewer`
 

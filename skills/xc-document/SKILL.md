@@ -31,6 +31,21 @@ python "$SKILL_DIR/scripts/validate_document.py" `
 
 The validator emits JSON and returns nonzero for invalid frontmatter or an invalid document contract.
 
+The legacy top-level fields remain available. The output also contains exactly
+one normalized `receipt`:
+
+```json
+{"schema_version":1,"check":"xc-document","ok":true,"subject":"<normalized-path>","facts":{"document_kind":"node-artifact","content_language":"en","audience":"internal"}}
+```
+
+`receipt.subject` equals the normalized top-level `path`; receipt facts contain
+exactly `document_kind`, `content_language`, and `audience`. A completion
+caller requires process exit zero, top-level `ok=true`, and a structurally
+valid receipt, then serializes and passes only `.receipt` through the runtime's
+`--check-result-json`. The full validator response has extra legacy fields and
+is not a valid receipt. A receipt is an unsigned caller self-report and does
+not prove that this validator ran.
+
 Validate an explicit work order language before writing `work_order.document_language`:
 
 ```powershell

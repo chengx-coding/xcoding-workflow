@@ -8,6 +8,10 @@
     "work_order.requires_clarification": "false",
     "work_order.requires_solution": "true",
     "work_order.solution_gate_required": "true",
+    "work_order.solution_gate_outcome": "approved",
+    "work_order.solution_source_ids": "[]",
+    "work_order.objective_source_ids": "[]",
+    "work_order.result_source_ids": "[]",
     "work_order.requires_implementation": "true",
     "work_order.requires_verification": "true"
   },
@@ -80,45 +84,105 @@
         "role": "solution-approval",
         "executor": "main",
         "when": "work_order.solution_gate_required == true",
+        "metadata": {
+          "control_packet": {
+            "category": {
+              "selected-solution": {
+                "selectors": "[\"bb:work_order.solution_source_ids\"]",
+                "min_sources": "1",
+                "artifact_min": "1"
+              }
+            },
+            "blackboard_keys": "[\"work_order.document_language\"]"
+          },
+          "completion": {
+            "required_fields": "[\"summary\",\"validation\"]"
+          },
+          "gate": {
+            "outcomes": "[\"approved\",\"rejected\",\"revision-required\"]",
+            "decision_required": "true",
+            "outcome_key": "work_order.solution_gate_outcome"
+          }
+        },
         "instructions": "Present the selected change solution, baseline impact, implementation strategy, verification strategy, and unresolved decisions. Record approval or add revision nodes.",
         "deliverables": "An approval decision or explicit revision work.",
         "acceptance": "Implementation cannot proceed on a material unresolved solution decision."
       },
       {
-        "template_id": "implementation-group",
-        "title": "Implement approved change",
+        "template_id": "solution-recovery-group",
+        "title": "Recover non-accepting solution decision",
         "type": "composite",
         "role": "dynamic-group",
         "mode": "sequence",
         "executor": "main",
-        "when": "work_order.requires_implementation == true"
+        "when": "work_order.solution_gate_outcome != approved"
       },
       {
-        "template_id": "verification-group",
-        "title": "Verify work order outcome",
+        "template_id": "approved-solution-continuation",
+        "title": "Continue approved work order",
         "type": "composite",
-        "role": "dynamic-group",
+        "role": "gate-continuation",
         "mode": "sequence",
         "executor": "main",
-        "when": "work_order.requires_verification == true"
-      },
-      {
-        "template_id": "result-document",
-        "title": "Record work order result",
-        "type": "composite",
-        "role": "dynamic-group",
-        "mode": "sequence",
-        "executor": "main"
-      },
-      {
-        "template_id": "finalize-work-order",
-        "title": "Finalize ordinary work order",
-        "type": "task",
-        "role": "work-order-finalize",
-        "executor": "main",
-        "instructions": "Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order.",
-        "deliverables": "A completed, failed, or blocked work order with durable evidence.",
-        "acceptance": "The runtime tree and workbench documents accurately describe the work order outcome."
+        "when": "work_order.solution_gate_outcome == approved",
+        "children": [
+          {
+            "template_id": "implementation-group",
+            "title": "Implement approved change",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main",
+            "when": "work_order.requires_implementation == true"
+          },
+          {
+            "template_id": "verification-group",
+            "title": "Verify work order outcome",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main",
+            "when": "work_order.requires_verification == true"
+          },
+          {
+            "template_id": "result-document",
+            "title": "Record work order result",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main"
+          },
+          {
+            "template_id": "finalize-work-order",
+            "title": "Finalize ordinary work order",
+            "type": "task",
+            "role": "work-order-finalize",
+            "executor": "main",
+            "metadata": {
+              "control_packet": {
+                "category": {
+                  "supporting-records": {
+                    "selectors": "[\"bb:work_order.result_source_ids\"]",
+                    "min_sources": "1",
+                    "artifact_min": "1"
+                  },
+                  "work-order-objective": {
+                    "selectors": "[\"bb:work_order.objective_source_ids\"]",
+                    "min_sources": "1",
+                    "artifact_min": "1"
+                  }
+                },
+                "blackboard_keys": "[\"work_order.document_language\"]"
+              },
+              "completion": {
+                "required_fields": "[\"summary\",\"validation\"]"
+              }
+            },
+            "instructions": "Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order.",
+            "deliverables": "A completed, failed, or blocked work order with durable evidence.",
+            "acceptance": "The runtime tree and workbench documents accurately describe the work order outcome."
+          }
+        ]
       }
     ]
   }

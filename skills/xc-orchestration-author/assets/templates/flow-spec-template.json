@@ -3,7 +3,8 @@
   "schema_version": 1,
   "blackboard": {
     "scope.confirmed": "false",
-    "review.open_issues": "false"
+    "review.open_issues": "false",
+    "review.source_ids": "[]"
   },
   "root": {
     "template_id": "root",
@@ -21,7 +22,17 @@
         "executor": "subagent",
         "instructions": "Inspect the current project information and write a concise report.",
         "deliverables": "artifacts/investigation/analysis.md",
-        "acceptance": "Report exists, cites source files, and distinguishes facts from assumptions."
+        "acceptance": "Report exists, cites source files, and distinguishes facts from assumptions.",
+        "metadata": {
+          "completion": {
+            "required_fields": "[\"summary\",\"validation\"]",
+            "artifacts": {
+              "min": "1",
+              "max": "1",
+              "path": "literal:artifacts/investigation/analysis.md"
+            }
+          }
+        }
       },
       {
         "template_id": "scope-gate",
@@ -31,7 +42,14 @@
         "executor": "main",
         "instructions": "Ask the user to confirm the scope after investigation.",
         "deliverables": "Set scope.confirmed=true in the blackboard.",
-        "acceptance": "User has confirmed scope or supplied corrections."
+        "acceptance": "User has confirmed scope or supplied corrections.",
+        "metadata": {
+          "gate": {
+            "outcomes": "[\"approved\",\"revision-required\"]",
+            "decision_required": "true",
+            "outcome_key": "scope.gate_outcome"
+          }
+        }
       },
       {
         "template_id": "review-loop",
@@ -65,7 +83,19 @@
             "depends_on_template": "local:review",
             "instructions": "Address the current review findings.",
             "deliverables": "artifacts/review-loop/rework-{iteration}.md",
-            "acceptance": "Required findings are fixed or explicitly deferred."
+            "acceptance": "Required findings are fixed or explicitly deferred.",
+            "metadata": {
+              "control_packet": {
+                "category": {
+                  "review-records": {
+                    "selectors": "[\"bb:review.source_ids\"]",
+                    "min_sources": "1",
+                    "artifact_min": "1"
+                  }
+                },
+                "blackboard_keys": "[\"review.open_issues\"]"
+              }
+            }
           }
         ]
       }

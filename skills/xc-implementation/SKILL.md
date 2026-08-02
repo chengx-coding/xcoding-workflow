@@ -27,6 +27,22 @@ Read the supplied node contract and approved inputs, make the smallest coherent 
 
 When implementation evidence changes a feature baseline, add a separate document-evolution subtree or user gate through the caller's runtime workflow. Do not overwrite a baseline opportunistically from an implementation node.
 
+## Dynamic Node Contract
+
+Before `add-node`, the caller writes the actual terminal approved-solution source IDs as a compact JSON array to a node-specific blackboard key such as `implementation.sources.<logical-key>`. The dynamic task declares all of:
+
+```text
+metadata.control_packet.category.approved-work.selectors=["bb:implementation.sources.<logical-key>"]
+metadata.control_packet.category.approved-work.min_sources=1
+metadata.control_packet.category.approved-work.artifact_min=1
+metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.completion.artifacts.path=literal:<artifact_path>
+```
+
+The source list must contain the terminal leaf that owns the accepted solution artifact and, when present, the required approval gate. Increase the declared source threshold when the node semantically requires more than the solution artifact; never invent a source, publish a group ID, or lower a threshold to make a packet available. Read `control-packet` before `start`, execute only its target, and complete with non-empty summary and validation plus exactly `artifact_path`.
+
 ## Constraints
 
 - Execute exactly one runtime node and report only through the runtime public command.

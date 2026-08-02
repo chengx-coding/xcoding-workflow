@@ -56,6 +56,20 @@ Author 验证本地唯一性和可解析性。Runtime 实例化时把每个本�
 
 Subagent 叶子节点必须提供 `instructions`、`deliverables` 和 `acceptance`。Gate 使用 `executor=main`；composite 和 loop 也使用 `executor=main`。Loop 必须有正数最大轮次和明确的上限结果；switch 必须有 key 和互斥 case/default 子节点。
 
+## Control Metadata
+
+以下三个 metadata 前缀会被识别并 fail closed：
+
+- `metadata.control_packet.*` 声明一个或多个完整的叶子节点专属来源类别，以及可选的 selected blackboard key。
+- `metadata.completion.*` 声明必需结果字段、成对 artifact bounds 与可选路径，以及带 subject 和 fact selector 的归一化 check。
+- `metadata.gate.*` 在 gate 叶子节点上声明结构化 outcome、显式 decision 要求和可选 outcome key。
+
+数组值必须是紧凑 JSON 字符串，而不是 CSV。Control-packet 类别必须同时提供 `selectors`、`min_sources` 和 `artifact_min`。Completion artifact bounds 必须同时提供 `min` 和 `max`；每个已声明 check 都必须有 subject。Gate 声明要求非空且唯一的 lowercase-kebab outcome 数组，以及 `decision_required=true|false`。Control-packet 与 completion metadata 只能属于 `task` 或 `gate` 叶子节点；gate metadata 只能属于 gate 叶子节点。Ancestor 不提供继承默认值。
+
+`validate-spec` 会针对已识别前缀内的未知键、非法 owner、畸形 selector 或 JSON、重复值、非法 bound 或 selector，以及不完整配对声明返回 `invalid_control_metadata` 和按 key 稳定排序的 violation。三个前缀之外的未知普通 `metadata.*` 仍归领域所有并保持兼容。
+
+Author 和 runtime 维护相互独立的 validator，并共同消费 `tests/fixtures/orchestration/control-metadata-conformance-v1.json` 中受跟踪的 schema-version-1 conformance case。生产 Skill 不导入或调用对方的私有 validator 实现。
+
 ## 条件、动态工作与循环
 
 条件使用 runtime 刻意限制的表达式集合，默认 `when.policy=reactive`。如果一次性可选分支在共享值变化后仍必须保持 skipped，应使用 `when.policy=latched`。
@@ -86,9 +100,13 @@ references/
 
 `validate-spec` 在生成前发现格式错误的 flow spec；`build` 确定性创建包含访问和完整性元数据的受管模板；`validate-template` 检查结构规则和 runtime 兼容性。
 
+JSON flow spec 是唯一可编辑的编排源。应在 flow 中修改 control metadata，然后依次运行 `validate-spec`、重新构建 XML 和 `validate-template`；绝不能为通过验证而 patch 生成模板。失败的 `build` 不得创建或替换输出。
+
 构建成功仍不足以验收。应通过 runtime 公开命令初始化一次性运行树并调用 `next`，验证首个叶子或并行批次、gate 位置、条件和 dynamic-group 状态符合设计。模板风险较高时，还应覆盖重要分支、循环上限和失败路径。
 
 迁移 prose-oriented Skill 时，应保留领域指导，并用受管模板和公开 runtime driver 替换其过程式 program counter。不要保留旧运行结构的非受管兼容副本。参见[从 prose 工作流迁移](../../../skills/xc-orchestration-author/references/migration-from-skill.md)。
+
+Control metadata 是 `schema_version=1` 内的 opt-in 能力。不带这些声明的现有 schema-version-1 叶子节点保留 legacy runtime 行为；新生成模板只应用其显式叶子声明。更早 schema 格式不受支持。
 
 ## 创作 Review 清单
 

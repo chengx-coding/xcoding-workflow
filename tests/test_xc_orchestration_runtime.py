@@ -24,6 +24,13 @@ RUNTIME_SKILL = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime"
 RUNTIME_SCRIPTS = RUNTIME_SKILL / "scripts"
 RUNTIME_CLI = RUNTIME_SCRIPTS / "orchestration.py"
 VIEWER_SERVER = RUNTIME_SCRIPTS / "viewer_server.py"
+CONTROL_METADATA_FIXTURE = (
+    REPOSITORY_ROOT
+    / "tests"
+    / "fixtures"
+    / "orchestration"
+    / "control-metadata-conformance-v1.json"
+)
 
 sys.path.insert(0, str(RUNTIME_SCRIPTS))
 import orchestration as runtime_cli
@@ -1282,6 +1289,168 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
             self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
             self.run_cli("complete", "--tree", str(tree_path), "--node", node_id, cwd=project)
             self.assertEqual(self.run_cli("summary", "--tree", str(tree_path), cwd=project)["status"], "complete")
+
+    def test_control_metadata_conformance_static_and_dynamic_rejections_are_atomic(self) -> None:
+        fixture = json.loads(CONTROL_METADATA_FIXTURE.read_text(encoding="utf-8"))
+        self.assertEqual(fixture["schema_version"], 1)
+        for case in fixture["cases"]:
+            with self.subTest(case=case["id"], surface="static"), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                context = project / ".xcoding"
+                context.mkdir(parents=True)
+                config_path = context / "xc-orchestration-runtime.toml"
+                config_path.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+                config = core.load_config(context)
+                template = project / "case.xml"
+                spec = {
+                    "template_id": "case-node",
+                    "type": case["node_type"],
+                    "executor": "main",
+                    **case["metadata"],
+                }
+                if case["node_type"] == "composite":
+                    spec["role"] = "dynamic-group"
+                    spec["mode"] = "sequence"
+                self.write_flow_template(template, config, [spec])
+
+                command = ("validate", "--tree", str(template))
+                if case["valid"]:
+                    validated = self.run_cli(*command, cwd=project)
+                    self.assertTrue(validated["valid"])
+                    runtime_path = context / "work-orders" / case["id"] / "runtime"
+                    self.run_cli(
+                        "init",
+                        "--template",
+                        str(template),
+                        "--runtime-path",
+                        str(runtime_path),
+                        "--work-order-id",
+                        case["id"],
+                        cwd=project,
+                    )
+                else:
+                    rejected = self.run_cli_error(*command, cwd=project)
+                    self.assertEqual(rejected["error"]["code"], "invalid_control_metadata")
+                    actual = [
+                        {"key": item["key"], "code": item["code"]}
+                        for item in rejected["error"]["details"]["violations"]
+                    ]
+                    if "violations" in case:
+                        self.assertEqual(actual, case["violations"])
+                    else:
+                        self.assertEqual(
+                            sorted(set(item["code"] for item in actual)),
+                            sorted(case["violation_codes"]),
+                        )
+                    runtime_path = context / "work-orders" / case["id"] / "runtime"
+                    init_rejected = self.run_cli_error(
+                        "init",
+                        "--template",
+                        str(template),
+                        "--runtime-path",
+                        str(runtime_path),
+                        "--work-order-id",
+                        case["id"],
+                        cwd=project,
+                    )
+                    self.assertEqual(init_rejected["error"]["code"], "invalid_control_metadata")
+                    self.assertFalse((runtime_path / "orchestration.xml").exists())
+
+            if case["valid"]:
+                continue
+            for auto_commit in (False, True):
+                with (
+                    self.subTest(case=case["id"], surface="dynamic", auto_commit=auto_commit),
+                    tempfile.TemporaryDirectory() as temporary,
+                ):
+                    project = Path(temporary) / "project"
+                    context = project / ".xcoding"
+                    context.mkdir(parents=True)
+                    if auto_commit:
+                        self.run_git(context, "init")
+                        self.run_git(context, "config", "user.name", "XC Test")
+                        self.run_git(context, "config", "user.email", "xc-test@example.invalid")
+                    (context / "xc-orchestration-runtime.toml").write_text(
+                        f"[git]\nauto_commit = {'true' if auto_commit else 'false'}\n",
+                        encoding="utf-8",
+                    )
+                    config = core.load_config(context)
+                    tree_path = self.init_flow(
+                        project,
+                        context,
+                        config,
+                        f"dynamic-{case['id']}",
+                        [
+                            {
+                                "template_id": "dynamic",
+                                "type": "composite",
+                                "role": "dynamic-group",
+                                "mode": "sequence",
+                            }
+                        ],
+                    )
+                    group = self.run_cli(
+                        "find",
+                        "--tree",
+                        str(tree_path),
+                        "--template-id",
+                        "dynamic",
+                        cwd=project,
+                    )["nodes"][0]
+                    before_bytes = tree_path.read_bytes()
+                    before_summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                    before_group = self.run_cli(
+                        "show",
+                        "--tree",
+                        str(tree_path),
+                        "--node",
+                        str(group["id"]),
+                        cwd=project,
+                    )["node"]
+                    head_before = (
+                        self.run_git(context, "rev-parse", "HEAD")
+                        if self.git_has_head(context)
+                        else ""
+                    )
+                    args = [
+                        "add-node",
+                        "--tree",
+                        str(tree_path),
+                        "--parent",
+                        str(group["id"]),
+                        "--logical-key",
+                        "candidate",
+                        "--title",
+                        "Candidate",
+                        "--type",
+                        case["node_type"],
+                        "--executor",
+                        "main",
+                    ]
+                    if case["node_type"] == "composite":
+                        args.extend(["--role", "dynamic-group", "--mode", "sequence"])
+                    for key, value in case["metadata"].items():
+                        args.extend(["--metadata", f"{key}={value}"])
+                    rejected = self.run_cli_error(*args, cwd=project)
+                    self.assertEqual(rejected["error"]["code"], "invalid_control_metadata")
+                    after_summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                    after_group = self.run_cli(
+                        "show",
+                        "--tree",
+                        str(tree_path),
+                        "--node",
+                        str(group["id"]),
+                        cwd=project,
+                    )["node"]
+                    self.assertEqual(tree_path.read_bytes(), before_bytes)
+                    self.assertEqual(after_summary["revision"], before_summary["revision"])
+                    self.assertEqual(after_group["children"], before_group["children"])
+                    self.assertEqual(
+                        self.run_git(context, "rev-parse", "HEAD")
+                        if self.git_has_head(context)
+                        else "",
+                        head_before,
+                    )
 
     def test_latched_conditions_do_not_reactivate_after_a_shared_value_changes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -18,6 +18,46 @@ Choose the lifecycle from the state of the project and the intended outcome. Do 
 | Routine upkeep is needed without creating a feature | `xc-work` with `mode=maintenance` | Runs only the documents and execution nodes required for the maintenance outcome |
 | Portable workflow contracts, project bridge guidance, agents, exports, or orchestration templates must change | [`xc-workflow-evolution`](../../skills/xc-workflow-evolution/SKILL.md) | Applies the standard work-order and review discipline to workflow maintenance |
 
+## Direct Or Managed Governance
+
+Before substantive action, confirm the following six facts from host and security rules, the user's explicit request, the applicable project bridge, public Skill contracts, and observable task facts. Each value is exactly `no`, `yes`, or `unknown`.
+
+| Fact | Use `yes` when | Use `no` only when |
+| --- | --- | --- |
+| `needs_persistence` | Correct completion writes or retains project or external state, durable documents, recoverable progress, or evidence usable after the current response | No durable state is written and the result is consumed in the current interaction |
+| `material_impact` | Work changes shared code, a public contract, user data, permissions, production or infrastructure state, a security boundary, or a release asset | Work is read-only or an isolated temporary transformation with none of those effects |
+| `difficult_rollback` | No confirmed, verified, lossless one-step recovery exists, or an irreversible external side effect exists | Work is read-only or has a confirmed deterministic one-step full recovery |
+| `crosses_sessions` | Completion requires a later session, restart, scheduled wait, asynchronous external result, or cross-run recovery | All inputs are available for one continuous execution with no wait or resume requirement |
+| `multiple_actors` | At least two independent people, agents, approvers, or external systems own coordinated decisions or deliverables | One actor owns the work with no approval, handoff, or parallel dependency |
+| `audit_required` | The user, law, project bridge, Skill, or workflow contract requires retained traceability, approval, verification, review, or a commit | Applicable policy has been read and confirmed to require none of these |
+
+Use `unknown` whenever the evidence does not justify `yes` or `no`, including an unresolved conflict. Only the all-`no` vector permits direct work. Any `yes` or `unknown` selects managed work, and an explicit managed selection is never downgraded automatically.
+
+The applicable project bridge is read before the vector is confirmed. It may tighten `no` to `unknown` or `yes`, and `unknown` to `yes`; it cannot relax `yes` or `unknown` to `no`, or `yes` to `unknown`. When project context is expected but the bridge or an applicable rule is unavailable, at least `audit_required` is `unknown`.
+
+## Classification Boundary
+
+Use the executable public [`xc-work operation=classify`](../../skills/xc-work/SKILL.md) boundary:
+
+```console
+python skills/xc-work/scripts/classify.py [--needs-persistence no|yes|unknown] [--material-impact no|yes|unknown] [--difficult-rollback no|yes|unknown] [--crosses-sessions no|yes|unknown] [--multiple-actors no|yes|unknown] [--audit-required no|yes|unknown]
+```
+
+The adapter accepts every fact as optional, fills omissions with `unknown`, invokes and validates the strict low-level classifier, and always exits successfully. Malformed, duplicate, or contradictory input; a missing executable; timeout or nonzero exit; malformed JSON; and an unknown schema or route all produce `route=managed`, `classification_status=escalated`, and reason `classification-unavailable`. The low-level classifier still requires all six facts exactly once and retains nonzero diagnostic errors; it is not the public lifecycle command.
+
+The adapter validates only facts and observable subprocess output. It does not authenticate the caller, Python interpreter, executable bytes, or host and provides no host mediation or attestation. Classification itself creates no workshop, work order, document, runtime tree, artifact, or commit.
+
+Examples:
+
+- Correcting one spelling in temporary text, without writing a file or retaining evidence, can remain direct when all six facts are confirmed `no`.
+- Explaining a supplied code fragment can remain direct under the same all-`no` rule; explicitly choosing `operation=run` still starts managed work.
+- A direct investigation that discovers a need for cross-session tracking must stop before the next substantive action, carry forward the original request, completed actions, and evidence, and enter `xc-work operation=run`.
+- A short credential rotation or destructive command is managed immediately when material impact or rollback is `yes` or `unknown`; request length does not reduce governance.
+
+A stronger model may keep more direct-path reasoning in one main session and may reduce unnecessary delegation after the route is selected. It cannot change confirmed facts, bypass managed controls, weaken artifacts or verification, or replace a scoped control packet with full-tree access. Governance has no model-specific profiles.
+
+Workflow measurements named `context_bytes` count normalized UTF-8 runtime protocol payload bytes. They are not token counts, model latency, execution latency, cost, or quality measurements.
+
 ## Selection Rules
 
 Use setup before other lifecycles when the required workshop bridge does not exist. Setup asks for project facts rather than inventing commands, conventions, or knowledge sources.

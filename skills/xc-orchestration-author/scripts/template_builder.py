@@ -10,11 +10,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
-RUNTIME_SCRIPTS = Path(__file__).resolve().parents[2] / "xc-orchestration-runtime" / "scripts"
-if str(RUNTIME_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(RUNTIME_SCRIPTS))
-
-import runtime_core as core
+import author_core as core
 
 
 NODE_ATTRIBUTE_KEYS = {
@@ -47,13 +43,13 @@ def json_print(payload: Dict[str, Any]) -> None:
 
 def load_json(path: Path) -> Dict[str, Any]:
     if not path.exists():
-        raise core.RuntimeErrorBase("flow spec not found", {"path": str(path)})
+        raise core.AuthorError("flow spec not found", {"path": str(path)})
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise core.RuntimeErrorBase("invalid flow spec JSON", {"path": str(path), "error": str(exc)}) from exc
+        raise core.AuthorError("invalid flow spec JSON", {"path": str(path), "error": str(exc)}) from exc
     if not isinstance(data, dict):
-        raise core.RuntimeErrorBase("flow spec root must be an object", {"path": str(path)})
+        raise core.AuthorError("flow spec root must be an object", {"path": str(path)})
     return data
 
 
@@ -81,6 +77,7 @@ def spec_template() -> Dict[str, Any]:
         "blackboard": {
             "scope.confirmed": "false",
             "review.open_issues": "false",
+            "review.source_ids": "[]",
         },
         "root": {
             "template_id": "root",
@@ -99,6 +96,16 @@ def spec_template() -> Dict[str, Any]:
                     "instructions": "Inspect the current project information and write a concise report.",
                     "deliverables": "artifacts/investigation/analysis.md",
                     "acceptance": "Report exists, cites source files, and distinguishes facts from assumptions.",
+                    "metadata": {
+                        "completion": {
+                            "required_fields": "[\"summary\",\"validation\"]",
+                            "artifacts": {
+                                "min": "1",
+                                "max": "1",
+                                "path": "literal:artifacts/investigation/analysis.md",
+                            },
+                        },
+                    },
                 },
                 {
                     "template_id": "scope-gate",
@@ -109,6 +116,13 @@ def spec_template() -> Dict[str, Any]:
                     "instructions": "Ask the user to confirm the scope after investigation.",
                     "deliverables": "Set scope.confirmed=true in the blackboard.",
                     "acceptance": "User has confirmed scope or supplied corrections.",
+                    "metadata": {
+                        "gate": {
+                            "outcomes": "[\"approved\",\"revision-required\"]",
+                            "decision_required": "true",
+                            "outcome_key": "scope.gate_outcome",
+                        },
+                    },
                 },
                 {
                     "template_id": "review-loop",
@@ -143,6 +157,18 @@ def spec_template() -> Dict[str, Any]:
                             "instructions": "Address the current review findings.",
                             "deliverables": "artifacts/review-loop/rework-{iteration}.md",
                             "acceptance": "Required findings are fixed or explicitly deferred.",
+                            "metadata": {
+                                "control_packet": {
+                                    "category": {
+                                        "review-records": {
+                                            "selectors": "[\"bb:review.source_ids\"]",
+                                            "min_sources": "1",
+                                            "artifact_min": "1",
+                                        },
+                                    },
+                                    "blackboard_keys": "[\"review.open_issues\"]",
+                                },
+                            },
                         },
                     ],
                 },
@@ -216,25 +242,20 @@ def validate_spec_data(spec: Dict[str, Any]) -> List[str]:
         errors.append("missing spec.name")
     try:
         root = build_template(spec)
-    except core.RuntimeErrorBase as exc:
+    except core.AuthorError as exc:
         return errors + [str(exc)]
+    core.require_valid_control_metadata(root)
     errors.extend(core.validate_template_root(root, check_integrity=False))
     return errors
 
 
 def persist_template(root: ET.Element, out: Path, config_path: str, operation: str) -> Dict[str, Any]:
     config = core.load_config(out, Path(config_path) if config_path else None)
+    core.require_valid_control_metadata(root)
     errors = core.validate_template_root(root, check_integrity=False)
     if errors:
         raise core.TreeValidationError("template validation failed", {"errors": errors})
-    persisted = core.write_managed_tree(ET.ElementTree(root), out, "template", config, operation)
-    return {
-        "status": persisted["status"],
-        "path": str(out),
-        "checksum": persisted["checksum"],
-        "integrity": persisted["integrity"],
-        "commit": persisted["commit"],
-    }
+    return core.persist_template(root, out, config, operation)
 
 
 def cmd_new_spec(args: argparse.Namespace) -> Dict[str, Any]:
@@ -259,6 +280,7 @@ def cmd_validate_spec(args: argparse.Namespace) -> Dict[str, Any]:
 
 def cmd_validate_template(args: argparse.Namespace) -> Dict[str, Any]:
     template = core.parse_xml(Path(args.template))
+    core.require_valid_control_metadata(template.getroot())
     errors = core.validate_template_root(template.getroot())
     return {"valid": not errors, "errors": errors, "path": args.template}
 
@@ -292,7 +314,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
     try:
         payload = args.func(args)
-    except core.RuntimeErrorBase as exc:
+    except core.AuthorError as exc:
         json_print({"ok": False, "error": {"code": exc.code, "message": str(exc), "details": exc.details}})
         return 2
     json_print({"ok": True, **payload})

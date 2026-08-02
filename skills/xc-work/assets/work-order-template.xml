@@ -3,7 +3,7 @@
 <orchestration schema_version="1" name="work-order" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="f60190ca6411400bba3306b4c424c58f36546819e5968e94bfad99c9c1afeb9f" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="92e4d8c7d3b516f2941f924b36697159de967c55d7105dd66a8c31515f5f26f2" />
   </meta>
   <blackboard>
     <var key="work_order.has_features">false</var>
@@ -12,6 +12,10 @@
     <var key="work_order.requires_clarification">false</var>
     <var key="work_order.requires_solution">true</var>
     <var key="work_order.solution_gate_required">true</var>
+    <var key="work_order.solution_gate_outcome">approved</var>
+    <var key="work_order.solution_source_ids">[]</var>
+    <var key="work_order.objective_source_ids">[]</var>
+    <var key="work_order.result_source_ids">[]</var>
     <var key="work_order.requires_implementation">true</var>
     <var key="work_order.requires_verification">true</var>
   </blackboard>
@@ -27,18 +31,23 @@
       <node executor="main" mode="sequence" role="dynamic-group" template_id="reconciliation-group" title="Reconcile related feature baselines" type="composite" when="work_order.has_features == true" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="clarification-group" title="Clarify material decisions" type="composite" when="work_order.requires_clarification == true" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="work-order-solution-document" title="Select work order solution" type="composite" when="work_order.requires_solution == true" />
-      <node executor="main" role="solution-approval" template_id="approve-work-order-solution" title="Approve work order solution" type="gate" when="work_order.solution_gate_required == true">
+      <node executor="main" role="solution-approval" template_id="approve-work-order-solution" title="Approve work order solution" type="gate" when="work_order.solution_gate_required == true" metadata.control_packet.category.selected-solution.selectors="[&quot;bb:work_order.solution_source_ids&quot;]" metadata.control_packet.category.selected-solution.min_sources="1" metadata.control_packet.category.selected-solution.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;work_order.document_language&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;approved&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="work_order.solution_gate_outcome">
         <instructions>Present the selected change solution, baseline impact, implementation strategy, verification strategy, and unresolved decisions. Record approval or add revision nodes.</instructions>
         <deliverables>An approval decision or explicit revision work.</deliverables>
         <acceptance>Implementation cannot proceed on a material unresolved solution decision.</acceptance>
       </node>
-      <node executor="main" mode="sequence" role="dynamic-group" template_id="implementation-group" title="Implement approved change" type="composite" when="work_order.requires_implementation == true" />
-      <node executor="main" mode="sequence" role="dynamic-group" template_id="verification-group" title="Verify work order outcome" type="composite" when="work_order.requires_verification == true" />
-      <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record work order result" type="composite" />
-      <node executor="main" role="work-order-finalize" template_id="finalize-work-order" title="Finalize ordinary work order" type="task">
-        <instructions>Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order.</instructions>
-        <deliverables>A completed, failed, or blocked work order with durable evidence.</deliverables>
-        <acceptance>The runtime tree and workbench documents accurately describe the work order outcome.</acceptance>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="solution-recovery-group" title="Recover non-accepting solution decision" type="composite" when="work_order.solution_gate_outcome != approved" />
+      <node executor="main" mode="sequence" role="gate-continuation" template_id="approved-solution-continuation" title="Continue approved work order" type="composite" when="work_order.solution_gate_outcome == approved">
+        <children>
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="implementation-group" title="Implement approved change" type="composite" when="work_order.requires_implementation == true" />
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="verification-group" title="Verify work order outcome" type="composite" when="work_order.requires_verification == true" />
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record work order result" type="composite" />
+          <node executor="main" role="work-order-finalize" template_id="finalize-work-order" title="Finalize ordinary work order" type="task" metadata.control_packet.category.supporting-records.selectors="[&quot;bb:work_order.result_source_ids&quot;]" metadata.control_packet.category.supporting-records.min_sources="1" metadata.control_packet.category.supporting-records.artifact_min="1" metadata.control_packet.category.work-order-objective.selectors="[&quot;bb:work_order.objective_source_ids&quot;]" metadata.control_packet.category.work-order-objective.min_sources="1" metadata.control_packet.category.work-order-objective.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;work_order.document_language&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]">
+            <instructions>Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order.</instructions>
+            <deliverables>A completed, failed, or blocked work order with durable evidence.</deliverables>
+            <acceptance>The runtime tree and workbench documents accurately describe the work order outcome.</acceptance>
+          </node>
+        </children>
       </node>
     </children>
   </node>

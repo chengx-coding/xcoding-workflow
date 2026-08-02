@@ -66,9 +66,27 @@ Runtime 反复执行条件和 switch 路由以及自底向上的容器聚合，�
 
 循环只在轮次边界决策。系统没有 `break-loop`、`continue-loop`、取消同级节点、终止子树、提前完成父节点或中止整次运行等控制信号。
 
-## Gate、Blackboard 与 Artifact
+## 限定范围的 Control Packet
+
+`task` 或 `gate` 叶子节点可以声明一个或多个领域命名的 `metadata.control_packet.category.*` 类别。每个类别提供紧凑 JSON selector 数组、`min_sources` 和 `artifact_min`。`node:<runtime-id>` 选择一个来源；`bb:<key>` 读取一个 blackboard 标量，该值必须是由唯一 runtime ID 组成的非空紧凑 JSON 数组。类别由领域拥有；runtime 只验证名称、展开结果、终态、可投影结果内容和阈值。
+
+`metadata.control_packet.blackboard_keys` 是另一个紧凑 JSON 数组，用于选择允许投影的标量。用于查找 source ID 的 blackboard key 不会自动暴露，除非它也被显式选择。声明只属于 target 叶子节点：ancestor 不能声明、贡献或覆盖 packet metadata。
+
+`control-packet --node` 返回 target 契约、已声明来源投影、选定 blackboard 值、局部 blocker 和控制动作。它绝不会返回 target children、来源 instructions、未声明的 sibling 或 future-node 数据、未选 blackboard 值、完整 blackboard、未声明 artifact 或完整树。来源只能贡献投影后的结果字段：身份、标题、role、状态、summary、已声明 artifact、结构化 gate outcome 与 decision、failure 或 block 原因，以及已保存的归一化 check。
+
+缺少声明时返回 `control_packet_not_declared`。Selector、来源、阈值或选定键非法或不满足时返回 `control_packet_unavailable`，不返回残缺 packet，也不改变 revision。Source ID 只提供证据，不授予启动或修改该节点的权限。
+
+## Gate、Completion、Blackboard 与 Artifact
 
 Gate 是主会话执行的叶子节点。主会话先收集证据，再提出聚焦问题，并把决定记录为结构化状态。Worker 不独立向用户提问。
+
+Opt-in gate 声明唯一的 lowercase-kebab outcome 列表、显式 `decision_required` 布尔值，以及可选的 outcome blackboard key。`complete --gate-outcome` 记录允许的 outcome，`--decision` 提供必需说明。结果存储和可选 outcome key 更新是原子操作，同时用 `--set` 写同一 key 会被拒绝。Runtime 会验证声明与值，但不认证实际 CLI 调用者。
+
+Runtime 有意不判断哪些领域 outcome 属于接受结果；领域 flow spec 使用普通 reactive condition、switch 和 dynamic group 机械表达该决策。当前生命周期模板只为显式接受值选择有实质后果的继续路径；每个已声明的非接受值都会选择开放 recovery 分支，未知 switch 值则进入 blocked。后继 recovery gate 可以原子地把 outcome 替换为接受值，并重新激活正常分支。被跳过的可选 gate 使用规范 flow 中由领域声明的安全默认值。
+
+Opt-in completion metadata 可以要求 `summary` 与 `validation`、artifact 数量和由 literal 或 blackboard 选择的 artifact 路径，以及归一化 check receipt。Runtime 在成功前验证 receipt 的形状、大小、唯一性、已声明名称、布尔成功值、subject 和标量 facts；拒绝时树和 revision 不变。`fail` 与 `block` 不应用成功完成要求。
+
+归一化 receipt 是不可信的调用方自报告，不是执行证明。它没有签名，也没有 claimant binding 或 attestation。Runtime 不导入或运行领域 validator，因此结构和值完全匹配预期的伪造 receipt 会被接受。调用方仍必须实际执行 validator，检查其进程和顶层结果，并且只传入归一化 receipt。
 
 Blackboard 保存跨节点短值；点分名称只是约定，不是 schema。报告、计划、findings、日志和生成内容属于 artifact。
 
@@ -78,10 +96,11 @@ Blackboard 保存跨节点短值；点分名称只是约定，不是 schema。�
 
 [单节点 worker 契约](../../../skills/xc-orchestration-runtime/references/subagent-contract.md)采用职责拆分：
 
-1. 主会话取得 ready 节点并启动它。
-2. Worker 只使用提供的输入和 reference 执行该节点。
-3. Worker 写入持久产物并调用 `complete`、`fail` 或 `block`。
-4. 主会话复核 runtime 状态。
+1. 主会话取得 ready 节点，并为 opt-in 叶子请求其 control packet。
+2. 主会话启动 packet target，只委派该节点。
+3. Worker 只使用提供的 packet、输入和 reference 执行该节点。
+4. Worker 写入持久产物并调用 `complete`、`fail` 或 `block`。
+5. 主会话复核 runtime 状态。
 
 Worker 遇到 `state_conflict` 或 `tree_sealed` 时应上报，而不是重试含义不明确的写入。Failed 表示执行失败；blocked 表示缺少可恢复的人类、外部或环境前置条件。两者都不能被静默跳过。
 
@@ -100,5 +119,13 @@ Worker 遇到 `state_conflict` 或 `tree_sealed` 时应上报，而不是重试�
 当 `auto_commit=false` 时，不执行 checkpoint commit 和 checkpoint 路径验证，但状态和声明仍会持久化。非终态修改通常只持久化，不提交，并在下一次 checkpoint 中纳入。
 
 成功的根节点会 sealed，普通修改随后返回 `tree_sealed`。`reopen --reason` 记录新 epoch，并要求所属工作流已获得用户明确批准的原因。这是完成树的恢复机制，不是常规继续执行。
+
+## 兼容性与限制
+
+Control packet、completion requirement、归一化 receipt 和 structured gate 都是 `schema_version="1"` 内的 opt-in 扩展。不带对应 metadata 的现有 schema-version-1 节点和 gate 保留 legacy 命令与结果形状。更早 schema 格式仍不受支持；系统不会通过 ancestor 推断叶子声明来改造在途树。
+
+Scoped packet 减少运行时协议披露，但 runtime 无法阻止节点启动前的普通宿主工具调用，启动后也不代理宿主工具。本版本没有可信 validator 执行、claim binding、typed blackboard、host mediation 或模型专用执行 profile。模型能力不能扩大 packet 范围或削弱受管控制。
+
+任何名为 `context_bytes` 的测量都只统计归一化 UTF-8 协议 payload 字节。它不是 token 数，也不对模型时延、执行时延、成本或输出质量作出任何声明。
 
 公开命令契约见 [runtime protocol](../../../skills/xc-orchestration-runtime/references/runtime-protocol.md)。

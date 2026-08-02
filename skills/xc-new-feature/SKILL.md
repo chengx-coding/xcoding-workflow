@@ -36,11 +36,12 @@ description: "Starts and governs a complete managed workflow for developing a ne
 5. Use `find` to locate each dynamic group and embed `xc-document-evolution` for `goal.md`, work order `solution.md`, and each feature baseline document. Set `document.content_language` from `work_order.document_language` only for top-level work order documents; use the project bridge for feature-baseline language.
 6. Schedule evidence and synthesis nodes using `xc-analysis`; write the accepted work order analysis when needed.
 7. When evidence leaves a material human-owned decision unresolved, or the user explicitly asks to clarify or stress-test the feature, set `work_order.requires_clarification=true` and embed `xc-clarify` under `clarification-group` before selecting the work order solution.
-8. Review and approve the feature `contract.md`, `solution.md`, and `verification.md` through document-evolution loops and `approve-feature-baseline`.
-9. Add bounded implementation nodes under `implementation-group`, then verification nodes under `verification-group`.
+8. Review the work order solution and feature `contract.md`, `solution.md`, and `verification.md` through document-evolution loops. Publish their four terminal writer IDs as a compact JSON array in `feature.baseline_source_ids`, read the `approve-feature-baseline` control packet, and complete the gate with `--gate-outcome approved|rejected|revision-required` plus a non-empty decision. The default `feature.baseline_gate_outcome=approved` applies only when the optional gate is skipped. Every non-approved value opens `baseline-recovery-group`; add revision and a successor approval gate there, and publish `approved` through that gate before continuing.
+9. Add bounded implementation nodes under `implementation-group` only after `approved-baseline-continuation` is selected, using the complete `xc-implementation` dynamic metadata contract, then add verification nodes under `verification-group` using `xc-verification`. Publish each leaf's actual terminal source IDs through its node-specific blackboard key before reading its packet.
 10. Create `result.md` through document evolution and complete `finalize-feature`.
 
 Use runtime-returned paths and node IDs only. Dynamic document, analysis, implementation, review, and verification nodes must declare their artifacts and complete through the runtime public interface.
+Control-packet source arrays contain only terminal leaf IDs and are written through the runtime; group IDs and guessed references are invalid. If one of the four baseline documents is not yet represented by a terminal writer artifact, keep the approval gate waiting rather than lowering its source or artifact threshold.
 
 When a reachable dynamic group is empty, `next` reports it in
 `awaiting_dynamic_groups`. The main session appends the planned work or closes
@@ -55,7 +56,7 @@ The feature baselines are approved target documents, not dynamic status ledgers:
 - `solution.md` contains the approved technical design and implementation invariants.
 - `verification.md` contains requirement mapping and verification design.
 
-The implementation may begin only after required approval gates have succeeded. If approval feedback changes a baseline, add document revision and review nodes rather than overwriting a completed node or modifying the runtime tree directly.
+The implementation may begin only after required approval gates have published `approved`. If approval feedback changes a baseline, add document revision, review, and successor approval nodes in the open recovery group rather than overwriting a completed node or modifying the runtime tree directly.
 
 ## Constraints
 

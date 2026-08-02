@@ -173,13 +173,29 @@ def main() -> int:
     path = Path(args.document)
     metadata, _, errors = parse_document(path)
     errors.extend(validate_document(metadata, args.expected_kind) if not errors else [])
+    normalized_path = str(path.resolve())
+    document_kind = metadata.get("document_kind", "")
+    content_language = effective_content_language(metadata)
+    audience = effective_audience(metadata) if document_kind == "node-artifact" else ""
+    receipt = {
+        "schema_version": 1,
+        "check": "xc-document",
+        "ok": not errors,
+        "subject": normalized_path,
+        "facts": {
+            "document_kind": document_kind,
+            "content_language": content_language,
+            "audience": audience,
+        },
+    }
     payload = {
         "ok": not errors,
-        "path": str(path),
-        "document_kind": metadata.get("document_kind", ""),
-        "content_language": effective_content_language(metadata),
-        "audience": effective_audience(metadata) if metadata.get("document_kind") == "node-artifact" else "",
+        "path": normalized_path,
+        "document_kind": document_kind,
+        "content_language": content_language,
+        "audience": audience,
         "errors": errors,
+        "receipt": receipt,
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0 if not errors else 1

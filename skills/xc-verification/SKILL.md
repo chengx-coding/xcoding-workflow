@@ -29,6 +29,22 @@ When a feature verification baseline exists, map evidence to its requirement IDs
 
 Verification artifacts default to internal English. A user-facing verification report must be explicitly marked with `metadata.artifact.audience=user` and uses the resolved `metadata.artifact.content_language`; preserve commands and raw output exactly.
 
+## Dynamic Node Contract
+
+Before `add-node`, the caller writes the actual terminal implementation or diagnosis source IDs as a compact JSON array to a node-specific blackboard key such as `verification.sources.<logical-key>`. The dynamic task declares all of:
+
+```text
+metadata.control_packet.category.implementation-records.selectors=["bb:verification.sources.<logical-key>"]
+metadata.control_packet.category.implementation-records.min_sources=1
+metadata.control_packet.category.implementation-records.artifact_min=1
+metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.completion.artifacts.path=literal:<artifact_path>
+```
+
+Select only terminal leaves whose artifacts supply the evidence this verification scope needs. Increase thresholds for scopes that require multiple independent records; do not use a group, ancestor, guessed ID, or unrelated sibling as a source. Read `control-packet` before `start`, run the project-defined checks, and complete with non-empty summary and validation plus exactly `artifact_path`.
+
 ## Constraints
 
 - Do not invent test commands, tools, environments, thresholds, or pass criteria.

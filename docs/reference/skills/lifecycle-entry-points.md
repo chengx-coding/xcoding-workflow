@@ -28,11 +28,12 @@ These Skills select and govern complete workflow lifecycles.
 
 [Canonical contract](../../../skills/xc-work/SKILL.md)
 
-- **Invoke when:** persistent investigation, change, repair, review, maintenance, or cross-feature work concerns zero or more existing features.
-- **Purpose:** run the ordinary work-order lifecycle with only the analysis, solution, implementation, and verification stages the selected mode requires.
-- **Public entry:** required `workshop_path`, `project_root`, and `request`; optional `feature_ids`, `mode`, and `document_language`.
-- **Typical usage:** create the goal, reconcile existing features when named, clarify material decisions, approve a solution, implement, verify, and close with a result.
-- **Boundaries:** it never creates or adopts a feature implicitly; runtime state stays in the tree, and language is fixed from the initiating request unless explicitly corrected.
+- **Invoke when:** governance must be classified from explicit facts, or persistent investigation, change, repair, review, maintenance, or cross-feature work concerns zero or more existing features.
+- **Purpose:** provide the public direct-versus-managed classification boundary and run the ordinary work-order lifecycle with only the stages the selected mode requires.
+- **Public entry:** `operation=run|classify`, defaulting to `run`, with required `request`. `run` also requires `workshop_path` and `project_root` and accepts `feature_ids`, `mode`, and `document_language`. `classify` omits managed paths and accepts `needs_persistence`, `material_impact`, `difficult_rollback`, `crosses_sessions`, `multiple_actors`, and `audit_required`, each as `no|yes|unknown`.
+- **Classification:** execute `python skills/xc-work/scripts/classify.py [fact flags]`. Only six confirmed `no` values return direct. Any `yes` or `unknown` returns managed. Omitted facts become `unknown`; invalid input, missing executable, timeout, low-level nonzero exit, malformed JSON, or unknown schema or route always exits zero with managed `classification_status=escalated` and reason `classification-unavailable`.
+- **Typical managed usage:** omit `operation` or use `operation=run` to create the goal, reconcile existing features when named, clarify material decisions, approve a solution, implement, verify, and close with a result. Explicit `run` never classifies or downgrades to direct.
+- **Boundaries:** classification is read-only and performs no substantive action. The public adapter validates observable subprocess results but does not authenticate the caller, interpreter, executable bytes, or host and provides no host mediation or attestation. The strict low-level classifier retains nonzero diagnostic errors and is not a lifecycle entry. Managed work never creates or adopts a feature implicitly.
 
 ## `xc-new-feature`
 
@@ -60,6 +61,6 @@ These Skills select and govern complete workflow lifecycles.
 
 - **Invoke when:** portable workflow contracts, templates, agents, exports, project bridge guidance, or health checks need deliberate change.
 - **Purpose:** apply the ordinary work-order and review discipline to workflow maintenance while separating portable core from project-specific policy.
-- **Public entry:** required `scope`, `workshop_path`, and `request`; `scope` selects portable core, project bridge, agent export, orchestration template, or health check.
-- **Typical usage:** open a zero-feature work order, record analysis and solution, edit canonical sources, regenerate owned outputs when required, and verify the affected interface.
-- **Boundaries:** do not hand-edit generated assets or managed runtime state; broad architectural changes require alternatives, review, and an explicit user gate.
+- **Public entry:** required `scope`, `workshop_path`, `project_root`, and `request`; `scope` selects portable core, project bridge, agent export, orchestration template, or health check.
+- **Typical usage:** confirm the six governance facts, call public `xc-work operation=classify`, and either perform only the all-`no` response-local action or enter public `xc-work operation=run` with zero features. Managed work records analysis and solution, edits canonical sources, regenerates owned outputs when required, and verifies the affected interface.
+- **Boundaries:** it depends only on the `xc-work` Skill name and public parameters; it does not call another Skill's private classifier script or references. Do not hand-edit generated assets or managed runtime state; broad architectural changes require alternatives, review, and an explicit user gate.
