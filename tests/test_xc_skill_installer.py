@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -31,6 +32,23 @@ class XcSkillInstallerTests(unittest.TestCase):
         (target / "skills" / "project-only" / "SKILL.md").write_text("project only\n", encoding="utf-8")
         manifest = target / "xc-skill-install-manifest.json"
         return source, target, manifest
+
+    def create_directory_link(self, target: Path, link: Path) -> None:
+        if os.name == "nt":
+            completed = subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            if completed.returncode != 0:
+                raise unittest.SkipTest(completed.stderr or completed.stdout or "junction creation failed")
+            return
+        try:
+            os.symlink(target, link, target_is_directory=True)
+        except (NotImplementedError, OSError) as exc:
+            raise unittest.SkipTest(f"directory symlink creation failed: {exc}") from exc
 
     def invoke(self, source: Path, target: Path, manifest: Path, *extra: str) -> tuple[int, dict[str, object]]:
         result = subprocess.run(
@@ -161,6 +179,36 @@ class XcSkillInstallerTests(unittest.TestCase):
             self.assertFalse((target / "skills" / "xc-beta").exists())
             self.assertTrue((target / "skills" / "project-only" / "SKILL.md").is_file())
             self.assertEqual(payload["removed_stale_packages"], ["xc-beta"])
+
+    def test_install_preserves_link_spelling_for_target_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            physical_target = root / "physical-target"
+            linked_target = root / "linked-target"
+            (source / "skills").mkdir(parents=True)
+            (physical_target / "skills").mkdir(parents=True)
+            self.create_source_package(source, "xc-alpha")
+            self.create_directory_link(physical_target, linked_target)
+            manifest = linked_target / "xc-skill-install-manifest.json"
+
+            code, payload = self.invoke(source, linked_target, manifest)
+
+            self.assertEqual(code, 0)
+            self.assertTrue(payload["ok"])
+            stored = json.loads(manifest.read_text(encoding="utf-8"))
+            self.assertEqual(stored["target_root"], str(linked_target))
+            self.assertTrue((physical_target / "skills" / "xc-alpha" / "SKILL.md").is_file())
+
+            code, checked = self.invoke(
+                source,
+                physical_target,
+                physical_target / "xc-skill-install-manifest.json",
+                "--check",
+            )
+
+            self.assertEqual(code, 0)
+            self.assertTrue(checked["ok"])
 
 
 if __name__ == "__main__":
