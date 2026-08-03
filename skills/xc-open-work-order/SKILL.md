@@ -12,7 +12,7 @@ description: "Opens a managed work order and creates its standard workbench insi
 ### Public Parameters
 
 - `workshop_path` - `path`; required
-  - Scope: The project `.xcoding` workshop that contains `work-orders/`.
+  - Scope: The project `.xcoding` workshop path that contains `work-orders/`. The logical path may be a directory link to a differently named target within the dedicated workshop Git worktree.
   - Side effects: The script creates `work-orders/` and the selected workbench.
   - Propagation: No downstream propagation.
 
@@ -61,7 +61,7 @@ Use the returned `runtime_path` to initialize the main orchestration tree. `xc-o
 
 ## Constraints
 
-- The resolved `workshop_path` MUST be the fixed `.xcoding` path inside a dedicated workshop Git worktree.
+- The supplied `workshop_path` MUST name the fixed `.xcoding` path. Its resolved target MUST be inside a dedicated workshop Git worktree.
 - The script MUST NOT create a feature directory. Only the new-feature and feature-adoption workflows may do so.
 - Callers MUST use the returned paths rather than reconstructing workbench paths.
 - The script handles slug normalization and collision suffixes internally.

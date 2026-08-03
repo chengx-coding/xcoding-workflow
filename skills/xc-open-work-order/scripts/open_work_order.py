@@ -80,11 +80,12 @@ def open_work_order(
     explicit_work_order_id: str,
     feature_ids: list[str],
 ) -> dict[str, Any]:
-    resolved_workshop = workshop_path.expanduser().resolve()
+    requested_workshop = workshop_path.expanduser()
+    if requested_workshop.name != ".xcoding":
+        raise WorkOrderError(f"workshop_path must name a .xcoding directory: {requested_workshop}")
+    resolved_workshop = requested_workshop.resolve()
     if not resolved_workshop.is_dir():
         raise WorkOrderError(f"workshop_path does not exist or is not a directory: {resolved_workshop}")
-    if resolved_workshop.name != ".xcoding":
-        raise WorkOrderError(f"workshop_path must resolve to a .xcoding directory: {resolved_workshop}")
     workshop_repo_root = git_root(resolved_workshop)
     resolved_project = project_root.expanduser().resolve()
     project_repo_root = git_root(resolved_project, required=False)
