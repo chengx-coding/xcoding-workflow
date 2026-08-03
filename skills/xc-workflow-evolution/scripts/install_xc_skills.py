@@ -41,8 +41,23 @@ def json_print(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
+def absolute_path(path_value: str) -> Path:
+    return Path(os.path.abspath(os.path.expanduser(path_value)))
+
+
+def canonical_path(path: Path) -> Path:
+    try:
+        return path.resolve(strict=False)
+    except OSError:
+        return path.absolute()
+
+
+def same_path(left: Path, right: Path) -> bool:
+    return os.path.normcase(str(canonical_path(left))) == os.path.normcase(str(canonical_path(right)))
+
+
 def resolved_directory(path_value: str, label: str) -> Path:
-    path = Path(path_value).expanduser().resolve()
+    path = absolute_path(path_value)
     if not path.is_dir():
         raise InstallerError("invalid_directory", f"{label} must be an existing directory", {"path": str(path)})
     return path
@@ -52,6 +67,11 @@ def relative_to(path: Path, parent: Path, label: str) -> Path:
     try:
         return path.relative_to(parent)
     except ValueError as exc:
+        try:
+            canonical_path(path).relative_to(canonical_path(parent))
+            return path
+        except ValueError:
+            pass
         raise InstallerError(
             "invalid_path",
             f"{label} must be inside its declared root",
@@ -80,7 +100,7 @@ def source_and_target_roots(source_value: str, target_value: str) -> tuple[Path,
 
 
 def manifest_path(path_value: str, target_root: Path) -> Path:
-    path = Path(path_value).expanduser().resolve()
+    path = absolute_path(path_value)
     relative_to(path, target_root, "manifest")
     return path
 
@@ -214,7 +234,8 @@ def load_manifest(path: Path, target_root: Path) -> dict[str, Any]:
         raise InstallerError("invalid_manifest", "manifest schema version is unsupported", {"manifest": str(path)})
     if not isinstance(data.get("installer_version"), str) or not data["installer_version"]:
         raise InstallerError("invalid_manifest", "manifest installer version is missing", {"manifest": str(path)})
-    if Path(str(data.get("target_root", ""))).expanduser().resolve() != target_root:
+    manifest_target = data.get("target_root")
+    if not isinstance(manifest_target, str) or not manifest_target or not same_path(absolute_path(manifest_target), target_root):
         raise InstallerError(
             "foreign_manifest",
             "manifest target root does not match the requested target root",
@@ -259,7 +280,8 @@ def snapshot_mismatches(manifest: dict[str, Any], snapshot: dict[str, Any], targ
     for field in compared_fields:
         if manifest.get(field) != snapshot.get(field):
             mismatches.append({"kind": "source_mismatch", "path": field})
-    if Path(str(manifest.get("target_root", ""))).expanduser().resolve() != target_root:
+    manifest_target = manifest.get("target_root")
+    if not isinstance(manifest_target, str) or not manifest_target or not same_path(absolute_path(manifest_target), target_root):
         mismatches.append({"kind": "target_mismatch", "path": "target_root"})
     if source_file_map(manifest) != source_file_map(snapshot):
         mismatches.append({"kind": "source_mismatch", "path": "files"})

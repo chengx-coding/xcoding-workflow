@@ -8,10 +8,15 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+
+def absolute_path(path_value: str) -> Path:
+    return Path(os.path.abspath(os.path.expanduser(path_value)))
 
 
 def main() -> int:
@@ -25,7 +30,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    target_skills = Path(args.target_skills).expanduser().resolve()
+    target_skills = absolute_path(args.target_skills)
     if not target_skills.is_dir():
         print(f"Error: target skills directory does not exist: {target_skills}", file=sys.stderr)
         return 1
