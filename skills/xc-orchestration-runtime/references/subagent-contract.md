@@ -88,3 +88,10 @@ validation remains disabled and the terminal declarations persist without a
 workshop commit.
 
 Use `block` rather than `fail` when progress requires user input, external access, or another recoverable prerequisite.
+
+After a worker reports `fail`, it does not reset or rerun itself. The main
+session may repeat the same approved leaf contract with
+`retry-failed --reason <reason> [--expected-revision <revision>]`. Runtime
+archives the prior failure evidence as an attempt before returning the leaf to
+scheduling. Replacement work, revised acceptance, or a different solution
+requires the owning lifecycle's recovery nodes or user gate instead.

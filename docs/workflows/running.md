@@ -74,10 +74,14 @@ A successfully completed tree is sealed. Additional work requires an explicit us
 
 ## Failures And Recovery
 
-- Use `fail` when a node attempted its work and could not satisfy its contract. Preserve the evidence and let the owning lifecycle decide whether to retry, revise, or choose another path.
+- Use `fail` when a node attempted its work and could not satisfy its contract. Runtime preserves that current failure and its declared artifacts.
+- When the same approved leaf contract should run again, the main session uses `retry-failed --reason <reason>` and may supply the current `--expected-revision`. Runtime archives the failed attempt before restoring scheduling; successful or running sibling work is not reset.
+- When scope, acceptance, ownership, or side effects must change, add alternate recovery work or use a gate instead of retrying the old contract.
 - Use `block` when progress depends on user input, external access, a safe reproduction prerequisite, or another recoverable condition.
 - Treat verification failures as results. Do not alter behavior or acceptance criteria inside a verification node merely to obtain a pass.
 - Report state conflicts, sealed-tree responses, and integrity failures to the main session instead of retrying an ambiguous mutation.
 - Use runtime diagnostics and explicit integrity repair operations. Never repair checksums or status fields directly.
 
-When runtime checkpoint commits are enabled, terminal transitions and declared workshop artifacts are path-scoped. A failed checkpoint restores the tree transition, so an uncommitted persistence error is not reported as successful completion.
+Archived attempts remain visible through node queries and their artifacts remain visible through `artifacts`. Conditions cannot silently replace a failure; they are reevaluated only after explicit retry. Engine-generated switch and loop failures are not failed executable attempts and need a different recovery decision.
+
+When runtime checkpoint commits are enabled, terminal transitions and declared workshop artifacts are path-scoped. A failed checkpoint restores the tree transition, so an uncommitted persistence error is not reported as successful completion. `retry-failed` persists immediately as a non-terminal mutation and enters the next checkpoint.

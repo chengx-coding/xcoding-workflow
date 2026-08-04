@@ -180,6 +180,13 @@ The manifest validator rejects missing, extra, duplicate, stale, failed, blocked
 
 The combined minimal worker may perform one coherent edit and focused verification. If scope, cause, risk, ownership, duration, or verification expands, block before further mutation. Reopen a closed group when needed, insert re-planning or recovery before the blocked direct child, publish the new plan, then unblock the original leaf to continue or record a no-op/rollback before successor nodes run. An unsafe rollback or unresolved external prerequisite remains blocked and uses a main-session gate.
 
+When an executable leaf has already reported `failed` and the accepted node
+contract remains unchanged, the main session may use runtime
+`retry-failed --reason` to archive that attempt and return the same leaf to
+scheduling. If the solution, acceptance, ownership, or side effects must
+change, add alternate recovery work or a user gate instead of retrying the
+old contract.
+
 Adaptive work has no global node ceiling. Each loop remains bounded, while reviewed dynamic subtrees and recovery groups may be added as evidence requires. A user-requested fast pace limits optional depth only; it never removes required acceptance, verification, approval, audit, or recovery.
 
 ## Run Operation
@@ -202,6 +209,13 @@ must append the planned subtree or explicitly close an intentionally empty
 group before treating the work order as blocked. An explicit correction to a
 successful work order first passes through the owning user gate and runtime `reopen`;
 ordinary work must not append to a sealed historical tree.
+
+A failed task or gate does not make the work order disposable. If repeating
+the same approved leaf is appropriate, use runtime `retry-failed --reason`
+with the current revision when available. Runtime preserves the previous
+failure as attempt history and does not reset successful or running sibling
+work. Replacement or revised work remains a lifecycle decision and uses
+explicit recovery nodes or a gate.
 
 ## Runtime Source Publication
 

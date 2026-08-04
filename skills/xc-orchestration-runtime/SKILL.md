@@ -49,7 +49,7 @@ python "$SKILL_DIR/scripts/orchestration.py" block `
 
 `--artifact` is optional and repeatable on `complete`, `fail`, and `block`.
 
-Additional commands are `fail`, `block`, `unblock`, `set`, `add-node`,
+Additional commands are `fail`, `block`, `unblock`, `retry-failed`, `set`, `add-node`,
 `embed-subtree`, `close-group`, `reopen-group`, `reopen`, `summary`, `show`,
 `find`, `artifacts`, `control-packet`, `snapshot`, `integrity-status`,
 `repair-integrity`, and `validate`. `control-packet --node` returns only the
@@ -57,6 +57,15 @@ target leaf's declared sources, selected blackboard values, readiness blockers,
 and control projection. `reopen-group --reason` is an auditable recovery
 operation for a closed dynamic group. `add-node --before` may then insert
 explicitly approved recovery work before a blocked direct child.
+
+`retry-failed --node <failed-leaf> --reason <reason>` is the explicit recovery
+operation for one failed task or gate attempt. It archives the failed result,
+artifacts, agent, and timestamps under an immutable attempt record, increments
+the attempt number, and returns only that leaf to ordinary scheduling.
+`--expected-revision` provides the normal optimistic concurrency guard.
+Conditions are reevaluated only after this explicit transition; they never
+overwrite a failed node by themselves. Engine-generated composite and loop
+failures are not eligible.
 
 An unreachable or otherwise non-runnable start returns `node_not_ready` with a
 stable `details.reason` and does not change node state or runtime revision.
@@ -85,7 +94,7 @@ Every write response returns a monotonic `revision`. Callers MAY pass it back as
 
 Every managed tree has an access warning, access policy, and canonical SHA-256 integrity metadata. Normal writes reject invalid integrity; only `repair-integrity` can repair it after explicit inspection.
 
-When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped workshop commit containing both the tree transition and all declared `--artifact` paths. A commit failure restores the pre-operation tree and returns `persisted_uncommitted`; declared files remain available for recovery, but the terminal state and declarations are not accepted. When `auto_commit=false`, checkpointing and its path validation remain disabled, while the terminal state and artifact declarations are persisted in the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, and `unblock` normally persist state without a commit; their changes are included by the next terminal checkpoint. A non-terminal mutation that newly seals the root is promoted to a completion checkpoint.
+When `auto_commit=true`, each terminal node operation (`complete`, `fail`, or `block`) creates a path-scoped workshop commit containing both the tree transition and all declared `--artifact` paths. A commit failure restores the pre-operation tree and returns `persisted_uncommitted`; declared files remain available for recovery, but the terminal state and declarations are not accepted. When `auto_commit=false`, checkpointing and its path validation remain disabled, while the terminal state and artifact declarations are persisted in the tree. `init`, `start`, `set`, `add-node`, `embed-subtree`, `unblock`, and `retry-failed` normally persist state without a commit; their changes are included by the next terminal checkpoint. Archived attempt artifacts remain discoverable through `artifacts`, whose retry-aware entries include the owning attempt number while preserving the legacy shape for an un-retried attempt 1. A non-terminal mutation that newly seals the root is promoted to a completion checkpoint.
 
 When the root succeeds, the runtime records sealing metadata and rejects ordinary mutations. `reopen --reason "<user-approved-reason>"` is the only mutation that can reopen a successful tree; it records a new epoch. Domain Skills must require an explicit main-session user decision before invoking it.
 

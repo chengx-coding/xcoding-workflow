@@ -760,6 +760,334 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 self.assertEqual(node["status"], "pending")
                 self.assertEqual(node["result"], {})
 
+    def test_retry_failed_preserves_multiple_attempts_and_restores_sequence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            tree_path = self.init_flow(
+                project,
+                context,
+                config,
+                "retry-sequence",
+                [{"template_id": "first"}, {"template_id": "second"}],
+            )
+            first = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            first_id = str(first["id"])
+            artifacts = [project / "attempt-1.md", project / "attempt-2.md"]
+
+            self.run_cli(
+                "start",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--agent",
+                "first-agent",
+                cwd=project,
+            )
+            self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--reason",
+                "first failure",
+                "--artifact",
+                str(artifacts[0]),
+                cwd=project,
+            )
+            retried = self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--reason",
+                "retry after verifier correction",
+                cwd=project,
+            )
+            self.assertEqual(retried["node"]["status"], "pending")
+            self.assertEqual(retried["node"]["attempt"], 2)
+            self.assertEqual(retried["node"]["result"], {})
+            self.assertEqual(retried["archived_attempt"]["number"], 1)
+            self.assertEqual(retried["archived_attempt"]["agent"], "first-agent")
+            self.assertEqual(retried["archived_attempt"]["retry_reason"], "retry after verifier correction")
+            self.assertEqual(retried["archived_attempt"]["result"]["failure_reason"], "first failure")
+            self.assertEqual(retried["archived_attempt"]["result"]["artifacts"], [str(artifacts[0])])
+            self.assertEqual(
+                [node["template_id"] for node in self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]],
+                ["first"],
+            )
+
+            self.run_cli("start", "--tree", str(tree_path), "--node", first_id, "--agent", "second-agent", cwd=project)
+            self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--reason",
+                "second failure",
+                "--artifact",
+                str(artifacts[1]),
+                cwd=project,
+            )
+            self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--reason",
+                "retry after environment repair",
+                cwd=project,
+            )
+            self.run_cli("start", "--tree", str(tree_path), "--node", first_id, "--agent", "third-agent", cwd=project)
+            self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--summary",
+                "third attempt succeeded",
+                cwd=project,
+            )
+
+            node = self.run_cli("show", "--tree", str(tree_path), "--node", first_id, cwd=project)["node"]
+            self.assertEqual(node["status"], "succeeded")
+            self.assertEqual(node["attempt"], 3)
+            self.assertEqual([attempt["number"] for attempt in node["attempts"]], [1, 2])
+            self.assertEqual([attempt["status"] for attempt in node["attempts"]], ["failed", "failed"])
+            self.assertEqual(node["result"]["summary"], "third attempt succeeded")
+            declared = self.run_cli("artifacts", "--tree", str(tree_path), cwd=project)["artifacts"]
+            self.assertEqual(
+                [(item["path"], item["attempt"]) for item in declared],
+                [(str(artifacts[0]), 1), (str(artifacts[1]), 2)],
+            )
+            self.assertEqual(
+                [node["template_id"] for node in self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]],
+                ["second"],
+            )
+
+    def test_retry_failed_rejects_invalid_and_stale_mutations_atomically(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            _, tree_path, node_id = self.create_terminal_runtime(
+                project,
+                "retry-rejections",
+                auto_commit=False,
+            )
+            before = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+            pending = self.run_cli_error(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "not failed",
+                cwd=project,
+            )
+            self.assertEqual(pending["error"]["code"], "invalid_transition")
+            self.assertEqual(
+                self.run_cli("summary", "--tree", str(tree_path), cwd=project)["revision"],
+                before["revision"],
+            )
+
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            failed = self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "failed once",
+                cwd=project,
+            )
+            failed_revision = int(failed["revision"])
+            empty = self.run_cli_error(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "",
+                cwd=project,
+            )
+            self.assertEqual(empty["error"]["code"], "tree_validation_error")
+            self.run_cli("set", "--tree", str(tree_path), "--set", "unrelated=true", cwd=project)
+            stale = self.run_cli_error(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "stale retry",
+                "--expected-revision",
+                str(failed_revision),
+                cwd=project,
+            )
+            self.assertEqual(stale["error"]["code"], "state_conflict")
+            node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+            self.assertEqual(node["status"], "failed")
+            self.assertEqual(node["attempt"], 1)
+            self.assertEqual(node["attempts"], [])
+            self.assertEqual(node["result"]["failure_reason"], "failed once")
+            self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "valid retry",
+                cwd=project,
+            )
+            tree = core.parse_xml(tree_path)
+            archived = tree.getroot().find(".//attempts/attempt")
+            self.assertIsNotNone(archived)
+            assert archived is not None
+            archived.set("retry_reason", "")
+            core.apply_integrity(tree.getroot(), "runtime", core.load_config(project / ".xcoding"))
+            core.atomic_write_text(tree_path, core.serialize_xml(tree.getroot(), "runtime"))
+            validation_process = subprocess.run(
+                [sys.executable, str(RUNTIME_CLI), "validate", "--tree", str(tree_path)],
+                cwd=project,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            self.assertEqual(validation_process.returncode, 1, validation_process.stderr)
+            validated = json.loads(validation_process.stdout)
+            self.assertFalse(validated["valid"])
+            self.assertTrue(any("missing retry_reason" in error for error in validated["errors"]))
+
+    def test_retry_failed_reapplies_conditions_and_preserves_parallel_work(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            tree_path = self.init_flow(
+                project,
+                context,
+                config,
+                "retry-condition",
+                [
+                    {"template_id": "conditional", "when": "work.enabled == true"},
+                    {"template_id": "independent"},
+                ],
+                mode="parallel",
+                blackboard={"work.enabled": "true"},
+            )
+            ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+            nodes = {str(node["template_id"]): str(node["id"]) for node in ready}
+            self.run_cli("start", "--tree", str(tree_path), "--node", nodes["independent"], cwd=project)
+            self.run_cli("start", "--tree", str(tree_path), "--node", nodes["conditional"], cwd=project)
+            self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                nodes["conditional"],
+                "--reason",
+                "conditional failure",
+                cwd=project,
+            )
+            self.run_cli("set", "--tree", str(tree_path), "--set", "work.enabled=false", cwd=project)
+            failed = self.run_cli(
+                "show",
+                "--tree",
+                str(tree_path),
+                "--node",
+                nodes["conditional"],
+                cwd=project,
+            )["node"]
+            self.assertEqual(failed["status"], "failed")
+
+            retried = self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                nodes["conditional"],
+                "--reason",
+                "retry after condition change",
+                cwd=project,
+            )
+            self.assertEqual(retried["node"]["status"], "skipped")
+            independent = self.run_cli(
+                "show",
+                "--tree",
+                str(tree_path),
+                "--node",
+                nodes["independent"],
+                cwd=project,
+            )["node"]
+            self.assertEqual(independent["status"], "running")
+            self.run_cli("set", "--tree", str(tree_path), "--set", "work.enabled=true", cwd=project)
+            ready_again = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+            self.assertEqual([node["template_id"] for node in ready_again], ["conditional"])
+
+    def test_retry_failed_defers_commit_after_failure_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context, tree_path, node_id = self.create_terminal_runtime(
+                project,
+                "retry-checkpoint",
+                auto_commit=True,
+            )
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            artifact = context / "work-orders" / "retry-checkpoint" / "artifacts" / "failure.md"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text("# Failure\n", encoding="utf-8")
+            failed = self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "checkpointed failure",
+                "--artifact",
+                str(artifact),
+                cwd=project,
+            )
+            failed_head = self.run_git(context, "rev-parse", "HEAD")
+            self.assertEqual(failed["commit"]["sha"], failed_head)
+
+            retried = self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "operator-approved retry",
+                cwd=project,
+            )
+            self.assertEqual(retried["commit"]["status"], "deferred")
+            self.assertEqual(self.run_git(context, "rev-parse", "HEAD"), failed_head)
+            self.assertEqual(retried["archived_attempt"]["result"]["artifacts"], [str(artifact)])
+            declared = self.run_cli("artifacts", "--tree", str(tree_path), cwd=project)["artifacts"]
+            self.assertEqual([(item["path"], item["attempt"]) for item in declared], [(str(artifact), 1)])
+
     def test_false_conditional_composite_skips_descendants(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"

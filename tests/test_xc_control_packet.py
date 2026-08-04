@@ -365,6 +365,35 @@ class ControlPacketRuntimeTests(unittest.TestCase):
                     }
                 ],
             )
+            self.run_cli(
+                "unblock",
+                "--tree",
+                str(tree),
+                "--node",
+                str(target["id"]),
+                cwd=project,
+            )
+            self.run_cli("start", "--tree", str(tree), "--node", str(target["id"]), cwd=project)
+            self.run_cli(
+                "fail",
+                "--tree",
+                str(tree),
+                "--node",
+                str(target["id"]),
+                "--reason",
+                "The executable attempt failed.",
+                cwd=project,
+            )
+            failed_packet = self.run_cli(
+                "control-packet",
+                "--tree",
+                str(tree),
+                "--node",
+                str(target["id"]),
+                cwd=project,
+            )["packet"]
+            self.assertEqual(failed_packet["control"]["action"], "retry-failed")
+            self.assertFalse(failed_packet["control"]["ready"])
 
             unrelated = self.find(project, tree, "unrelated-000")
             not_declared = self.run_cli(

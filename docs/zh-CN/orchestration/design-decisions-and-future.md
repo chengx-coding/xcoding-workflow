@@ -77,7 +77,7 @@ Viewer 只消费快照，不能修改编排状态。它绑定 loopback，默认�
 当前系统不提供：
 
 - 通用 DAG 引擎或可插拔政策调度器。
-- 通用 retry、timeout、token/time/cost budget 或 retry metrics。
+- 自动或策略驱动的 retry、退避、timeout、token/time/cost budget 或 retry metrics。已经实现的 `retry-failed` 命令是对一个可执行叶子尝试的显式、有理由恢复，不是 retry 政策。
 - Worker pool、capability matching 或强制 worker cancellation。
 - 用于中断 loop、跳过同级节点、终止子树或中止运行的 runtime 控制信号。
 - 独立 typed artifact index 或 artifact storage service。

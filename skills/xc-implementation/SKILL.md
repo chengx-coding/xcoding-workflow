@@ -63,4 +63,4 @@ The source list must contain the terminal leaf that owns the accepted solution a
 
 - Execute exactly one runtime node and report only through the runtime public command.
 - Do not introduce unapproved product scope, migrations, or external side effects.
-- A failed or blocked implementation preserves evidence and lets the caller choose retry, alternate work, or a user gate.
+- A failed or blocked implementation preserves evidence. The caller may use runtime `retry-failed --reason` only to repeat the same approved leaf contract; alternate scope, acceptance, or side effects require explicit recovery work or a user gate.

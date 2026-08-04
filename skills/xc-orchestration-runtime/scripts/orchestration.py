@@ -323,6 +323,23 @@ def cmd_unblock(args: argparse.Namespace) -> Dict[str, Any]:
         )
 
 
+def cmd_retry_failed(args: argparse.Namespace) -> Dict[str, Any]:
+    with runtime_mutation(args, "retry-failed") as (path, tree, config):
+        node, archived = core.retry_failed_node(tree.getroot(), args.node, args.reason)
+        return write_runtime(
+            tree,
+            path,
+            config,
+            "retry-failed",
+            {
+                "node": core.snapshot_node(tree.getroot(), node),
+                "archived_attempt": core.attempt_snapshot(archived),
+                "counts": core.status_counts(tree.getroot()),
+            },
+            commit_on_write=False,
+        )
+
+
 def cmd_set(args: argparse.Namespace) -> Dict[str, Any]:
     with runtime_mutation(args, "set") as (path, tree, config):
         root = tree.getroot()
@@ -636,6 +653,15 @@ def build_parser() -> argparse.ArgumentParser:
     add_mutation_tree_argument(unblock)
     unblock.add_argument("--node", required=True)
     unblock.set_defaults(func=cmd_unblock)
+
+    retry_failed = sub.add_parser(
+        "retry-failed",
+        help="Archive a failed executable-leaf attempt and return it to scheduling.",
+    )
+    add_mutation_tree_argument(retry_failed)
+    retry_failed.add_argument("--node", required=True)
+    retry_failed.add_argument("--reason", required=True)
+    retry_failed.set_defaults(func=cmd_retry_failed)
 
     set_cmd = sub.add_parser("set", help="Set cross-node blackboard values.")
     add_mutation_tree_argument(set_cmd)

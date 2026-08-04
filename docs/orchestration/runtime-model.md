@@ -29,9 +29,19 @@ The four node types are:
 
 Executors are `main`, `subagent`, `tool`, and `service`. Runtime behavior depends on control fields such as `type`, `mode`, `executor`, `when`, and dependencies. Domain meaning belongs in `role`, `metadata.*`, and node text.
 
-States are `pending`, `ready`, `running`, `succeeded`, `failed`, `blocked`, and `skipped`. `ready` is valid but is primarily computed. Only task and gate leaves can start or receive terminal updates. `complete`, `fail`, and `block` require `running`; `unblock` returns a blocked leaf to pending. Runtime computes composite and loop states.
+States are `pending`, `ready`, `running`, `succeeded`, `failed`, `blocked`, and `skipped`. `ready` is valid but is primarily computed. Only task and gate leaves can start or receive terminal updates. `complete`, `fail`, and `block` require `running`; `unblock` returns a blocked leaf to pending. `retry-failed` archives a failed task or gate attempt and returns that leaf to ordinary scheduling. Runtime computes composite and loop states.
 
-`succeeded` and `skipped` satisfy progress. A failed or blocked descendant stops its enclosing sequence until the workflow handles it. There is no generic `failed -> pending` retry command or automatic retry policy.
+`succeeded` and `skipped` satisfy progress. A failed or blocked descendant stops its enclosing sequence until the workflow handles it. Runtime provides explicit failed-leaf recovery, not automatic retry policy.
+
+### Failed attempts
+
+`retry-failed --node <id> --reason <reason>` accepts only a failed executable leaf in a mutable tree. It preserves the failed result, artifacts, agent, and timestamps as ordered attempt history, records the recovery reason, increments the current attempt, and recalculates ancestors without resetting successful or running siblings. Callers may supply `--expected-revision` to reject a stale decision.
+
+`show`, `find`, and snapshots expose attempt history. `artifacts` continues to expose archived declarations and identifies retry-aware entries by attempt number while preserving the legacy shape for an un-retried attempt 1. A failed control-packet target advertises `retry-failed`; archived attempts do not become current source evidence.
+
+Conditions never overwrite `failed`. They are evaluated normally only after explicit retry returns the leaf to scheduling. Switch no-match, multiple-match, and loop-limit failures are engine-generated container outcomes and are not eligible for this leaf operation.
+
+Explicit retry repeats the same node contract. Automatic backoff, budgets, replacement work, supersession, and general container recovery are not runtime capabilities.
 
 ## Scheduling and Readiness
 
@@ -102,7 +112,7 @@ The [single-node worker contract](../../skills/xc-orchestration-runtime/referenc
 4. The worker writes durable outputs and calls `complete`, `fail`, or `block`.
 5. The main session verifies runtime state.
 
-A worker reports `state_conflict` or `tree_sealed` rather than retrying an ambiguous write. Failed means execution failed; blocked means a recoverable human, external, or environmental prerequisite is missing. Neither state is silently skipped.
+A worker reports `state_conflict` or `tree_sealed` rather than retrying an ambiguous write. Failed means one execution attempt failed; blocked means a recoverable human, external, or environmental prerequisite is missing. Neither state is silently skipped. The main session may explicitly retry the same failed leaf contract; the worker does not retry itself.
 
 ## Transitions, Integrity, and Concurrency
 
@@ -159,7 +169,7 @@ The JSON shape is:
 
 With `auto_commit=true`, terminal operations checkpoint the tree and declared artifacts in one path-scoped workshop commit. A checkpoint that newly seals the root also includes a complete standalone SVG. If rendering, writing, or committing fails, runtime restores the previous tree and SVG and returns `persisted_uncommitted`; the terminal transition and artifact declarations are not accepted.
 
-With `auto_commit=false`, checkpoint commits and checkpoint path validation are disabled, while state and declarations still persist. Non-terminal mutations normally persist without a commit and enter the next checkpoint.
+With `auto_commit=false`, checkpoint commits and checkpoint path validation are disabled, while state and declarations still persist. Non-terminal mutations normally persist without a commit and enter the next checkpoint. `retry-failed` follows this non-terminal persistence model because the accepted failure and its artifacts were already checkpointed.
 
 A successful root is sealed. Ordinary mutations then return `tree_sealed`. `reopen --reason` records a new epoch and requires the owning workflow's explicit user-approved reason. This is recovery of a completed tree, not routine continuation.
 

@@ -1769,6 +1769,95 @@ def result_snapshot(node: ET.Element) -> Dict[str, Any]:
     return payload
 
 
+def attempt_number(node: ET.Element) -> int:
+    raw = node.get("attempt", "1")
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise TreeValidationError(
+            "node attempt must be a positive integer",
+            {"node_id": node.get("id", ""), "attempt": raw},
+        ) from exc
+    if value < 1:
+        raise TreeValidationError(
+            "node attempt must be a positive integer",
+            {"node_id": node.get("id", ""), "attempt": raw},
+        )
+    return value
+
+
+def attempt_snapshot(attempt: ET.Element) -> Dict[str, Any]:
+    return {
+        "number": int(attempt.get("number", "0")),
+        "status": attempt.get("status", ""),
+        "agent": attempt.get("agent", ""),
+        "started_at": attempt.get("started_at", ""),
+        "failed_at": attempt.get("failed_at", ""),
+        "retried_at": attempt.get("retried_at", ""),
+        "retry_reason": attempt.get("retry_reason", ""),
+        "result": result_snapshot(attempt),
+    }
+
+
+def attempt_history(node: ET.Element) -> List[Dict[str, Any]]:
+    holder = find_direct(node, "attempts")
+    if holder is None:
+        return []
+    return [attempt_snapshot(attempt) for attempt in holder.findall("attempt")]
+
+
+def validate_attempt_history(node: ET.Element) -> List[str]:
+    node_id = node.get("id", "")
+    errors: List[str] = []
+    holder = find_direct(node, "attempts")
+    try:
+        current = attempt_number(node)
+    except TreeValidationError as exc:
+        errors.append(f"{node_id}: {exc}")
+        return errors
+    if holder is None:
+        return errors
+    if node_type(node) not in {"task", "gate"} or children(node):
+        return [f"{node_id}: attempt history requires an executable leaf"]
+    if node.get("attempt") is None:
+        errors.append(f"{node_id}: attempt history requires an explicit current attempt")
+    previous = 0
+    seen: set[int] = set()
+    for item in list(holder):
+        if item.tag != "attempt":
+            errors.append(f"{node_id}: invalid attempts child {item.tag}")
+            continue
+        raw_number = item.get("number", "")
+        try:
+            number = int(raw_number)
+        except ValueError:
+            errors.append(f"{node_id}: archived attempt number must be a positive integer")
+            continue
+        if number < 1:
+            errors.append(f"{node_id}: archived attempt number must be a positive integer")
+        if number in seen:
+            errors.append(f"{node_id}: duplicate archived attempt {number}")
+        if number <= previous:
+            errors.append(f"{node_id}: archived attempts must be strictly increasing")
+        if number >= current:
+            errors.append(f"{node_id}: archived attempt {number} must precede current attempt {current}")
+        seen.add(number)
+        previous = number
+        if item.get("status") != "failed":
+            errors.append(f"{node_id}: archived attempt {number} must have status failed")
+        for field in ("started_at", "failed_at", "retried_at", "retry_reason"):
+            if not item.get(field, "").strip():
+                errors.append(f"{node_id}: archived attempt {number} missing {field}")
+        result = find_direct(item, "result")
+        if result is None:
+            errors.append(f"{node_id}: archived attempt {number} missing result")
+        elif find_direct(result, "failure_reason") is None:
+            errors.append(f"{node_id}: archived attempt {number} missing failure_reason")
+        if any(child.tag != "result" for child in list(item)):
+            errors.append(f"{node_id}: archived attempt {number} has unsupported children")
+    return errors
+
+
 def _packet_violation(
     code: str,
     *,
@@ -1855,6 +1944,8 @@ def _control_projection(root: ET.Element, node: ET.Element) -> Dict[str, Any]:
         action = "finish"
     elif status == "blocked":
         action = "resolve-and-unblock"
+    elif status == "failed":
+        action = "retry-failed"
     elif status in TERMINAL_STATUSES:
         action = "none"
     else:
@@ -2074,10 +2165,6 @@ def build_control_packet(root: ET.Element, node_id: str) -> Dict[str, Any]:
 def declared_artifacts(root: ET.Element, audience: str = "") -> List[Dict[str, Any]]:
     entries: List[Dict[str, Any]] = []
     for node in iter_nodes(root):
-        result = find_direct(node, "result")
-        artifacts = find_direct(result, "artifacts") if result is not None else None
-        if artifacts is None:
-            continue
         metadata = {
             key: value
             for key, value in node.attrib.items()
@@ -2086,21 +2173,36 @@ def declared_artifacts(root: ET.Element, audience: str = "") -> List[Dict[str, A
         artifact_audience = metadata.get("metadata.artifact.audience", "internal")
         if audience and artifact_audience != audience:
             continue
-        for artifact in artifacts.findall("artifact"):
-            path = artifact.get("path", "")
-            if path:
-                entries.append(
-                    {
+        results: List[Tuple[int, ET.Element, bool]] = []
+        attempts = find_direct(node, "attempts")
+        if attempts is not None:
+            for attempt in attempts.findall("attempt"):
+                result = find_direct(attempt, "result")
+                if result is not None:
+                    results.append((int(attempt.get("number", "0")), result, True))
+        current_result = find_direct(node, "result")
+        if current_result is not None:
+            results.append((attempt_number(node), current_result, False))
+        for number, result, archived in results:
+            artifacts = find_direct(result, "artifacts")
+            if artifacts is None:
+                continue
+            for artifact in artifacts.findall("artifact"):
+                path = artifact.get("path", "")
+                if path:
+                    entry = {
                         "path": path,
                         "node_id": node.get("id", ""),
                         "metadata": dict(sorted(metadata.items())),
                     }
-                )
+                    if archived or number != 1:
+                        entry["attempt"] = number
+                    entries.append(entry)
     return entries
 
 
 def snapshot_node(root: ET.Element, node: ET.Element) -> Dict[str, Any]:
-    return {
+    payload = {
         "id": node.get("id", ""),
         "template_id": node.get("template_id", ""),
         "origin_template_id": node.get("origin_template_id", ""),
@@ -2121,6 +2223,10 @@ def snapshot_node(root: ET.Element, node: ET.Element) -> Dict[str, Any]:
         "result": result_snapshot(node),
         "children": [snapshot_node(root, child) for child in children(node)],
     }
+    if node_type(node) in {"task", "gate"} and not children(node):
+        payload["attempt"] = attempt_number(node)
+        payload["attempts"] = attempt_history(node)
+    return payload
 
 
 def status_counts(root: ET.Element) -> Dict[str, int]:
@@ -2672,6 +2778,7 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
         status = node.get("status", "")
         if status not in VALID_STATUSES:
             errors.append(f"{node_id}: invalid status {status}")
+        errors.extend(validate_attempt_history(node))
         node_children = children(node)
         mode = node.get("mode", "")
         if mode not in VALID_MODES:
@@ -3321,6 +3428,60 @@ def fail_node(
     append_result_artifacts(result, artifacts)
     stabilize(root)
     return node
+
+
+def retry_failed_node(root: ET.Element, node_id: str, reason: str) -> Tuple[ET.Element, ET.Element]:
+    normalized_reason = reason.strip()
+    if not normalized_reason:
+        raise TreeValidationError("retry reason must not be empty", {"node_id": node_id})
+    node = require_executable_leaf(root, node_id)
+    if node.get("status") != "failed":
+        raise InvalidTransitionError(
+            "retry-failed requires a failed executable leaf",
+            {"node_id": node_id, "status": node.get("status", "pending")},
+        )
+    result = find_direct(node, "result")
+    if result is None or find_direct(result, "failure_reason") is None:
+        raise TreeValidationError(
+            "failed executable leaf is missing failure evidence",
+            {"node_id": node_id},
+        )
+
+    number = attempt_number(node)
+    attempts = ensure_node_child(node, "attempts")
+    if any(item.get("number") == str(number) for item in attempts.findall("attempt")):
+        raise TreeValidationError(
+            "current attempt is already archived",
+            {"node_id": node_id, "attempt": number},
+        )
+    retried_at = utc_now()
+    attributes = {
+        "number": str(number),
+        "status": "failed",
+        "started_at": node.get("started_at", ""),
+        "failed_at": node.get("failed_at", ""),
+        "retried_at": retried_at,
+        "retry_reason": normalized_reason,
+    }
+    if node.get("agent"):
+        attributes["agent"] = node.get("agent", "")
+    archived = ET.SubElement(attempts, "attempt", attributes)
+    archived.append(copy.deepcopy(result))
+    node.remove(result)
+
+    node.set("attempt", str(number + 1))
+    node.set("status", "pending")
+    for key in (
+        "agent",
+        "started_at",
+        "completed_at",
+        "failed_at",
+        "blocked_at",
+        "block_reason",
+    ):
+        node.attrib.pop(key, None)
+    stabilize(root)
+    return node, archived
 
 
 def block_node(
