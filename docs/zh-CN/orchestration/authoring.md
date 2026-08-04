@@ -76,7 +76,7 @@ Author 和 runtime 维护相互独立的 validator，并共同消费 `tests/fixt
 
 Dynamic group 应显式表达生命周期：发现工作、添加节点或子树，然后关闭该组。Author 应定义所有权，避免并行 worker 编辑同一产物。
 
-Loop 只在一轮子节点完成后求值 break 和 continue 条件，并且必须有界。不要依赖内部循环控制信号、通用 retry 转换或强制 worker 取消来设计流程；runtime 不提供这些能力。
+Loop 只在一轮子节点完成后求值 break 和 continue 条件，并且必须有界。不要依赖内部循环控制信号、自动或策略驱动的 retry、或强制 worker 取消来设计流程；runtime 不提供这些能力。Runtime 的显式 `retry-failed` 操作只重复一个失败的可执行叶子契约，它属于运行实例恢复，不是模板循环控制。
 
 ## 领域包边界
 

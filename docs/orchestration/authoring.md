@@ -76,7 +76,7 @@ Conditions use the runtime's intentionally small expression set. They default to
 
 Dynamic groups should make lifecycle explicit: discover work, append nodes or subtrees, then close the group. An author should define ownership so parallel workers do not edit the same output.
 
-Loops evaluate break and continue conditions only after an iteration's children finish. Every loop is bounded. Do not design around internal loop control signals, generic retry transitions, or forced worker cancellation; those are not runtime capabilities.
+Loops evaluate break and continue conditions only after an iteration's children finish. Every loop is bounded. Do not design around internal loop control signals, automatic or policy-driven retry, or forced worker cancellation; those are not runtime capabilities. The runtime's explicit `retry-failed` operation repeats one failed executable-leaf contract and is recovery of a runtime instance, not template loop control.
 
 ## Domain Package Boundary
 

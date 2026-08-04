@@ -11,8 +11,8 @@
     "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
     "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
     "skills/xc-open-work-order/scripts/open_work_order.py": "d7bff58e5de452a05b418769fb2163f7ebba71316d99e8fb2f897b3aaba50428",
-    "skills/xc-orchestration-runtime/scripts/orchestration.py": "24930c645fb28bab69d13ce4b8efc22cd08bb11447c3f9857c0a8cae9b4386df",
-    "skills/xc-orchestration-runtime/scripts/runtime_core.py": "8ddbd5846a0a3d6c5cddc9ce5714045c760fe49a9c899dbd628d056be885368c",
+    "skills/xc-orchestration-runtime/scripts/orchestration.py": "77ad53bce980e943e3acc895c7e571ff290f3d304689463bd5269bbd87af8902",
+    "skills/xc-orchestration-runtime/scripts/runtime_core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
     "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
     "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
     "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
@@ -23,7 +23,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "05dad37768ef34c85e85d2fab72ee7bbe2feb953",
+  "recording_base_commit": "3bfe03b75d90af252ee89abea998a9d3951bb042",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -134,7 +134,7 @@
       "T1-M": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 90534,
+            "context_bytes": 91470,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -164,7 +164,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 91198,
+            "context_bytes": 92134,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -191,7 +191,7 @@
       "T2": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 125757,
+            "context_bytes": 127083,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -222,7 +222,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 126670,
+            "context_bytes": 127996,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -249,7 +249,7 @@
       "T3": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 190448,
+            "context_bytes": 192502,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -283,7 +283,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 191859,
+            "context_bytes": 193913,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -310,7 +310,7 @@
       "T4": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 216788,
+            "context_bytes": 219284,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -347,7 +347,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 218448,
+            "context_bytes": 220944,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -431,175 +431,175 @@
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
-        "current_value": 90534,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
-        "numeric_delta": 25781
+        "current_value": 91470,
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "numeric_delta": 26717
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
-        "current_value": 91198,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
-        "numeric_delta": 25781
+        "current_value": 92134,
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "numeric_delta": 26717
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
-        "current_value": 125757,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
-        "numeric_delta": 35211
+        "current_value": 127083,
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "numeric_delta": 36537
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
-        "current_value": 126670,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
-        "numeric_delta": 35211
+        "current_value": 127996,
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "numeric_delta": 36537
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
-        "current_value": 190448,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
-        "numeric_delta": 50310
+        "current_value": 192502,
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "numeric_delta": 52364
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
-        "current_value": 191859,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
-        "numeric_delta": 50310
+        "current_value": 193913,
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "numeric_delta": 52364
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
-        "current_value": 216788,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
-        "numeric_delta": 51894
+        "current_value": 219284,
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "numeric_delta": 54390
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
-        "current_value": 218448,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
-        "numeric_delta": 51894
+        "current_value": 220944,
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "numeric_delta": 54390
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "Preserve the approved adaptive-finalization and JSON/YAML post-change measurements; additionally accept logical .xcoding directory links whose resolved workshop target has a different name.",
+    "reason": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1104,7 +1104,7 @@
         "T1-M": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 90534,
+              "context_bytes": 91470,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1134,7 +1134,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 91198,
+              "context_bytes": 92134,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1161,7 +1161,7 @@
         "T2": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 125757,
+              "context_bytes": 127083,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1192,7 +1192,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 126670,
+              "context_bytes": 127996,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1219,7 +1219,7 @@
         "T3": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 190448,
+              "context_bytes": 192502,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1253,7 +1253,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 191859,
+              "context_bytes": 193913,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1280,7 +1280,7 @@
         "T4": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 216788,
+              "context_bytes": 219284,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1317,7 +1317,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 218448,
+              "context_bytes": 220944,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1397,8 +1397,8 @@
       "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
       "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
       "skills/xc-open-work-order/scripts/open_work_order.py": "d7bff58e5de452a05b418769fb2163f7ebba71316d99e8fb2f897b3aaba50428",
-      "skills/xc-orchestration-runtime/scripts/orchestration.py": "24930c645fb28bab69d13ce4b8efc22cd08bb11447c3f9857c0a8cae9b4386df",
-      "skills/xc-orchestration-runtime/scripts/runtime_core.py": "8ddbd5846a0a3d6c5cddc9ce5714045c760fe49a9c899dbd628d056be885368c",
+      "skills/xc-orchestration-runtime/scripts/orchestration.py": "77ad53bce980e943e3acc895c7e571ff290f3d304689463bd5269bbd87af8902",
+      "skills/xc-orchestration-runtime/scripts/runtime_core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
       "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
       "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
       "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",

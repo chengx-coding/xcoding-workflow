@@ -29,9 +29,19 @@ rt_<work_order_id>__<instance_id>__<template_id>
 
 Executor 包括 `main`、`subagent`、`tool` 和 `service`。Runtime 根据 `type`、`mode`、`executor`、`when` 和依赖等控制字段执行；领域含义属于 `role`、`metadata.*` 和节点正文。
 
-状态包括 `pending`、`ready`、`running`、`succeeded`、`failed`、`blocked` 和 `skipped`。`ready` 是合法状态，但主要由调度器计算。只有 task 和 gate 叶子可以启动或接收终态更新；`complete`、`fail`、`block` 要求节点为 `running`，`unblock` 把 blocked 叶子恢复为 pending。Composite 和 loop 状态由 runtime 计算。
+状态包括 `pending`、`ready`、`running`、`succeeded`、`failed`、`blocked` 和 `skipped`。`ready` 是合法状态，但主要由调度器计算。只有 task 和 gate 叶子可以启动或接收终态更新；`complete`、`fail`、`block` 要求节点为 `running`，`unblock` 把 blocked 叶子恢复为 pending。`retry-failed` 归档失败的 task 或 gate 尝试，并让该叶子重新进入普通调度。Composite 和 loop 状态由 runtime 计算。
 
-`succeeded` 和 `skipped` 都满足流程推进条件。failed 或 blocked 后代会停止其所在 sequence，直到工作流显式处理。系统没有通用 `failed -> pending` retry 命令或自动重试政策。
+`succeeded` 和 `skipped` 都满足流程推进条件。failed 或 blocked 后代会停止其所在 sequence，直到工作流显式处理。Runtime 提供显式失败叶子恢复，但不提供自动重试政策。
+
+### 失败尝试
+
+`retry-failed --node <id> --reason <reason>` 只接受可修改树中失败的可执行叶子。它把失败结果、artifact、agent 和时间戳保存为有序 attempt 历史，记录恢复原因，增加当前 attempt 编号，并重新计算祖先，不会重置 succeeded 或 running 的同级工作。调用方可提供 `--expected-revision` 来拒绝过期决定。
+
+`show`、`find` 和 snapshot 会暴露 attempt 历史。`artifacts` 继续返回已归档声明，并为 retry-aware 条目标识 attempt 编号；未重试的 attempt 1 保持旧响应形状。失败 target 的 control packet 会提示 `retry-failed`，但历史 attempt 不会成为当前 source evidence。
+
+条件不会覆盖 `failed`。只有显式 retry 使叶子重新进入调度后，条件才按普通规则求值。Switch 无匹配、多匹配和 loop 上限失败是引擎生成的容器结果，不适用这个叶子操作。
+
+显式 retry 只重复同一节点契约。自动退避、预算、替代工作、supersession 和通用容器恢复都不是 runtime 能力。
 
 ## 调度与就绪
 
@@ -102,7 +112,7 @@ Blackboard 保存跨节点短值；点分名称只是约定，不是 schema。�
 4. Worker 写入持久产物并调用 `complete`、`fail` 或 `block`。
 5. 主会话复核 runtime 状态。
 
-Worker 遇到 `state_conflict` 或 `tree_sealed` 时应上报，而不是重试含义不明确的写入。Failed 表示执行失败；blocked 表示缺少可恢复的人类、外部或环境前置条件。两者都不能被静默跳过。
+Worker 遇到 `state_conflict` 或 `tree_sealed` 时应上报，而不是重试含义不明确的写入。Failed 表示一次执行尝试失败；blocked 表示缺少可恢复的人类、外部或环境前置条件。两者都不能被静默跳过。主会话可以显式重试同一个失败叶子契约；worker 不自行重试。
 
 ## 转换、完整性与并发
 
@@ -157,7 +167,7 @@ JSON 结构如下：
 
 当 `auto_commit=true` 时，终态操作把运行树和声明的 artifacts 放入同一个 path-scoped workshop commit。使根节点新近 sealed 的检查点还包含完整独立 SVG。如果渲染、写入或 commit 失败，runtime 会恢复原有运行树和 SVG，并返回 `persisted_uncommitted`；终态转换和 artifact 声明均不被接受。
 
-当 `auto_commit=false` 时，不执行 checkpoint commit 和 checkpoint 路径验证，但状态和声明仍会持久化。非终态修改通常只持久化，不提交，并在下一次 checkpoint 中纳入。
+当 `auto_commit=false` 时，不执行 checkpoint commit 和 checkpoint 路径验证，但状态和声明仍会持久化。非终态修改通常只持久化，不提交，并在下一次 checkpoint 中纳入。`retry-failed` 使用这种非终态持久化模型，因为已接受的失败及其 artifact 已经形成 checkpoint。
 
 成功的根节点会 sealed，普通修改随后返回 `tree_sealed`。`reopen --reason` 记录新 epoch，并要求所属工作流已获得用户明确批准的原因。这是完成树的恢复机制，不是常规继续执行。
 

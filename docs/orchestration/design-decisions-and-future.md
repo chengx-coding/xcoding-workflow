@@ -77,7 +77,7 @@ Tradeoff: inspection has a small security and correctness surface, while operato
 The current system does not provide:
 
 - A general DAG engine or policy-pluggable scheduler.
-- Generic retries, timeouts, token/time/cost budgets, or retry metrics.
+- Automatic or policy-driven retries, backoff, timeouts, token/time/cost budgets, or retry metrics. The implemented `retry-failed` command is an explicit, reasoned recovery of one executable-leaf attempt, not a retry policy.
 - Worker pools, capability matching, or forced worker cancellation.
 - Runtime control signals for breaking loops, skipping siblings, terminating subtrees, or aborting a run.
 - A standalone typed artifact index or artifact storage service.
