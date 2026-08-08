@@ -390,6 +390,82 @@ class PackageCliTests(unittest.TestCase):
             self.assertNotIn("orchestration.xml", source)
             self.assertNotIn("runtime_core", source)
 
+    def test_installed_runtime_init_uses_bundle_template(self) -> None:
+        runtime_root = self.root / "installed-runtime-cli"
+        initialized = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                "-m",
+                "xcoding",
+                "runtime",
+                "init",
+                "--runtime-path",
+                str(runtime_root),
+                "--work-order-id",
+                "installed-runtime-test",
+                "--name",
+                "Installed Runtime Test",
+            ],
+            cwd=self.root,
+            env=self.cli_environment(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(
+            initialized.returncode,
+            0,
+            initialized.stderr or initialized.stdout,
+        )
+        self.assertEqual(initialized.stderr, "")
+        payload = json.loads(initialized.stdout)
+        expected_template = (
+            self.install
+            / "xcoding"
+            / "_bundle"
+            / "skills"
+            / "xc-orchestration-runtime"
+            / "assets"
+            / "minimal-template.xml"
+        )
+        self.assertTrue(payload["ok"])
+        self.assertEqual(
+            Path(str(payload["template"])).resolve(),
+            expected_template.resolve(),
+        )
+        tree = runtime_root / "orchestration.xml"
+        self.assertTrue(tree.is_file())
+
+        queried = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                "-m",
+                "xcoding",
+                "runtime",
+                "next",
+                "--tree",
+                str(tree),
+            ],
+            cwd=self.root,
+            env=self.cli_environment(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(
+            queried.returncode,
+            0,
+            queried.stderr or queried.stdout,
+        )
+        self.assertEqual(queried.stderr, "")
+        next_payload = json.loads(queried.stdout)
+        self.assertTrue(next_payload["ok"])
+        self.assertEqual(len(next_payload["ready"]), 1)
+
     def _runtime_script(self) -> Path:
         return (
             self.install

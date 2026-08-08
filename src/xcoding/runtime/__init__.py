@@ -1,5 +1,5 @@
 """Canonical runtime implementation for XC orchestration."""
 
-from . import application, core
+from . import application, commands, core
 
-__all__ = ["application", "core"]
+__all__ = ["application", "commands", "core"]
