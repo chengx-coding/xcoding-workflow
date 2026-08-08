@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from importlib import metadata
 from pathlib import Path
 from typing import Any, Sequence
 
 from .bundle.manifest import BundleValidationError
-from .bundle.resources import inspect_installed_bundle
+from .bundle.resources import inspect_installed_bundle, installed_bundle_root
 from .doctor import DoctorReadinessError, doctor_report
+from .runtime import application as runtime_application
 from .setup_plan import (
     SetupInputError,
     SetupReadinessError,
@@ -27,6 +29,13 @@ EXIT_INPUT = 2
 EXIT_BUNDLE = 3
 EXIT_READINESS = 4
 EXIT_INTERNAL = 5
+
+_RUNTIME_TEMPLATE = (
+    "skills",
+    "xc-orchestration-runtime",
+    "assets",
+    "minimal-template.xml",
+)
 
 
 class CliInputError(ValueError):
@@ -131,6 +140,48 @@ def _emit(payload: dict[str, Any]) -> None:
     )
 
 
+def _runtime_default_template() -> Path:
+    resource = installed_bundle_root().joinpath(*_RUNTIME_TEMPLATE)
+    try:
+        path = Path(os.fspath(resource))
+    except TypeError as error:
+        raise OSError(
+            "packaged runtime template is not a physical resource"
+        ) from error
+    if (
+        not path.is_file()
+        or path.is_symlink()
+        or (
+            getattr(path, "is_junction", None) is not None
+            and path.is_junction()
+        )
+    ):
+        raise OSError(
+            "packaged runtime template is not a regular physical file"
+        )
+    return path
+
+
+def _runtime_main(
+    arguments: Sequence[str],
+    environment: runtime_application.RuntimeEnvironment | None = None,
+) -> int:
+    needs_default_template = (
+        list(arguments[:1]) == ["init"]
+        and "--template" not in arguments
+    )
+    resolved = environment or runtime_application.RuntimeEnvironment(
+        default_template=(
+            _runtime_default_template()
+            if needs_default_template
+            else Path()
+        )
+    )
+    result = runtime_application.execute(list(arguments), resolved)
+    runtime_application.json_print(result.payload)
+    return result.exit_code
+
+
 def _require_json(arguments: argparse.Namespace) -> None:
     if not getattr(arguments, "json_output", False):
         raise CliInputError(
@@ -186,6 +237,8 @@ def _execute(arguments: argparse.Namespace, command: str) -> dict[str, Any]:
 def main(argv: Sequence[str] | None = None) -> int:
     """Execute one command, emit exactly one JSON envelope, and return its exit."""
     raw_arguments = list(sys.argv[1:] if argv is None else argv)
+    if raw_arguments[:1] == ["runtime"]:
+        return _runtime_main(raw_arguments[1:])
     command = _command_name(raw_arguments)
     try:
         arguments = _build_parser().parse_args(raw_arguments)
