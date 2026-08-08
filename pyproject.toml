@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xcoding-workflow-spike"
+version = "0.0.0.dev0"
+description = "Prerelease Stage 1 package and Bundle feasibility spike."
+requires-python = ">=3.12,<3.13"
+dependencies = []
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[project.scripts]
+xc = "xcoding.cli:main"
+
+[tool.hatch.build]
+reproducible = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xcoding"]
+
+[tool.hatch.build.hooks.custom]
+path = "build_support/hatch_build.py"

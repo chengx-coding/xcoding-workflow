@@ -25,6 +25,14 @@ Agent 宿主的发现位置和安装目录属于适配器，不是新的事实�
 
 这种分离把工具专属的元数据、权限和文件格式限制在边缘，同时保持共享行为可移植。
 
+## Package 与 Bundle 可行性基础设施
+
+仓库还在 `pyproject.toml`、`src/xcoding/`、`build_support/` 以及 `install/`、`scripts/` 和 `.github/` 下与 package 相关的文件中包含阶段 1 prerelease 可行性基础设施。它为隔离的本地和 CI 探测构建 package 与不可变 Bundle。这只是仓库构建边界，不是新的规范创作源。
+
+Bundle 是构建时快照。`skills/xc-*/` 仍是 Skill 的唯一规范源，`skills/xc-orchestration-runtime/viewer/static/` 仍是 Viewer 资源的唯一规范源，`agents-src/agents/` 仍是持久 agent 定义的唯一规范源。面向特定宿主生成的 agent 定义只是经过校验后供 Bundle adapter 使用的构建输入，不是事实源。`build_support/host_adapters.json` 只声明如何把这些生成输入映射到 Bundle。
+
+该 spike 尚未发布，也没有受支持的公开 package 或 installer 入口。现有安装与调用方式仍是默认方式。阶段 1 所需的外部 matrix 证据仍不可用，因此结论保持 `unknown` 和 `no-go`；不承诺 package、平台、Python 或 Agent 宿主兼容性。该 package 不启动 daemon，也不新增 mutation service；它不批准或承诺任何后续 package 或 runtime 方向。
+
 ## 通用核心与项目桥接
 
 通用 Skill 定义可复用的生命周期行为，不会硬编码消费项目的语言、框架、仓库布局、构建命令、测试工具、文档策略、业务规则或项目专属能力。

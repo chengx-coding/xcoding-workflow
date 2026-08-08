@@ -1,0 +1,181 @@
+name: XC Stage 1 package spike evidence
+
+'on':
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: External runner workflow run containing candidate and cell evidence
+        required: true
+        type: string
+      candidate_artifact:
+        description: Artifact with candidate-source.zip, candidate-descriptor.json, and the wheel
+        required: true
+        type: string
+      windows_evidence_artifact:
+        description: Windows x64 cell evidence artifact
+        required: true
+        type: string
+      linux_evidence_artifact:
+        description: Linux x64 glibc cell evidence artifact
+        required: true
+        type: string
+      macos_evidence_artifact:
+        description: macOS recorded-architecture cell evidence artifact
+        required: true
+        type: string
+      candidate_archive_sha256:
+        description: Expected candidate source archive SHA-256
+        required: true
+        type: string
+      candidate_descriptor_sha256:
+        description: Expected candidate descriptor SHA-256
+        required: true
+        type: string
+      candidate_tree_sha256:
+        description: Expected complete candidate tree SHA-256
+        required: true
+        type: string
+      wheel_sha256:
+        description: Expected shared wheel SHA-256
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  source-preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.candidate_artifact }}
+          path: ${{ runner.temp }}/xc-stage1-input
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify immutable candidate and wheel
+        shell: pwsh
+        run: |
+          python scripts/run_stage1_matrix.py verify-inputs `
+            --candidate-archive "${{ runner.temp }}/xc-stage1-input/candidate-source.zip" `
+            --candidate-archive-sha256 "${{ inputs.candidate_archive_sha256 }}" `
+            --candidate-descriptor "${{ runner.temp }}/xc-stage1-input/candidate-descriptor.json" `
+            --candidate-descriptor-sha256 "${{ inputs.candidate_descriptor_sha256 }}" `
+            --candidate-tree-sha256 "${{ inputs.candidate_tree_sha256 }}" `
+            --wheel "${{ runner.temp }}/xc-stage1-input/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl" `
+            --wheel-sha256 "${{ inputs.wheel_sha256 }}" `
+            --output "${{ runner.temp }}/xc-stage1-input/input-verification.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xc-stage1-verified-input-${{ github.run_id }}
+          path: ${{ runner.temp }}/xc-stage1-input
+          if-no-files-found: error
+          retention-days: 7
+
+  validate-cell-evidence:
+    needs: source-preflight
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cell: windows-x86_64
+            runner: windows-latest
+            evidence_artifact: ${{ inputs.windows_evidence_artifact }}
+          - cell: linux-x86_64-gnu
+            runner: ubuntu-latest
+            evidence_artifact: ${{ inputs.linux_evidence_artifact }}
+          - cell: macos-recorded-arch
+            runner: macos-latest
+            evidence_artifact: ${{ inputs.macos_evidence_artifact }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: xc-stage1-verified-input-${{ github.run_id }}
+          path: ${{ runner.temp }}/xc-stage1-input
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.evidence_artifact }}
+          path: ${{ runner.temp }}/xc-stage1-evidence
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+      - name: Validate runner-owned cell evidence
+        shell: pwsh
+        run: |
+          python scripts/run_stage1_matrix.py validate-cell `
+            --cell "${{ matrix.cell }}" `
+            --evidence "${{ runner.temp }}/xc-stage1-evidence/cell-evidence.json" `
+            --expected-run-id "${{ inputs.source_run_id }}" `
+            --require-current-platform `
+            --candidate-archive "${{ runner.temp }}/xc-stage1-input/candidate-source.zip" `
+            --candidate-archive-sha256 "${{ inputs.candidate_archive_sha256 }}" `
+            --candidate-descriptor "${{ runner.temp }}/xc-stage1-input/candidate-descriptor.json" `
+            --candidate-descriptor-sha256 "${{ inputs.candidate_descriptor_sha256 }}" `
+            --candidate-tree-sha256 "${{ inputs.candidate_tree_sha256 }}" `
+            --wheel "${{ runner.temp }}/xc-stage1-input/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl" `
+            --wheel-sha256 "${{ inputs.wheel_sha256 }}" `
+            --output "${{ runner.temp }}/xc-stage1-evidence/validation.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xc-stage1-cell-${{ matrix.cell }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/xc-stage1-evidence
+          if-no-files-found: warn
+          retention-days: 7
+
+  evidence-summary:
+    if: always()
+    needs:
+      - source-preflight
+      - validate-cell-evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: xc-stage1-verified-input-${{ github.run_id }}
+          path: ${{ runner.temp }}/xc-stage1-input
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: xc-stage1-cell-*-${{ github.run_id }}
+          path: ${{ runner.temp }}/xc-stage1-cells
+      - name: Produce fail-closed evidence summary
+        shell: bash
+        run: |
+          set -eu
+          evidence_args=()
+          for cell in windows-x86_64 linux-x86_64-gnu macos-recorded-arch; do
+            evidence="$(find "${RUNNER_TEMP}/xc-stage1-cells" -path "*/cell-evidence.json" | grep "/xc-stage1-cell-${cell}-" | head -n 1 || true)"
+            if [ -n "${evidence}" ]; then
+              evidence_args+=(--cell-evidence "${cell}=${evidence}")
+            fi
+          done
+          python scripts/run_stage1_matrix.py summarize \
+            --candidate-archive "${RUNNER_TEMP}/xc-stage1-input/candidate-source.zip" \
+            --candidate-archive-sha256 "${{ inputs.candidate_archive_sha256 }}" \
+            --candidate-descriptor "${RUNNER_TEMP}/xc-stage1-input/candidate-descriptor.json" \
+            --candidate-descriptor-sha256 "${{ inputs.candidate_descriptor_sha256 }}" \
+            --candidate-tree-sha256 "${{ inputs.candidate_tree_sha256 }}" \
+            --wheel "${RUNNER_TEMP}/xc-stage1-input/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl" \
+            --wheel-sha256 "${{ inputs.wheel_sha256 }}" \
+            --expected-run-id "${{ inputs.source_run_id }}" \
+            "${evidence_args[@]}" \
+            --output "${RUNNER_TEMP}/xc-stage1-summary.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xc-stage1-summary-${{ github.run_id }}
+          path: ${{ runner.temp }}/xc-stage1-summary.json
+          if-no-files-found: error
+          retention-days: 7

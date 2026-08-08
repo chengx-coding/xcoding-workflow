@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "purpose": "stage-1-prerelease-package-spike",
+  "pin_status": "provisional",
+  "promotion_gate": "I6-windows-linux-macos-matrix",
+  "verification_scope": {
+    "verified_on": "2026-08-07",
+    "verification_host": "windows-x86_64",
+    "cross_platform_execution_verified": false
+  },
+  "fallback_policy": {
+    "allow_latest": false,
+    "allow_ambient_uv": false,
+    "allow_system_python": false,
+    "on_pin_mismatch": "fail"
+  },
+  "uv": {
+    "version": "0.11.15",
+    "release_tag": "0.11.15",
+    "artifacts": [
+      {
+        "platform_id": "windows-x86_64",
+        "target_triple": "x86_64-pc-windows-msvc",
+        "filename": "uv-x86_64-pc-windows-msvc.zip",
+        "url": "https://github.com/astral-sh/uv/releases/download/0.11.15/uv-x86_64-pc-windows-msvc.zip",
+        "sha256": "04b98d414a9000e25e5e0e7c9f53749e66b790cdaffc582829e6f58c544ee11c",
+        "hash_verified_by_local_download": true,
+        "executed_on_target_platform": true
+      },
+      {
+        "platform_id": "linux-x86_64-gnu",
+        "target_triple": "x86_64-unknown-linux-gnu",
+        "filename": "uv-x86_64-unknown-linux-gnu.tar.gz",
+        "url": "https://github.com/astral-sh/uv/releases/download/0.11.15/uv-x86_64-unknown-linux-gnu.tar.gz",
+        "sha256": "b03e572f010bea94a4a52d42671ba72981e12894f71576181a1d26ff68546da7",
+        "hash_verified_by_local_download": true,
+        "executed_on_target_platform": false
+      },
+      {
+        "platform_id": "macos-aarch64",
+        "target_triple": "aarch64-apple-darwin",
+        "filename": "uv-aarch64-apple-darwin.tar.gz",
+        "url": "https://github.com/astral-sh/uv/releases/download/0.11.15/uv-aarch64-apple-darwin.tar.gz",
+        "sha256": "7e5b336108f8576eda1939920ca0a805b4a9a3c3d3eb2f6140e38b7092fbe4f3",
+        "hash_verified_by_local_download": true,
+        "executed_on_target_platform": false
+      }
+    ]
+  },
+  "python": {
+    "request": "cpython@3.12.13",
+    "requires_python": ">=3.12,<3.13",
+    "managed_only": true,
+    "downloads": [
+      {
+        "platform_id": "windows-x86_64",
+        "uv_download_key": "cpython-3.12.13-windows-x86_64-none",
+        "build_identity": "cpython-3.12.13+20260510-x86_64-pc-windows-msvc-install_only_stripped",
+        "url": "https://releases.astral.sh/github/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+        "listed_by_pinned_uv": true,
+        "archive_sha256_status": "not-verified-in-i1",
+        "executed_on_target_platform": false
+      },
+      {
+        "platform_id": "linux-x86_64-gnu",
+        "uv_download_key": "cpython-3.12.13-linux-x86_64-gnu",
+        "build_identity": "cpython-3.12.13+20260510-x86_64-unknown-linux-gnu-install_only_stripped",
+        "url": "https://releases.astral.sh/github/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+        "listed_by_pinned_uv": true,
+        "archive_sha256_status": "not-verified-in-i1",
+        "executed_on_target_platform": false
+      },
+      {
+        "platform_id": "macos-aarch64",
+        "uv_download_key": "cpython-3.12.13-macos-aarch64-none",
+        "build_identity": "cpython-3.12.13+20260510-aarch64-apple-darwin-install_only_stripped",
+        "url": "https://releases.astral.sh/github/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-aarch64-apple-darwin-install_only_stripped.tar.gz",
+        "listed_by_pinned_uv": true,
+        "archive_sha256_status": "not-verified-in-i1",
+        "executed_on_target_platform": false
+      }
+    ]
+  },
+  "build_backend": {
+    "name": "hatchling",
+    "version": "1.27.0",
+    "backend": "hatchling.build",
+    "constraints_file": "build-constraints.txt",
+    "require_hashes": true,
+    "python_version": "3.12",
+    "artifacts": [
+      {
+        "name": "hatchling",
+        "version": "1.27.0",
+        "filename": "hatchling-1.27.0-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/08/e7/ae38d7a6dfba0533684e0b2136817d667588ae3ec984c1a4e5df5eb88482/hatchling-1.27.0-py3-none-any.whl",
+        "sha256": "d3a2f3567c4f926ea39849cdf924c7e99e6686c9c8e288ae1037c8fa2a5d937b",
+        "hash_verified_by_local_download": true
+      },
+      {
+        "name": "packaging",
+        "version": "26.3",
+        "filename": "packaging-26.3-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+        "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+        "hash_verified_by_local_download": true
+      },
+      {
+        "name": "pathspec",
+        "version": "1.1.1",
+        "filename": "pathspec-1.1.1-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl",
+        "sha256": "a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189",
+        "hash_verified_by_local_download": true
+      },
+      {
+        "name": "pluggy",
+        "version": "1.6.0",
+        "filename": "pluggy-1.6.0-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl",
+        "sha256": "e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746",
+        "hash_verified_by_local_download": true
+      },
+      {
+        "name": "trove-classifiers",
+        "version": "2026.6.1.19",
+        "filename": "trove_classifiers-2026.6.1.19-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/7c/a4/81502f486f01db95bc8320646a8a12511f5e556cb63d5e224d91816605c4/trove_classifiers-2026.6.1.19-py3-none-any.whl",
+        "sha256": "ab4c4ec93cc4a4e7815fa759906e05e6bb3f2fbd92ea0f897288c6a43efd15b3",
+        "hash_verified_by_local_download": true
+      }
+    ]
+  },
+  "source_date_epoch": {
+    "required": true,
+    "environment_variable": "SOURCE_DATE_EPOCH",
+    "value_source": "baseline_revision_commit_timestamp",
+    "command": [
+      "git",
+      "show",
+      "-s",
+      "--format=%ct",
+      "<baseline_revision>"
+    ]
+  },
+  "output_policy": {
+    "root_argument_required": true,
+    "root_must_be_absolute": true,
+    "root_must_exist": true,
+    "root_must_be_outside_project_tree": true,
+    "root_must_be_outside_workshop_tree": true,
+    "allow_repository_default_fallback": false,
+    "allow_implicit_temporary_root": false,
+    "caller_owns_cleanup": true,
+    "output_classes": [
+      "candidate-archive",
+      "candidate-descriptor",
+      "build",
+      "staging",
+      "wheel",
+      "evidence",
+      "cache",
+      "temporary-home",
+      "fixture"
+    ],
+    "required_uv_build_arguments": [
+      "--out-dir",
+      "<absolute-external-disposable-root>/wheel",
+      "--clear",
+      "--no-create-gitignore",
+      "--no-cache"
+    ]
+  }
+}
