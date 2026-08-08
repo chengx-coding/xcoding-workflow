@@ -7,9 +7,19 @@ description: "Runs and observes managed orchestration trees. Invoke when a workf
 
 `xc-orchestration-runtime` is the generic control plane for complex Agent workflows. It owns managed runtime trees, state transitions, scheduling, integrity, controlled persistence, snapshots, and the local viewer. It does not define domain tasks such as implementation, review, or testing.
 
+## Implementation Ownership
+
+The editable runtime implementation lives in `src/xcoding/runtime/`:
+
+- `core.py` owns the tree model, scheduling, integrity, locking and persistence primitives.
+- `application.py` owns command use cases, read/write transactions, rollback and stable result/error mapping.
+- `commands.py` owns the complete 23-command parser specification.
+
+The complete Skill remains self-contained for Skill-only installation. Its `scripts/_runtime_compat/` package is a deterministic generated payload of those canonical modules. `scripts/runtime_core.py` and `scripts/orchestration.py` are compatibility aliases or adapters, not independent implementations. Do not edit generated payload files; repository maintenance must update the canonical package modules and regenerate/check the payload.
+
 ## Mandatory Boundaries
 
-- Agents MUST NOT directly read, summarize, edit, patch, or reformat managed orchestration XML. Use `scripts/orchestration.py` only.
+- Agents MUST NOT directly read, summarize, edit, patch, or reformat managed orchestration XML. Use this Skill's documented public runtime commands.
 - The main session requests ready nodes, starts delegated work, handles `executor=main` gates, and checks summaries. It does not need the full tree.
 - A worker executes exactly one assigned node and reports through `complete`, `fail`, or `block`.
 - A known node ID is not start authority. `start` accepts only an executable leaf that satisfies the same readiness predicate used by `next`.
@@ -46,6 +56,8 @@ python "$SKILL_DIR/scripts/orchestration.py" block `
 ```
 
 `init` writes `<workbench_runtime_path>/orchestration.xml`. The work-order opener owns creation of the workbench and its runtime path. All commands emit JSON; `--json` is accepted for host compatibility.
+
+The legacy Skill entry above remains the portable Skill-only command. A matching installed prerelease package also exposes the same command set as `xc runtime <command> ...`; it calls the same direct Runtime Application Service and does not start or require a daemon. The package is not a prerequisite for running the complete Skill.
 
 `--artifact` is optional and repeatable on `complete`, `fail`, and `block`.
 
