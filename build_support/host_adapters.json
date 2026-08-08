@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "purpose": "stage-1-project-host-adapter-data",
+  "canonical_agents": {
+    "root": "agents-src/agents",
+    "filename_suffix": ".md"
+  },
+  "exporter_check": {
+    "argv": [
+      "python",
+      "agents-src/export_agents.py",
+      "--check"
+    ]
+  },
+  "exact_set_policy": {
+    "derive_from_canonical_agent_stems": true,
+    "require_tracked_regular_files": true,
+    "reject_missing": true,
+    "reject_changed": true,
+    "reject_extra": true
+  },
+  "adapters": [
+    {
+      "adapter_id": "claude-code",
+      "generated_root": "agents-src/claude-agents",
+      "generated_filename_suffix": ".md",
+      "bundle_root": "adapters/claude-code"
+    },
+    {
+      "adapter_id": "codex",
+      "generated_root": "agents-src/codex-agents",
+      "generated_filename_suffix": ".toml",
+      "bundle_root": "adapters/codex"
+    },
+    {
+      "adapter_id": "opencode",
+      "generated_root": "agents-src/opencode-agents",
+      "generated_filename_suffix": ".md",
+      "bundle_root": "adapters/opencode"
+    }
+  ]
+}
