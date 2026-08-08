@@ -6,13 +6,19 @@
   "python_version": "3.12.10",
   "input_hashes": {
     "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
-    "tests/workflow_scenario_harness.py": "cf27ce065476c6a0b3c2fa9611092828327feca9e188d60c71eaef8ee8a60911",
+    "tests/workflow_scenario_harness.py": "0b56f6b2c3966b1c6135ac67401a8570c868ef5d8987d17049f7ea809c2db1a9",
     "tests/test_xc_workflow_governance.py": "bf4e1f0e76e9138a60e7e23aa163e631fa2d057e7e4c5f6331ee507e39b999f6",
     "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
     "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
     "skills/xc-open-work-order/scripts/open_work_order.py": "d7bff58e5de452a05b418769fb2163f7ebba71316d99e8fb2f897b3aaba50428",
     "skills/xc-orchestration-runtime/scripts/orchestration.py": "77ad53bce980e943e3acc895c7e571ff290f3d304689463bd5269bbd87af8902",
-    "skills/xc-orchestration-runtime/scripts/runtime_core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+    "skills/xc-orchestration-runtime/scripts/runtime_core.py": "bb78c62eb960a2bfa07163a1c4870632e5b506d396f8ff35c23b9f3bacf8061f",
+    "skills/xc-orchestration-runtime/scripts/_runtime_compat/__init__.py": "08ce502ce77b801ff94ccc2ecc03bb8588c77981eb3af83ad95478ff1605fd55",
+    "skills/xc-orchestration-runtime/scripts/_runtime_compat/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+    "skills/xc-orchestration-runtime/scripts/_runtime_compat/manifest.json": "7625c865381cadf53115d525203c15696bfe58c74112961df641f5908ebed729",
+    "src/xcoding/runtime/__init__.py": "08ce502ce77b801ff94ccc2ecc03bb8588c77981eb3af83ad95478ff1605fd55",
+    "src/xcoding/runtime/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+    "scripts/sync_runtime_compat.py": "be15f507a38d572b5af460119b1c24cb914e495fc41ceab4e9f4dc29e5b75e85",
     "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
     "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
     "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
@@ -23,7 +29,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "3bfe03b75d90af252ee89abea998a9d3951bb042",
+  "recording_base_commit": "93c150e114773f87e0d71a5fb43727bfdb3441ce",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -432,174 +438,174 @@
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
         "current_value": 91470,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 26717
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
         "current_value": 92134,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 26717
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
         "current_value": 127083,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 36537
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
         "current_value": 127996,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 36537
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
         "current_value": 192502,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 52364
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
         "current_value": 193913,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 52364
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
         "current_value": 219284,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 54390
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
         "current_value": 220944,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 54390
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+        "explanation": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "Refresh runtime input hashes after adding explicit failed-leaf attempt recovery.",
+    "reason": "Bind the current workflow scenario to the canonical packaged runtime core and deterministic Skill compatibility payload.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1392,13 +1398,19 @@
     },
     "input_hashes": {
       "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
-      "tests/workflow_scenario_harness.py": "cf27ce065476c6a0b3c2fa9611092828327feca9e188d60c71eaef8ee8a60911",
+      "tests/workflow_scenario_harness.py": "0b56f6b2c3966b1c6135ac67401a8570c868ef5d8987d17049f7ea809c2db1a9",
       "tests/test_xc_workflow_governance.py": "bf4e1f0e76e9138a60e7e23aa163e631fa2d057e7e4c5f6331ee507e39b999f6",
       "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
       "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
       "skills/xc-open-work-order/scripts/open_work_order.py": "d7bff58e5de452a05b418769fb2163f7ebba71316d99e8fb2f897b3aaba50428",
       "skills/xc-orchestration-runtime/scripts/orchestration.py": "77ad53bce980e943e3acc895c7e571ff290f3d304689463bd5269bbd87af8902",
-      "skills/xc-orchestration-runtime/scripts/runtime_core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+      "skills/xc-orchestration-runtime/scripts/runtime_core.py": "bb78c62eb960a2bfa07163a1c4870632e5b506d396f8ff35c23b9f3bacf8061f",
+      "skills/xc-orchestration-runtime/scripts/_runtime_compat/__init__.py": "08ce502ce77b801ff94ccc2ecc03bb8588c77981eb3af83ad95478ff1605fd55",
+      "skills/xc-orchestration-runtime/scripts/_runtime_compat/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+      "skills/xc-orchestration-runtime/scripts/_runtime_compat/manifest.json": "7625c865381cadf53115d525203c15696bfe58c74112961df641f5908ebed729",
+      "src/xcoding/runtime/__init__.py": "08ce502ce77b801ff94ccc2ecc03bb8588c77981eb3af83ad95478ff1605fd55",
+      "src/xcoding/runtime/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+      "scripts/sync_runtime_compat.py": "be15f507a38d572b5af460119b1c24cb914e495fc41ceab4e9f4dc29e5b75e85",
       "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
       "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
       "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",

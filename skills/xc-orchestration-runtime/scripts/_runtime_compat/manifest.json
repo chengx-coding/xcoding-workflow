@@ -1,0 +1,19 @@
+{
+  "canonical_root": "src/xcoding/runtime",
+  "files": [
+    {
+      "generated": "skills/xc-orchestration-runtime/scripts/_runtime_compat/__init__.py",
+      "sha256": "08ce502ce77b801ff94ccc2ecc03bb8588c77981eb3af83ad95478ff1605fd55",
+      "size": 101,
+      "source": "src/xcoding/runtime/__init__.py"
+    },
+    {
+      "generated": "skills/xc-orchestration-runtime/scripts/_runtime_compat/core.py",
+      "sha256": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+      "size": 136004,
+      "source": "src/xcoding/runtime/core.py"
+    }
+  ],
+  "generated_root": "skills/xc-orchestration-runtime/scripts/_runtime_compat",
+  "schema_version": 1
+}
