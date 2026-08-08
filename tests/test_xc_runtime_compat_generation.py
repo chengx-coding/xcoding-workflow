@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -24,9 +27,12 @@ SYNC_SCRIPT = REPOSITORY_ROOT / "scripts" / "sync_runtime_compat.py"
 sys.path.insert(0, str(SOURCE_ROOT))
 sys.path.insert(0, str(RUNTIME_SCRIPTS))
 
+from xcoding.runtime import application as canonical_application
 from xcoding.runtime import core as canonical_core
 
+import orchestration as legacy_application
 import runtime_core as legacy_core
+from _runtime_compat import application as generated_application
 from _runtime_compat import core as generated_core
 
 
@@ -90,6 +96,123 @@ class RuntimeCompatibilityGenerationTests(unittest.TestCase):
             legacy_core._json_string_list,
             generated_core._json_string_list,
         )
+
+    def test_legacy_application_is_the_generated_application(self) -> None:
+        self.assertIs(legacy_application, generated_application)
+        self.assertIs(generated_application.core, generated_core)
+        self.assertIs(canonical_application.core, canonical_core)
+        self.assertEqual(
+            legacy_application.default_template().name,
+            "minimal-template.xml",
+        )
+
+        adapter_source = (
+            RUNTIME_SCRIPTS / "orchestration.py"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("def runtime_mutation", adapter_source)
+        self.assertNotIn("def cmd_complete", adapter_source)
+
+    def test_application_execute_is_non_printing_and_stable(self) -> None:
+        environment = canonical_application.RuntimeEnvironment(
+            default_template=(
+                REPOSITORY_ROOT
+                / "skills"
+                / "xc-orchestration-runtime"
+                / "assets"
+                / "minimal-template.xml"
+            )
+        )
+        output = io.StringIO()
+        with redirect_stdout(output):
+            success = canonical_application.execute(
+                [
+                    "validate",
+                    "--tree",
+                    str(environment.default_template),
+                ],
+                environment,
+            )
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(success.exit_code, 0)
+        self.assertTrue(success.payload["ok"])
+        self.assertTrue(success.payload["valid"])
+
+        missing = canonical_application.execute(
+            [
+                "summary",
+                "--tree",
+                str(REPOSITORY_ROOT / "missing-runtime.xml"),
+            ],
+            environment,
+        )
+        self.assertEqual(missing.exit_code, 2)
+        self.assertFalse(missing.payload["ok"])
+        self.assertEqual(missing.payload["error"]["code"], "runtime_error")
+
+        with mock.patch.object(
+            canonical_application,
+            "cmd_validate",
+            return_value={"valid": False},
+        ):
+            invalid = canonical_application.execute(
+                ["validate", "--tree", "unused"],
+                environment,
+            )
+        self.assertEqual(invalid.exit_code, 1)
+        self.assertTrue(invalid.payload["ok"])
+        self.assertFalse(invalid.payload["valid"])
+
+        with mock.patch.object(
+            canonical_application.core,
+            "read_tree_with_integrity",
+            side_effect=OSError("read failed"),
+        ):
+            os_error = canonical_application.execute(
+                ["summary", "--tree", "unreadable"],
+                environment,
+            )
+        self.assertEqual(os_error.exit_code, 2)
+        self.assertEqual(os_error.payload["error"]["code"], "os_error")
+
+    def test_application_environment_is_request_scoped(self) -> None:
+        source_template = (
+            REPOSITORY_ROOT
+            / "skills"
+            / "xc-orchestration-runtime"
+            / "assets"
+            / "minimal-template.xml"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first_template = root / "first.xml"
+            second_template = root / "second.xml"
+            first_template.write_bytes(source_template.read_bytes())
+            second_template.write_bytes(source_template.read_bytes())
+
+            first = canonical_application.execute(
+                [
+                    "init",
+                    "--runtime-path",
+                    str(root / "first-runtime"),
+                    "--work-order-id",
+                    "first-work-order",
+                ],
+                canonical_application.RuntimeEnvironment(first_template),
+            )
+            second = canonical_application.execute(
+                [
+                    "init",
+                    "--runtime-path",
+                    str(root / "second-runtime"),
+                    "--work-order-id",
+                    "second-work-order",
+                ],
+                canonical_application.RuntimeEnvironment(second_template),
+            )
+            self.assertEqual(first.exit_code, 0)
+            self.assertEqual(second.exit_code, 0)
+            self.assertEqual(first.payload["template"], str(first_template))
+            self.assertEqual(second.payload["template"], str(second_template))
 
     def test_sync_detects_tampering_without_writing(self) -> None:
         module = load_sync_module()
