@@ -15,6 +15,11 @@
 XC 当前只使用 Python 标准库，不需要安装第三方运行时包。受管文档
 frontmatter 由 `xc-document` 随附的有界 YAML 子集 codec 处理。
 
+完整的 `xc-orchestration-runtime` Skill 是自包含的。它的生成兼容载荷包含
+legacy Skill 命令使用的 runtime application，因此消费端 Skill 安装不需要
+prerelease Python package。仓库内的 package 探测可以暴露等价的
+`xc runtime` 入口，但该 package 尚未发布，也不是受支持的消费端安装路径。
+
 ## 完整替换式消费端安装
 
 目标 skills 目录必须已经存在。

@@ -82,12 +82,17 @@ def write_test_wheel(
     candidate_tree: str = CANDIDATE_TREE,
     bad_record_hash: bool = False,
     bad_record_size: bool = False,
+    omitted_member: str | None = None,
 ) -> Path:
     dist_info = verify_wheel.EXPECTED_DIST_INFO
     members = {
         "xcoding/__init__.py": b"",
         "xcoding/__main__.py": b"from .cli import main\n",
         "xcoding/cli.py": b"def main():\n    return 0\n",
+        "xcoding/runtime/__init__.py": b"",
+        "xcoding/runtime/application.py": b"def execute():\n    return None\n",
+        "xcoding/runtime/commands.py": b"COMMAND_NAMES = ()\n",
+        "xcoding/runtime/core.py": b"SCHEMA_VERSION = 1\n",
         f"xcoding/_bundle/{RESOURCE_PATH}": RESOURCE_DATA,
         verify_wheel.MANIFEST_MEMBER: manifest_bytes(
             candidate_tree=candidate_tree,
@@ -110,6 +115,8 @@ def write_test_wheel(
             "[console_scripts]\nxc = xcoding.cli:main\n"
         ).encode("utf-8"),
     }
+    if omitted_member is not None:
+        members.pop(omitted_member)
     if unsafe_member is not None:
         members[unsafe_member] = b"unsafe"
 
@@ -215,6 +222,10 @@ class WheelVerifierTests(unittest.TestCase):
             ({"bad_record_hash": True}, "record_invalid"),
             ({"bad_record_size": True}, "record_invalid"),
             ({"candidate_tree": "4" * 64}, "manifest_invalid"),
+            (
+                {"omitted_member": "xcoding/runtime/commands.py"},
+                "member_missing",
+            ),
         )
         for index, (options, code) in enumerate(cases):
             with self.subTest(code=code), tempfile.TemporaryDirectory() as temporary:

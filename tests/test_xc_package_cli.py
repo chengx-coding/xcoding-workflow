@@ -466,6 +466,33 @@ class PackageCliTests(unittest.TestCase):
         self.assertTrue(next_payload["ok"])
         self.assertEqual(len(next_payload["ready"]), 1)
 
+    def test_installed_bundle_contains_runtime_compatibility_payload(self) -> None:
+        runtime_scripts = (
+            self.install
+            / "xcoding"
+            / "_bundle"
+            / "skills"
+            / "xc-orchestration-runtime"
+            / "scripts"
+        )
+        expected = (
+            "_runtime_compat/__init__.py",
+            "_runtime_compat/application.py",
+            "_runtime_compat/commands.py",
+            "_runtime_compat/core.py",
+            "_runtime_compat/manifest.json",
+            "orchestration.py",
+            "runtime_core.py",
+        )
+        self.assertEqual(
+            [
+                relative
+                for relative in expected
+                if not (runtime_scripts / relative).is_file()
+            ],
+            [],
+        )
+
     def _runtime_script(self) -> Path:
         return (
             self.install

@@ -16,6 +16,13 @@ XC currently uses only the Python standard library and requires no
 third-party runtime package installation. Managed-document frontmatter is
 handled by the bounded YAML subset codec shipped inside `xc-document`.
 
+The complete `xc-orchestration-runtime` Skill is self-contained. Its generated
+compatibility payload contains the runtime application used by the legacy
+Skill command, so consumer Skill installation does not require the prerelease
+Python package. Repository package probes may expose the equivalent
+`xc runtime` entry, but that package is not published or a supported consumer
+installation path.
+
 ## Full-replacement consumer installation
 
 The target skills directory must already exist.

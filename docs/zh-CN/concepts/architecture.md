@@ -10,7 +10,7 @@ XC 是一套可移植、由 Skill 驱动的编码工作流。它覆盖发现、�
 
 ## 规范源
 
-仓库有两类规范创作源：
+仓库有两类规范工作流创作源：
 
 - `skills/xc-*/` 负责通用工作流 Skill。每个包的 `SKILL.md` 是公开的发现和操作契约，`references/`、`scripts/` 与 `assets/` 为该契约提供支持。
 - `agents-src/agents/` 负责持久、可移植的 subagent 定义。已跟踪的 [delegate agent 定义](../../../agents-src/agents/delegate-agent.md)是工具中立的规范 agent 示例。
@@ -25,13 +25,17 @@ Agent 宿主的发现位置和安装目录属于适配器，不是新的事实�
 
 这种分离把工具专属的元数据、权限和文件格式限制在边缘，同时保持共享行为可移植。
 
-## Package 与 Bundle 可行性基础设施
+## Package、Bundle 与 Runtime Application 基础设施
 
-仓库还在 `pyproject.toml`、`src/xcoding/`、`build_support/` 以及 `install/`、`scripts/` 和 `.github/` 下与 package 相关的文件中包含阶段 1 prerelease 可行性基础设施。它为隔离的本地和 CI 探测构建 package 与不可变 Bundle。这只是仓库构建边界，不是新的规范创作源。
+仓库还在 `pyproject.toml`、`src/xcoding/`、`build_support/` 以及 `install/`、`scripts/` 和 `.github/` 下与 package 相关的文件中包含 prerelease 产品可行性基础设施。它为隔离的本地和 CI 探测构建 package 与不可变 Bundle。这只是仓库构建边界，不是新的工作流创作源。
 
 Bundle 是构建时快照。`skills/xc-*/` 仍是 Skill 的唯一规范源，`skills/xc-orchestration-runtime/viewer/static/` 仍是 Viewer 资源的唯一规范源，`agents-src/agents/` 仍是持久 agent 定义的唯一规范源。面向特定宿主生成的 agent 定义只是经过校验后供 Bundle adapter 使用的构建输入，不是事实源。`build_support/host_adapters.json` 只声明如何把这些生成输入映射到 Bundle。
 
-该 spike 尚未发布，也没有受支持的公开 package 或 installer 入口。现有安装与调用方式仍是默认方式。阶段 1 所需的外部 matrix 证据仍不可用，因此结论保持 `unknown` 和 `no-go`；不承诺 package、平台、Python 或 Agent 宿主兼容性。该 package 不启动 daemon，也不新增 mutation service；它不批准或承诺任何后续 package 或 runtime 方向。
+`src/xcoding/runtime/` 是运行时树模型、Runtime Application Service、持久化事务和共享 23 命令规范的可编辑源。legacy Skill 入口与 prerelease `xc runtime` 入口都使用这同一个 application 边界。`xc runtime` 在本地直接执行，不会发现或启动 daemon。
+
+完整的 Skill-only 安装仍然不需要安装 package。Runtime Skill 携带 `scripts/_runtime_compat/`，它是规范 runtime 模块的确定性生成载荷；其中的 legacy 脚本只是兼容 adapter。Generator 检查会拒绝缺失、额外或被修改的载荷文件，因此该载荷不是第二份可编辑实现。
+
+这些基础设施尚未发布，也没有受支持的公开 package 或 installer 入口。现有 Skill 安装与调用仍是默认方式。阶段 1 所需的外部 matrix 证据仍不可用，因此结论保持 `unknown` 和 `no-go`；不承诺 package、平台、Python 或 Agent 宿主兼容性。该 package 不启动 daemon，也不暴露 HTTP、远程 mutation service 或持久 operation journal；后续 transport 或发布工作需要单独批准。
 
 ## 通用核心与项目桥接
 

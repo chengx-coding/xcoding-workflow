@@ -20,9 +20,24 @@ These services design, run, and visualize managed orchestration without taking o
 
 - **Invoke when:** a workflow needs scheduling, node transitions, controlled state updates, subtree embedding, integrity operations, snapshots, or persistence.
 - **Purpose:** provide the domain-neutral control plane for managed runtime trees and transactional workshop checkpoints.
-- **Public entry:** `orchestration.py` lifecycle commands such as `init`, `next`, `control-packet`, `start`, `complete`, `fail`, and `block`, plus documented query and recovery commands including `unblock`, `retry-failed`, and `reopen`. Opt-in completion adds repeated `--check-result-json`; opt-in gates add `--gate-outcome` and `--decision`.
+- **Portable public entry:** `orchestration.py` lifecycle commands such as `init`, `next`, `control-packet`, `start`, `complete`, `fail`, and `block`, plus documented query and recovery commands including `unblock`, `retry-failed`, and `reopen`. Opt-in completion adds repeated `--check-result-json`; opt-in gates add `--gate-outcome` and `--decision`.
+- **Prerelease package adapter:** a matching repository package exposes the same 23 commands as `xc runtime <command> ...`. This is direct application execution, not daemon transport, and it is not a published consumer entry point.
 - **Typical usage:** initialize a template, request ready work, read the selected leaf's scoped packet, start only that executable leaf, and terminate it with concise evidence and declared artifacts. When the same approved leaf contract should run after failure, `retry-failed --reason` archives the attempt and restores ordinary scheduling.
 - **Boundaries:** managed XML is never read or edited directly; workers execute exactly one node, source projection is not start authority, invalid integrity requires explicit repair, and successful trees remain sealed until an approved reopen.
+
+### Runtime Implementation Ownership
+
+`src/xcoding/runtime/` is the editable source for the runtime core, Runtime
+Application Service, and complete command specification. The package CLI and
+legacy Skill adapter both call that application service; neither owns
+transaction logic.
+
+The complete runtime Skill remains independently installable. Its
+`scripts/_runtime_compat/` directory is a deterministic generated copy of the
+canonical modules, and `runtime_core.py` plus `orchestration.py` are
+compatibility aliases or adapters. Generation checks reject drift, and Bundle
+checks require the complete payload. Consumers must not edit the payload as a
+second implementation.
 
 ### Control Contracts
 

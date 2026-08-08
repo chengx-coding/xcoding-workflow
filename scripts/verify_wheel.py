@@ -568,6 +568,11 @@ def _verify_core_metadata(members: Mapping[str, bytes], expected_tag: str) -> No
     for required in (
         "xcoding/__init__.py",
         "xcoding/__main__.py",
+        "xcoding/cli.py",
+        "xcoding/runtime/__init__.py",
+        "xcoding/runtime/application.py",
+        "xcoding/runtime/commands.py",
+        "xcoding/runtime/core.py",
         MANIFEST_MEMBER,
         metadata_name,
         wheel_name,
