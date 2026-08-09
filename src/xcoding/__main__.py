@@ -1,4 +1,4 @@
-"""Run the XC Stage 1 JSON CLI through ``python -m xcoding``."""
+"""Run the xcoding CLI through ``python -m xcoding``."""
 
 from .cli import main
 

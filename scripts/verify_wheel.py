@@ -574,6 +574,14 @@ def _verify_core_metadata(members: Mapping[str, bytes], expected_tag: str) -> No
         "xcoding/runtime/commands.py",
         "xcoding/runtime/core.py",
         "xcoding/runtime/query.py",
+        "xcoding/runtime/assets/minimal-template.xml",
+        "xcoding/viewer/__init__.py",
+        "xcoding/viewer/cli.py",
+        "xcoding/viewer/picker.py",
+        "xcoding/viewer/server.py",
+        "xcoding/viewer/static/app.css",
+        "xcoding/viewer/static/app.js",
+        "xcoding/viewer/static/index.html",
         "xcoding/daemon/__init__.py",
         "xcoding/daemon/cli.py",
         "xcoding/daemon/protocol.py",
@@ -647,7 +655,9 @@ def _verify_core_metadata(members: Mapping[str, bytes], expected_tag: str) -> No
         _fail("metadata_invalid", f"entry_points.txt is invalid: {error}")
     if entry_points.sections() != ["console_scripts"]:
         _fail("metadata_invalid", "entry_points.txt has unexpected sections")
-    if dict(entry_points.items("console_scripts")) != {"xc": "xcoding.cli:main"}:
+    if dict(entry_points.items("console_scripts")) != {
+        "xcoding": "xcoding.cli:main"
+    }:
         _fail("metadata_invalid", "entry_points.txt console script mismatch")
 
 

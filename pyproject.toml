@@ -15,7 +15,7 @@ classifiers = [
 ]
 
 [project.scripts]
-xc = "xcoding.cli:main"
+xcoding = "xcoding.cli:main"
 
 [tool.hatch.build]
 reproducible = true

@@ -94,6 +94,14 @@ def write_test_wheel(
         "xcoding/runtime/commands.py": b"COMMAND_NAMES = ()\n",
         "xcoding/runtime/core.py": b"SCHEMA_VERSION = 1\n",
         "xcoding/runtime/query.py": b"READ_ONLY_COMMANDS = ()\n",
+        "xcoding/runtime/assets/minimal-template.xml": b"<orchestration />\n",
+        "xcoding/viewer/__init__.py": b"",
+        "xcoding/viewer/cli.py": b"def main():\n    return 0\n",
+        "xcoding/viewer/picker.py": b"def main():\n    return 0\n",
+        "xcoding/viewer/server.py": b"def main():\n    return 0\n",
+        "xcoding/viewer/static/app.css": b"",
+        "xcoding/viewer/static/app.js": b"",
+        "xcoding/viewer/static/index.html": b"",
         "xcoding/daemon/__init__.py": b"",
         "xcoding/daemon/cli.py": b"def main():\n    return 0\n",
         "xcoding/daemon/protocol.py": b"SCHEMA_VERSION = 1\n",
@@ -117,7 +125,7 @@ def write_test_wheel(
             "\n"
         ).encode("utf-8"),
         f"{dist_info}/entry_points.txt": (
-            "[console_scripts]\nxc = xcoding.cli:main\n"
+            "[console_scripts]\nxcoding = xcoding.cli:main\n"
         ).encode("utf-8"),
     }
     if omitted_member is not None:
@@ -233,6 +241,10 @@ class WheelVerifierTests(unittest.TestCase):
             ),
             (
                 {"omitted_member": "xcoding/daemon/server.py"},
+                "member_missing",
+            ),
+            (
+                {"omitted_member": "xcoding/viewer/server.py"},
                 "member_missing",
             ),
         )
