@@ -69,7 +69,7 @@ def doctor_report(target_root: Path | None = None) -> dict[str, Any]:
 
     path_value = os.environ.get("PATH", "")
     path_ready = bool(path_value)
-    launcher = shutil.which("xc")
+    launcher = shutil.which("xcoding")
     checks.append(
         _check(
             "path",
@@ -77,15 +77,17 @@ def doctor_report(target_root: Path | None = None) -> dict[str, Any]:
             status="pass" if path_ready else "fail",
             details={
                 "configured": path_ready,
-                "xc_launcher": launcher,
+                "xcoding_launcher": launcher,
             },
         )
     )
     if path_ready and launcher is None:
         warnings.append(
             {
-                "code": "xc-not-on-path",
-                "message": "the xc console launcher is not currently on PATH",
+                "code": "xcoding-not-on-path",
+                "message": (
+                    "the xcoding console launcher is not currently on PATH"
+                ),
             }
         )
 
