@@ -324,8 +324,10 @@ class PackageCliTests(unittest.TestCase):
     def test_doctor_tk_absence_is_optional_and_never_imported(self) -> None:
         self.assertNotIn("tkinter", sys.modules)
         inspection = inspect_bundle(self.bundle, expected_version=VERSION)
+        probes: list[str] = []
 
         def which(name: str) -> str | None:
+            probes.append(name)
             return str(REPOSITORY_ROOT / "git") if name == "git" else None
 
         with (
@@ -344,10 +346,20 @@ class PackageCliTests(unittest.TestCase):
             report = doctor_module.doctor_report()
 
         self.assertTrue(report["ready"])
-        self.assertIn(
-            "tk-unavailable",
-            {warning["code"] for warning in report["warnings"]},
+        self.assertEqual(probes, ["xcoding", "git"])
+        path_check = next(
+            check for check in report["checks"] if check["id"] == "path"
         )
+        self.assertEqual(
+            path_check["details"],
+            {"configured": True, "xcoding_launcher": None},
+        )
+        warning_codes = {
+            warning["code"] for warning in report["warnings"]
+        }
+        self.assertIn("xcoding-not-on-path", warning_codes)
+        self.assertNotIn("xc-not-on-path", warning_codes)
+        self.assertIn("tk-unavailable", warning_codes)
         self.assertNotIn("tkinter", sys.modules)
 
     def test_public_commands_do_not_touch_tree_network_or_daemon_surfaces(self) -> None:
