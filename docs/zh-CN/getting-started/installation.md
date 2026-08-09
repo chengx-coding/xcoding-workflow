@@ -6,25 +6,34 @@
 
 ## 环境要求
 
-需要 Git、Python，以及能够发现并调用 Skill 包的 Agent 宿主。如果受管 workshop 检查点被配置为创建提交，还需要有效的 Git 身份配置。
+需要 Git、Python 3.12、`uv`、匹配且经过验证的 prerelease `xcoding` wheel，
+以及能够发现并调用 Skill 包的 Agent 宿主。如果受管 workshop 检查点被配置为
+创建提交，还需要有效的 Git 身份配置。
 
 目前尚无正式的 Python 版本或 Agent 宿主兼容矩阵。请在实际环境中验证所选 Python 运行时和 Agent 宿主。
 
 ## Python 依赖
 
-XC 当前只使用 Python 标准库，不需要安装第三方运行时包。受管文档
-frontmatter 由 `xc-document` 随附的有界 YAML 子集 codec 处理。
+XC package 只使用 Python 标准库，但 package 本身是必要依赖。Runtime、
+Viewer 和 daemon 实现位于 `src/xcoding/`；Skills 不再包含可独立运行的
+runtime fallback。受管文档 frontmatter 仍由 `xc-document` 随附的有界 YAML
+子集 codec 处理。
 
-完整的 `xc-orchestration-runtime` Skill 是自包含的。它的生成兼容载荷包含
-legacy Skill 命令使用的 runtime application，因此消费端 Skill 安装不需要
-prerelease Python package。仓库内的 package 探测可以暴露等价的
-`xc runtime` 入口和可选本地只读 transport `xc daemon serve`，但该 package
-尚未发布，也不是受支持的消费端安装路径。Daemon 只存在于 package 中；安装
-完整 Skill 不会安装或要求 daemon。
+Package 尚未公开发布。当前 cutover 验证使用维护者提供、经过验证的本地 wheel：
+
+```console
+uv tool install /absolute/path/to/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl
+xcoding version --json
+```
+
+工具安装必须提供 `xcoding`，而不是已废弃的 `xc` 名称。Package 接口是
+`xcoding runtime`、`xcoding viewer` 和 `xcoding daemon`。仅安装 Skills
+并不足够；executable 缺失时，薄 legacy runtime adapter 返回
+`xcoding_unavailable`。
 
 ## 完整替换式消费端安装
 
-目标 skills 目录必须已经存在。
+先安装必要的 `xcoding` 工具。目标 skills 目录必须已经存在。
 
 POSIX：
 

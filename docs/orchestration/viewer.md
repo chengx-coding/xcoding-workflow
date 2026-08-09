@@ -2,7 +2,11 @@
 
 # Local Orchestration Viewer
 
-The Viewer provides human-readable inspection of managed runtime trees without adding another state owner. [`xc-orchestration-viewer`](../../skills/xc-orchestration-viewer/SKILL.md) is a script-free facade; [`xc-orchestration-runtime`](../../skills/xc-orchestration-runtime/SKILL.md) owns snapshots, the server, the registry, SVG rendering, and static frontend assets.
+The Viewer provides human-readable inspection of managed runtime trees without
+adding another state owner.
+[`xc-orchestration-viewer`](../../skills/xc-orchestration-viewer/SKILL.md) is a
+script-free facade; the required `xcoding` package owns snapshots, the server,
+the registry, SVG rendering, picker, lifecycle, and static frontend assets.
 
 This one-way dependency prevents schema and state semantics from drifting between a runtime and a second visualization implementation.
 
@@ -16,10 +20,10 @@ The Viewer API contains registry, snapshot, refresh, SVG download, client, heart
 
 ## Launch and Defaults
 
-Launch the runtime-owned server:
+Launch the package-owned server:
 
 ```powershell
-python <runtime-skill-dir>/scripts/viewer_server.py --tree <tree-ref>
+xcoding viewer --tree <tree-ref>
 ```
 
 The server binds only to `127.0.0.1`. Its preferred default port is `20668`;
@@ -39,7 +43,7 @@ The local Viewer server is an inspection tool, not an orchestration daemon or re
 
 ## Viewer Versus Package Daemon
 
-The prerelease package's `xc daemon serve` is a separate local tool API. It
+`xcoding daemon serve` is a separate local tool API. It
 defaults to port `20669`, requires a process-lifetime bearer token plus exact
 Host/Origin checks, accepts only runtime files supplied at launch, exposes nine
 typed read-only queries, and provides bounded, non-replayable summary SSE.

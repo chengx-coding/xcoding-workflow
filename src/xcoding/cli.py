@@ -1,4 +1,4 @@
-"""Stable JSON command-line interface for the Stage 1 package spike."""
+"""Stable command-line interface for the prerelease xcoding package."""
 
 from __future__ import annotations
 

@@ -2,7 +2,13 @@
 
 **Language:** **English** | [简体中文](../zh-CN/getting-started/quick-start.md)
 
-This guide starts from a consumer project whose Agent host can discover the installed `xc-*` Skill packages. If the packages are not installed, follow [Installation](installation.md) first. Consumer installation uses `install_skills.py` or the managed installer; `build_agents.py` is only the development mirror for the xcoding-workflow checkout.
+This guide starts from a consumer project with the required `xcoding` tool on
+`PATH` and an Agent host that can discover the installed `xc-*` Skill
+packages. If either prerequisite is missing, follow
+[Installation](installation.md) first. Skill installation uses
+`install_skills.py` or the managed installer; neither installs `xcoding`.
+`build_agents.py` is only the development mirror for the xcoding-workflow
+checkout.
 
 ## 1. Choose the consumer project
 

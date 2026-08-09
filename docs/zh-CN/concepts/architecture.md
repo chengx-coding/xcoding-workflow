@@ -29,15 +29,35 @@ Agent 宿主的发现位置和安装目录属于适配器，不是新的事实�
 
 仓库还在 `pyproject.toml`、`src/xcoding/`、`build_support/` 以及 `install/`、`scripts/` 和 `.github/` 下与 package 相关的文件中包含 prerelease 产品可行性基础设施。它为隔离的本地和 CI 探测构建 package 与不可变 Bundle。这只是仓库构建边界，不是新的工作流创作源。
 
-Bundle 是构建时快照。`skills/xc-*/` 仍是 Skill 的唯一规范源，`skills/xc-orchestration-runtime/viewer/static/` 仍是 Viewer 资源的唯一规范源，`agents-src/agents/` 仍是持久 agent 定义的唯一规范源。面向特定宿主生成的 agent 定义只是经过校验后供 Bundle adapter 使用的构建输入，不是事实源。`build_support/host_adapters.json` 只声明如何把这些生成输入映射到 Bundle。
+Bundle 是构建时快照。`skills/xc-*/` 仍是 Skills 的唯一规范源；package runtime
+和 Viewer 实现及资源位于 `src/xcoding/`。`agents-src/agents/` 仍是持久 agent
+定义的唯一规范源。面向特定宿主生成的 agent 定义只是经过校验后供 Bundle
+adapter 使用的构建输入，不是事实源。`build_support/host_adapters.json` 只声明
+如何把这些生成输入映射到 Bundle。当前 Bundle 不再包含 Viewer 实现 partition。
 
-`src/xcoding/runtime/` 是运行时树模型、Runtime Application Service、持久化事务、共享 23 命令规范和 typed read-only query facade 的可编辑源。legacy Skill 入口与 prerelease `xc runtime` 入口都使用这同一个 application 边界。`xc runtime` 在本地直接执行，不会发现或启动 daemon。
+`src/xcoding/runtime/` 是运行时树模型、Runtime Application Service、持久化
+事务、共享 23 命令规范、typed read-only query facade 和默认模板的可编辑源。
+`src/xcoding/viewer/` 拥有 Viewer server、picker、lifecycle 和静态前端。
+`src/xcoding/daemon/` 拥有带认证的只读工具 API。
 
-完整的 Skill-only 安装仍然不需要安装 package。Runtime Skill 携带 `scripts/_runtime_compat/`，它是规范 runtime 模块的确定性生成载荷；其中的 legacy 脚本只是兼容 adapter。Generator 检查会拒绝缺失、额外或被修改的载荷文件，因此该载荷不是第二份可编辑实现。
+匹配的 `xcoding` package 是必要依赖。`xcoding runtime` 直接调用 Runtime
+Application Service；`xcoding viewer` 和 `xcoding daemon` 暴露其他 package
+surface。Runtime Skill 只保留薄 legacy `orchestration.py` adapter，通过已安装
+console command 执行 `xcoding runtime`。工具缺失时返回
+`xcoding_unavailable`，没有本地 fallback。
 
-Prerelease package 还包含可选的本地只读 transport `xc daemon serve`。它只绑定 `127.0.0.1`，要求 process-lifetime bearer token 和精确 Host/Origin 检查，只接受启动时传入的 runtime 文件，暴露九个 typed read-only query，并传输有界、非持久的 SSE 摘要。Direct runtime 与 Skill-only 运行不依赖它；Viewer 仍是独立的浏览器查看 surface。
+`xcoding daemon serve` 是可选本地只读 transport。它只绑定 `127.0.0.1`，
+要求 process-lifetime bearer token 和精确 Host/Origin 检查，只接受启动时传入
+的 runtime 文件，暴露九个 typed read-only query，并传输有界、非持久的 SSE
+摘要。`xcoding runtime` 继续在本地直接执行，不发现或启动 daemon；
+`xcoding viewer` 仍是独立的浏览器查看 surface。
 
-这些基础设施尚未发布，也没有受支持的公开 package 或 installer 入口。现有 Skill 安装与调用仍是默认方式。阶段 1 所需的外部 matrix 证据仍不可用，因此结论保持 `unknown` 和 `no-go`；不承诺 package、平台、Python 或 Agent 宿主兼容性。Daemon 不提供 remote bind、runtime mutation service、durable operation journal、replay、service install、discovery 或默认 transport 切换；后续 mutation、remote transport 或发布工作需要单独批准。
+这些基础设施尚未发布，也没有公开 package 来源。因此当前除安装 Skills 外，
+还需要维护者提供、经过验证的本地 wheel。阶段 1 所需的外部 matrix 证据仍
+不可用，因此结论保持 `unknown` 和 `no-go`；不承诺 package、平台、Python
+或 Agent 宿主兼容性。Daemon 不提供 remote bind、runtime mutation service、
+durable operation journal、replay、service install、discovery 或默认
+transport 切换；后续 mutation、remote transport 或发布工作需要单独批准。
 
 ## 通用核心与项目桥接
 

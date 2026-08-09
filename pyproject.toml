@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "xcoding-workflow-spike"
 version = "0.0.0.dev0"
-description = "Prerelease Stage 1 package and Bundle feasibility spike."
+description = "Prerelease xcoding workflow runtime, Viewer, daemon, and Skill Bundle."
 requires-python = ">=3.12,<3.13"
 dependencies = []
 classifiers = [

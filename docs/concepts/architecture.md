@@ -29,15 +29,43 @@ This separation keeps tool-specific metadata, permissions, and file formats at t
 
 The repository also contains prerelease product feasibility infrastructure in `pyproject.toml`, `src/xcoding/`, `build_support/`, and package-specific files under `install/`, `scripts/`, and `.github/`. It builds a package and immutable Bundle for isolated local and CI probes. This is a repository build boundary, not another workflow authoring surface.
 
-The Bundle is a build-time snapshot. `skills/xc-*/` remains the only canonical source for Skills, `skills/xc-orchestration-runtime/viewer/static/` remains the only canonical source for Viewer resources, and `agents-src/agents/` remains the only canonical source for persistent agent definitions. Generated host-specific agent definitions are only validated build inputs for Bundle adapters; they are not sources of truth. `build_support/host_adapters.json` only declares how those generated inputs map into the Bundle.
+The Bundle is a build-time snapshot. `skills/xc-*/` remains the only canonical
+source for Skills, while package runtime and Viewer implementation/resources
+live under `src/xcoding/`. `agents-src/agents/` remains the only canonical
+source for persistent agent definitions. Generated host-specific agent
+definitions are only validated build inputs for Bundle adapters; they are not
+sources of truth. `build_support/host_adapters.json` only declares how those
+generated inputs map into the Bundle. The current Bundle has no Viewer
+implementation partition.
 
-`src/xcoding/runtime/` is the editable source for the runtime tree model, Runtime Application Service, persistence transactions, shared 23-command specification, and typed read-only query facade. The legacy Skill entry and the prerelease `xc runtime` entry both use that application boundary. `xc runtime` is direct local execution; it does not discover or start a daemon.
+`src/xcoding/runtime/` is the editable source for the runtime tree model,
+Runtime Application Service, persistence transactions, shared 23-command
+specification, typed read-only query facade, and default template.
+`src/xcoding/viewer/` owns the Viewer server, picker, lifecycle, and static
+frontend. `src/xcoding/daemon/` owns the authenticated read-only tool API.
 
-Complete Skill-only installation remains supported without installing the package. The runtime Skill carries `scripts/_runtime_compat/`, a deterministic generated payload of the canonical runtime modules. Its legacy scripts are compatibility adapters. The generator check fails on missing, extra, or changed payload files, so the payload is not a second editable implementation.
+The matching `xcoding` package is required. `xcoding runtime` directly invokes
+the Runtime Application Service; `xcoding viewer` and `xcoding daemon` expose
+the other package-owned surfaces. The runtime Skill retains only a thin legacy
+`orchestration.py` adapter that executes `xcoding runtime` through the
+installed console command. It returns `xcoding_unavailable` and has no local
+fallback when the tool is missing.
 
-The prerelease package also contains `xc daemon serve`, an optional local read-only transport. It binds only to `127.0.0.1`, requires a process-lifetime bearer token and exact Host/Origin checks, accepts only launch-time runtime files, exposes nine typed read-only queries, and streams bounded non-durable SSE summaries. Direct runtime and Skill-only operation do not depend on it. The Viewer remains a separate browser inspection surface.
+`xcoding daemon serve` is an optional local read-only transport. It binds only
+to `127.0.0.1`, requires a process-lifetime bearer token and exact Host/Origin
+checks, accepts only launch-time runtime files, exposes nine typed read-only
+queries, and streams bounded non-durable SSE summaries. `xcoding runtime`
+remains direct local execution and does not discover or start the daemon.
+`xcoding viewer` remains a separate browser inspection surface.
 
-This infrastructure is not published and provides no supported public package or installer entry point. Existing Skill installation and invocation remain the default. Required external Stage 1 matrix evidence is still unavailable, so the result remains `unknown` and `no-go`; no package, platform, Python, or Agent-host compatibility is promised. The daemon provides no remote bind, runtime mutation service, durable operation journal, replay, service installation, discovery, or default transport switch. Later mutation, remote transport, or release work requires separate approval.
+This infrastructure is not published and provides no public package source.
+Current use therefore requires a maintainer-provided validated local wheel in
+addition to Skill installation. Required external Stage 1 matrix evidence is
+still unavailable, so the result remains `unknown` and `no-go`; no package,
+platform, Python, or Agent-host compatibility is promised. The daemon provides
+no remote bind, runtime mutation service, durable operation journal, replay,
+service installation, discovery, or default transport switch. Later mutation,
+remote transport, or release work requires separate approval.
 
 ## Generic Core And Project Bridge
 

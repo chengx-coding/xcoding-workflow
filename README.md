@@ -6,7 +6,8 @@ xcoding-workflow helps coding agents carry work from an initial request to a tes
 
 ## What It Does
 
-- XC is installed as a set of workflow modules called **Skills**.
+- XC uses a required `xcoding` CLI package plus workflow modules called
+  **Skills**.
 - Small, low-risk tasks can be completed directly.
 - Work that needs a plan, review, recovery, or a durable record runs as a **managed work order**. A work order keeps the goal, decisions, progress, and evidence together.
 - An explicitly adaptive managed work order can start with one combined work leaf and one finalizer, then add documents, analysis, gates, verification, review, and recovery as confirmed facts require.
@@ -48,21 +49,37 @@ Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed w
 ## Prerequisites
 
 - Git. Configure a Git identity if you want XC to save automatic workflow checkpoints.
-- Python to run the repository scripts. XC has no third-party Python runtime package dependency.
+- Python 3.12 and a matching validated prerelease `xcoding` wheel.
+- `uv` for the current isolated tool installation flow.
 - An Agent host that can load and run Skill packages.
 
 The project does not yet publish a formal Python-version or Agent-host compatibility matrix. Validate the workflow with the Python runtime and host used in your environment.
 
 ## Install XC
 
-Choose the directory where your Agent host loads Skills, create it if needed,
-and install XC into it:
+Install the matching validated wheel first. The package is not publicly
+published, so this currently requires a maintainer-provided local wheel:
+
+```console
+uv tool install /absolute/path/to/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl
+xcoding version --json
+```
+
+The installation must create `xcoding`; the former `xc` executable is not
+part of the contract.
+
+Then choose the directory where your Agent host loads Skills, create it if
+needed, and install the XC Skills into it:
 
 ```console
 python install_skills.py --target-skills /absolute/path/to/consumer/.agents/skills
 ```
 
 **This command replaces every existing package whose name starts with `xc-`.** Local changes inside those packages are deleted. Packages with other names are not changed.
+
+The Skill installer does not install the required `xcoding` package. Runtime
+and Viewer Skills fail with `xcoding_unavailable` when the executable is not
+available on `PATH`.
 
 For later updates, the following installer can detect local changes before replacing files:
 

@@ -66,6 +66,16 @@ Blackboard 保存短控制值，报告和其他丰富输出保存在 workshop ar
 
 取舍：已接受状态和 checkpoint 证据不会静默分离，但 Git 或渲染失败会阻止终态被接受，而不是仅给出 warning。
 
+### Package 所有的执行 Surface
+
+Runtime、Viewer、daemon、默认模板和前端实现属于必要的 `xcoding` package。
+公开命令使用 `xcoding runtime|viewer|daemon`；Skills 只包含契约和一个
+deprecated 薄 runtime adapter，不包含 executable fallback。旧 `xc` 命令不再
+保留。
+
+取舍：系统只有一份物理实现，安装错误不会被 fallback 隐藏；但仅复制 Skills
+已不足以运行。公开发布获批前，需要由维护者提供匹配、经过验证的本地 wheel。
+
 ### 只读 Viewer
 
 Viewer 只消费快照，不能修改编排状态。它绑定 loopback，默认端口 `20668`，使用自定义静态浏览器代码而非 D3。
