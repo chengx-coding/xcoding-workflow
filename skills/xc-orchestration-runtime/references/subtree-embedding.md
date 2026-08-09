@@ -3,7 +3,7 @@
 Use embedded subtrees when a runtime node needs to invoke another workflow template as part of the same scheduling tree.
 
 ```powershell
-python "$SKILL_DIR/scripts/orchestration.py" embed-subtree `
+xcoding runtime embed-subtree `
   --tree <parent_tree_ref> `
   --parent <parent_node_id> `
   --template <managed_child_template> `

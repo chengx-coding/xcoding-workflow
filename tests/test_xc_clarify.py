@@ -10,7 +10,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 AUTHOR = REPOSITORY_ROOT / "skills" / "xc-orchestration-author" / "scripts" / "template_builder.py"
-RUNTIME = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime" / "scripts" / "orchestration.py"
+RUNTIME = REPOSITORY_ROOT / "tests" / "runtime_cli.py"
 FLOW = REPOSITORY_ROOT / "skills" / "xc-clarify" / "assets" / "clarify-flow.json"
 TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-clarify" / "assets" / "clarify-template.xml"
 WORK_ORDER_FLOW = REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-flow.json"

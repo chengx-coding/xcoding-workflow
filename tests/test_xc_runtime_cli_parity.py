@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import io
 import json
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -13,35 +16,22 @@ from unittest import mock
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = REPOSITORY_ROOT / "src"
-RUNTIME_SCRIPTS = (
+MINIMAL_TEMPLATE = (
+    SOURCE_ROOT / "xcoding" / "runtime" / "assets" / "minimal-template.xml"
+)
+LEGACY_ADAPTER = (
     REPOSITORY_ROOT
     / "skills"
     / "xc-orchestration-runtime"
     / "scripts"
+    / "orchestration.py"
 )
-MINIMAL_TEMPLATE = (
-    REPOSITORY_ROOT
-    / "skills"
-    / "xc-orchestration-runtime"
-    / "assets"
-    / "minimal-template.xml"
-)
-
 sys.path.insert(0, str(SOURCE_ROOT))
-sys.path.insert(0, str(RUNTIME_SCRIPTS))
 
 from xcoding import cli as package_cli
-from xcoding import dispatch as package_dispatch
-from xcoding.runtime import application as canonical_application
-from xcoding.runtime import commands as canonical_commands
-from xcoding.runtime import core as canonical_core
-from xcoding.runtime import query as canonical_query
-
-import orchestration as legacy_application
-from _runtime_compat import application as generated_application
-from _runtime_compat import commands as generated_commands
-from _runtime_compat import core as generated_core
-from _runtime_compat import query as generated_query
+from xcoding.runtime import application
+from xcoding.runtime import commands
+from xcoding.runtime import query
 
 
 def parser_signature(
@@ -85,7 +75,7 @@ def parser_signature(
 def invoke(
     function,
     arguments: list[str],
-    environment,
+    environment: application.RuntimeEnvironment,
 ) -> tuple[int, str, str]:
     stdout = io.StringIO()
     stderr = io.StringIO()
@@ -94,30 +84,25 @@ def invoke(
     return code, stdout.getvalue(), stderr.getvalue()
 
 
-def normalize_paths(value, replacements: dict[str, str]):
-    if isinstance(value, dict):
-        return {
-            key: normalize_paths(item, replacements)
-            for key, item in value.items()
-        }
-    if isinstance(value, list):
-        return [normalize_paths(item, replacements) for item in value]
-    if isinstance(value, str):
-        normalized = value
-        for source, target in replacements.items():
-            normalized = normalized.replace(source, target)
-        return normalized
-    return value
+def load_legacy_adapter():
+    spec = importlib.util.spec_from_file_location(
+        "xc_runtime_legacy_adapter",
+        LEGACY_ADAPTER,
+    )
+    if spec is None or spec.loader is None:
+        raise AssertionError("cannot load legacy runtime adapter")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class RuntimeCliParityTests(unittest.TestCase):
-    def canonical_environment(self) -> canonical_application.RuntimeEnvironment:
-        return canonical_application.RuntimeEnvironment(MINIMAL_TEMPLATE)
+    def environment(self) -> application.RuntimeEnvironment:
+        return application.RuntimeEnvironment(MINIMAL_TEMPLATE)
 
-    def generated_environment(self) -> generated_application.RuntimeEnvironment:
-        return generated_application.RuntimeEnvironment(MINIMAL_TEMPLATE)
-
-    def test_shared_spec_declares_all_23_commands_with_exact_arguments(self) -> None:
+    def test_shared_spec_declares_all_23_commands_with_exact_arguments(
+        self,
+    ) -> None:
         expected = (
             "init",
             "next",
@@ -143,34 +128,27 @@ class RuntimeCliParityTests(unittest.TestCase):
             "repair-integrity",
             "validate",
         )
-        self.assertEqual(canonical_commands.COMMAND_NAMES, expected)
-        self.assertEqual(generated_commands.COMMAND_NAMES, expected)
+        self.assertEqual(commands.COMMAND_NAMES, expected)
         self.assertEqual(
-            canonical_query.READ_ONLY_COMMANDS,
-            generated_query.READ_ONLY_COMMANDS,
+            query.READ_ONLY_COMMANDS,
+            (
+                "next",
+                "summary",
+                "show",
+                "control-packet",
+                "find",
+                "artifacts",
+                "snapshot",
+                "integrity-status",
+                "validate",
+            ),
         )
         self.assertEqual(
-            parser_signature(canonical_commands.build_parser()),
-            parser_signature(generated_commands.build_parser()),
+            parser_signature(commands.build_parser()),
+            parser_signature(commands.build_parser()),
         )
 
-    def test_canonical_and_generated_runtime_modules_are_byte_identical(self) -> None:
-        canonical_root = REPOSITORY_ROOT / "src" / "xcoding" / "runtime"
-        generated_root = RUNTIME_SCRIPTS / "_runtime_compat"
-        for name in (
-            "__init__.py",
-            "application.py",
-            "commands.py",
-            "core.py",
-            "query.py",
-        ):
-            self.assertEqual(
-                (canonical_root / name).read_bytes(),
-                (generated_root / name).read_bytes(),
-                name,
-            )
-
-    def test_legacy_and_package_adapters_match_read_and_error_results(self) -> None:
+    def test_package_adapter_matches_application_results(self) -> None:
         cases = (
             ["validate", "--tree", str(MINIMAL_TEMPLATE)],
             [
@@ -181,115 +159,123 @@ class RuntimeCliParityTests(unittest.TestCase):
         )
         for arguments in cases:
             with self.subTest(arguments=arguments):
-                legacy = invoke(
-                    legacy_application.main,
+                expected = invoke(
+                    application.main,
                     list(arguments),
-                    self.generated_environment(),
+                    self.environment(),
                 )
-                package = invoke(
+                actual = invoke(
                     package_cli._runtime_main,
                     list(arguments),
-                    self.canonical_environment(),
+                    self.environment(),
                 )
-                self.assertEqual(package, legacy)
-                self.assertEqual(package[2], "")
-                self.assertEqual(
-                    json.loads(package[1]),
-                    json.loads(legacy[1]),
-                )
+                self.assertEqual(actual, expected)
+                self.assertEqual(actual[2], "")
+                self.assertEqual(json.loads(actual[1]), json.loads(expected[1]))
 
-    def test_legacy_and_package_adapters_match_init_state(self) -> None:
-        fixed_now = "2030-01-02T03:04:05+00:00"
+    def test_python_module_runtime_matches_direct_application(self) -> None:
+        environment = os.environ.copy()
+        environment["PYTHONPATH"] = str(SOURCE_ROOT)
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                "-m",
+                "xcoding",
+                "runtime",
+                "validate",
+                "--tree",
+                str(MINIMAL_TEMPLATE),
+            ],
+            cwd=REPOSITORY_ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        direct = application.execute(
+            ["validate", "--tree", str(MINIMAL_TEMPLATE)],
+            self.environment(),
+        )
+        self.assertEqual(result.returncode, direct.exit_code)
+        self.assertEqual(json.loads(result.stdout), direct.payload)
+        self.assertEqual(result.stderr, "")
+
+    def test_legacy_adapter_has_bounded_missing_package_error(self) -> None:
+        environment = os.environ.copy()
+        environment["PATH"] = ""
+        result = subprocess.run(
+            [sys.executable, "-B", str(LEGACY_ADAPTER), "summary"],
+            cwd=REPOSITORY_ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stderr, "")
+        payload = json.loads(result.stdout)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["error"]["code"], "xcoding_unavailable")
+        self.assertEqual(
+            payload["error"]["details"],
+            {"executable": "xcoding"},
+        )
+        self.assertNotIn("Traceback", result.stdout)
+
+    def test_legacy_adapter_execs_xcoding_runtime_without_shell(self) -> None:
+        adapter = load_legacy_adapter()
+        with (
+            mock.patch.object(
+                adapter.shutil,
+                "which",
+                return_value="/tools/xcoding",
+            ),
+            mock.patch.object(
+                adapter.sys,
+                "argv",
+                ["orchestration.py", "next", "--tree", "tree.xml"],
+            ),
+            mock.patch.object(
+                adapter.os,
+                "execv",
+                side_effect=OSError("test stop"),
+            ) as execute,
+            mock.patch.object(adapter, "emit_unavailable", return_value=2),
+        ):
+            self.assertEqual(adapter.main(), 2)
+        execute.assert_called_once_with(
+            "/tools/xcoding",
+            [
+                "/tools/xcoding",
+                "runtime",
+                "next",
+                "--tree",
+                "tree.xml",
+            ],
+        )
+
+    def test_runtime_init_uses_package_template(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            legacy_root = root / "legacy"
-            package_root = root / "package"
-            arguments = [
-                "init",
-                "--work-order-id",
-                "parity-work-order",
-                "--name",
-                "Parity",
-            ]
-            with (
-                mock.patch.object(
-                    generated_core,
-                    "utc_now",
-                    return_value=fixed_now,
-                ),
-                mock.patch.object(
-                    generated_core,
-                    "today",
-                    return_value="2030-01-02",
-                ),
-                mock.patch.object(
-                    canonical_core,
-                    "utc_now",
-                    return_value=fixed_now,
-                ),
-                mock.patch.object(
-                    canonical_core,
-                    "today",
-                    return_value="2030-01-02",
-                ),
-            ):
-                legacy = invoke(
-                    legacy_application.main,
-                    [
-                        *arguments,
-                        "--runtime-path",
-                        str(legacy_root),
-                    ],
-                    self.generated_environment(),
-                )
-                package = invoke(
-                    package_cli._runtime_main,
-                    [
-                        *arguments,
-                        "--runtime-path",
-                        str(package_root),
-                    ],
-                    self.canonical_environment(),
-                )
-
-            self.assertEqual(legacy[0], 0)
-            self.assertEqual(package[0], 0)
-            legacy_payload = normalize_paths(
-                json.loads(legacy[1]),
-                {str(legacy_root): "<RUNTIME>"},
-            )
-            package_payload = normalize_paths(
-                json.loads(package[1]),
-                {str(package_root): "<RUNTIME>"},
-            )
-            self.assertEqual(package_payload, legacy_payload)
-            self.assertEqual(
-                (
-                    package_root / "orchestration.xml"
-                ).read_bytes(),
-                (
-                    legacy_root / "orchestration.xml"
-                ).read_bytes(),
-            )
-
-    def test_public_cli_routes_runtime_without_subprocess_dispatch(self) -> None:
-        with mock.patch.object(
-            package_dispatch.subprocess,
-            "run",
-        ) as run:
+            runtime = Path(temporary) / "runtime"
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 code = package_cli.main(
                     [
                         "runtime",
-                        "validate",
-                        "--tree",
-                        str(MINIMAL_TEMPLATE),
+                        "init",
+                        "--runtime-path",
+                        str(runtime),
+                        "--work-order-id",
+                        "package-cutover",
                     ]
                 )
         self.assertEqual(code, 0)
-        self.assertTrue(json.loads(stdout.getvalue())["ok"])
-        run.assert_not_called()
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(Path(payload["template"]), MINIMAL_TEMPLATE)
 
 
 if __name__ == "__main__":

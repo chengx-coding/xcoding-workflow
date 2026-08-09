@@ -49,7 +49,7 @@ Rules:
 ## Complete
 
 ```powershell
-python "$SKILL_DIR/scripts/orchestration.py" complete `
+xcoding runtime complete `
   --tree <tree_ref> `
   --node <node_id> `
   --summary "<summary>" `
@@ -66,14 +66,14 @@ are untrusted self-reports rather than proof that the validator ran.
 ## Fail or Block
 
 ```powershell
-python "$SKILL_DIR/scripts/orchestration.py" fail `
+xcoding runtime fail `
   --tree <tree_ref> `
   --node <node_id> `
   --reason "<attempted_action_and_failure>" `
   --artifact <failure_evidence_path> `
   --artifact <additional_evidence_path>
 
-python "$SKILL_DIR/scripts/orchestration.py" block `
+xcoding runtime block `
   --tree <tree_ref> `
   --node <node_id> `
   --reason "<external_prerequisite>" `

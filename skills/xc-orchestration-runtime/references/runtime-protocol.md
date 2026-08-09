@@ -1,6 +1,6 @@
 # Runtime Protocol
 
-`xc-orchestration-runtime` operates managed `schema_version="1"` runtime trees. Agents use `scripts/orchestration.py` and never directly inspect or edit runtime XML.
+`xc-orchestration-runtime` operates managed `schema_version="1"` runtime trees. Agents use the required `xcoding runtime` CLI and never directly inspect or edit runtime XML.
 
 ## Main Session Loop
 
@@ -49,11 +49,11 @@ All commands return JSON. `--json` is accepted for host compatibility.
 arguments:
 
 ```powershell
-python "$SKILL_DIR/scripts/orchestration.py" fail `
+xcoding runtime fail `
   --tree <tree_ref> --node <node_id> --reason "<failure_reason>" `
   --artifact <first_path> --artifact <second_path>
 
-python "$SKILL_DIR/scripts/orchestration.py" block `
+xcoding runtime block `
   --tree <tree_ref> --node <node_id> --reason "<block_reason>" `
   --artifact <evidence_path>
 ```
@@ -241,7 +241,7 @@ endpoint does not expand allow roots.
 Read operations return integrity details after direct edits are detected. Normal writes reject non-valid integrity. Use:
 
 ```powershell
-python "$SKILL_DIR/scripts/orchestration.py" repair-integrity --tree <tree_ref> --reason "<reason>"
+xcoding runtime repair-integrity --tree <tree_ref> --reason "<reason>"
 ```
 
 The repair operation validates structure, restores managed metadata, recalculates the canonical checksum, reloads the written tree, and follows configured workshop-commit rules. A failed workshop commit returns `persisted_uncommitted`; recovery validates existing artifacts and retries or reconciles through the runtime rather than directly editing the tree.

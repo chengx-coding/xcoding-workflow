@@ -16,8 +16,9 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = REPOSITORY_ROOT / "src"
 MINIMAL_TEMPLATE = (
     REPOSITORY_ROOT
-    / "skills"
-    / "xc-orchestration-runtime"
+    / "src"
+    / "xcoding"
+    / "runtime"
     / "assets"
     / "minimal-template.xml"
 )

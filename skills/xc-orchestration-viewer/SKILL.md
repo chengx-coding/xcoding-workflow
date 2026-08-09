@@ -5,18 +5,15 @@ description: "Opens, monitors, or visualizes managed runtime trees through the r
 
 # XC Orchestration Viewer
 
-This script-free facade provides a precise entry point for human-readable tree inspection. It owns no XML parser, state machine, server, or frontend assets; all implementation belongs to the sibling `xc-orchestration-runtime` Skill.
+This script-free facade provides a precise entry point for human-readable tree inspection. It owns no XML parser, state machine, server, or frontend assets; all implementation belongs to the required `xcoding` package.
 
 ## Dependency Contract
 
-The default runtime directory is `$SKILL_DIR/../xc-orchestration-runtime`. A non-sibling installation must provide `runtime_skill_dir`.
-
-Before launch, verify these runtime public interfaces:
+Before launch, verify these package public interfaces:
 
 ```text
-<runtime_skill_dir>/scripts/orchestration.py
-<runtime_skill_dir>/scripts/viewer_server.py
-<runtime_skill_dir>/viewer/static/index.html
+xcoding runtime snapshot --tree <tree_ref>
+xcoding viewer --tree <tree_ref>
 ```
 
 The viewer consumes only the runtime snapshot protocol. It MUST NOT directly parse, edit, or reformat managed XML.
@@ -24,7 +21,7 @@ The viewer consumes only the runtime snapshot protocol. It MUST NOT directly par
 ## Launch
 
 ```powershell
-python <runtime_skill_dir>\scripts\viewer_server.py `
+xcoding viewer `
   --tree <tree_ref> `
   --allow-root <additional_runtime_directory>
 ```
