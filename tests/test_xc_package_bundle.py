@@ -47,7 +47,6 @@ EXPECTED_PROVENANCE = {
 }
 
 SKILL_PATH = "skills/xc-alpha/SKILL.md"
-VIEWER_PATH = "skills/xc-orchestration-runtime/viewer/static/index.html"
 ADAPTER_PATH = "adapters/test-host/delegate-agent.md"
 
 
@@ -63,10 +62,6 @@ requires-python = ">=3.12,<3.13"
 """,
         )
         self.write("skills/xc-alpha/SKILL.md", "alpha\r\nbytes\r\n")
-        self.write(
-            "skills/xc-orchestration-runtime/viewer/static/index.html",
-            "<!doctype html>\n",
-        )
         self.write(
             "agents-src/agents/delegate-agent.md",
             "---\nname: delegate-agent\n---\nbody\n",
@@ -239,7 +234,6 @@ class CollectorTests(BundleTestCase):
                 {
                     "bundle-manifest.json",
                     SKILL_PATH,
-                    VIEWER_PATH,
                     ADAPTER_PATH,
                 },
             )
@@ -250,9 +244,9 @@ class CollectorTests(BundleTestCase):
             )
             self.assertEqual(
                 inspection.partition_counts,
-                {"skill": 1, "viewer": 1, "host-adapter": 1},
+                {"skill": 1, "viewer": 0, "host-adapter": 1},
             )
-            self.assertEqual(inspection.resource_count, 3)
+            self.assertEqual(inspection.resource_count, 2)
             self.assertFalse((candidate.root / "src" / "xcoding" / "_bundle").exists())
             manifest_bytes = (first / "bundle-manifest.json").read_bytes()
             self.assertTrue(manifest_bytes.endswith(b"\n"))
@@ -502,7 +496,6 @@ class ManifestVerificationTests(BundleTestCase):
     def test_delete_tamper_and_extra_fail_for_each_resource_partition(self) -> None:
         cases = {
             "skill": SKILL_PATH,
-            "viewer": VIEWER_PATH,
             "host-adapter": ADAPTER_PATH,
         }
         for kind, relative in cases.items():
@@ -539,15 +532,6 @@ class ManifestVerificationTests(BundleTestCase):
                 )
                 if kind == "skill":
                     extra = root / "skills" / "xc-alpha" / "extra.txt"
-                elif kind == "viewer":
-                    extra = (
-                        root
-                        / "skills"
-                        / "xc-orchestration-runtime"
-                        / "viewer"
-                        / "static"
-                        / "extra.js"
-                    )
                 else:
                     extra = root / "adapters" / "test-host" / "extra.md"
                 extra.write_bytes(b"extra")
@@ -689,12 +673,12 @@ class ManifestVerificationTests(BundleTestCase):
 
         root = self.copy_bundle(self.bundle, self.parent, "kind")
         value = self.manifest_value(root)
-        viewer = next(
+        skill = next(
             item
             for item in value["resources"]
-            if item["kind"] == "viewer"
+            if item["kind"] == "skill"
         )
-        viewer["kind"] = "skill"
+        skill["kind"] = "viewer"
         self.write_manifest(root, value)
         self.assert_validation_code("manifest_invalid", inspect_bundle, root)
 
@@ -803,7 +787,7 @@ class ManifestVerificationTests(BundleTestCase):
             inspection = bundle_resources.inspect_installed_bundle(
                 expected_provenance=EXPECTED_PROVENANCE
             )
-        self.assertEqual(inspection.resource_count, 3)
+        self.assertEqual(inspection.resource_count, 2)
         self.assertRegex(inspection.manifest_sha256, r"^[0-9a-f]{64}$")
 
 
