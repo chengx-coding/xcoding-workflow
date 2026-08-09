@@ -21,7 +21,7 @@ These services design, run, and visualize managed orchestration without taking o
 - **Invoke when:** a workflow needs scheduling, node transitions, controlled state updates, subtree embedding, integrity operations, snapshots, or persistence.
 - **Purpose:** provide the domain-neutral control plane for managed runtime trees and transactional workshop checkpoints.
 - **Portable public entry:** `orchestration.py` lifecycle commands such as `init`, `next`, `control-packet`, `start`, `complete`, `fail`, and `block`, plus documented query and recovery commands including `unblock`, `retry-failed`, and `reopen`. Opt-in completion adds repeated `--check-result-json`; opt-in gates add `--gate-outcome` and `--decision`.
-- **Prerelease package adapter:** a matching repository package exposes the same 23 commands as `xc runtime <command> ...`. This is direct application execution, not daemon transport, and it is not a published consumer entry point.
+- **Prerelease package adapters:** a matching repository package exposes the same 23 direct commands as `xc runtime <command> ...` and an optional local read-only `xc daemon serve`. Neither is a published consumer entry point, and direct commands do not discover or require the daemon.
 - **Typical usage:** initialize a template, request ready work, read the selected leaf's scoped packet, start only that executable leaf, and terminate it with concise evidence and declared artifacts. When the same approved leaf contract should run after failure, `retry-failed --reason` archives the attempt and restores ordinary scheduling.
 - **Boundaries:** managed XML is never read or edited directly; workers execute exactly one node, source projection is not start authority, invalid integrity requires explicit repair, and successful trees remain sealed until an approved reopen.
 
@@ -38,6 +38,25 @@ canonical modules, and `runtime_core.py` plus `orchestration.py` are
 compatibility aliases or adapters. Generation checks reject drift, and Bundle
 checks require the complete payload. Consumers must not edit the payload as a
 second implementation.
+
+### Read-Only Package Daemon
+
+`xc daemon serve --tree <runtime>` is package-only and prerelease. It binds
+only to `127.0.0.1`, publishes a process-lifetime bearer token in its launch
+result, accepts only launch-time regular runtime files, and addresses them
+through opaque process-local IDs.
+
+The HTTP surface contains authenticated health/list, one typed query endpoint,
+and bounded non-durable summary SSE. The typed facade permits `next`,
+`summary`, `show`, `control-packet`, `find`, `artifacts`, `snapshot`,
+`integrity-status`, and `validate`. It rejects every mutation command before
+tree access. SSE has no replay, `id`, full snapshot, journal, queue, or browser
+cookie/query-token fallback.
+
+The daemon provides no remote bind, dynamic registration, native picker,
+service installation, discovery, auto-start, stop API, durable state, or
+default transport switch. Skill-only and direct runtime operation remain
+independent.
 
 ### Control Contracts
 

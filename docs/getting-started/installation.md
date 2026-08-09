@@ -20,8 +20,10 @@ The complete `xc-orchestration-runtime` Skill is self-contained. Its generated
 compatibility payload contains the runtime application used by the legacy
 Skill command, so consumer Skill installation does not require the prerelease
 Python package. Repository package probes may expose the equivalent
-`xc runtime` entry, but that package is not published or a supported consumer
-installation path.
+`xc runtime` entry and the optional local read-only `xc daemon serve`
+transport, but that package is not published or a supported consumer
+installation path. The daemon is package-only; installing the complete Skill
+does not install or require it.
 
 ## Full-replacement consumer installation
 

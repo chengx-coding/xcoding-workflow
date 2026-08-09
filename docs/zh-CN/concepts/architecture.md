@@ -31,11 +31,13 @@ Agent 宿主的发现位置和安装目录属于适配器，不是新的事实�
 
 Bundle 是构建时快照。`skills/xc-*/` 仍是 Skill 的唯一规范源，`skills/xc-orchestration-runtime/viewer/static/` 仍是 Viewer 资源的唯一规范源，`agents-src/agents/` 仍是持久 agent 定义的唯一规范源。面向特定宿主生成的 agent 定义只是经过校验后供 Bundle adapter 使用的构建输入，不是事实源。`build_support/host_adapters.json` 只声明如何把这些生成输入映射到 Bundle。
 
-`src/xcoding/runtime/` 是运行时树模型、Runtime Application Service、持久化事务和共享 23 命令规范的可编辑源。legacy Skill 入口与 prerelease `xc runtime` 入口都使用这同一个 application 边界。`xc runtime` 在本地直接执行，不会发现或启动 daemon。
+`src/xcoding/runtime/` 是运行时树模型、Runtime Application Service、持久化事务、共享 23 命令规范和 typed read-only query facade 的可编辑源。legacy Skill 入口与 prerelease `xc runtime` 入口都使用这同一个 application 边界。`xc runtime` 在本地直接执行，不会发现或启动 daemon。
 
 完整的 Skill-only 安装仍然不需要安装 package。Runtime Skill 携带 `scripts/_runtime_compat/`，它是规范 runtime 模块的确定性生成载荷；其中的 legacy 脚本只是兼容 adapter。Generator 检查会拒绝缺失、额外或被修改的载荷文件，因此该载荷不是第二份可编辑实现。
 
-这些基础设施尚未发布，也没有受支持的公开 package 或 installer 入口。现有 Skill 安装与调用仍是默认方式。阶段 1 所需的外部 matrix 证据仍不可用，因此结论保持 `unknown` 和 `no-go`；不承诺 package、平台、Python 或 Agent 宿主兼容性。该 package 不启动 daemon，也不暴露 HTTP、远程 mutation service 或持久 operation journal；后续 transport 或发布工作需要单独批准。
+Prerelease package 还包含可选的本地只读 transport `xc daemon serve`。它只绑定 `127.0.0.1`，要求 process-lifetime bearer token 和精确 Host/Origin 检查，只接受启动时传入的 runtime 文件，暴露九个 typed read-only query，并传输有界、非持久的 SSE 摘要。Direct runtime 与 Skill-only 运行不依赖它；Viewer 仍是独立的浏览器查看 surface。
+
+这些基础设施尚未发布，也没有受支持的公开 package 或 installer 入口。现有 Skill 安装与调用仍是默认方式。阶段 1 所需的外部 matrix 证据仍不可用，因此结论保持 `unknown` 和 `no-go`；不承诺 package、平台、Python 或 Agent 宿主兼容性。Daemon 不提供 remote bind、runtime mutation service、durable operation journal、replay、service install、discovery 或默认 transport 切换；后续 mutation、remote transport 或发布工作需要单独批准。
 
 ## 通用核心与项目桥接
 

@@ -16,6 +16,12 @@ The architecture has three public services:
 
 Domain Skills own the meaning of the work. They define templates, task instructions, gates, artifact contracts, blackboard keys, acceptance criteria, and domain references. They invoke the runtime through public operations and do not copy its scheduler, state machine, parser, or Viewer.
 
+The prerelease Python package has an additional local adapter, `xc daemon
+serve`. It exposes only the runtime's typed read-only query facade over
+bearer-authenticated loopback HTTP and bounded summary SSE. It is not another
+state owner, is not required by the portable Skill, and cannot perform runtime
+transitions. Direct runtime commands remain the mutation boundary.
+
 The main session is the orchestrator. It initializes or resumes a tree, asks for ready nodes, starts delegated work, handles `executor=main` gates, and verifies results. It may execute work explicitly assigned to `executor=main`; it is not restricted to delegation alone. A subagent is a single-node worker and does not inspect siblings, future nodes, or global control flow.
 
 ## Design Influences
@@ -43,6 +49,11 @@ Shared information is split by size and purpose:
 - Runtime records declared artifact paths on terminal node operations; it does not provide a separate artifact store.
 
 The Viewer is read-only. It consumes runtime snapshots and exposes no lifecycle or blackboard mutation endpoints. Runtime state changes still go through the runtime CLI.
+
+The Viewer and package daemon are distinct surfaces. The Viewer provides a
+browser UI, local registry, native picker and SVG download. The daemon has no
+UI or picker, accepts only launch-time runtime files, requires a bearer token,
+and serves local tools. Neither surface exposes runtime mutation.
 
 ## Reusable Workflow Patterns
 

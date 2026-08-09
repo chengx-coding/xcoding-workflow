@@ -16,6 +16,12 @@ XC 编排把复杂、长期运行的 Agent 工作流表示为具有确定性调�
 
 领域 Skill 负责工作的含义，包括模板、任务说明、gate、artifact 契约、blackboard 键、验收标准和领域 reference。领域 Skill 通过公开操作调用 runtime，不复制其调度器、状态机、解析器或 Viewer。
 
+Prerelease Python package 还提供本地 adapter `xc daemon serve`。它只通过带
+bearer 认证的 loopback HTTP 和有界 summary SSE 暴露 runtime 的 typed
+read-only query facade。它不是第二个状态所有者，不是 portable Skill 的运行
+前提，也不能执行 runtime transition；direct runtime 命令仍是 mutation
+边界。
+
 主会话是 orchestrator：初始化或恢复运行树、请求 ready 节点、启动委派、处理 `executor=main` gate，并复核结果。它可以执行明确分配给 `executor=main` 的工作，并非只能委派。subagent 是单节点 worker，不查看同级节点、未来节点或全局控制流。
 
 ## 设计影响
@@ -43,6 +49,11 @@ Runtime 刻意保持领域中立，只理解四种控制节点：`composite`、`
 - runtime 在节点终态操作中记录声明的 artifact 路径，但不提供独立 artifact store。
 
 Viewer 只读，仅消费 runtime 快照，不提供生命周期或 blackboard 修改端点。运行状态变更仍通过 runtime CLI 完成。
+
+Viewer 与 package daemon 是不同 surface。Viewer 提供 browser UI、本地
+registry、native picker 和 SVG download；daemon 没有 UI 或 picker，只接受
+启动时传入的 runtime 文件，要求 bearer token，并服务本地工具。两者都不暴露
+runtime mutation。
 
 ## 可复用工作流模式
 

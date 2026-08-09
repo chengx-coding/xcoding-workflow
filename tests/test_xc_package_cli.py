@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import contextlib
+import http.client
 import io
 import json
 import os
+import signal
 import shutil
 import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -508,6 +511,104 @@ class PackageCliTests(unittest.TestCase):
             "invalid_tree_path",
         )
         self.assertNotIn("Traceback", result.stdout)
+
+    def test_installed_daemon_background_serves_authenticated_health(
+        self,
+    ) -> None:
+        runtime_root = self.root / "installed-daemon-runtime"
+        initialized = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                "-m",
+                "xcoding",
+                "runtime",
+                "init",
+                "--runtime-path",
+                str(runtime_root),
+                "--work-order-id",
+                "installed-daemon-test",
+                "--name",
+                "Installed Daemon Test",
+            ],
+            cwd=self.root,
+            env=self.cli_environment(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(
+            initialized.returncode,
+            0,
+            initialized.stderr or initialized.stdout,
+        )
+        tree = runtime_root / "orchestration.xml"
+
+        launched = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                "-m",
+                "xcoding",
+                "daemon",
+                "serve",
+                "--tree",
+                str(tree),
+                "--port",
+                "0",
+            ],
+            cwd=self.root,
+            env=self.cli_environment(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(
+            launched.returncode,
+            0,
+            launched.stderr or launched.stdout,
+        )
+        self.assertEqual(launched.stderr, "")
+        lines = launched.stdout.splitlines()
+        self.assertEqual(len(lines), 1, launched.stdout)
+        payload = json.loads(lines[0])
+        parsed = str(payload["url"]).removeprefix("http://")
+        host, raw_port = parsed.split(":", 1)
+        connection = http.client.HTTPConnection(
+            host,
+            int(raw_port),
+            timeout=2,
+        )
+        try:
+            connection.request(
+                "GET",
+                "/v1/health",
+                headers={
+                    "Host": parsed,
+                    "Authorization": f"Bearer {payload['token']}",
+                },
+            )
+            response = connection.getresponse()
+            health = json.loads(response.read())
+            self.assertEqual(response.status, 200)
+            self.assertTrue(health["ok"])
+        finally:
+            connection.close()
+            pid = int(payload["pid"])
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
+            deadline = time.monotonic() + 2
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(pid, 0)
+                except OSError:
+                    break
+                time.sleep(0.05)
 
     def _runtime_script(self) -> Path:
         return (

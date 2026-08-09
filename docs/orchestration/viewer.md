@@ -37,6 +37,20 @@ Default launch creates a detached background process, opens the browser, and ret
 
 The local Viewer server is an inspection tool, not an orchestration daemon or remote runtime API.
 
+## Viewer Versus Package Daemon
+
+The prerelease package's `xc daemon serve` is a separate local tool API. It
+defaults to port `20669`, requires a process-lifetime bearer token plus exact
+Host/Origin checks, accepts only runtime files supplied at launch, exposes nine
+typed read-only queries, and provides bounded, non-replayable summary SSE.
+
+The Viewer remains the browser interface on port `20668`. It owns its UI,
+Viewer-local registry, refresh controls, native picker and SVG download. It
+does not share the daemon token or registry. Native browser `EventSource`
+cannot supply the daemon bearer header and is not the daemon's intended
+client. Neither server exposes orchestration mutation, remote binding, a
+durable event log, discovery, or automatic startup.
+
 ## Registry and Refresh
 
 Repeated `--tree` arguments register initial trees. Explicit tree paths are allowed automatically. Additional direct path registration is limited to directories supplied through `--allow-root`.

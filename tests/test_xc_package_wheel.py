@@ -93,6 +93,11 @@ def write_test_wheel(
         "xcoding/runtime/application.py": b"def execute():\n    return None\n",
         "xcoding/runtime/commands.py": b"COMMAND_NAMES = ()\n",
         "xcoding/runtime/core.py": b"SCHEMA_VERSION = 1\n",
+        "xcoding/runtime/query.py": b"READ_ONLY_COMMANDS = ()\n",
+        "xcoding/daemon/__init__.py": b"",
+        "xcoding/daemon/cli.py": b"def main():\n    return 0\n",
+        "xcoding/daemon/protocol.py": b"SCHEMA_VERSION = 1\n",
+        "xcoding/daemon/server.py": b"DEFAULT_HOST = '127.0.0.1'\n",
         f"xcoding/_bundle/{RESOURCE_PATH}": RESOURCE_DATA,
         verify_wheel.MANIFEST_MEMBER: manifest_bytes(
             candidate_tree=candidate_tree,
@@ -224,6 +229,10 @@ class WheelVerifierTests(unittest.TestCase):
             ({"candidate_tree": "4" * 64}, "manifest_invalid"),
             (
                 {"omitted_member": "xcoding/runtime/commands.py"},
+                "member_missing",
+            ),
+            (
+                {"omitted_member": "xcoding/daemon/server.py"},
                 "member_missing",
             ),
         )

@@ -72,6 +72,17 @@ Viewer 只消费快照，不能修改编排状态。它绑定 loopback，默认�
 
 取舍：查看功能具有较小的安全和正确性边界，但操作人员必须使用 runtime 命令执行变更。
 
+### 带认证的只读 Package Daemon
+
+Prerelease package 可以通过只绑定 `127.0.0.1`、带 bearer 认证的 server 暴露
+typed runtime query。它只接受启动时传入的 runtime 文件，使用进程本地 opaque
+ID，并传输有界、只保留最新状态且不可 replay/持久化的摘要。Direct 命令继续
+作为 mutation 边界，也不依赖 daemon。
+
+取舍：本地工具获得稳定的进程 transport，且不产生第二份 runtime 实现；原生
+browser EventSource、remote access、multi-user auth、dynamic registration、
+hard filesystem-query cancellation 和 durable event 仍不受支持。
+
 ## 当前非目标
 
 当前系统不提供：
@@ -99,7 +110,7 @@ Viewer 只消费快照，不能修改编排状态。它绑定 loopback，默认�
 - 更多有界评审、动态矩阵和 gate 风险控制的可复用组合示例。
 - 当重复出现的真实工作流证明存在通用需求时，对已验证条件或模板工具进行窄范围增强。
 
-本页没有选择或承诺任何实现语言、服务架构、替代持久化后端、调度器插件系统、budget 模型、worker-pool 设计、artifact-index 模型、cancellation 协议或 event-sourcing 模型。此类主题必须通过独立证据和批准决定，不能从本页推断。
+本页没有选择或承诺任何 remote/multi-user service architecture、替代持久化后端、调度器插件系统、budget 模型、worker-pool 设计、artifact-index 模型、cancellation 协议或 event-sourcing 模型。此类主题必须通过独立证据和批准决定，不能从本页推断。
 
 ## 决策如何演进
 
