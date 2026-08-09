@@ -35,11 +35,13 @@ from xcoding import dispatch as package_dispatch
 from xcoding.runtime import application as canonical_application
 from xcoding.runtime import commands as canonical_commands
 from xcoding.runtime import core as canonical_core
+from xcoding.runtime import query as canonical_query
 
 import orchestration as legacy_application
 from _runtime_compat import application as generated_application
 from _runtime_compat import commands as generated_commands
 from _runtime_compat import core as generated_core
+from _runtime_compat import query as generated_query
 
 
 def parser_signature(
@@ -144,6 +146,10 @@ class RuntimeCliParityTests(unittest.TestCase):
         self.assertEqual(canonical_commands.COMMAND_NAMES, expected)
         self.assertEqual(generated_commands.COMMAND_NAMES, expected)
         self.assertEqual(
+            canonical_query.READ_ONLY_COMMANDS,
+            generated_query.READ_ONLY_COMMANDS,
+        )
+        self.assertEqual(
             parser_signature(canonical_commands.build_parser()),
             parser_signature(generated_commands.build_parser()),
         )
@@ -151,7 +157,13 @@ class RuntimeCliParityTests(unittest.TestCase):
     def test_canonical_and_generated_runtime_modules_are_byte_identical(self) -> None:
         canonical_root = REPOSITORY_ROOT / "src" / "xcoding" / "runtime"
         generated_root = RUNTIME_SCRIPTS / "_runtime_compat"
-        for name in ("__init__.py", "application.py", "commands.py", "core.py"):
+        for name in (
+            "__init__.py",
+            "application.py",
+            "commands.py",
+            "core.py",
+            "query.py",
+        ):
             self.assertEqual(
                 (canonical_root / name).read_bytes(),
                 (generated_root / name).read_bytes(),

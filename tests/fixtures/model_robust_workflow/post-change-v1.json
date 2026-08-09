@@ -6,22 +6,24 @@
   "python_version": "3.12.10",
   "input_hashes": {
     "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
-    "tests/workflow_scenario_harness.py": "62f2f4e4b6d2e60f43aa9bd8200e133f7d2490a94be48d8b10b09b8a59aba17b",
+    "tests/workflow_scenario_harness.py": "4112c8a0ba287e832360641609253d3993602962f3897f1fcb9cdcb4b82ff3ca",
     "tests/test_xc_workflow_governance.py": "bf4e1f0e76e9138a60e7e23aa163e631fa2d057e7e4c5f6331ee507e39b999f6",
     "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
     "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
     "skills/xc-open-work-order/scripts/open_work_order.py": "d7bff58e5de452a05b418769fb2163f7ebba71316d99e8fb2f897b3aaba50428",
     "skills/xc-orchestration-runtime/scripts/orchestration.py": "db368cccf2e74252c8aff916037a89aec7c20c6f3a841aaab73ab00e89d7dcdf",
     "skills/xc-orchestration-runtime/scripts/runtime_core.py": "bb78c62eb960a2bfa07163a1c4870632e5b506d396f8ff35c23b9f3bacf8061f",
-    "skills/xc-orchestration-runtime/scripts/_runtime_compat/application.py": "050b9d80b233a50148e2f76ab6b84f1da97c89ed44485abfdac047449698f542",
+    "skills/xc-orchestration-runtime/scripts/_runtime_compat/application.py": "92f5a7fca2123d2c3ab33a565321521bfa820d5149bdd1466a2705324a055281",
     "skills/xc-orchestration-runtime/scripts/_runtime_compat/commands.py": "7a53f07fda09cb07ab5c33be07a4641a97d0e9e8a6a6655c2c6e78fcfab3cb75",
-    "skills/xc-orchestration-runtime/scripts/_runtime_compat/__init__.py": "6fcf6400309392a4499593c782bcdc269f373233d57b22f46c0e4c9b2b5abe04",
+    "skills/xc-orchestration-runtime/scripts/_runtime_compat/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
     "skills/xc-orchestration-runtime/scripts/_runtime_compat/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
-    "skills/xc-orchestration-runtime/scripts/_runtime_compat/manifest.json": "9790ac65d9870387142373588ab0c42955a5db536c38e19543043d03d56c6822",
-    "src/xcoding/runtime/application.py": "050b9d80b233a50148e2f76ab6b84f1da97c89ed44485abfdac047449698f542",
+    "skills/xc-orchestration-runtime/scripts/_runtime_compat/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
+    "skills/xc-orchestration-runtime/scripts/_runtime_compat/manifest.json": "5bc28c4f3e620a1da72b538babfe77368da65bfc70649b5a8213270bd464e6eb",
+    "src/xcoding/runtime/application.py": "92f5a7fca2123d2c3ab33a565321521bfa820d5149bdd1466a2705324a055281",
     "src/xcoding/runtime/commands.py": "7a53f07fda09cb07ab5c33be07a4641a97d0e9e8a6a6655c2c6e78fcfab3cb75",
-    "src/xcoding/runtime/__init__.py": "6fcf6400309392a4499593c782bcdc269f373233d57b22f46c0e4c9b2b5abe04",
+    "src/xcoding/runtime/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
     "src/xcoding/runtime/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+    "src/xcoding/runtime/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
     "src/xcoding/cli.py": "1fa4a764c2291a31d0d8842f8f2ac2f1d4bb96c6f6d16bc1a7fa529c5d5f05b3",
     "scripts/sync_runtime_compat.py": "be15f507a38d572b5af460119b1c24cb914e495fc41ceab4e9f4dc29e5b75e85",
     "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
@@ -34,7 +36,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "bbf0c6abb98a366936e8defc3e56cc6f78e4da1d",
+  "recording_base_commit": "9f7d58b2b8f894f167c160f61b856e24ea7ac051",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -443,174 +445,174 @@
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
         "current_value": 91470,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 26717
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
         "current_value": 92134,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 26717
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
         "current_value": 127083,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 36537
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
         "current_value": 127996,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 36537
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
         "current_value": 192502,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 52364
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
         "current_value": 193913,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 52364
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
         "current_value": 219284,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 54390
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
         "current_value": 220944,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 54390
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "Bind workflow scenarios to the shared 23-command specification and direct xc runtime adapter.",
+    "reason": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1403,22 +1405,24 @@
     },
     "input_hashes": {
       "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
-      "tests/workflow_scenario_harness.py": "62f2f4e4b6d2e60f43aa9bd8200e133f7d2490a94be48d8b10b09b8a59aba17b",
+      "tests/workflow_scenario_harness.py": "4112c8a0ba287e832360641609253d3993602962f3897f1fcb9cdcb4b82ff3ca",
       "tests/test_xc_workflow_governance.py": "bf4e1f0e76e9138a60e7e23aa163e631fa2d057e7e4c5f6331ee507e39b999f6",
       "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
       "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
       "skills/xc-open-work-order/scripts/open_work_order.py": "d7bff58e5de452a05b418769fb2163f7ebba71316d99e8fb2f897b3aaba50428",
       "skills/xc-orchestration-runtime/scripts/orchestration.py": "db368cccf2e74252c8aff916037a89aec7c20c6f3a841aaab73ab00e89d7dcdf",
       "skills/xc-orchestration-runtime/scripts/runtime_core.py": "bb78c62eb960a2bfa07163a1c4870632e5b506d396f8ff35c23b9f3bacf8061f",
-      "skills/xc-orchestration-runtime/scripts/_runtime_compat/application.py": "050b9d80b233a50148e2f76ab6b84f1da97c89ed44485abfdac047449698f542",
+      "skills/xc-orchestration-runtime/scripts/_runtime_compat/application.py": "92f5a7fca2123d2c3ab33a565321521bfa820d5149bdd1466a2705324a055281",
       "skills/xc-orchestration-runtime/scripts/_runtime_compat/commands.py": "7a53f07fda09cb07ab5c33be07a4641a97d0e9e8a6a6655c2c6e78fcfab3cb75",
-      "skills/xc-orchestration-runtime/scripts/_runtime_compat/__init__.py": "6fcf6400309392a4499593c782bcdc269f373233d57b22f46c0e4c9b2b5abe04",
+      "skills/xc-orchestration-runtime/scripts/_runtime_compat/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
       "skills/xc-orchestration-runtime/scripts/_runtime_compat/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
-      "skills/xc-orchestration-runtime/scripts/_runtime_compat/manifest.json": "9790ac65d9870387142373588ab0c42955a5db536c38e19543043d03d56c6822",
-      "src/xcoding/runtime/application.py": "050b9d80b233a50148e2f76ab6b84f1da97c89ed44485abfdac047449698f542",
+      "skills/xc-orchestration-runtime/scripts/_runtime_compat/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
+      "skills/xc-orchestration-runtime/scripts/_runtime_compat/manifest.json": "5bc28c4f3e620a1da72b538babfe77368da65bfc70649b5a8213270bd464e6eb",
+      "src/xcoding/runtime/application.py": "92f5a7fca2123d2c3ab33a565321521bfa820d5149bdd1466a2705324a055281",
       "src/xcoding/runtime/commands.py": "7a53f07fda09cb07ab5c33be07a4641a97d0e9e8a6a6655c2c6e78fcfab3cb75",
-      "src/xcoding/runtime/__init__.py": "6fcf6400309392a4499593c782bcdc269f373233d57b22f46c0e4c9b2b5abe04",
+      "src/xcoding/runtime/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
       "src/xcoding/runtime/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+      "src/xcoding/runtime/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
       "src/xcoding/cli.py": "1fa4a764c2291a31d0d8842f8f2ac2f1d4bb96c6f6d16bc1a7fa529c5d5f05b3",
       "scripts/sync_runtime_compat.py": "be15f507a38d572b5af460119b1c24cb914e495fc41ceab4e9f4dc29e5b75e85",
       "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",

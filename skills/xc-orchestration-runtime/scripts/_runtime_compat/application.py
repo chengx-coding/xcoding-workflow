@@ -640,6 +640,14 @@ def execute(
     """Execute one runtime command without writing process output."""
     parser = commands.build_parser()
     args = parser.parse_args(argv)
+    return execute_parsed(args, environment)
+
+
+def execute_parsed(
+    args: argparse.Namespace,
+    environment: RuntimeEnvironment,
+) -> CommandResult:
+    """Execute one validated runtime namespace with stable error mapping."""
     args._runtime_environment = environment
     try:
         payload = args.func(args)

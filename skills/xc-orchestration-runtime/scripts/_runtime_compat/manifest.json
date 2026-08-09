@@ -3,14 +3,14 @@
   "files": [
     {
       "generated": "skills/xc-orchestration-runtime/scripts/_runtime_compat/__init__.py",
-      "sha256": "6fcf6400309392a4499593c782bcdc269f373233d57b22f46c0e4c9b2b5abe04",
-      "size": 151,
+      "sha256": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
+      "size": 167,
       "source": "src/xcoding/runtime/__init__.py"
     },
     {
       "generated": "skills/xc-orchestration-runtime/scripts/_runtime_compat/application.py",
-      "sha256": "050b9d80b233a50148e2f76ab6b84f1da97c89ed44485abfdac047449698f542",
-      "size": 23544,
+      "sha256": "92f5a7fca2123d2c3ab33a565321521bfa820d5149bdd1466a2705324a055281",
+      "size": 23775,
       "source": "src/xcoding/runtime/application.py"
     },
     {
@@ -24,6 +24,12 @@
       "sha256": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
       "size": 136004,
       "source": "src/xcoding/runtime/core.py"
+    },
+    {
+      "generated": "skills/xc-orchestration-runtime/scripts/_runtime_compat/query.py",
+      "sha256": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
+      "size": 7964,
+      "source": "src/xcoding/runtime/query.py"
     }
   ],
   "generated_root": "skills/xc-orchestration-runtime/scripts/_runtime_compat",
