@@ -390,13 +390,6 @@ class DaemonServerTests(unittest.TestCase):
                         b"",
                         "method_not_allowed",
                     ),
-                    (
-                        "GET",
-                        "/v1/runtimes/id/events",
-                        [],
-                        b"",
-                        "not_found",
-                    ),
                 )
                 for method, target, headers, body, code in cases:
                     with self.subTest(code=code):
@@ -569,6 +562,152 @@ class DaemonServerTests(unittest.TestCase):
                     payload["error"]["code"],
                     "forbidden_host",
                 )
+
+    def test_sse_is_bounded_summary_only_and_has_no_replay(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            tree = self.initialize(Path(temporary))
+            with self.running([tree]) as (state, httpd, _):
+                _, listing, _ = self.request(
+                    httpd,
+                    "GET",
+                    "/v1/runtimes",
+                )
+                tree_id = listing["result"]["runtimes"][0]["tree_id"]
+                host, port = httpd.server_address[:2]
+
+                status, payload, _ = self.request(
+                    httpd,
+                    "GET",
+                    f"/v1/runtimes/{tree_id}/events",
+                    headers=[("Last-Event-ID", "previous")],
+                )
+                self.assertEqual(status, 400)
+                self.assertEqual(
+                    payload["error"]["code"],
+                    "event_replay_unsupported",
+                )
+
+                with (
+                    mock.patch.object(
+                        server,
+                        "SSE_MAX_AGE_SECONDS",
+                        0.2,
+                    ),
+                    mock.patch.object(
+                        server,
+                        "SSE_HEARTBEAT_SECONDS",
+                        0.05,
+                    ),
+                    mock.patch.object(
+                        server,
+                        "EVENT_POLL_SECONDS",
+                        0.02,
+                    ),
+                ):
+                    connection = http.client.HTTPConnection(
+                        host,
+                        port,
+                        timeout=2,
+                    )
+                    connection.putrequest(
+                        "GET",
+                        f"/v1/runtimes/{tree_id}/events",
+                        skip_host=True,
+                    )
+                    connection.putheader("Host", f"{host}:{port}")
+                    connection.putheader(
+                        "Authorization",
+                        f"Bearer {TOKEN}",
+                    )
+                    connection.endheaders()
+                    response = connection.getresponse()
+                    data = response.read().decode("utf-8")
+                    connection.close()
+
+                self.assertEqual(response.status, 200)
+                self.assertTrue(
+                    response.getheader("Content-Type").startswith(
+                        "text/event-stream"
+                    )
+                )
+                self.assertIn("event: ready\n", data)
+                self.assertIn("event: runtime\n", data)
+                self.assertIn(": heartbeat\n\n", data)
+                self.assertNotIn("\nid:", data)
+                self.assertNotIn(str(tree), data)
+                self.assertEqual(state.active_sse_clients(), 0)
+
+    def test_sse_capacity_and_shutdown_are_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            tree = self.initialize(Path(temporary))
+            with self.running([tree]) as (state, httpd, _):
+                _, listing, _ = self.request(
+                    httpd,
+                    "GET",
+                    "/v1/runtimes",
+                )
+                tree_id = listing["result"]["runtimes"][0]["tree_id"]
+                acquired = [
+                    state.sse_slots.acquire(blocking=False)
+                    for _ in range(server.MAX_SSE_CLIENTS)
+                ]
+                self.assertTrue(all(acquired))
+                try:
+                    status, payload, _ = self.request(
+                        httpd,
+                        "GET",
+                        f"/v1/runtimes/{tree_id}/events",
+                    )
+                finally:
+                    for _ in acquired:
+                        state.sse_slots.release()
+                self.assertEqual(status, 429)
+                self.assertEqual(
+                    payload["error"]["code"],
+                    "sse_capacity_exhausted",
+                )
+
+    def test_lifecycle_loop_requests_idle_shutdown(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            tree = self.initialize(Path(temporary))
+            state, httpd, _ = server.create_server(
+                [tree],
+                TOKEN,
+                port=0,
+            )
+            serving = threading.Thread(
+                target=httpd.serve_forever,
+                kwargs={"poll_interval": 0.02},
+                daemon=True,
+            )
+            serving.start()
+            try:
+                with (
+                    mock.patch.object(
+                        server,
+                        "IDLE_SHUTDOWN_SECONDS",
+                        0.05,
+                    ),
+                    mock.patch.object(
+                        server,
+                        "EVENT_POLL_SECONDS",
+                        0.01,
+                    ),
+                ):
+                    watcher = threading.Thread(
+                        target=server.lifecycle_loop,
+                        args=(state,),
+                        daemon=True,
+                    )
+                    watcher.start()
+                    watcher.join(timeout=2)
+                serving.join(timeout=2)
+                self.assertFalse(watcher.is_alive())
+                self.assertFalse(serving.is_alive())
+                self.assertEqual(state.shutdown_reason, "idle")
+            finally:
+                state.shutdown_requested.set()
+                httpd.server_close()
 
 
 if __name__ == "__main__":
