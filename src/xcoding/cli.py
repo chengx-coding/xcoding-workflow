@@ -237,6 +237,10 @@ def _execute(arguments: argparse.Namespace, command: str) -> dict[str, Any]:
 def main(argv: Sequence[str] | None = None) -> int:
     """Execute one command, emit exactly one JSON envelope, and return its exit."""
     raw_arguments = list(sys.argv[1:] if argv is None else argv)
+    if raw_arguments[:1] == ["daemon"]:
+        from .daemon import cli as daemon_cli
+
+        return daemon_cli.main(raw_arguments[1:])
     if raw_arguments[:1] == ["runtime"]:
         return _runtime_main(raw_arguments[1:])
     command = _command_name(raw_arguments)

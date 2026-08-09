@@ -493,6 +493,22 @@ class PackageCliTests(unittest.TestCase):
             [],
         )
 
+    def test_installed_daemon_route_reports_bounded_startup_error(self) -> None:
+        result, payload = self.run_cli(
+            "daemon",
+            "serve",
+            "--tree",
+            "relative.xml",
+            "--foreground",
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(
+            payload["error"]["code"],
+            "invalid_tree_path",
+        )
+        self.assertNotIn("Traceback", result.stdout)
+
     def _runtime_script(self) -> Path:
         return (
             self.install

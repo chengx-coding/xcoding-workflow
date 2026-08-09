@@ -25,6 +25,11 @@ MAX_TARGET_BYTES = 4096
 MAX_HEADER_COUNT = 64
 MAX_HEADER_VALUE_BYTES = 8192
 MAX_CONCURRENT_REQUESTS = 16
+MAX_SSE_CLIENTS = 4
+SSE_MAX_AGE_SECONDS = 120
+SSE_HEARTBEAT_SECONDS = 15
+EVENT_POLL_SECONDS = 1
+IDLE_SHUTDOWN_SECONDS = 120
 SOCKET_TIMEOUT_SECONDS = 5
 REQUEST_QUEUE_SIZE = 16
 
@@ -264,8 +269,16 @@ class RuntimeRegistry:
         return [self.listing(entry) for entry in entries]
 
 
+EventSink = Callable[[str, dict[str, object]], None]
+
+
 class DaemonState:
-    def __init__(self, registry: RuntimeRegistry, token: str) -> None:
+    def __init__(
+        self,
+        registry: RuntimeRegistry,
+        token: str,
+        event_sink: EventSink | None = None,
+    ) -> None:
         if not token:
             raise ValueError("daemon token must not be empty")
         self.registry = registry
@@ -273,10 +286,14 @@ class DaemonState:
         self.request_slots = threading.BoundedSemaphore(
             MAX_CONCURRENT_REQUESTS
         )
+        self.sse_slots = threading.BoundedSemaphore(MAX_SSE_CLIENTS)
+        self.sse_clients = 0
         self.shutdown_requested = threading.Event()
         self.server: BoundedThreadingHTTPServer | None = None
         self.started_at = time.monotonic()
         self.last_activity = self.started_at
+        self.shutdown_reason = "stopped"
+        self.event_sink = event_sink
         self.lock = threading.RLock()
 
     @property
@@ -294,9 +311,34 @@ class DaemonState:
         with self.lock:
             self.last_activity = time.monotonic()
 
-    def request_shutdown(self) -> None:
+    def open_sse(self) -> bool:
+        if not self.sse_slots.acquire(blocking=False):
+            return False
+        with self.lock:
+            self.sse_clients += 1
+        return True
+
+    def close_sse(self) -> None:
+        with self.lock:
+            self.sse_clients -= 1
+        self.sse_slots.release()
+        self.touch()
+
+    def active_sse_clients(self) -> int:
+        with self.lock:
+            return self.sse_clients
+
+    def emit(self, event: str, **details: object) -> None:
+        if self.event_sink is not None:
+            try:
+                self.event_sink(event, dict(details))
+            except (OSError, ValueError):
+                return
+
+    def request_shutdown(self, reason: str = "stopped") -> None:
         if self.shutdown_requested.is_set():
             return
+        self.shutdown_reason = reason
         self.shutdown_requested.set()
         server = self.server
         if server is not None:
@@ -613,6 +655,14 @@ class DaemonRequestHandler(BaseHTTPRequestHandler):
                 {"runtimes": self.state.registry.list()},
             )
             return
+        parts = path.strip("/").split("/")
+        if (
+            len(parts) == 4
+            and parts[:2] == ["v1", "runtimes"]
+            and parts[3] == "events"
+        ):
+            self._serve_events(identifier, parts[2])
+            return
         raise protocol.ProtocolError(
             HTTPStatus.NOT_FOUND,
             "not_found",
@@ -675,6 +725,100 @@ class DaemonRequestHandler(BaseHTTPRequestHandler):
                 "payload": result.payload,
             },
         )
+
+    def _serve_events(self, identifier: str, tree_id: str) -> None:
+        if self.headers.get_all("Last-Event-ID"):
+            raise protocol.ProtocolError(
+                HTTPStatus.BAD_REQUEST,
+                "event_replay_unsupported",
+                "SSE replay is not supported",
+                {},
+            )
+        entry = self.state.registry.get(tree_id)
+        if not self.state.open_sse():
+            raise protocol.ProtocolError(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                "sse_capacity_exhausted",
+                "daemon SSE capacity is exhausted",
+                {},
+            )
+        try:
+            initial = self.state.registry.listing(entry)
+            self.send_response(HTTPStatus.OK.value)
+            self.send_header(
+                "Content-Type",
+                "text/event-stream; charset=utf-8",
+            )
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Referrer-Policy", "no-referrer")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self._write_sse_event(
+                "ready",
+                {
+                    "schema_version": protocol.SCHEMA_VERSION,
+                    "request_id": identifier,
+                    "tree_id": tree_id,
+                    "version": initial.get("version", ""),
+                },
+            )
+            started = time.monotonic()
+            heartbeat_at = started + SSE_HEARTBEAT_SECONDS
+            signature: tuple[object, ...] | None = None
+            while (
+                not self.state.shutdown_requested.is_set()
+                and time.monotonic() - started < SSE_MAX_AGE_SECONDS
+            ):
+                listing = self.state.registry.listing(entry)
+                current = (
+                    listing.get("version", ""),
+                    listing.get("status", ""),
+                    listing.get("updated_at", ""),
+                    listing.get("integrity_status", ""),
+                    listing.get("error_code", ""),
+                )
+                if current != signature:
+                    signature = current
+                    self._write_sse_event(
+                        "runtime",
+                        {
+                            "schema_version": protocol.SCHEMA_VERSION,
+                            "tree_id": tree_id,
+                            "version": current[0],
+                            "status": current[1],
+                            "updated_at": current[2],
+                            "integrity_status": current[3],
+                            "error_code": current[4],
+                        },
+                    )
+                now = time.monotonic()
+                if now >= heartbeat_at:
+                    self.wfile.write(b": heartbeat\n\n")
+                    self.wfile.flush()
+                    heartbeat_at = now + SSE_HEARTBEAT_SECONDS
+                if self.state.shutdown_requested.wait(
+                    EVENT_POLL_SECONDS
+                ):
+                    break
+        finally:
+            self.state.close_sse()
+            self.close_connection = True
+
+    def _write_sse_event(
+        self,
+        event: str,
+        payload: dict[str, object],
+    ) -> None:
+        data = protocol.json_bytes(payload).rstrip(b"\n")
+        self.wfile.write(
+            b"event: "
+            + event.encode("ascii")
+            + b"\ndata: "
+            + data
+            + b"\n\n"
+        )
+        self.wfile.flush()
 
     def _method_not_allowed(
         self,
@@ -764,13 +908,14 @@ def create_server(
     *,
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
+    event_sink: EventSink | None = None,
 ) -> tuple[DaemonState, BoundedThreadingHTTPServer, str]:
     if host != DEFAULT_HOST:
         raise ValueError("daemon host must be 127.0.0.1")
     if port < 0 or port > 65535:
         raise ValueError("daemon port must be between 0 and 65535")
     registry = RuntimeRegistry(paths)
-    state = DaemonState(registry, token)
+    state = DaemonState(registry, token, event_sink)
     handler = type(
         "BoundDaemonRequestHandler",
         (DaemonRequestHandler,),
@@ -787,6 +932,22 @@ def create_server(
     return state, server, url
 
 
+def lifecycle_loop(state: DaemonState) -> None:
+    while not state.shutdown_requested.wait(EVENT_POLL_SECONDS):
+        with state.lock:
+            idle_for = time.monotonic() - state.last_activity
+        if (
+            state.active_sse_clients() == 0
+            and idle_for >= IDLE_SHUTDOWN_SECONDS
+        ):
+            state.emit(
+                "daemon_idle_shutdown",
+                idle_seconds=IDLE_SHUTDOWN_SECONDS,
+            )
+            state.request_shutdown("idle")
+            return
+
+
 def serve_foreground(
     paths: Iterable[Path],
     token: str,
@@ -794,28 +955,42 @@ def serve_foreground(
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     ready: Callable[[dict[str, object]], None] | None = None,
+    event_sink: EventSink | None = None,
 ) -> int:
     state, server, url = create_server(
         paths,
         token,
         host=host,
         port=port,
+        event_sink=event_sink,
     )
-    if ready is not None:
-        ready(
-            {
-                "ok": True,
-                "url": url,
-                "runtimes": state.registry.list(),
-            }
-        )
+    watcher: threading.Thread | None = None
     try:
+        if ready is not None:
+            ready(
+                {
+                    "ok": True,
+                    "url": url,
+                    "runtimes": state.registry.list(),
+                }
+            )
+        watcher = threading.Thread(
+            target=lifecycle_loop,
+            args=(state,),
+            daemon=True,
+        )
+        watcher.start()
+        state.emit("daemon_started", mode="foreground")
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:
         state.shutdown_requested.set()
+        state.shutdown_reason = "keyboard_interrupt"
     finally:
         state.shutdown_requested.set()
         server.server_close()
+        if watcher is not None:
+            watcher.join(timeout=2)
+        state.emit("daemon_stopped", reason=state.shutdown_reason)
     return 0
 
 
@@ -825,16 +1000,23 @@ __all__ = [
     "DEFAULT_PORT",
     "DaemonRequestHandler",
     "DaemonState",
+    "EVENT_POLL_SECONDS",
+    "EventSink",
+    "IDLE_SHUTDOWN_SECONDS",
     "MAX_CONCURRENT_REQUESTS",
     "MAX_HEADER_COUNT",
     "MAX_HEADER_VALUE_BYTES",
     "MAX_TARGET_BYTES",
+    "MAX_SSE_CLIENTS",
     "REQUEST_QUEUE_SIZE",
     "RuntimeEntry",
     "RuntimeRegistry",
     "SOCKET_TIMEOUT_SECONDS",
+    "SSE_HEARTBEAT_SECONDS",
+    "SSE_MAX_AGE_SECONDS",
     "create_server",
     "generate_token",
+    "lifecycle_loop",
     "serve_foreground",
     "validate_runtime_path",
 ]
