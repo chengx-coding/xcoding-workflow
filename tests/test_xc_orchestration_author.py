@@ -14,10 +14,8 @@ AUTHOR_SKILL = REPOSITORY_ROOT / "skills" / "xc-orchestration-author"
 AUTHOR = AUTHOR_SKILL / "scripts" / "template_builder.py"
 RUNTIME = (
     REPOSITORY_ROOT
-    / "skills"
-    / "xc-orchestration-runtime"
-    / "scripts"
-    / "orchestration.py"
+    / "tests"
+    / "runtime_cli.py"
 )
 CONTROL_METADATA_FIXTURE = (
     REPOSITORY_ROOT

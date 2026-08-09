@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTHOR = ROOT / "skills" / "xc-orchestration-author" / "scripts" / "template_builder.py"
-RUNTIME = ROOT / "skills" / "xc-orchestration-runtime" / "scripts" / "orchestration.py"
+RUNTIME = ROOT / "tests" / "runtime_cli.py"
 PLANNER_SCRIPTS = ROOT / "skills" / "xc-work" / "scripts"
 SPEC = ROOT / "skills" / "xc-work" / "assets" / "adaptive-work-order-flow.json"
 TEMPLATE = ROOT / "skills" / "xc-work" / "assets" / "adaptive-work-order-template.xml"

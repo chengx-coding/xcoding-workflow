@@ -20,10 +20,12 @@ from urllib.parse import urlparse
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-RUNTIME_SKILL = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime"
-RUNTIME_SCRIPTS = RUNTIME_SKILL / "scripts"
-RUNTIME_CLI = RUNTIME_SCRIPTS / "orchestration.py"
-VIEWER_SERVER = RUNTIME_SCRIPTS / "viewer_server.py"
+SOURCE_ROOT = REPOSITORY_ROOT / "src"
+RUNTIME_CLI = REPOSITORY_ROOT / "tests" / "runtime_cli.py"
+VIEWER_SERVER = REPOSITORY_ROOT / "tests" / "viewer_cli.py"
+MINIMAL_TEMPLATE = (
+    SOURCE_ROOT / "xcoding" / "runtime" / "assets" / "minimal-template.xml"
+)
 CONTROL_METADATA_FIXTURE = (
     REPOSITORY_ROOT
     / "tests"
@@ -32,10 +34,10 @@ CONTROL_METADATA_FIXTURE = (
     / "control-metadata-conformance-v1.json"
 )
 
-sys.path.insert(0, str(RUNTIME_SCRIPTS))
-import orchestration as runtime_cli
-import runtime_core as core
-import viewer_server
+sys.path.insert(0, str(SOURCE_ROOT))
+from xcoding.runtime import application as runtime_cli
+from xcoding.runtime import core
+from xcoding.viewer import server as viewer_server
 
 
 class OrchestrationRuntimeCliTests(unittest.TestCase):
@@ -2150,6 +2152,9 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 config="",
                 expected_revision=None,
                 group=str(group["id"]),
+                _runtime_environment=runtime_cli.RuntimeEnvironment(
+                    MINIMAL_TEMPLATE
+                ),
             )
 
             with mock.patch.object(core, "render_snapshot_svg", side_effect=RuntimeError("render failed")):
@@ -2342,7 +2347,7 @@ class ViewerServerTests(unittest.TestCase):
 
     def write_runtime_tree(self, root: Path, name: str = "viewer-tree") -> Path:
         config = core.load_config(root, self.write_config(root, idle_shutdown_seconds=30))
-        template = core.parse_xml(RUNTIME_SKILL / "assets" / "minimal-template.xml")
+        template = core.parse_xml(MINIMAL_TEMPLATE)
         tree = core.instantiate_runtime_tree(template, "viewer-run", name, [], config)
         core.stabilize(tree.getroot())
         tree_path = root / "runtime" / "orchestration.xml"
@@ -2640,7 +2645,7 @@ class ViewerServerTests(unittest.TestCase):
                 server.server_close()
 
     def test_static_viewer_assets_define_refresh_resize_zoom_picker_and_svg_controls(self) -> None:
-        static_dir = RUNTIME_SKILL / "viewer" / "static"
+        static_dir = SOURCE_ROOT / "xcoding" / "viewer" / "static"
         index = (static_dir / "index.html").read_text(encoding="utf-8")
         app = (static_dir / "app.js").read_text(encoding="utf-8")
         css = (static_dir / "app.css").read_text(encoding="utf-8")

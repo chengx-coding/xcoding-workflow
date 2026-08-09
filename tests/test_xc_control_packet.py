@@ -10,13 +10,13 @@ from pathlib import Path
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-RUNTIME_SCRIPTS = REPOSITORY_ROOT / "skills" / "xc-orchestration-runtime" / "scripts"
-RUNTIME_CLI = RUNTIME_SCRIPTS / "orchestration.py"
+SOURCE_ROOT = REPOSITORY_ROOT / "src"
+RUNTIME_CLI = REPOSITORY_ROOT / "tests" / "runtime_cli.py"
 DOCUMENT_VALIDATOR = (
     REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "validate_document.py"
 )
-sys.path.insert(0, str(RUNTIME_SCRIPTS))
-import runtime_core as core
+sys.path.insert(0, str(SOURCE_ROOT))
+from xcoding.runtime import core
 
 
 class ControlPacketRuntimeTests(unittest.TestCase):
