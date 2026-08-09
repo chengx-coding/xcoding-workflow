@@ -6,7 +6,7 @@ xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审�
 
 ## 它能做什么
 
-- XC 以一组可安装的工作流模块提供，这些模块称为 **Skills**。
+- XC 由必要的 `xcoding` CLI package 和一组称为 **Skills** 的工作流模块组成。
 - 小型、低风险的任务可以直接完成。
 - 需要计划、审查、故障恢复或长期留痕的任务使用**受管工单**。工单把目标、决策、进度和证据保存在一起。
 - 显式选择自适应受管工单时，可以从一个合并工作叶子节点和一个 finalizer 开始，再根据已确认事实增加文档、分析、门禁、验证、审查与恢复。
@@ -48,20 +48,34 @@ python skills/xc-work/scripts/classify.py [事实参数]
 ## 前置条件
 
 - Git。如果希望 XC 自动保存工作流检查点，还需要配置 Git 身份。
-- Python，用于运行仓库脚本。XC 不依赖第三方 Python 运行时包。
+- Python 3.12 和匹配、经过验证的 prerelease `xcoding` wheel。
+- 用于当前隔离工具安装流程的 `uv`。
 - 能够加载并运行 Skill 包的 Agent 宿主。
 
 项目目前尚未发布正式的 Python 版本或 Agent 宿主兼容矩阵。请使用实际环境中的 Python 运行时和宿主验证工作流。
 
 ## 安装 XC
 
-选择 Agent 宿主加载 Skills 的目录，按需创建该目录，再安装 XC：
+先安装匹配、经过验证的 wheel。Package 尚未公开发布，因此当前需要由维护者
+提供本地 wheel：
+
+```console
+uv tool install /absolute/path/to/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl
+xcoding version --json
+```
+
+安装结果必须提供 `xcoding`；旧 `xc` executable 不属于当前契约。
+
+然后选择 Agent 宿主加载 Skills 的目录，按需创建该目录，再安装 XC Skills：
 
 ```console
 python install_skills.py --target-skills /absolute/path/to/consumer/.agents/skills
 ```
 
 **该命令会替换名称以 `xc-` 开头的全部已有包。** 这些包中的本地修改会被删除。其他名称的包不会受到影响。
+
+Skill installer 不会安装必要的 `xcoding` package。`PATH` 中没有该 executable
+时，runtime 和 Viewer Skills 会返回 `xcoding_unavailable`。
 
 以后更新时，可以使用下面的安装器，在替换文件前检查本地修改：
 

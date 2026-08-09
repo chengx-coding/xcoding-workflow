@@ -6,28 +6,38 @@ Install xcoding-workflow from a local checkout into the skills directory used by
 
 ## Requirements
 
-You need Git, Python, and an Agent host capable of discovering and invoking Skill packages. A configured Git identity is also needed when managed workshop checkpoints are set to create commits.
+You need Git, Python 3.12, `uv`, a matching validated prerelease `xcoding`
+wheel, and an Agent host capable of discovering and invoking Skill packages.
+A configured Git identity is also needed when managed workshop checkpoints are
+set to create commits.
 
 There is currently no formal Python-version or Agent-host compatibility matrix. Validate the selected Python runtime and Agent host in your environment.
 
 ## Python dependencies
 
-XC currently uses only the Python standard library and requires no
-third-party runtime package installation. Managed-document frontmatter is
-handled by the bounded YAML subset codec shipped inside `xc-document`.
+XC's package uses only the Python standard library, but the package itself is
+required. Runtime, Viewer, and daemon implementation lives under
+`src/xcoding/`; Skills do not contain a standalone runtime fallback.
+Managed-document frontmatter remains handled by the bounded YAML subset codec
+shipped inside `xc-document`.
 
-The complete `xc-orchestration-runtime` Skill is self-contained. Its generated
-compatibility payload contains the runtime application used by the legacy
-Skill command, so consumer Skill installation does not require the prerelease
-Python package. Repository package probes may expose the equivalent
-`xc runtime` entry and the optional local read-only `xc daemon serve`
-transport, but that package is not published or a supported consumer
-installation path. The daemon is package-only; installing the complete Skill
-does not install or require it.
+The package is not publicly published. Current cutover verification uses a
+maintainer-provided validated local wheel:
+
+```console
+uv tool install /absolute/path/to/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl
+xcoding version --json
+```
+
+The tool installation must provide `xcoding`, not the retired `xc` name.
+`xcoding runtime`, `xcoding viewer`, and `xcoding daemon` are the package
+interfaces. Installing Skills alone is insufficient; the thin legacy runtime
+adapter returns `xcoding_unavailable` when the executable is absent.
 
 ## Full-replacement consumer installation
 
-The target skills directory must already exist.
+Install the required `xcoding` tool first. The target skills directory must
+already exist.
 
 POSIX:
 

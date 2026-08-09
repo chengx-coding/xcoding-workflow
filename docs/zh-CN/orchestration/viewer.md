@@ -2,7 +2,10 @@
 
 # 本地编排 Viewer
 
-Viewer 在不引入第二个状态所有者的前提下，为人类提供受管运行树查看能力。[`xc-orchestration-viewer`](../../../skills/xc-orchestration-viewer/SKILL.md) 是无脚本 facade；[`xc-orchestration-runtime`](../../../skills/xc-orchestration-runtime/SKILL.md) 负责快照、server、registry、SVG 渲染和静态前端资产。
+Viewer 在不引入第二个状态所有者的前提下，为人类提供受管运行树查看能力。
+[`xc-orchestration-viewer`](../../../skills/xc-orchestration-viewer/SKILL.md)
+是无脚本 facade；必要的 `xcoding` package 负责快照、server、registry、SVG
+渲染、picker、lifecycle 和静态前端资产。
 
 这种单向依赖可以避免 runtime 与第二套可视化实现在 schema 和状态语义上发生漂移。
 
@@ -16,10 +19,10 @@ Viewer API 包含 registry、snapshot、refresh、SVG download、client、heartb
 
 ## 启动与默认值
 
-启动 runtime 所有的 server：
+启动 package 所有的 server：
 
 ```powershell
-python <runtime-skill-dir>/scripts/viewer_server.py --tree <tree-ref>
+xcoding viewer --tree <tree-ref>
 ```
 
 Server 只绑定 `127.0.0.1`，首选默认端口为 `20668`；端口被占用时使用可用的
@@ -38,7 +41,7 @@ idle shutdown: 120 秒
 
 ## Viewer 与 Package Daemon
 
-Prerelease package 的 `xc daemon serve` 是独立的本地工具 API。它默认使用端口
+`xcoding daemon serve` 是独立的本地工具 API。它默认使用端口
 `20669`，要求 process-lifetime bearer token 和精确 Host/Origin 检查，只接受
 启动时传入的 runtime 文件，暴露九个 typed read-only query，并提供有界、不可
 replay 的 summary SSE。

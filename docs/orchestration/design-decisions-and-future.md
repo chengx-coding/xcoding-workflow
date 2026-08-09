@@ -66,6 +66,19 @@ When automatic workshop commits are enabled, a terminal checkpoint accepts its t
 
 Tradeoff: accepted state and checkpoint evidence cannot silently diverge, while Git or rendering failures block terminal acceptance rather than becoming warnings.
 
+### Package-Owned Execution Surface
+
+Runtime, Viewer, daemon, default-template, and frontend implementation belongs
+to the required `xcoding` package. Public commands use
+`xcoding runtime|viewer|daemon`; Skills contain contracts and one deprecated
+thin runtime adapter, not an executable fallback. The former `xc` command is
+not retained.
+
+Tradeoff: there is one physical implementation and installation failures are
+visible, while copying Skills alone is no longer sufficient. Until public
+release is approved, maintainers must provide a matching validated local
+wheel.
+
 ### Read-Only Viewer
 
 The Viewer consumes snapshots and cannot mutate orchestration state. It binds to loopback, defaults to port `20668`, and uses custom static browser code rather than D3.

@@ -10,17 +10,17 @@ XC 编排把复杂、长期运行的 Agent 工作流表示为具有确定性调�
 
 架构包含三个公开服务：
 
-- [`xc-orchestration-runtime`](../../../skills/xc-orchestration-runtime/SKILL.md) 是领域中立的控制面，负责运行时状态、调度、转换、完整性、受控持久化、快照和本地 Viewer。
+- [`xc-orchestration-runtime`](../../../skills/xc-orchestration-runtime/SKILL.md) 是领域中立的控制契约；必要的 `xcoding` package 负责运行时状态、调度、转换、完整性、受控持久化、快照和本地 Viewer 实现。
 - [`xc-orchestration-author`](../../../skills/xc-orchestration-author/SKILL.md) 把获批的工作流设计转换为经过验证的 schema version 1 模板。它负责 flow spec、模板构建和 authoring 验证，但不执行工作。
-- [`xc-orchestration-viewer`](../../../skills/xc-orchestration-viewer/SKILL.md) 是供人类查看的无脚本发现 facade。server、快照解释和前端实现均由 runtime 所有。
+- [`xc-orchestration-viewer`](../../../skills/xc-orchestration-viewer/SKILL.md) 是供人类查看的无脚本发现 facade；server、快照解释和前端实现均由 `xcoding` package 所有。
 
 领域 Skill 负责工作的含义，包括模板、任务说明、gate、artifact 契约、blackboard 键、验收标准和领域 reference。领域 Skill 通过公开操作调用 runtime，不复制其调度器、状态机、解析器或 Viewer。
 
-Prerelease Python package 还提供本地 adapter `xc daemon serve`。它只通过带
-bearer 认证的 loopback HTTP 和有界 summary SSE 暴露 runtime 的 typed
-read-only query facade。它不是第二个状态所有者，不是 portable Skill 的运行
-前提，也不能执行 runtime transition；direct runtime 命令仍是 mutation
-边界。
+必要的 prerelease Python package 还提供 `xcoding daemon serve`。它只通过
+带 bearer 认证的 loopback HTTP 和有界 summary SSE 暴露 runtime 的 typed
+read-only query facade。它不是第二个状态所有者，也不能执行 runtime
+transition；`xcoding runtime` 仍是 direct mutation 边界。Skills 没有
+package-free fallback。
 
 主会话是 orchestrator：初始化或恢复运行树、请求 ready 节点、启动委派、处理 `executor=main` gate，并复核结果。它可以执行明确分配给 `executor=main` 的工作，并非只能委派。subagent 是单节点 worker，不查看同级节点、未来节点或全局控制流。
 
@@ -48,7 +48,7 @@ Runtime 刻意保持领域中立，只理解四种控制节点：`composite`、`
 - artifact 保存报告、计划、代码变更、验证证据和其他丰富输出。
 - runtime 在节点终态操作中记录声明的 artifact 路径，但不提供独立 artifact store。
 
-Viewer 只读，仅消费 runtime 快照，不提供生命周期或 blackboard 修改端点。运行状态变更仍通过 runtime CLI 完成。
+Viewer 只读，仅消费 runtime 快照，不提供生命周期或 blackboard 修改端点。运行状态变更通过 `xcoding runtime` 完成。
 
 Viewer 与 package daemon 是不同 surface。Viewer 提供 browser UI、本地
 registry、native picker 和 SVG download；daemon 没有 UI 或 picker，只接受

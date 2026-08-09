@@ -10,17 +10,17 @@ This separation is primarily about context and control. The main session can req
 
 The architecture has three public services:
 
-- [`xc-orchestration-runtime`](../../skills/xc-orchestration-runtime/SKILL.md) is the domain-neutral control plane. It owns runtime state, scheduling, transitions, integrity, controlled persistence, snapshots, and the local Viewer.
+- [`xc-orchestration-runtime`](../../skills/xc-orchestration-runtime/SKILL.md) is the domain-neutral control contract. The required `xcoding` package owns runtime state, scheduling, transitions, integrity, controlled persistence, snapshots, and the local Viewer implementation.
 - [`xc-orchestration-author`](../../skills/xc-orchestration-author/SKILL.md) turns an approved workflow design into a validated schema-version-1 template. It owns flow specifications, template construction, and authoring validation, but does not execute work.
-- [`xc-orchestration-viewer`](../../skills/xc-orchestration-viewer/SKILL.md) is a script-free discovery facade for human inspection. The runtime owns the server, snapshot interpretation, and frontend implementation.
+- [`xc-orchestration-viewer`](../../skills/xc-orchestration-viewer/SKILL.md) is a script-free discovery facade for human inspection. The `xcoding` package owns the server, snapshot interpretation, and frontend implementation.
 
 Domain Skills own the meaning of the work. They define templates, task instructions, gates, artifact contracts, blackboard keys, acceptance criteria, and domain references. They invoke the runtime through public operations and do not copy its scheduler, state machine, parser, or Viewer.
 
-The prerelease Python package has an additional local adapter, `xc daemon
-serve`. It exposes only the runtime's typed read-only query facade over
+The required prerelease Python package also exposes `xcoding daemon serve`.
+It exposes only the runtime's typed read-only query facade over
 bearer-authenticated loopback HTTP and bounded summary SSE. It is not another
-state owner, is not required by the portable Skill, and cannot perform runtime
-transitions. Direct runtime commands remain the mutation boundary.
+state owner and cannot perform runtime transitions. `xcoding runtime` remains
+the direct mutation boundary. The Skills have no package-free fallback.
 
 The main session is the orchestrator. It initializes or resumes a tree, asks for ready nodes, starts delegated work, handles `executor=main` gates, and verifies results. It may execute work explicitly assigned to `executor=main`; it is not restricted to delegation alone. A subagent is a single-node worker and does not inspect siblings, future nodes, or global control flow.
 
@@ -48,7 +48,7 @@ Shared information is split by size and purpose:
 - Artifacts hold reports, plans, code changes, verification evidence, and other rich output.
 - Runtime records declared artifact paths on terminal node operations; it does not provide a separate artifact store.
 
-The Viewer is read-only. It consumes runtime snapshots and exposes no lifecycle or blackboard mutation endpoints. Runtime state changes still go through the runtime CLI.
+The Viewer is read-only. It consumes runtime snapshots and exposes no lifecycle or blackboard mutation endpoints. Runtime state changes go through `xcoding runtime`.
 
 The Viewer and package daemon are distinct surfaces. The Viewer provides a
 browser UI, local registry, native picker and SVG download. The daemon has no
