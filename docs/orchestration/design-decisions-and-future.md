@@ -72,6 +72,19 @@ The Viewer consumes snapshots and cannot mutate orchestration state. It binds to
 
 Tradeoff: inspection has a small security and correctness surface, while operators must use runtime commands for changes.
 
+### Authenticated Read-Only Package Daemon
+
+The prerelease package optionally exposes typed runtime queries through a
+bearer-authenticated server bound to `127.0.0.1`. It accepts only launch-time
+runtime files, uses opaque process-local IDs, and streams bounded latest-state
+summaries without replay or persistence. Direct commands remain the mutation
+boundary and do not depend on the daemon.
+
+Tradeoff: local tools gain a stable process transport without a second runtime
+implementation, while native browser EventSource, remote access, multi-user
+authorization, dynamic registration, hard filesystem-query cancellation, and
+durable events remain unsupported.
+
 ## Current Non-Goals
 
 The current system does not provide:
@@ -99,7 +112,7 @@ Possible areas for investigation include:
 - More reusable examples of bounded review, dynamic-matrix, and gate-controlled workflow composition.
 - Narrow additions to validated condition or template tooling when repeated real workflows demonstrate a generic need.
 
-No implementation language, service architecture, alternate persistence backend, scheduler plugin system, budget model, worker-pool design, artifact-index model, cancellation protocol, or event-sourcing model is selected or promised. Such topics require independent evidence and approval rather than inference from this page.
+No remote or multi-user service architecture, alternate persistence backend, scheduler plugin system, budget model, worker-pool design, artifact-index model, cancellation protocol, or event-sourcing model is selected or promised. Such topics require independent evidence and approval rather than inference from this page.
 
 ## How Decisions Evolve
 

@@ -36,6 +36,19 @@ idle shutdown: 120 秒
 
 本地 Viewer server 是查看工具，不是编排 daemon 或远程 runtime API。
 
+## Viewer 与 Package Daemon
+
+Prerelease package 的 `xc daemon serve` 是独立的本地工具 API。它默认使用端口
+`20669`，要求 process-lifetime bearer token 和精确 Host/Origin 检查，只接受
+启动时传入的 runtime 文件，暴露九个 typed read-only query，并提供有界、不可
+replay 的 summary SSE。
+
+Viewer 继续作为端口 `20668` 上的 browser interface，拥有自己的 UI、Viewer
+本地 registry、refresh control、native picker 和 SVG download。两者不共享
+daemon token 或 registry。原生 browser `EventSource` 不能提供 daemon bearer
+header，也不是 daemon 的目标客户端。两个 server 都不暴露 orchestration
+mutation、remote bind、durable event log、discovery 或 auto-start。
+
 ## Registry 与刷新
 
 可重复使用 `--tree` 注册初始运行树。显式 tree path 自动获准；后续直接路径注册仅限通过 `--allow-root` 提供的目录。

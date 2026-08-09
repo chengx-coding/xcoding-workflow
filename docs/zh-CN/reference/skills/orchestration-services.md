@@ -21,7 +21,7 @@
 - **何时调用：** 工作流需要调度、节点转换、受控状态更新、嵌入子树、完整性操作、快照或持久化时。
 - **用途：** 为受管运行时树和事务性 workshop checkpoint 提供领域中立控制面。
 - **可移植公开入口：** `orchestration.py` 的 `init`、`next`、`control-packet`、`start`、`complete`、`fail`、`block` 等生命周期命令，以及 `unblock`、`retry-failed`、`reopen` 等已记录的查询和恢复命令。Opt-in completion 增加可重复的 `--check-result-json`；opt-in gate 增加 `--gate-outcome` 和 `--decision`。
-- **Prerelease package adapter：** 匹配的仓库 package 以 `xc runtime <command> ...` 暴露同一组 23 个命令。它直接执行 application，不是 daemon transport，也不是已发布的消费端入口。
+- **Prerelease package adapter：** 匹配的仓库 package 以 `xc runtime <command> ...` 暴露同一组 23 个 direct 命令，并提供可选本地只读 `xc daemon serve`。两者都不是已发布的消费端入口，direct 命令也不会发现或要求 daemon。
 - **典型用法：** 从模板初始化，请求 ready work，读取所选叶子节点的 scoped packet，仅启动该可执行叶子，并用简洁证据和声明 artifact 终止它。失败后需要再次执行同一个已批准叶子契约时，`retry-failed --reason` 会归档该 attempt 并恢复普通调度。
 - **主要边界：** 绝不直接读取或编辑受管 XML；worker 只执行一个节点，来源投影不是 start 权限，完整性无效时需显式修复，成功树在获批 reopen 前保持 sealed。
 
@@ -35,6 +35,22 @@ service；两者都不拥有事务逻辑。
 确定性生成副本，`runtime_core.py` 与 `orchestration.py` 是兼容 alias 或
 adapter。Generation 检查会拒绝漂移，Bundle 检查会要求完整载荷；消费端不得把
 该载荷作为第二份实现进行编辑。
+
+### 只读 Package Daemon
+
+`xc daemon serve --tree <runtime>` 只存在于 prerelease package。它只绑定
+`127.0.0.1`，在 launch result 中发布 process-lifetime bearer token，只接受
+启动时传入的 regular runtime 文件，并通过进程本地 opaque ID 寻址。
+
+HTTP surface 包含经过认证的 health/list、一个 typed query endpoint 和有界、
+非持久的 summary SSE。Typed facade 允许 `next`、`summary`、`show`、
+`control-packet`、`find`、`artifacts`、`snapshot`、`integrity-status` 和
+`validate`，并在 tree access 前拒绝全部 mutation 命令。SSE 不提供 replay、
+`id`、full snapshot、journal、queue 或 browser cookie/query-token fallback。
+
+Daemon 不提供 remote bind、dynamic registration、native picker、service
+install、discovery、auto-start、stop API、durable state 或默认 transport
+切换。Skill-only 与 direct runtime 运行继续保持独立。
 
 ### 控制契约
 

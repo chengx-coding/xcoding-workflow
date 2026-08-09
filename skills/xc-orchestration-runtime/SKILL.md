@@ -14,6 +14,7 @@ The editable runtime implementation lives in `src/xcoding/runtime/`:
 - `core.py` owns the tree model, scheduling, integrity, locking and persistence primitives.
 - `application.py` owns command use cases, read/write transactions, rollback and stable result/error mapping.
 - `commands.py` owns the complete 23-command parser specification.
+- `query.py` owns the typed nine-command read-only transport allowlist and parameter validation.
 
 The complete Skill remains self-contained for Skill-only installation. Its `scripts/_runtime_compat/` package is a deterministic generated payload of those canonical modules. `scripts/runtime_core.py` and `scripts/orchestration.py` are compatibility aliases or adapters, not independent implementations. Do not edit generated payload files; repository maintenance must update the canonical package modules and regenerate/check the payload.
 
@@ -58,6 +59,8 @@ python "$SKILL_DIR/scripts/orchestration.py" block `
 `init` writes `<workbench_runtime_path>/orchestration.xml`. The work-order opener owns creation of the workbench and its runtime path. All commands emit JSON; `--json` is accepted for host compatibility.
 
 The legacy Skill entry above remains the portable Skill-only command. A matching installed prerelease package also exposes the same command set as `xc runtime <command> ...`; it calls the same direct Runtime Application Service and does not start or require a daemon. The package is not a prerequisite for running the complete Skill.
+
+A matching prerelease package MAY additionally expose `xc daemon serve --tree <runtime>`. That adapter is package-only: it binds to `127.0.0.1`, requires the launch result's process-lifetime bearer token and exact Host/Origin checks, accepts only launch-time runtime files, and exposes typed read-only queries plus bounded non-durable summary SSE. It provides no runtime mutation, replay, journal, remote bind, discovery, service installation, auto-start, or default transport switch. Skill-only and direct runtime commands remain independent of it.
 
 `--artifact` is optional and repeatable on `complete`, `fail`, and `block`.
 
@@ -165,6 +168,11 @@ current terminal; it emits JSON-line lifecycle, client, and refresh events for
 manual diagnostics. Pass `--no-browser` for automated verification. Use
 `xc-orchestration-viewer` for user-facing open, monitor, or visualize
 requests.
+
+The Viewer is distinct from the package-only daemon. It owns a browser UI,
+Viewer-local registry, native picker, refresh controls, and SVG download; it
+does not share the daemon bearer token or registry. Neither surface exposes
+runtime mutation.
 
 ## References
 
