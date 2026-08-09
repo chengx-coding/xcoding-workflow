@@ -24,7 +24,7 @@
     "src/xcoding/runtime/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
     "src/xcoding/runtime/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
     "src/xcoding/runtime/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
-    "src/xcoding/cli.py": "1fa4a764c2291a31d0d8842f8f2ac2f1d4bb96c6f6d16bc1a7fa529c5d5f05b3",
+    "src/xcoding/cli.py": "7d72a5b64fec01fa3f362f1a3e710abb5ab43a06cd52fa358bc222a026ad28d1",
     "scripts/sync_runtime_compat.py": "be15f507a38d572b5af460119b1c24cb914e495fc41ceab4e9f4dc29e5b75e85",
     "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
     "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
@@ -36,7 +36,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "9f7d58b2b8f894f167c160f61b856e24ea7ac051",
+  "recording_base_commit": "6b421154995ca21009178ae072f26636910cbad2",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -445,174 +445,174 @@
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
         "current_value": 91470,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 26717
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
         "current_value": 92134,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 26717
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
         "current_value": 127083,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 36537
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
         "current_value": 127996,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 36537
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
         "current_value": 192502,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 52364
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
         "current_value": 193913,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 52364
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
         "current_value": 219284,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 54390
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
         "current_value": 220944,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 54390
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+        "explanation": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "Record the approved F-01 query command and parameter-name bounds in the Stage 3 current governance fixture.",
+    "reason": "Record Stage 3 package CLI daemon route after full regression exposed the current input hash drift; no historical baseline change.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1423,7 +1423,7 @@
       "src/xcoding/runtime/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
       "src/xcoding/runtime/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
       "src/xcoding/runtime/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
-      "src/xcoding/cli.py": "1fa4a764c2291a31d0d8842f8f2ac2f1d4bb96c6f6d16bc1a7fa529c5d5f05b3",
+      "src/xcoding/cli.py": "7d72a5b64fec01fa3f362f1a3e710abb5ab43a06cd52fa358bc222a026ad28d1",
       "scripts/sync_runtime_compat.py": "be15f507a38d572b5af460119b1c24cb914e495fc41ceab4e9f4dc29e5b75e85",
       "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
       "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
