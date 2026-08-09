@@ -6,7 +6,7 @@ import argparse
 import json
 import os
 import sys
-from importlib import metadata
+from importlib import metadata, resources
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -31,8 +31,6 @@ EXIT_READINESS = 4
 EXIT_INTERNAL = 5
 
 _RUNTIME_TEMPLATE = (
-    "skills",
-    "xc-orchestration-runtime",
     "assets",
     "minimal-template.xml",
 )
@@ -141,7 +139,7 @@ def _emit(payload: dict[str, Any]) -> None:
 
 
 def _runtime_default_template() -> Path:
-    resource = installed_bundle_root().joinpath(*_RUNTIME_TEMPLATE)
+    resource = resources.files("xcoding.runtime").joinpath(*_RUNTIME_TEMPLATE)
     try:
         path = Path(os.fspath(resource))
     except TypeError as error:
@@ -237,6 +235,10 @@ def _execute(arguments: argparse.Namespace, command: str) -> dict[str, Any]:
 def main(argv: Sequence[str] | None = None) -> int:
     """Execute one command, emit exactly one JSON envelope, and return its exit."""
     raw_arguments = list(sys.argv[1:] if argv is None else argv)
+    if raw_arguments[:1] == ["viewer"]:
+        from .viewer import cli as viewer_cli
+
+        return viewer_cli.main(raw_arguments[1:])
     if raw_arguments[:1] == ["daemon"]:
         from .daemon import cli as daemon_cli
 

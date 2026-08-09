@@ -3426,7 +3426,9 @@ def _install_tool(
         code="wheel_install_failed",
         cwd=paths["root"],
     )
-    launcher = candidate["bin"] / ("xc.exe" if os.name == "nt" else "xc")
+    launcher = candidate["bin"] / (
+        "xcoding.exe" if os.name == "nt" else "xcoding"
+    )
     tool_environment = candidate["tools"] / DISTRIBUTION
     tool_python = tool_environment / (
         "Scripts/python.exe" if os.name == "nt" else "bin/python"

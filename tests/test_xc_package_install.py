@@ -414,7 +414,7 @@ class PackageInstallTests(unittest.TestCase):
         )
         tool_python.parent.mkdir(parents=True)
         launcher = candidate["bin"] / (
-            "xc.exe" if os.name == "nt" else "xc"
+            "xcoding.exe" if os.name == "nt" else "xcoding"
         )
         launcher.write_bytes(b"absolute launcher")
         tool_python.write_bytes(b"candidate managed python")

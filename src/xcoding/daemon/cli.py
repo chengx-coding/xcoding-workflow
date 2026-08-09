@@ -329,7 +329,7 @@ def launch_background(arguments: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = _Parser(
-        prog="xc daemon",
+        prog="xcoding daemon",
         description="Run the local authenticated read-only runtime daemon.",
     )
     commands = parser.add_subparsers(dest="command", required=True)

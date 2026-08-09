@@ -393,7 +393,7 @@ class PackageCliTests(unittest.TestCase):
             self.assertNotIn("orchestration.xml", source)
             self.assertNotIn("runtime_core", source)
 
-    def test_installed_runtime_init_uses_bundle_template(self) -> None:
+    def test_installed_runtime_init_uses_package_template(self) -> None:
         runtime_root = self.root / "installed-runtime-cli"
         initialized = subprocess.run(
             [
@@ -427,9 +427,7 @@ class PackageCliTests(unittest.TestCase):
         expected_template = (
             self.install
             / "xcoding"
-            / "_bundle"
-            / "skills"
-            / "xc-orchestration-runtime"
+            / "runtime"
             / "assets"
             / "minimal-template.xml"
         )
@@ -495,6 +493,82 @@ class PackageCliTests(unittest.TestCase):
             ],
             [],
         )
+
+    def test_installed_viewer_background_serves_health(self) -> None:
+        runtime_root = self.root / "installed-viewer-runtime"
+        initialized = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                "-m",
+                "xcoding",
+                "runtime",
+                "init",
+                "--runtime-path",
+                str(runtime_root),
+                "--work-order-id",
+                "installed-viewer-test",
+                "--name",
+                "Installed Viewer Test",
+            ],
+            cwd=self.root,
+            env=self.cli_environment(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(
+            initialized.returncode,
+            0,
+            initialized.stderr or initialized.stdout,
+        )
+        tree = runtime_root / "orchestration.xml"
+        launched = subprocess.run(
+            [
+                sys.executable,
+                "-B",
+                "-m",
+                "xcoding",
+                "viewer",
+                "--tree",
+                str(tree),
+                "--port",
+                "0",
+                "--no-browser",
+            ],
+            cwd=self.root,
+            env=self.cli_environment(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(
+            launched.returncode,
+            0,
+            launched.stderr or launched.stdout,
+        )
+        self.assertEqual(launched.stderr, "")
+        lines = launched.stdout.splitlines()
+        self.assertEqual(len(lines), 1, launched.stdout)
+        payload = json.loads(lines[0])
+        address = str(payload["url"]).removeprefix("http://").rstrip("/")
+        host, raw_port = address.split(":", 1)
+        connection = http.client.HTTPConnection(host, int(raw_port), timeout=2)
+        try:
+            connection.request("GET", "/api/health")
+            response = connection.getresponse()
+            health = json.loads(response.read())
+            self.assertEqual(response.status, 200)
+            self.assertTrue(health["ok"])
+        finally:
+            connection.close()
+            try:
+                os.kill(int(payload["pid"]), signal.SIGTERM)
+            except OSError:
+                pass
 
     def test_installed_daemon_route_reports_bounded_startup_error(self) -> None:
         result, payload = self.run_cli(
