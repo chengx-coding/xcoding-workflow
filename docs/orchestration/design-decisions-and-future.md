@@ -87,7 +87,7 @@ Tradeoff: inspection has a small security and correctness surface, while operato
 
 ### Authenticated Read-Only Package Daemon
 
-The prerelease package optionally exposes typed runtime queries through a
+The installed `xcoding-workflow` package optionally exposes typed runtime queries through a
 bearer-authenticated server bound to `127.0.0.1`. It accepts only launch-time
 runtime files, uses opaque process-local IDs, and streams bounded latest-state
 summaries without replay or persistence. Direct commands remain the mutation

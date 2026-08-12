@@ -56,9 +56,9 @@ class CandidateRepository:
         self.write(
             "pyproject.toml",
             """[project]
-name = "xcoding-workflow-spike"
-version = "0.0.0.dev0"
-requires-python = ">=3.12,<3.13"
+name = "xcoding-workflow"
+version = "0.1.0"
+requires-python = ">=3.12"
 """,
         )
         self.write("skills/xc-alpha/SKILL.md", "alpha\r\nbytes\r\n")
@@ -112,6 +112,8 @@ print("exported 1 agents")
                         "generated_root": "agents-src/generated-agents",
                         "generated_filename_suffix": ".md",
                         "bundle_root": "adapters/test-host",
+                        "project_agents_root": ".test-host/agents",
+                        "project_skills_root": ".agents/skills",
                     }
                 ],
             },
@@ -239,12 +241,16 @@ class CollectorTests(BundleTestCase):
             )
             inspection = inspect_bundle(
                 first,
-                expected_version="0.0.0.dev0",
+                expected_version="0.1.0",
                 expected_provenance=EXPECTED_PROVENANCE,
             )
             self.assertEqual(
                 inspection.partition_counts,
                 {"skill": 1, "viewer": 0, "host-adapter": 1},
+            )
+            self.assertEqual(
+                inspection.adapter_partition_counts,
+                {"test-host": 1},
             )
             self.assertEqual(inspection.resource_count, 2)
             self.assertFalse((candidate.root / "src" / "xcoding" / "_bundle").exists())
@@ -482,8 +488,8 @@ class ManifestVerificationTests(BundleTestCase):
             manifest.candidate_source_archive_sha256,
             CANDIDATE_ARCHIVE_SHA256,
         )
-        self.assertEqual(manifest.xc_version, "0.0.0.dev0")
-        self.assertEqual(manifest.python_requires, ">=3.12,<3.13")
+        self.assertEqual(manifest.xc_version, "0.1.0")
+        self.assertEqual(manifest.python_requires, ">=3.12")
         self.assertEqual(
             [record.bundle_path for record in manifest.resources],
             sorted(record.bundle_path for record in manifest.resources),
@@ -781,7 +787,7 @@ class ManifestVerificationTests(BundleTestCase):
             mock.patch.object(
                 bundle_resources,
                 "installed_distribution_version",
-                return_value="0.0.0.dev0",
+                return_value="0.1.0",
             ),
         ):
             inspection = bundle_resources.inspect_installed_bundle(

@@ -57,7 +57,7 @@ def manifest_bytes(
             "source_state": "work-order-candidate",
             "candidate_tree_sha256": candidate_tree,
             "candidate_source_archive_sha256": CANDIDATE_ARCHIVE,
-            "python_requires": ">=3.12,<3.13",
+            "python_requires": ">=3.12",
             "runtime_tree_schema": 1,
             "resources": [
                 {
@@ -112,9 +112,9 @@ def write_test_wheel(
         ),
         f"{dist_info}/METADATA": (
             "Metadata-Version: 2.3\n"
-            "Name: xcoding-workflow-spike\n"
+            "Name: xcoding-workflow\n"
             f"Version: {metadata_version}\n"
-            "Requires-Python: >=3.12,<3.13\n"
+            "Requires-Python: >=3.12\n"
             "\n"
         ).encode("utf-8"),
         f"{dist_info}/WHEEL": (

@@ -682,6 +682,8 @@ def _load_adapter_inputs(
                 "generated_root",
                 "generated_filename_suffix",
                 "bundle_root",
+                "project_agents_root",
+                "project_skills_root",
             },
             label=f"adapters[{index}]",
         )
@@ -705,6 +707,14 @@ def _load_adapter_inputs(
             _raise_invalid(
                 f"adapters[{index}].bundle_root must equal adapters/<adapter_id>"
             )
+        validate_relative_path(
+            raw_adapter["project_agents_root"],
+            field=f"adapters[{index}].project_agents_root",
+        )
+        validate_relative_path(
+            raw_adapter["project_skills_root"],
+            field=f"adapters[{index}].project_skills_root",
+        )
         adapter_ids.append(adapter_id)
         generated_roots.append(generated_root)
         bundle_roots.append(bundle_root)

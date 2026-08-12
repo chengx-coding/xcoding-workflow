@@ -24,19 +24,33 @@
       "adapter_id": "claude-code",
       "generated_root": "agents-src/claude-agents",
       "generated_filename_suffix": ".md",
-      "bundle_root": "adapters/claude-code"
+      "bundle_root": "adapters/claude-code",
+      "project_agents_root": ".claude/agents",
+      "project_skills_root": ".claude/skills"
     },
     {
       "adapter_id": "codex",
       "generated_root": "agents-src/codex-agents",
       "generated_filename_suffix": ".toml",
-      "bundle_root": "adapters/codex"
+      "bundle_root": "adapters/codex",
+      "project_agents_root": ".codex/agents",
+      "project_skills_root": ".agents/skills"
     },
     {
       "adapter_id": "opencode",
       "generated_root": "agents-src/opencode-agents",
       "generated_filename_suffix": ".md",
-      "bundle_root": "adapters/opencode"
+      "bundle_root": "adapters/opencode",
+      "project_agents_root": ".opencode/agents",
+      "project_skills_root": ".agents/skills"
+    },
+    {
+      "adapter_id": "trae",
+      "generated_root": "agents-src/trae-agents",
+      "generated_filename_suffix": ".md",
+      "bundle_root": "adapters/trae",
+      "project_agents_root": ".trae/agents",
+      "project_skills_root": ".agents/skills"
     }
   ]
 }

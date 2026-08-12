@@ -24,7 +24,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 from build_support.bundle import CandidateProvenance, collect_bundle
 from xcoding import cli
 from xcoding import doctor as doctor_module
-from xcoding import setup_plan as setup_module
+from xcoding import setup_transaction as setup_module
 from xcoding.bundle.manifest import inspect_bundle
 
 
@@ -33,7 +33,7 @@ PROVENANCE = CandidateProvenance(
     candidate_tree_sha256="2" * 64,
     candidate_source_archive_sha256="3" * 64,
 )
-VERSION = "0.0.0.dev0"
+VERSION = "0.1.0"
 ADAPTER = "claude-code"
 
 
@@ -65,6 +65,38 @@ def snapshot(root: Path) -> dict[str, object]:
     return {"exists": True, "entries": entries}
 
 
+@contextlib.contextmanager
+def sealed_current_worktree(git_dir: Path):
+    subprocess.run(
+        ["git", "init", "--bare", "--quiet", str(git_dir)],
+        cwd=REPOSITORY_ROOT,
+        check=True,
+        capture_output=True,
+    )
+    overrides = {
+        "GIT_DIR": str(git_dir),
+        "GIT_WORK_TREE": str(REPOSITORY_ROOT),
+        "GIT_AUTHOR_NAME": "XC Package Test",
+        "GIT_AUTHOR_EMAIL": "xc-package-test@example.invalid",
+        "GIT_COMMITTER_NAME": "XC Package Test",
+        "GIT_COMMITTER_EMAIL": "xc-package-test@example.invalid",
+    }
+    with mock.patch.dict(os.environ, overrides):
+        subprocess.run(
+            ["git", "add", "-A"],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "commit", "--quiet", "-m", "Seal package CLI test worktree"],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+        )
+        yield
+
+
 class PackageCliTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -72,7 +104,8 @@ class PackageCliTests(unittest.TestCase):
         cls.root = Path(cls.temporary.name)
         staging = cls.root / "bundle-staging"
         staging.mkdir()
-        cls.bundle = collect_bundle(REPOSITORY_ROOT, staging, PROVENANCE)
+        with sealed_current_worktree(cls.root / "candidate.git"):
+            cls.bundle = collect_bundle(REPOSITORY_ROOT, staging, PROVENANCE)
         cls.install = cls._make_install("installed")
 
     @classmethod
@@ -84,11 +117,11 @@ class PackageCliTests(unittest.TestCase):
         install = cls.root / name
         shutil.copytree(REPOSITORY_ROOT / "src" / "xcoding", install / "xcoding")
         shutil.copytree(cls.bundle, install / "xcoding" / "_bundle")
-        metadata = install / f"xcoding_workflow_spike-{VERSION}.dist-info"
+        metadata = install / f"xcoding_workflow-{VERSION}.dist-info"
         metadata.mkdir()
         (metadata / "METADATA").write_text(
             "Metadata-Version: 2.3\n"
-            "Name: xcoding-workflow-spike\n"
+            "Name: xcoding-workflow\n"
             f"Version: {VERSION}\n",
             encoding="utf-8",
             newline="",
@@ -132,6 +165,7 @@ class PackageCliTests(unittest.TestCase):
 
     def test_four_commands_emit_stable_success_envelopes(self) -> None:
         target = self.root / "success-target"
+        target.mkdir()
         commands = (
             ("version", ["version", "--json"]),
             ("bundle inspect", ["bundle", "inspect", "--json"]),
@@ -142,9 +176,9 @@ class PackageCliTests(unittest.TestCase):
                     "setup",
                     "--dry-run",
                     "--json",
-                    "--adapter",
+                    "--host",
                     ADAPTER,
-                    "--target-root",
+                    "--project-root",
                     str(target),
                 ],
             ),
@@ -160,25 +194,32 @@ class PackageCliTests(unittest.TestCase):
                 self.assertEqual(payload["schema_version"], 1)
                 self.assertIs(payload["ok"], True)
                 self.assertEqual(payload["command"], command)
-        self.assertFalse(target.exists())
+        self.assertEqual(list(target.iterdir()), [])
+
+    def test_version_reports_stable_distribution_identity(self) -> None:
+        result, payload = self.run_cli("version", "--json")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(payload["result"]["distribution"], "xcoding-workflow")
+        self.assertEqual(payload["result"]["xc_version"], VERSION)
 
     def test_input_bundle_readiness_and_internal_exit_codes(self) -> None:
         cases = (
             (
-                ["setup", "--dry-run", "--json", "--adapter", ADAPTER],
+                ["setup", "--dry-run", "--json", "--host", ADAPTER],
                 "setup",
-                "target-required",
+                "project_root_required",
             ),
             (
                 [
                     "setup",
                     "--dry-run",
                     "--json",
-                    "--target-root",
-                    str(self.root / "target"),
+                    "--project-root",
+                    str(self.root),
                 ],
                 "setup",
-                "adapter-required",
+                "host_required",
             ),
             (["version"], "version", "json-required"),
             (["next", "--json"], "", "invalid_arguments"),
@@ -190,11 +231,6 @@ class PackageCliTests(unittest.TestCase):
                 self.assertIs(payload["ok"], False)
                 self.assertEqual(payload["command"], command)
                 self.assertEqual(payload["error"]["code"], code)
-                if code.endswith("-required") and command == "setup":
-                    self.assertEqual(
-                        payload["error"]["details"]["plan"]["operations"],
-                        [],
-                    )
 
         tampered = self._make_install("tampered")
         target = (
@@ -237,23 +273,29 @@ class PackageCliTests(unittest.TestCase):
     def test_setup_dry_run_reports_drift_without_any_write(self) -> None:
         controlled = self.root / "controlled"
         controlled.mkdir()
-        missing = controlled / "missing-target"
+        project = controlled / "project"
+        project.mkdir()
         before = snapshot(controlled)
         result, payload = self.run_cli(
             "setup",
             "--dry-run",
             "--json",
-            "--adapter",
+            "--host",
             ADAPTER,
-            "--target-root",
-            str(missing),
+            "--project-root",
+            str(project),
         )
         self.assertEqual(result.returncode, 0)
-        self.assertGreater(payload["result"]["drift"]["create"], 0)
+        self.assertTrue(
+            any(
+                operation["action"] == "create"
+                for operation in payload["result"]["operations"]
+            )
+        )
         self.assertIs(payload["result"]["writes_performed"], False)
         self.assertEqual(snapshot(controlled), before)
 
-        existing = controlled / "existing-target"
+        existing = controlled / "unmanaged-project"
         existing.mkdir()
         record = next(
             record
@@ -264,7 +306,7 @@ class PackageCliTests(unittest.TestCase):
             if record.adapter_id == ADAPTER
         )
         relative = record.bundle_path.removeprefix(f"adapters/{ADAPTER}/")
-        drifted = existing.joinpath(*relative.split("/"))
+        drifted = existing / ".claude" / "agents" / relative
         drifted.parent.mkdir(parents=True, exist_ok=True)
         drifted.write_bytes(b"drift")
         before = snapshot(controlled)
@@ -272,53 +314,90 @@ class PackageCliTests(unittest.TestCase):
             "setup",
             "--dry-run",
             "--json",
-            "--adapter",
+            "--host",
             ADAPTER,
-            "--target-root",
+            "--project-root",
             str(existing),
         )
-        self.assertEqual(result.returncode, 0)
-        self.assertEqual(payload["result"]["drift"]["replace"], 1)
+        self.assertEqual(result.returncode, 4)
+        self.assertEqual(payload["error"]["code"], "unmanaged_conflict")
         self.assertEqual(snapshot(controlled), before)
 
-    def test_read_only_target_is_reported_without_write_probe(self) -> None:
-        target_root = self.root / "read-only-target"
+    def test_setup_mutation_upgrade_and_rollback_use_real_bundle(self) -> None:
+        project = self.root / "real-setup-project"
+        project.mkdir()
+        hosts = ("codex", "opencode", "claude-code", "trae")
+        arguments = [
+            "setup",
+            "--json",
+            "--project-root",
+            str(project),
+        ]
+        for host in hosts:
+            arguments.extend(["--host", host])
+
+        result, payload = self.run_cli(*arguments)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertTrue(payload["result"]["committed"])
+        expected_agents = (
+            ".codex/agents/delegate-agent.toml",
+            ".opencode/agents/delegate-agent.md",
+            ".claude/agents/delegate-agent.md",
+            ".trae/agents/delegate-agent.md",
+        )
+        for relative in expected_agents:
+            self.assertTrue(project.joinpath(*relative.split("/")).is_file())
+        self.assertTrue((project / ".agents/skills/xc-analysis/SKILL.md").is_file())
+        self.assertTrue((project / ".claude/skills/xc-analysis/SKILL.md").is_file())
+
+        result, payload = self.run_cli(
+            "setup",
+            "--json",
+            "--project-root",
+            str(project),
+            "--host",
+            "codex",
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertFalse((project / ".trae/agents/delegate-agent.md").exists())
+        self.assertTrue((project / ".codex/agents/delegate-agent.toml").is_file())
+        self.assertTrue((project / ".agents/skills/xc-analysis/SKILL.md").is_file())
+
+        result, payload = self.run_cli(
+            "setup",
+            "--json",
+            "--project-root",
+            str(project),
+            "--rollback",
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertTrue(payload["result"]["rollback"])
+        for relative in expected_agents:
+            self.assertTrue(project.joinpath(*relative.split("/")).is_file())
+        state = project / ".agents/.xcoding-setup"
+        self.assertTrue((state / "manifest.json").is_file())
+        self.assertFalse((state / "journal.json").exists())
+
+    def test_unknown_host_is_rejected_without_project_writes(self) -> None:
+        target_root = self.root / "unknown-host-target"
         target_root.mkdir()
-        record = next(
-            record
-            for record in inspect_bundle(
-                self.bundle,
-                expected_version=VERSION,
-            ).manifest.resources
-            if record.adapter_id == ADAPTER
-        )
-        relative = record.bundle_path.removeprefix(f"adapters/{ADAPTER}/")
-        target = target_root.joinpath(*relative.split("/"))
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(b"drift")
         before = snapshot(target_root)
-        inspection = inspect_bundle(self.bundle, expected_version=VERSION)
 
-        with (
-            mock.patch.object(
-                setup_module,
-                "inspect_installed_bundle",
-                return_value=inspection,
-            ),
-            mock.patch.object(
-                setup_module,
-                "installed_bundle_root",
-                return_value=self.bundle,
-            ),
-            mock.patch.object(setup_module.os, "access", return_value=False),
-        ):
-            with self.assertRaises(setup_module.SetupReadinessError) as raised:
-                setup_module.setup_plan(ADAPTER, target_root)
-
-        self.assertIs(
-            raised.exception.details["plan"]["writes_performed"],
-            False,
+        result, payload = self.run_cli(
+            "setup",
+            "--dry-run",
+            "--json",
+            "--host",
+            "unknown",
+            "--project-root",
+            str(target_root),
         )
+
+        self.assertEqual(result.returncode, 4)
+        self.assertEqual(payload["error"]["code"], "host_unknown")
         self.assertEqual(snapshot(target_root), before)
 
     def test_doctor_tk_absence_is_optional_and_never_imported(self) -> None:
@@ -368,6 +447,7 @@ class PackageCliTests(unittest.TestCase):
         tree = sandbox / "orchestration.xml"
         tree.write_bytes(b"sentinel")
         target = sandbox / "target"
+        target.mkdir()
         before = snapshot(sandbox)
         for arguments in (
             ["version", "--json"],
@@ -377,9 +457,9 @@ class PackageCliTests(unittest.TestCase):
                 "setup",
                 "--dry-run",
                 "--json",
-                "--adapter",
+                "--host",
                 ADAPTER,
-                "--target-root",
+                "--project-root",
                 str(target),
             ],
         ):
@@ -391,6 +471,7 @@ class PackageCliTests(unittest.TestCase):
             "cli.py",
             "doctor.py",
             "setup_plan.py",
+            "setup_transaction.py",
             "version.py",
             "__main__.py",
         )
@@ -400,7 +481,8 @@ class PackageCliTests(unittest.TestCase):
             )
             self.assertNotIn("import socket", source)
             self.assertNotIn("import urllib", source)
-            self.assertNotIn("import subprocess", source)
+            if name != "setup_transaction.py":
+                self.assertNotIn("import subprocess", source)
             self.assertNotIn("orchestration.xml", source)
             self.assertNotIn("runtime_core", source)
 

@@ -39,7 +39,7 @@ Viewer server、picker、lifecycle 和静态资源；`src/xcoding/daemon/` 拥�
 
 ### 只读 Package Daemon
 
-`xcoding daemon serve --tree <runtime>` 只存在于 prerelease package。它只绑定
+`xcoding daemon serve --tree <runtime>` 只存在于 `xcoding-workflow` package。它只绑定
 `127.0.0.1`，在 launch result 中发布 process-lifetime bearer token，只接受
 启动时传入的 regular runtime 文件，并通过进程本地 opaque ID 寻址。
 

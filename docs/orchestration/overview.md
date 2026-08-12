@@ -16,7 +16,7 @@ The architecture has three public services:
 
 Domain Skills own the meaning of the work. They define templates, task instructions, gates, artifact contracts, blackboard keys, acceptance criteria, and domain references. They invoke the runtime through public operations and do not copy its scheduler, state machine, parser, or Viewer.
 
-The required prerelease Python package also exposes `xcoding daemon serve`.
+The required `xcoding-workflow` Python package also exposes `xcoding daemon serve`.
 It exposes only the runtime's typed read-only query facade over
 bearer-authenticated loopback HTTP and bounded summary SSE. It is not another
 state owner and cannot perform runtime transitions. `xcoding runtime` remains

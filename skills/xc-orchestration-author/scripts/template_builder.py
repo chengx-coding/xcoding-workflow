@@ -153,6 +153,7 @@ def spec_template() -> Dict[str, Any]:
                             "role": "rework",
                             "executor": "subagent",
                             "when": "review.open_issues == true",
+                            "when.policy": "latched",
                             "depends_on_template": "local:review",
                             "instructions": "Address the current review findings.",
                             "deliverables": "artifacts/review-loop/rework-{iteration}.md",

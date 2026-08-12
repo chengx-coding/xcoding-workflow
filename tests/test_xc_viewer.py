@@ -120,6 +120,40 @@ class PackageViewerTests(unittest.TestCase):
             command[:3],
             [sys.executable, "-m", "xcoding.viewer.server"],
         )
+        self.assertEqual(
+            command[command.index("--ready-file") + 1],
+            str(Path("ready.json").resolve()),
+        )
+        self.assertEqual(
+            command[command.index("--tree") + 1],
+            str(Path("tree.xml").resolve()),
+        )
+
+        args = server.build_parser().parse_args(
+            ["--tree", "tree.xml", "--port", "0", "--no-browser"]
+        )
+        process = mock.Mock(pid=1234)
+        process.poll.return_value = None
+        readiness = {
+            "ok": True,
+            "url": "http://127.0.0.1:1234/",
+            "trees": [],
+        }
+        with mock.patch.object(
+            server.subprocess,
+            "Popen",
+            return_value=process,
+        ) as popen, mock.patch.object(
+            server,
+            "read_readiness",
+            return_value=readiness,
+        ), mock.patch("builtins.print"):
+            self.assertEqual(server.launch_background(args), 0)
+        self.assertEqual(popen.call_args.kwargs["cwd"], tempfile.gettempdir())
+        launched_command = popen.call_args.args[0]
+        self.assertTrue(
+            Path(launched_command[launched_command.index("--tree") + 1]).is_absolute()
+        )
 
         completed = subprocess.CompletedProcess(
             args=[],

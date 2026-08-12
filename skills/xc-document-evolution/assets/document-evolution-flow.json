@@ -113,6 +113,7 @@
             "role": "document-revise",
             "executor": "subagent",
             "when": "document.review.open_issues == true",
+            "when.policy": "latched",
             "depends_on_template": "local:review-document",
             "metadata": {
               "completion": {
@@ -159,7 +160,8 @@
         "role": "dynamic-group",
         "mode": "sequence",
         "executor": "main",
-        "when": "document.gate_outcome != accepted"
+        "when": "document.gate_outcome != accepted",
+        "when.policy": "latched"
       },
       {
         "template_id": "validate-final",
@@ -168,6 +170,7 @@
         "role": "document-validate-final",
         "executor": "tool",
         "when": "document.gate_outcome == accepted",
+        "when.policy": "latched",
         "metadata": {
           "completion": {
             "required_fields": "[\"summary\",\"validation\"]",

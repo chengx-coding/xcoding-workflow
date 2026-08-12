@@ -38,11 +38,13 @@ write document
 
 The calling Skill supplies document-specific instructions, inputs, review dimensions, gate questions, and any explicit `document.authoring_requirements` through the tree node contract and blackboard. The caller sets the requirements value before embedding each document instance and preserves it for revisions unless the user explicitly changes it. It MAY dynamically add further revise, review, or gate nodes when user feedback requires them.
 
-The optional review loop and document gate use `when.policy=latched`. If an
-instance skips either branch, later changes to the shared `document.*` keys
-must not reactivate that completed instance. Callers still serialize instances
-that reuse those shared keys; this template does not provide local blackboard
-scope.
+Every conditional branch that reads reusable `document.*` control keys uses
+`when.policy=latched`. The runtime persists the first condition result reached
+by that node instance. A loop iteration resets only its descendants' latches
+for the next iteration, while a terminal loop closes unreachable descendants
+and preserves its terminal decision. Later shared-key changes therefore cannot
+reactivate a completed document instance. Callers still serialize instances
+that reuse those keys; this template does not provide local blackboard scope.
 
 ## Node Contracts
 

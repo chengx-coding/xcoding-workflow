@@ -30,7 +30,7 @@ After a Skill change, run the tracked [Skill sync script](../../build_agents.py)
 
 Edit persistent portable definitions under `agents-src/agents/`. Express tool, model, permission, sandbox, and frontmatter differences as target metadata rather than forking the shared body.
 
-Run the tracked [agent exporter](../../agents-src/export_agents.py) to regenerate Claude Code, OpenCode, and Codex definitions. Generated target files are reviewable outputs, not editing surfaces.
+Run the tracked [agent exporter](../../agents-src/export_agents.py) to regenerate Claude Code, OpenCode, Codex, and Trae definitions. Generated target files are reviewable outputs, not editing surfaces.
 
 ### Orchestration
 
@@ -62,4 +62,4 @@ The English page is normative; the Chinese page must preserve the same topic, fa
 
 Public pages link only files available in a clean checkout. They do not link workshop state, local Agent discovery assets, project instructions, or other ignored and excluded maintenance files.
 
-The project does not currently publish a formal Python-version or Agent-host compatibility matrix. Documentation and workflow changes must not imply compatibility guarantees that have not been defined and verified.
+The release contract defines an explicit Python, platform, and Agent-host matrix. Documentation may describe only the formal baseline and experimental cells declared by that contract, and a public release may claim support only after candidate-bound evidence verifies the required cells. An accepted Python version, detected executable, or unverified host must not be promoted into a compatibility guarantee.

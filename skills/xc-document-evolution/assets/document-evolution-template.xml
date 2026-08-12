@@ -3,7 +3,7 @@
 <orchestration schema_version="1" name="document-evolution" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="1f5d6674ddfaaa303c5ff10746d750caa7da6bc5665c0b2803cdbffde8c1e61f" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="437fe8f713e0ee0495aa39e1c9604955acbf3742fdcc76f01764cae40a791758" />
   </meta>
   <blackboard>
     <var key="document.content_language" />
@@ -34,7 +34,7 @@
             <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
             <acceptance>The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues.</acceptance>
           </node>
-          <node depends_on_template="local:review-document" executor="subagent" role="document-revise" template_id="revise-document" title="Revise document from review" type="task" when="document.review.open_issues == true" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path">
+          <node depends_on_template="local:review-document" executor="subagent" role="document-revise" template_id="revise-document" title="Revise document from review" type="task" when="document.review.open_issues == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path">
             <instructions>Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.</instructions>
             <deliverables>An updated managed document.</deliverables>
             <acceptance>Required domain and human-readability findings are resolved or explicitly escalated to a user gate.</acceptance>
@@ -46,8 +46,8 @@
         <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
         <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
       </node>
-      <node executor="main" mode="sequence" role="dynamic-group" template_id="document-gate-recovery-group" title="Recover non-accepting document decision" type="composite" when="document.gate_outcome != accepted" />
-      <node executor="tool" role="document-validate-final" template_id="validate-final" title="Validate final document" type="task" when="document.gate_outcome == accepted" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience">
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="document-gate-recovery-group" title="Recover non-accepting document decision" type="composite" when="document.gate_outcome != accepted" when.policy="latched" />
+      <node executor="tool" role="document-validate-final" template_id="validate-final" title="Validate final document" type="task" when="document.gate_outcome == accepted" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience">
         <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
         <deliverables>A final validation result recorded in the node result.</deliverables>
         <acceptance>xc-document validates the final document without errors.</acceptance>

@@ -16,12 +16,12 @@
     "src/xcoding/runtime/application.py": "92f5a7fca2123d2c3ab33a565321521bfa820d5149bdd1466a2705324a055281",
     "src/xcoding/runtime/commands.py": "7a53f07fda09cb07ab5c33be07a4641a97d0e9e8a6a6655c2c6e78fcfab3cb75",
     "src/xcoding/runtime/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
-    "src/xcoding/runtime/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+    "src/xcoding/runtime/core.py": "4dfbc7b7f61b2f92299715891207856c07546a0d6c43600901b4e8717a192e9b",
     "src/xcoding/runtime/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
-    "src/xcoding/runtime/assets/minimal-template.xml": "b741c87d75bc0417f00457fafde87290a2ca8b0127b1be867f27b3f93fdcaabc",
-    "src/xcoding/cli.py": "968ec963297ae23cb7c2ec9506d855f4d74b6d80f89cb2ac293e9f04ac2064c3",
+    "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
+    "src/xcoding/cli.py": "b15521aebb691c471a12a1cc8a26c6ccf7dc7677a3ba4634e4ef3be3f2587315",
     "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
-    "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
+    "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
     "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
     "skills/xc-document/scripts/validate_document.py": "99a8daa4e55f9b856e6eb75c6bff8f1a347d882c870cbcd0bc0e68528a663be2",
     "skills/xc-document/assets/templates/work-order-goal.md": "94bea7ac8b9d4af8c1a7e07f22114bb417480de161ae7d91590f62e4e2077f79",
@@ -30,7 +30,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "0cbfc8a00598cf458ae131af0afe14773b92c3c0",
+  "recording_base_commit": "b05eae25acb42ac5dda8c396b97d4c14378ae3f2",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -141,7 +141,7 @@
       "T1-M": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 91470,
+            "context_bytes": 91890,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -171,7 +171,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 92134,
+            "context_bytes": 92554,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -198,7 +198,7 @@
       "T2": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 127083,
+            "context_bytes": 127713,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -229,7 +229,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 127996,
+            "context_bytes": 128626,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -256,7 +256,7 @@
       "T3": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 192502,
+            "context_bytes": 193342,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -290,7 +290,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 193913,
+            "context_bytes": 194753,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -317,7 +317,7 @@
       "T4": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 219284,
+            "context_bytes": 220124,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -354,7 +354,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 220944,
+            "context_bytes": 221784,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -438,175 +438,175 @@
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
-        "current_value": 91470,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
-        "numeric_delta": 26717
+        "current_value": 91890,
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "numeric_delta": 27137
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
-        "current_value": 92134,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
-        "numeric_delta": 26717
+        "current_value": 92554,
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "numeric_delta": 27137
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
-        "current_value": 127083,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
-        "numeric_delta": 36537
+        "current_value": 127713,
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "numeric_delta": 37167
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
-        "current_value": 127996,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
-        "numeric_delta": 36537
+        "current_value": 128626,
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "numeric_delta": 37167
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
-        "current_value": 192502,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
-        "numeric_delta": 52364
+        "current_value": 193342,
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "numeric_delta": 53204
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
-        "current_value": 193913,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
-        "numeric_delta": 52364
+        "current_value": 194753,
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "numeric_delta": 53204
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
-        "current_value": 219284,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
-        "numeric_delta": 54390
+        "current_value": 220124,
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "numeric_delta": 55230
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
-        "current_value": 220944,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
-        "numeric_delta": 54390
+        "current_value": 221784,
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "numeric_delta": 55230
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "Record the final approved xcoding package cutover CLI metadata after committed bilingual delivery and full regression exposed current input drift.",
+    "reason": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1111,7 +1111,7 @@
         "T1-M": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 91470,
+              "context_bytes": 91890,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1141,7 +1141,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 92134,
+              "context_bytes": 92554,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1168,7 +1168,7 @@
         "T2": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 127083,
+              "context_bytes": 127713,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1199,7 +1199,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 127996,
+              "context_bytes": 128626,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1226,7 +1226,7 @@
         "T3": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 192502,
+              "context_bytes": 193342,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1260,7 +1260,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 193913,
+              "context_bytes": 194753,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1287,7 +1287,7 @@
         "T4": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 219284,
+              "context_bytes": 220124,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1324,7 +1324,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 220944,
+              "context_bytes": 221784,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1409,12 +1409,12 @@
       "src/xcoding/runtime/application.py": "92f5a7fca2123d2c3ab33a565321521bfa820d5149bdd1466a2705324a055281",
       "src/xcoding/runtime/commands.py": "7a53f07fda09cb07ab5c33be07a4641a97d0e9e8a6a6655c2c6e78fcfab3cb75",
       "src/xcoding/runtime/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
-      "src/xcoding/runtime/core.py": "705e717a0a32b9f3a0c11f743c1bb242be9f1a3ec59ebfcd542e8346b8b84dc7",
+      "src/xcoding/runtime/core.py": "4dfbc7b7f61b2f92299715891207856c07546a0d6c43600901b4e8717a192e9b",
       "src/xcoding/runtime/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
-      "src/xcoding/runtime/assets/minimal-template.xml": "b741c87d75bc0417f00457fafde87290a2ca8b0127b1be867f27b3f93fdcaabc",
-      "src/xcoding/cli.py": "968ec963297ae23cb7c2ec9506d855f4d74b6d80f89cb2ac293e9f04ac2064c3",
+      "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
+      "src/xcoding/cli.py": "b15521aebb691c471a12a1cc8a26c6ccf7dc7677a3ba4634e4ef3be3f2587315",
       "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
-      "skills/xc-document-evolution/assets/document-evolution-template.xml": "f82b8e28b84635cf1e4d8a6ce7502f6216fda5e6c37daf4ec9bd1cbc2e0b3d75",
+      "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
       "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
       "skills/xc-document/scripts/validate_document.py": "99a8daa4e55f9b856e6eb75c6bff8f1a347d882c870cbcd0bc0e68528a663be2",
       "skills/xc-document/assets/templates/work-order-goal.md": "94bea7ac8b9d4af8c1a7e07f22114bb417480de161ae7d91590f62e4e2077f79",

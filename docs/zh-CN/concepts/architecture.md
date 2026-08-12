@@ -19,7 +19,7 @@ XC 是一套可移植、由 Skill 驱动的编码工作流。它覆盖发现、�
 
 ## 生成输出与适配器
 
-`agents-src/claude-agents/`、`agents-src/opencode-agents/` 和 `agents-src/codex-agents/` 是面向特定目标生成的 agent 定义。[agent 导出器](../../../agents-src/export_agents.py)会验证规范定义并复现这些输出。
+`agents-src/claude-agents/`、`agents-src/opencode-agents/`、`agents-src/codex-agents/` 和 `agents-src/trae-agents/` 是面向特定目标生成的 agent 定义。[agent 导出器](../../../agents-src/export_agents.py)会验证规范定义并复现这些输出。
 
 Agent 宿主的发现位置和安装目录属于适配器，不是新的事实源。例如，已跟踪的 [Skill 同步脚本](../../../build_agents.py)会把规范 Skill 包镜像到当前检出的本地发现目录，但变更仍然必须从 `skills/xc-*/` 开始。
 
@@ -27,7 +27,7 @@ Agent 宿主的发现位置和安装目录属于适配器，不是新的事实�
 
 ## Package、Bundle 与 Runtime Application 基础设施
 
-仓库还在 `pyproject.toml`、`src/xcoding/`、`build_support/` 以及 `install/`、`scripts/` 和 `.github/` 下与 package 相关的文件中包含 prerelease 产品可行性基础设施。它为隔离的本地和 CI 探测构建 package 与不可变 Bundle。这只是仓库构建边界，不是新的工作流创作源。
+仓库还在 `pyproject.toml`、`src/xcoding/`、`build_support/`、`scripts/` 和 `.github/` 中包含产品 package 与 release 验证基础设施。它构建 `xcoding-workflow` package 和不可变 Bundle，并验证与具体 candidate 无关的 package 契约。这只是仓库构建边界，不是新的工作流创作源。
 
 Bundle 是构建时快照。`skills/xc-*/` 仍是 Skills 的唯一规范源；package runtime
 和 Viewer 实现及资源位于 `src/xcoding/`。`agents-src/agents/` 仍是持久 agent

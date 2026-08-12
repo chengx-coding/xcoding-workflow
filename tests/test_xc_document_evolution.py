@@ -41,12 +41,18 @@ class XcDocumentEvolutionTests(unittest.TestCase):
             self.assertEqual(code, 0, template_validation)
             self.assertTrue(template_validation["valid"])
 
-    def test_optional_review_and_gate_stages_are_latched(self) -> None:
+    def test_shared_document_conditions_are_latched(self) -> None:
         flow = json.loads(FLOW_SPEC.read_text(encoding="utf-8"))
         nodes = {node["template_id"]: node for node in flow["root"]["children"]}
+        review_children = {
+            node["template_id"]: node for node in nodes["review-loop"]["children"]
+        }
 
         self.assertEqual(nodes["review-loop"]["when.policy"], "latched")
+        self.assertEqual(review_children["revise-document"]["when.policy"], "latched")
         self.assertEqual(nodes["document-gate"]["when.policy"], "latched")
+        self.assertEqual(nodes["document-gate-recovery-group"]["when.policy"], "latched")
+        self.assertEqual(nodes["validate-final"]["when.policy"], "latched")
 
 
 if __name__ == "__main__":

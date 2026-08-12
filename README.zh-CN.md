@@ -48,43 +48,35 @@ python skills/xc-work/scripts/classify.py [事实参数]
 ## 前置条件
 
 - Git。如果希望 XC 自动保存工作流检查点，还需要配置 Git 身份。
-- Python 3.12 和匹配、经过验证的 prerelease `xcoding` wheel。
-- 用于当前隔离工具安装流程的 `uv`。
-- 能够加载并运行 Skill 包的 Agent 宿主。
-
-项目目前尚未发布正式的 Python 版本或 Agent 宿主兼容矩阵。请使用实际环境中的 Python 运行时和宿主验证工作流。
+- CPython 3.12 或更高版本。`0.1.0` 的正式验证基线是 Windows x86_64 + CPython 3.12.13；除非 release 证据另有说明，其他可接受版本不属于正式基线。
+- 用于隔离工具安装的 `uv`。
+- Windows x86_64 上的 Codex、OpenCode、Claude Code 或 Trae。精确验证的宿主版本和实验性环境见[安装](docs/zh-CN/getting-started/installation.md)。
 
 ## 安装 XC
 
-先安装匹配、经过验证的 wheel。Package 尚未公开发布，因此当前需要由维护者
-提供本地 wheel：
+受支持的 distribution 是 `xcoding-workflow`；`0.1.0` 只通过不可变 GitHub Release 分发，不发布到 PyPI。如果不可变 release 及其完整性文件尚不可用，就还没有受支持的公开安装产物。
+
+从同一个 release 下载 wheel 和完整性文件，按[安装](docs/zh-CN/getting-started/installation.md)中的说明完成校验，再安装本地 wheel：
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.1.0-py3-none-any.whl
 xcoding version --json
 ```
 
-安装结果必须提供 `xcoding`；旧 `xc` executable 不属于当前契约。
-
-然后选择 Agent 宿主加载 Skills 的目录，按需创建该目录，再安装 XC Skills：
+安装结果只提供 `xcoding` 命令。在消费项目根目录为一个或多个显式宿主执行设置；重复的 `--host` 值共同构成完整 desired host set：
 
 ```console
-python install_skills.py --target-skills /absolute/path/to/consumer/.agents/skills
+xcoding setup --project-root /absolute/path/to/consumer --host codex --host trae
 ```
 
-**该命令会替换名称以 `xc-` 开头的全部已有包。** 这些包中的本地修改会被删除。其他名称的包不会受到影响。
-
-Skill installer 不会安装必要的 `xcoding` package。`PATH` 中没有该 executable
-时，runtime 和 Viewer Skills 会返回 `xcoding_unavailable`。
-
-以后更新时，可以使用下面的安装器，在替换文件前检查本地修改：
+追加 `--dry-run` 可以在零写入情况下检查同一计划。Setup 报告中断 journal 时，应显式恢复；需要还原上一份成功 generation 时，执行 rollback：
 
 ```console
-python skills/xc-workflow-evolution/scripts/install_xc_skills.py --source-root /absolute/path/to/xcoding-workflow --target-root /absolute/path/to/consumer/.agents --manifest /absolute/path/to/consumer/.agents/.xc-skill-install-manifest.json
-python skills/xc-workflow-evolution/scripts/install_xc_skills.py --source-root /absolute/path/to/xcoding-workflow --target-root /absolute/path/to/consumer/.agents --manifest /absolute/path/to/consumer/.agents/.xc-skill-install-manifest.json --check
+xcoding setup --project-root /absolute/path/to/consumer --recover
+xcoding setup --project-root /absolute/path/to/consumer --rollback
 ```
 
-它会记录已经安装的 XC 文件。带 `--check` 的命令只报告已修改、缺失或意外出现的文件，不会替换它们。使用这条更新路径前，应先运行一次根安装器来建立安装记录。
+Setup 会拒绝未纳管冲突和已漂移的受管文件，不会覆盖它们。XC 不提供 `install.ps1`、`install.sh`、远程脚本 pipe 命令、自动宿主检测或 force 选项。宿主路径、desired-state 更新、恢复、回滚、release 完整性和支持政策详见[安装](docs/zh-CN/getting-started/installation.md)。
 
 ## 创建工作流空间
 

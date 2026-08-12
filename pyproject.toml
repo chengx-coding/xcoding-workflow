@@ -3,13 +3,12 @@ requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "xcoding-workflow-spike"
-version = "0.0.0.dev0"
-description = "Prerelease xcoding workflow runtime, Viewer, daemon, and Skill Bundle."
-requires-python = ">=3.12,<3.13"
+name = "xcoding-workflow"
+version = "0.1.0"
+description = "Portable xcoding workflow runtime, Viewer, daemon, and Skill Bundle."
+requires-python = ">=3.12"
 dependencies = []
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: Implementation :: CPython",
 ]

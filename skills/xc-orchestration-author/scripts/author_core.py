@@ -616,6 +616,14 @@ def validate_template_root(root: ET.Element, check_integrity: bool = True) -> Li
             errors.append(f"{tid}: invalid when.policy {policy}")
         if policy and not node.get("when"):
             errors.append(f"{tid}: when.policy requires when")
+        for runtime_key in (
+            "when.latched",
+            "loop.terminal_iteration",
+            "loop.terminal_reason",
+            "loop.terminal_status",
+        ):
+            if node.get(runtime_key) is not None:
+                errors.append(f"{tid}: {runtime_key} is runtime-owned")
         dynamic_state = node.get("dynamic.state", "")
         if dynamic_state and (
             node_role(node) != "dynamic-group"

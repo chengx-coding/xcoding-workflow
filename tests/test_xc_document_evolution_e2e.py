@@ -10,6 +10,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = REPOSITORY_ROOT / "tests" / "runtime_cli.py"
+AUTHOR = REPOSITORY_ROOT / "skills" / "xc-orchestration-author" / "scripts" / "template_builder.py"
 RENDER = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "render_document.py"
 VALIDATE = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "validate_document.py"
 DOCUMENT_EVOLUTION_TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-document-evolution" / "assets" / "document-evolution-template.xml"
@@ -346,6 +347,223 @@ class XcDocumentEvolutionEndToEndTests(unittest.TestCase):
         self.complete_validation(project, tree, "validate-final", document_path)
         self.assertIn("Revision applied from review findings.", document_path.read_text(encoding="utf-8"))
         self.assert_complete(project, tree)
+
+    def test_serialized_instances_isolate_terminal_review_loop_and_recovery_conditions(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        project = root / "project"
+        project.mkdir()
+        self.run_git(project, "init")
+        workshop = root / "workshop" / ".xcoding"
+        workshop.mkdir(parents=True)
+        config_path = workshop / "xc-orchestration-runtime.json"
+        config_path.write_text(
+            json.dumps({"git": {"auto_commit": False}}) + "\n",
+            encoding="utf-8",
+        )
+        parent_spec = root / "serialized-documents.json"
+        parent_spec.write_text(
+            json.dumps(
+                {
+                    "name": "serialized document instances",
+                    "schema_version": 1,
+                    "blackboard": {},
+                    "root": {
+                        "template_id": "root",
+                        "title": "Serialized document instances",
+                        "type": "composite",
+                        "role": "root",
+                        "mode": "sequence",
+                        "executor": "main",
+                        "children": [
+                            {
+                                "template_id": "document-instances",
+                                "title": "Document instances",
+                                "type": "composite",
+                                "role": "dynamic-group",
+                                "mode": "sequence",
+                                "executor": "main",
+                            },
+                            {
+                                "template_id": "finish",
+                                "title": "Finish",
+                                "type": "task",
+                                "role": "finish",
+                                "executor": "main",
+                            },
+                        ],
+                    },
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        parent_template = root / "serialized-documents.xml"
+        self.run_json(
+            AUTHOR,
+            "build",
+            "--spec",
+            str(parent_spec),
+            "--out",
+            str(parent_template),
+            "--config",
+            str(config_path),
+            cwd=project,
+        )
+        work_order_id = "20260811-serialized-documents"
+        initialized = self.run_json(
+            RUNTIME,
+            "init",
+            "--template",
+            str(parent_template),
+            "--runtime-path",
+            str(workshop / "work-orders" / work_order_id / "runtime"),
+            "--work-order-id",
+            work_order_id,
+            cwd=project,
+        )
+        tree = Path(str(initialized["tree_path"]))
+        group = self.run_json(
+            RUNTIME,
+            "find",
+            "--tree",
+            str(tree),
+            "--template-id",
+            "document-instances",
+            cwd=project,
+        )["nodes"][0]
+        group_id = str(group["id"])
+
+        def configure_document(path: Path, *, gate_required: bool) -> None:
+            self.set_values(
+                project,
+                tree,
+                {
+                    "document.path": str(path),
+                    "document.kind": "work-order-goal",
+                    "document.template": str(WORK_ORDER_GOAL_TEMPLATE),
+                    "document.inputs": "none",
+                    "document.contract": "none",
+                    "document.content_language": "en",
+                    "document.receipt.content_language": "en",
+                    "document.receipt.audience": "",
+                    "document.review_required": "true",
+                    "document.gate_required": str(gate_required).lower(),
+                    "document.gate_outcome": "accepted",
+                    "document.review.open_issues": "false",
+                },
+            )
+
+        def embed(instance_id: str) -> None:
+            self.run_json(
+                RUNTIME,
+                "embed-subtree",
+                "--tree",
+                str(tree),
+                "--parent",
+                group_id,
+                "--template",
+                str(DOCUMENT_EVOLUTION_TEMPLATE),
+                "--instance-id",
+                instance_id,
+                cwd=project,
+            )
+
+        def find_instance(template_id: str, instance_id: str) -> dict[str, object]:
+            return self.run_json(
+                RUNTIME,
+                "find",
+                "--tree",
+                str(tree),
+                "--template-id",
+                template_id,
+                "--instance-id",
+                instance_id,
+                cwd=project,
+            )["nodes"][0]
+
+        workbench = workshop / "work-orders" / work_order_id
+        first_document = workbench / "first-goal.md"
+        configure_document(first_document, gate_required=False)
+        embed("first-document")
+        first_writer = self.start_ready(project, tree, "write-document", "xc-document")
+        self.render_and_validate_goal(project, first_document, tree, work_order_id)
+        self.complete_node(project, tree, first_writer, "Wrote first document.", "xc-document passed", first_document)
+        self.complete_validation(project, tree, "validate-draft", first_document)
+        first_review_artifact = workbench / "artifacts" / "first-review.md"
+        first_review_artifact.parent.mkdir(parents=True)
+        first_review_artifact.write_text("# Review\n\nNo findings.\n", encoding="utf-8")
+        first_review = self.start_ready(project, tree, "review-document", "xc-review")
+        self.set_values(project, tree, {"document.review.open_issues": "false"})
+        self.complete_node(project, tree, first_review, "No findings remain.", "review recorded", first_review_artifact)
+        self.complete_validation(project, tree, "validate-final", first_document)
+
+        first_loop_before = find_instance("review-loop", "first-document")
+        first_revise_before = find_instance("revise-document", "first-document")
+        first_recovery_before = find_instance("document-gate-recovery-group", "first-document")
+        self.assertEqual(first_loop_before["status"], "succeeded")
+        self.assertEqual(first_loop_before["attributes"]["loop.terminal_reason"], "break")
+        self.assertEqual(first_revise_before["status"], "skipped")
+        self.assertEqual(first_revise_before["attributes"]["when.latched"], "false")
+        self.assertEqual(first_recovery_before["status"], "skipped")
+        self.assertEqual(first_recovery_before["attributes"]["when.latched"], "false")
+
+        second_document = workbench / "second-goal.md"
+        configure_document(second_document, gate_required=True)
+        embed("second-document")
+        second_writer = self.start_ready(project, tree, "write-document", "xc-document")
+        self.render_and_validate_goal(project, second_document, tree, work_order_id)
+        self.complete_node(project, tree, second_writer, "Wrote second document.", "xc-document passed", second_document)
+        self.complete_validation(project, tree, "validate-draft", second_document)
+        second_review_artifact = workbench / "artifacts" / "second-review.md"
+        second_review_artifact.write_text("# Review\n\nRevision required.\n", encoding="utf-8")
+        second_review = self.start_ready(project, tree, "review-document", "xc-review")
+        self.set_values(project, tree, {"document.review.open_issues": "true"})
+        self.complete_node(project, tree, second_review, "Revision required.", "review recorded", second_review_artifact)
+
+        ready = self.run_json(RUNTIME, "next", "--tree", str(tree), cwd=project)["ready"]
+        self.assertEqual(len(ready), 1, ready)
+        self.assertEqual(ready[0]["template_id"], "revise-document")
+        self.assertEqual(ready[0]["origin_instance_id"], "second-document")
+        second_revise = str(ready[0]["id"])
+        self.run_json(RUNTIME, "start", "--tree", str(tree), "--node", second_revise, "--agent", "xc-document", cwd=project)
+        second_document.write_text(second_document.read_text(encoding="utf-8") + "\nRevision applied.\n", encoding="utf-8")
+        self.complete_node(project, tree, second_revise, "Applied revision.", "document remains valid", second_document)
+
+        final_review_artifact = workbench / "artifacts" / "second-final-review.md"
+        final_review_artifact.write_text("# Review\n\nNo findings.\n", encoding="utf-8")
+        final_review = self.start_ready(project, tree, "review-document", "xc-review")
+        self.set_values(project, tree, {"document.review.open_issues": "false"})
+        self.complete_node(project, tree, final_review, "No findings remain.", "review recorded", final_review_artifact)
+        gate = self.start_ready(project, tree, "document-gate", "main")
+        self.complete_node(
+            project,
+            tree,
+            gate,
+            "Revision requested.",
+            "decision recorded",
+            gate_outcome="revision-required",
+            decision="Request another revision before acceptance.",
+        )
+
+        first_loop_after = find_instance("review-loop", "first-document")
+        first_revise_after = find_instance("revise-document", "first-document")
+        first_recovery_after = find_instance("document-gate-recovery-group", "first-document")
+        second_recovery = find_instance("document-gate-recovery-group", "second-document")
+        summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(first_loop_after["status"], "succeeded")
+        self.assertEqual(first_loop_after["attributes"]["loop.terminal_reason"], "break")
+        self.assertEqual(first_revise_after["status"], "skipped")
+        self.assertEqual(first_recovery_after["status"], "skipped")
+        self.assertEqual(second_recovery["status"], "pending")
+        self.assertEqual(second_recovery["attributes"]["when.latched"], "true")
+        self.assertEqual(summary["integrity"]["status"], "valid")
+        self.assertEqual(summary["ready"], [])
+        self.assertEqual(
+            [item["id"] for item in summary["awaiting_dynamic_groups"]],
+            [second_recovery["id"]],
+        )
 
     def test_revision_required_gate_blocks_final_validation_until_recovery(self) -> None:
         work_order_id = "20260727-1100-document-gate-recovery"
