@@ -36,6 +36,9 @@ EXPECTED_DIST_INFO = (
 )
 EXPECTED_PYTHON_REQUIRES = ">=3.12"
 EXPECTED_SOURCE_STATE = "work-order-candidate"
+EXPECTED_CANDIDATE_DESCRIPTOR_SCHEMA = 2
+CANDIDATE_ORIGIN_DIRTY = "dirty-worktree"
+CANDIDATE_ORIGIN_CLEAN = "clean-head"
 EXPECTED_BUNDLE_SCHEMA = 1
 EXPECTED_RUNTIME_SCHEMA = 1
 MANIFEST_MEMBER = "xcoding/_bundle/bundle-manifest.json"
@@ -281,29 +284,51 @@ def _run_git(
     return result.stdout
 
 
-def _current_changed_paths(project_root: Path) -> list[str]:
+def _git_snapshot(project_root: Path) -> tuple[str, list[str]]:
     output = _run_git(
         project_root,
-        ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        ["status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all"],
     )
+    head: str | None = None
     paths: list[str] = []
     for record in output.split(b"\0"):
         if not record:
             continue
-        if len(record) < 4 or record[2:3] != b" ":
-            _fail("candidate_invalid", "cannot parse Git status record")
-        status_bytes = record[:2]
-        if b"R" in status_bytes or b"C" in status_bytes:
+        if record.startswith(b"# branch.oid "):
+            value = record.removeprefix(b"# branch.oid ")
+            try:
+                head = value.decode("ascii")
+            except UnicodeDecodeError:
+                _fail("candidate_invalid", "Git branch oid is not ASCII")
+            continue
+        if record.startswith((b"# ",)):
+            continue
+        if record.startswith((b"2 ", b"u ")):
             _fail(
                 "candidate_invalid",
                 "renames and copies must be represented as explicit delete/add paths",
             )
+        if record.startswith(b"? "):
+            raw_path = record[2:]
+        elif record.startswith(b"1 "):
+            fields = record.split(b" ", 8)
+            if len(fields) != 9:
+                _fail("candidate_invalid", "cannot parse Git status record")
+            raw_path = fields[8]
+        else:
+            _fail("candidate_invalid", "cannot parse Git status record")
         try:
-            path = record[3:].decode("utf-8")
+            path = raw_path.decode("utf-8")
         except UnicodeDecodeError:
             _fail("candidate_invalid", "candidate path is not UTF-8")
         paths.append(_validate_relative_path(path, label="candidate_path"))
-    return sorted(_validate_path_set(paths, label="candidate_path"))
+    if head is None or _LOWER_HEX_40.fullmatch(head) is None:
+        _fail("candidate_invalid", "Git status did not report a valid HEAD")
+    return head, sorted(_validate_path_set(paths, label="candidate_path"))
+
+
+def _current_changed_paths(project_root: Path) -> list[str]:
+    return _git_snapshot(project_root)[1]
 
 
 def _candidate_inventory(
@@ -384,6 +409,43 @@ def _candidate_inventory(
         shutil.rmtree(object_root, ignore_errors=True)
 
 
+def _committed_inventory(
+    project_root: Path,
+    tree_oid: str,
+) -> list[CandidateFile]:
+    tree_output = _run_git(
+        project_root,
+        ["ls-tree", "-r", "-z", "--full-tree", tree_oid],
+    )
+    inventory: list[CandidateFile] = []
+    for record in tree_output.split(b"\0"):
+        if not record:
+            continue
+        try:
+            metadata, raw_path = record.split(b"\t", 1)
+            mode_bytes, type_bytes, oid_bytes = metadata.split()
+            mode = mode_bytes.decode("ascii")
+            object_type = type_bytes.decode("ascii")
+            oid = oid_bytes.decode("ascii")
+            path = raw_path.decode("utf-8")
+        except (ValueError, UnicodeError):
+            _fail("candidate_invalid", "committed tree has an invalid record")
+        if object_type != "blob" or mode not in _GIT_FILE_MODES:
+            _fail(
+                "candidate_invalid",
+                "committed tree contains an unsupported entry",
+                path=path,
+                mode=mode,
+                object_type=object_type,
+            )
+        _validate_relative_path(path, label="candidate_tree.path")
+        data = _run_git(project_root, ["cat-file", "blob", oid])
+        inventory.append(CandidateFile(mode=mode, path=path, data=data))
+    inventory.sort(key=lambda item: item.path.encode("utf-8"))
+    _validate_path_set((item.path for item in inventory), label="candidate_tree.path")
+    return inventory
+
+
 def _candidate_tree_digest(inventory: Sequence[CandidateFile]) -> str:
     digest = hashlib.sha256()
     digest.update(b"xc-candidate-tree-v1\0")
@@ -426,11 +488,12 @@ def seal_candidate(
     project_root: Path | str,
     disposable_root: Path | str,
     baseline_revision: str,
-    candidate_paths: Sequence[str],
+    candidate_paths: Sequence[str] | None = None,
+    clean_head: bool = False,
     archive_path: Path | str,
     descriptor_path: Path | str,
 ) -> dict[str, Any]:
-    """Seal the complete baseline plus exact current candidate changes."""
+    """Seal either exact worktree changes or an explicitly clean HEAD."""
     project, disposable = _validate_roots(project_root, disposable_root)
     archive = _external_output_path(
         archive_path,
@@ -448,7 +511,7 @@ def seal_candidate(
         _fail("path_invalid", "archive_path and descriptor_path must differ")
     if not _LOWER_HEX_40.fullmatch(baseline_revision):
         _fail("candidate_invalid", "baseline_revision must be 40 lowercase hex")
-    head = os.fsdecode(_run_git(project, ["rev-parse", "HEAD"])).strip()
+    head, initial_paths = _git_snapshot(project)
     if head != baseline_revision:
         _fail(
             "candidate_invalid",
@@ -463,33 +526,59 @@ def seal_candidate(
         _fail("candidate_invalid", "project_root must be the Git top level")
 
     supplied_paths = sorted(
-        _validate_path_set(candidate_paths, label="candidate_path")
+        _validate_path_set(candidate_paths or (), label="candidate_path")
     )
-    actual_paths = _current_changed_paths(project)
-    if supplied_paths != actual_paths:
+    if clean_head and supplied_paths:
+        _fail(
+            "candidate_invalid",
+            "clean_head and candidate_paths are mutually exclusive",
+        )
+    if not clean_head and not supplied_paths:
+        _fail(
+            "candidate_invalid",
+            "candidate must select clean_head or contain at least one changed path",
+        )
+    actual_paths = initial_paths
+    if clean_head and actual_paths:
+        _fail(
+            "candidate_invalid",
+            "clean_head requires a completely clean Git worktree",
+            changed_paths=actual_paths,
+        )
+    if not clean_head and supplied_paths != actual_paths:
         _fail(
             "candidate_invalid",
             "candidate paths must exactly match the current Git status",
             missing=sorted(set(actual_paths) - set(supplied_paths)),
             unexpected=sorted(set(supplied_paths) - set(actual_paths)),
         )
-    if not supplied_paths:
-        _fail("candidate_invalid", "candidate must contain at least one changed path")
-
-    tree_oid, inventory = _candidate_inventory(
-        project,
-        disposable,
-        baseline_revision,
-        supplied_paths,
-    )
+    baseline_tree_oid = os.fsdecode(
+        _run_git(project, ["rev-parse", f"{baseline_revision}^{{tree}}"])
+    ).strip()
+    if not _LOWER_HEX_40.fullmatch(baseline_tree_oid):
+        _fail("candidate_invalid", "baseline commit tree is invalid")
+    if clean_head:
+        origin = CANDIDATE_ORIGIN_CLEAN
+        tree_oid = baseline_tree_oid
+        inventory = _committed_inventory(project, tree_oid)
+    else:
+        origin = CANDIDATE_ORIGIN_DIRTY
+        tree_oid, inventory = _candidate_inventory(
+            project,
+            disposable,
+            baseline_revision,
+            supplied_paths,
+        )
     candidate_tree_sha256 = _candidate_tree_digest(inventory)
     try:
         _write_candidate_archive(archive, inventory)
         candidate_archive_sha256 = hashlib.sha256(archive.read_bytes()).hexdigest()
         descriptor_value = {
-            "schema_version": 1,
+            "schema_version": EXPECTED_CANDIDATE_DESCRIPTOR_SCHEMA,
             "baseline_revision": baseline_revision,
+            "baseline_git_tree": baseline_tree_oid,
             "source_state": EXPECTED_SOURCE_STATE,
+            "candidate_origin": origin,
             "candidate_tree_sha256": candidate_tree_sha256,
             "candidate_source_archive_sha256": candidate_archive_sha256,
             "candidate_git_tree": tree_oid,
@@ -507,13 +596,33 @@ def seal_candidate(
             ],
         }
         descriptor.write_bytes(_canonical_json_bytes(descriptor_value))
+        if clean_head:
+            final_head, final_paths = _git_snapshot(project)
+            stable_head, stable_paths = _git_snapshot(project)
+            if (
+                final_head != baseline_revision
+                or final_paths
+                or stable_head != final_head
+                or stable_paths != final_paths
+            ):
+                _fail(
+                    "candidate_invalid",
+                    "repository changed while sealing clean_head",
+                    expected_head=baseline_revision,
+                    actual_head=final_head,
+                    changed_paths=final_paths,
+                    stable_head=stable_head,
+                    stable_changed_paths=stable_paths,
+                )
     except BaseException:
         archive.unlink(missing_ok=True)
         descriptor.unlink(missing_ok=True)
         raise
     return {
         "baseline_revision": baseline_revision,
+        "baseline_git_tree": baseline_tree_oid,
         "source_state": EXPECTED_SOURCE_STATE,
+        "candidate_origin": origin,
         "candidate_tree_sha256": candidate_tree_sha256,
         "candidate_source_archive_sha256": candidate_archive_sha256,
         "candidate_git_tree": tree_oid,
@@ -1018,7 +1127,9 @@ def _parser() -> argparse.ArgumentParser:
     candidate.add_argument("--project-root", type=Path, required=True)
     candidate.add_argument("--disposable-root", type=Path, required=True)
     candidate.add_argument("--baseline-revision", required=True)
-    candidate.add_argument("--candidate-path", action="append", required=True)
+    origin = candidate.add_mutually_exclusive_group(required=True)
+    origin.add_argument("--candidate-path", action="append")
+    origin.add_argument("--clean-head", action="store_true")
     candidate.add_argument("--archive", type=Path, required=True)
     candidate.add_argument("--descriptor", type=Path, required=True)
 
@@ -1046,6 +1157,7 @@ def main(arguments: Sequence[str] | None = None) -> int:
                 disposable_root=options.disposable_root,
                 baseline_revision=options.baseline_revision,
                 candidate_paths=options.candidate_path,
+                clean_head=options.clean_head,
                 archive_path=options.archive,
                 descriptor_path=options.descriptor,
             )

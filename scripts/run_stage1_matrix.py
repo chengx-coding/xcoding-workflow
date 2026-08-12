@@ -94,11 +94,14 @@ _COMMAND_STATUSES = {"passed", "failed", "unrun"}
 _ATTESTATION_KIND = "xc-stage1-hmac-execution-attestation"
 _ATTESTATION_ALGORITHM = "hmac-sha256"
 _MAX_BOUND_OUTPUT_BYTES = 16 * 1024 * 1024
+_CANDIDATE_DESCRIPTOR_SCHEMA = 2
 
 _DESCRIPTOR_FIELDS = {
     "schema_version",
     "baseline_revision",
+    "baseline_git_tree",
     "source_state",
+    "candidate_origin",
     "candidate_tree_sha256",
     "candidate_source_archive_sha256",
     "candidate_git_tree",
@@ -569,7 +572,7 @@ def _verify_descriptor(
         label="candidate descriptor",
     )
     if (
-        descriptor["schema_version"] != 1
+        descriptor["schema_version"] != _CANDIDATE_DESCRIPTOR_SCHEMA
         or descriptor["source_state"] != "work-order-candidate"
         or descriptor["tree_digest_format"] != "xc-candidate-tree-v1"
         or descriptor["archive_format"] != "zip-stored-fixed-metadata-v1"
@@ -579,6 +582,12 @@ def _verify_descriptor(
         descriptor["baseline_revision"],
         field="baseline_revision",
     )
+    baseline_git_tree = descriptor["baseline_git_tree"]
+    if (
+        not isinstance(baseline_git_tree, str)
+        or _GIT_OID.fullmatch(baseline_git_tree) is None
+    ):
+        _fail("descriptor_invalid", "baseline_git_tree is invalid")
     if descriptor["candidate_source_archive_sha256"] != expected_archive_sha256:
         _fail("descriptor_mismatch", "descriptor archive digest mismatch")
     if descriptor["candidate_tree_sha256"] != expected_tree_sha256:
@@ -588,11 +597,31 @@ def _verify_descriptor(
         _fail("descriptor_invalid", "candidate_git_tree is invalid")
 
     candidate_paths = descriptor["candidate_paths"]
-    if not isinstance(candidate_paths, list) or not candidate_paths:
-        _fail("descriptor_invalid", "candidate_paths must be non-empty")
+    if not isinstance(candidate_paths, list):
+        _fail("descriptor_invalid", "candidate_paths must be a list")
     if candidate_paths != sorted(candidate_paths):
         _fail("descriptor_invalid", "candidate_paths must be sorted")
     _validate_path_set(candidate_paths, field="candidate_path")
+    candidate_origin = descriptor["candidate_origin"]
+    if candidate_origin == "dirty-worktree":
+        if not candidate_paths:
+            _fail(
+                "descriptor_invalid",
+                "dirty-worktree candidate_paths must be non-empty",
+            )
+    elif candidate_origin == "clean-head":
+        if candidate_paths:
+            _fail(
+                "descriptor_invalid",
+                "clean-head candidate_paths must be empty",
+            )
+        if git_oid != baseline_git_tree:
+            _fail(
+                "descriptor_invalid",
+                "clean-head candidate_git_tree must equal baseline_git_tree",
+            )
+    else:
+        _fail("descriptor_invalid", "candidate_origin is invalid")
 
     raw_files = descriptor["files"]
     if not isinstance(raw_files, list) or not raw_files:

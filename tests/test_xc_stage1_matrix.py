@@ -170,9 +170,11 @@ class Stage1MatrixTests(unittest.TestCase):
                 archive.writestr(info, source[str(item["path"])])
         self.archive_sha256 = sha256(self.archive.read_bytes())
         descriptor = {
-            "schema_version": 1,
+            "schema_version": 2,
             "baseline_revision": "a" * 40,
+            "baseline_git_tree": "c" * 40,
             "source_state": "work-order-candidate",
+            "candidate_origin": "dirty-worktree",
             "candidate_tree_sha256": self.candidate_tree_sha256,
             "candidate_source_archive_sha256": self.archive_sha256,
             "candidate_git_tree": "b" * 40,
@@ -458,6 +460,56 @@ class Stage1MatrixTests(unittest.TestCase):
                 arguments[field] = value
                 with self.assertRaises(matrix.MatrixError) as raised:
                     matrix.verify_inputs(**arguments)
+                self.assertEqual(raised.exception.code, code)
+
+    def _verify_descriptor_mutation(self, **changes: object) -> dict[str, object]:
+        descriptor = json.loads(self.descriptor.read_text(encoding="utf-8"))
+        descriptor.update(changes)
+        modified = self.root / f"descriptor-{uuid.uuid4()}.json"
+        modified.write_bytes(canonical_json(descriptor))
+        return matrix.verify_inputs(
+            candidate_archive=self.archive,
+            candidate_archive_sha256=self.archive_sha256,
+            candidate_descriptor=modified,
+            candidate_descriptor_sha256=sha256(modified.read_bytes()),
+            candidate_tree_sha256=self.candidate_tree_sha256,
+            wheel=self.wheel,
+            wheel_sha256=self.wheel_sha256,
+        )
+
+    def test_accepts_clean_head_descriptor(self) -> None:
+        result = self._verify_descriptor_mutation(
+            candidate_origin="clean-head",
+            candidate_paths=[],
+            candidate_git_tree="c" * 40,
+        )
+        self.assertEqual(result["candidate_path_count"], 0)
+
+    def test_rejects_descriptor_schema_and_origin_contradictions(self) -> None:
+        cases = (
+            ({"schema_version": 1}, "descriptor_invalid"),
+            ({"candidate_origin": "unknown"}, "descriptor_invalid"),
+            ({"candidate_paths": []}, "descriptor_invalid"),
+            (
+                {
+                    "candidate_origin": "clean-head",
+                    "candidate_git_tree": "c" * 40,
+                },
+                "descriptor_invalid",
+            ),
+            (
+                {
+                    "candidate_origin": "clean-head",
+                    "candidate_paths": [],
+                },
+                "descriptor_invalid",
+            ),
+            ({"unexpected": True}, "schema_invalid"),
+        )
+        for changes, code in cases:
+            with self.subTest(changes=changes):
+                with self.assertRaises(matrix.MatrixError) as raised:
+                    self._verify_descriptor_mutation(**changes)
                 self.assertEqual(raised.exception.code, code)
 
     def test_validates_each_fixed_cell_with_recorded_macos_arch(self) -> None:
