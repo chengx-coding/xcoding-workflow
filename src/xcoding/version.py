@@ -6,7 +6,7 @@ import platform
 import sys
 from typing import Any
 
-from .bundle.resources import inspect_installed_bundle
+from .bundle.resources import DISTRIBUTION_NAME, inspect_installed_bundle
 
 
 def version_report() -> dict[str, Any]:
@@ -14,6 +14,7 @@ def version_report() -> dict[str, Any]:
     inspection = inspect_installed_bundle()
     manifest = inspection.manifest
     return {
+        "distribution": DISTRIBUTION_NAME,
         "xc_version": manifest.xc_version,
         "bundle_schema_version": manifest.bundle_schema_version,
         "bundle_manifest_sha256": inspection.manifest_sha256,

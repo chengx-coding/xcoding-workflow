@@ -8,7 +8,7 @@ from typing import Mapping
 from .manifest import BundleInspection, inspect_bundle
 
 
-DISTRIBUTION_NAME = "xcoding-workflow-spike"
+DISTRIBUTION_NAME = "xcoding-workflow"
 
 
 def installed_bundle_root():

@@ -49,46 +49,35 @@ Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed w
 ## Prerequisites
 
 - Git. Configure a Git identity if you want XC to save automatic workflow checkpoints.
-- Python 3.12 and a matching validated prerelease `xcoding` wheel.
-- `uv` for the current isolated tool installation flow.
-- An Agent host that can load and run Skill packages.
-
-The project does not yet publish a formal Python-version or Agent-host compatibility matrix. Validate the workflow with the Python runtime and host used in your environment.
+- CPython 3.12 or newer. The formal `0.1.0` verification baseline is Windows x86_64 with CPython 3.12.13; another accepted version is not a formal baseline unless its release evidence says otherwise.
+- `uv` for isolated tool installation.
+- Codex, OpenCode, Claude Code, or Trae on Windows x86_64. The exact validated host versions and experimental environments are listed in [Installation](docs/getting-started/installation.md).
 
 ## Install XC
 
-Install the matching validated wheel first. The package is not publicly
-published, so this currently requires a maintainer-provided local wheel:
+The supported distribution is `xcoding-workflow`; `0.1.0` is distributed only as an immutable GitHub Release. It is not published on PyPI. If the immutable release and its integrity files are not available, there is no supported public installation artifact yet.
+
+Download the wheel and integrity files from the same release, verify them as described in [Installation](docs/getting-started/installation.md), then install the local wheel:
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.1.0-py3-none-any.whl
 xcoding version --json
 ```
 
-The installation must create `xcoding`; the former `xc` executable is not
-part of the contract.
-
-Then choose the directory where your Agent host loads Skills, create it if
-needed, and install the XC Skills into it:
+The installation creates only the `xcoding` command. Configure one or more explicit hosts from the consumer project root; repeated `--host` values form the complete desired host set:
 
 ```console
-python install_skills.py --target-skills /absolute/path/to/consumer/.agents/skills
+xcoding setup --project-root /absolute/path/to/consumer --host codex --host trae
 ```
 
-**This command replaces every existing package whose name starts with `xc-`.** Local changes inside those packages are deleted. Packages with other names are not changed.
-
-The Skill installer does not install the required `xcoding` package. Runtime
-and Viewer Skills fail with `xcoding_unavailable` when the executable is not
-available on `PATH`.
-
-For later updates, the following installer can detect local changes before replacing files:
+Inspect the same plan without writing by adding `--dry-run`. If setup reports an interrupted journal, run explicit recovery; to restore the previous successful generation, run rollback:
 
 ```console
-python skills/xc-workflow-evolution/scripts/install_xc_skills.py --source-root /absolute/path/to/xcoding-workflow --target-root /absolute/path/to/consumer/.agents --manifest /absolute/path/to/consumer/.agents/.xc-skill-install-manifest.json
-python skills/xc-workflow-evolution/scripts/install_xc_skills.py --source-root /absolute/path/to/xcoding-workflow --target-root /absolute/path/to/consumer/.agents --manifest /absolute/path/to/consumer/.agents/.xc-skill-install-manifest.json --check
+xcoding setup --project-root /absolute/path/to/consumer --recover
+xcoding setup --project-root /absolute/path/to/consumer --rollback
 ```
 
-It records which XC files were installed. The `--check` form reports changed, missing, or unexpected files without replacing them. Run the root installer once before using this update path so the installation record exists.
+Setup refuses unmanaged conflicts and drifted managed files instead of overwriting them. XC does not provide `install.ps1`, `install.sh`, a remote-script pipe command, automatic host detection, or a force option. See [Installation](docs/getting-started/installation.md) for host paths, desired-state updates, recovery, rollback, release integrity, and support policy.
 
 ## Create the Workflow Workspace
 

@@ -87,12 +87,16 @@ class BundleInspection:
     manifest_sha256: str
     resource_count: int
     partition_counts: Mapping[str, int]
+    adapter_partition_counts: Mapping[str, int]
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "manifest_sha256": self.manifest_sha256,
             "resource_count": self.resource_count,
             "partition_counts": dict(self.partition_counts),
+            "adapter_partition_counts": dict(
+                self.adapter_partition_counts
+            ),
             "bundle_schema_version": self.manifest.bundle_schema_version,
             "xc_version": self.manifest.xc_version,
             "baseline_revision": self.manifest.baseline_revision,
@@ -597,11 +601,27 @@ def inspect_bundle(
         kind: sum(record.kind == kind for record in manifest.resources)
         for kind in ("skill", "viewer", "host-adapter")
     }
+    adapter_partition_counts = {
+        adapter_id: sum(
+            record.kind == "host-adapter"
+            and record.adapter_id == adapter_id
+            for record in manifest.resources
+        )
+        for adapter_id in sorted(
+            {
+                record.adapter_id
+                for record in manifest.resources
+                if record.kind == "host-adapter"
+                and record.adapter_id is not None
+            }
+        )
+    }
     return BundleInspection(
         manifest=manifest,
         manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
         resource_count=len(manifest.resources),
         partition_counts=partition_counts,
+        adapter_partition_counts=adapter_partition_counts,
     )
 
 

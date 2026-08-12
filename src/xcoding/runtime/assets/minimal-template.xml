@@ -3,32 +3,33 @@
 <orchestration schema_version="1" name="example-workflow" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="9d2b77923b970490639595e34ea2eb4a57b4a9ff4718e2a2f4268e6b15dd8f70" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="730848683c77b167c94dc8dd4ee464bc25df55f3ac973d4f7e1e27c60f4bd8fd" />
   </meta>
   <blackboard>
     <var key="scope.confirmed">false</var>
     <var key="review.open_issues">false</var>
+    <var key="review.source_ids">[]</var>
   </blackboard>
-  <node type="composite" template_id="root" role="root" mode="sequence" title="Example Workflow" executor="main">
+  <node executor="main" mode="sequence" role="root" template_id="root" title="Example Workflow" type="composite">
     <children>
-      <node type="task" template_id="investigation" role="research" title="Investigate context" executor="subagent">
+      <node executor="subagent" role="research" template_id="investigation" title="Investigate context" type="task" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:artifacts/investigation/analysis.md">
         <instructions>Inspect the current project information and write a concise report.</instructions>
         <deliverables>artifacts/investigation/analysis.md</deliverables>
         <acceptance>Report exists, cites source files, and distinguishes facts from assumptions.</acceptance>
       </node>
-      <node type="gate" template_id="scope-gate" role="scope-confirmation" title="Confirm scope" executor="main">
+      <node executor="main" role="scope-confirmation" template_id="scope-gate" title="Confirm scope" type="gate" metadata.gate.outcomes="[&quot;approved&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="scope.gate_outcome">
         <instructions>Ask the user to confirm the scope after investigation.</instructions>
         <deliverables>Set scope.confirmed=true in the blackboard.</deliverables>
         <acceptance>User has confirmed scope or supplied corrections.</acceptance>
       </node>
-      <node loop.break_when="review.open_issues == false" type="loop" loop.on_limit="blocked" template_id="review-loop" role="quality-loop" mode="sequence" title="Review and rework" loop.max_iterations="3" executor="main" loop.continue_when="review.open_issues == true">
+      <node executor="main" loop.break_when="review.open_issues == false" loop.continue_when="review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" role="quality-loop" template_id="review-loop" title="Review and rework" type="loop">
         <children>
-          <node type="task" template_id="review" role="review" title="Review output" executor="subagent">
+          <node executor="subagent" role="review" template_id="review" title="Review output" type="task">
             <instructions>Review current artifacts and set review.open_issues true or false.</instructions>
             <deliverables>artifacts/review-loop/review-{iteration}.md</deliverables>
             <acceptance>Review findings are prioritized and include closure criteria.</acceptance>
           </node>
-          <node type="task" depends_on_template="local:review" when="review.open_issues == true" template_id="rework" role="rework" title="Rework output" executor="subagent">
+          <node depends_on_template="local:review" executor="subagent" role="rework" template_id="rework" title="Rework output" type="task" when="review.open_issues == true" when.policy="latched" metadata.control_packet.category.review-records.selectors="[&quot;bb:review.source_ids&quot;]" metadata.control_packet.category.review-records.min_sources="1" metadata.control_packet.category.review-records.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;review.open_issues&quot;]">
             <instructions>Address the current review findings.</instructions>
             <deliverables>artifacts/review-loop/rework-{iteration}.md</deliverables>
             <acceptance>Required findings are fixed or explicitly deferred.</acceptance>

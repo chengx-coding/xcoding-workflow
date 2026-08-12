@@ -35,9 +35,10 @@ This preserves the original template ID and the embedding instance ID on every r
 Embedding only composes node structure. The parent runtime blackboard remains the shared control plane. Child template defaults are not copied into the runtime blackboard; set explicit shared values before or after embedding.
 
 Sequential instances that reuse shared control keys should mark optional
-one-time branches with `when.policy=latched`. Parallel reuse of the same
-shared keys remains unsupported until a separate scoped-blackboard design is
-approved.
+branches with `when.policy=latched`. The stored result belongs to the embedded
+runtime node instance; a loop iteration clears only that iteration's descendant
+latches. Parallel reuse of the same shared keys remains unsupported until a
+separate scoped-blackboard design is approved.
 
 Child tasks should use artifact paths isolated by instance:
 

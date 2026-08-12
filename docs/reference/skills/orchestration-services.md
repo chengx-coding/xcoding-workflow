@@ -40,7 +40,7 @@ returns `xcoding_unavailable`.
 
 ### Read-Only Package Daemon
 
-`xcoding daemon serve --tree <runtime>` is package-only and prerelease. It binds
+`xcoding daemon serve --tree <runtime>` is package-only. It binds
 only to `127.0.0.1`, publishes a process-lifetime bearer token in its launch
 result, accepts only launch-time regular runtime files, and addresses them
 through opaque process-local IDs.

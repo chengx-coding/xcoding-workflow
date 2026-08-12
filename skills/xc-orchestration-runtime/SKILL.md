@@ -90,9 +90,17 @@ operation for one failed task or gate attempt. It archives the failed result,
 artifacts, agent, and timestamps under an immutable attempt record, increments
 the attempt number, and returns only that leaf to ordinary scheduling.
 `--expected-revision` provides the normal optimistic concurrency guard.
-Conditions are reevaluated only after this explicit transition; they never
-overwrite a failed node by themselves. Engine-generated composite and loop
-failures are not eligible.
+Condition handling resumes only after this explicit transition; reactive nodes
+reevaluate, while latched nodes retain their stored instance result. Conditions
+never overwrite a failed node by themselves. Engine-generated composite and
+loop failures are not eligible.
+
+For `when.policy=latched`, the first condition result reached after dependency,
+ancestor, and sequence blockers clear is stored on that runtime node. Loop
+iteration reset clears descendant latches for the next iteration. A loop's
+break, natural-completion, or limit decision is stored atomically with its
+terminal status; nonterminal descendants close as `skipped` with
+`skip_reason=loop_closed`, and later blackboard changes cannot reopen the loop.
 
 An unreachable or otherwise non-runnable start returns `node_not_ready` with a
 stable `details.reason` and does not change node state or runtime revision.

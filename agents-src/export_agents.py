@@ -15,6 +15,7 @@ SOURCE_DIR = ROOT / "agents"
 CLAUDE_DIR = ROOT / "claude-agents"
 OPENCODE_DIR = ROOT / "opencode-agents"
 CODEX_DIR = ROOT / "codex-agents"
+TRAE_DIR = ROOT / "trae-agents"
 
 
 @dataclass
@@ -129,6 +130,19 @@ def render_codex(agent: AgentDefinition) -> str:
     return "\n".join([*lines, ""])
 
 
+def render_trae(agent: AgentDefinition) -> str:
+    lines = [
+        "---",
+        f"name: {agent.name}",
+        f"description: {agent.description}",
+        "---",
+        "",
+        agent.body.rstrip(),
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def write_output(path: Path, content: str, check: bool) -> bool:
     if check:
         current = path.read_text(encoding="utf-8") if path.exists() else None
@@ -146,23 +160,39 @@ def export_agents(check: bool) -> int:
     if not sources:
         print(f"ERROR: no canonical agents under {SOURCE_DIR}", file=sys.stderr)
         return 1
+    output_directories = (CLAUDE_DIR, OPENCODE_DIR, CODEX_DIR, TRAE_DIR)
     if not check:
-        for directory in (CLAUDE_DIR, OPENCODE_DIR, CODEX_DIR):
+        for directory in output_directories:
             if directory.exists():
                 shutil.rmtree(directory)
             directory.mkdir(parents=True)
 
     stale: list[str] = []
+    expected: set[Path] = set()
     for source in sources:
         agent = parse_agent(source)
         outputs = {
             CLAUDE_DIR / source.name: render_claude(agent),
             OPENCODE_DIR / source.name: render_opencode(agent),
             CODEX_DIR / f"{source.stem}.toml": render_codex(agent),
+            TRAE_DIR / source.name: render_trae(agent),
         }
+        expected.update(outputs)
         for path, content in outputs.items():
             if write_output(path, content, check):
                 stale.append(path.relative_to(ROOT).as_posix())
+    if check:
+        actual = {
+            path
+            for directory in output_directories
+            if directory.is_dir()
+            for path in directory.rglob("*")
+            if path.is_file()
+        }
+        stale.extend(
+            path.relative_to(ROOT).as_posix()
+            for path in sorted(actual - expected)
+        )
     if stale:
         print("Generated agents are out of date:", file=sys.stderr)
         print("\n".join(f"  {path}" for path in stale), file=sys.stderr)
@@ -172,7 +202,12 @@ def export_agents(check: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Export canonical agent definitions to Claude Code, OpenCode, and Codex.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Export canonical agent definitions to Claude Code, OpenCode, "
+            "Codex, and Trae."
+        )
+    )
     parser.add_argument("--check", action="store_true")
     return export_agents(parser.parse_args().check)
 

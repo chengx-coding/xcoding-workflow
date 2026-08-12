@@ -16,7 +16,7 @@ XC 编排把复杂、长期运行的 Agent 工作流表示为具有确定性调�
 
 领域 Skill 负责工作的含义，包括模板、任务说明、gate、artifact 契约、blackboard 键、验收标准和领域 reference。领域 Skill 通过公开操作调用 runtime，不复制其调度器、状态机、解析器或 Viewer。
 
-必要的 prerelease Python package 还提供 `xcoding daemon serve`。它只通过
+必要的 `xcoding-workflow` Python package 还提供 `xcoding daemon serve`。它只通过
 带 bearer 认证的 loopback HTTP 和有界 summary SSE 暴露 runtime 的 typed
 read-only query facade。它不是第二个状态所有者，也不能执行 runtime
 transition；`xcoding runtime` 仍是 direct mutation 边界。Skills 没有

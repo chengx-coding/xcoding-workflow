@@ -47,6 +47,11 @@ loop.on_limit
 
 The runtime checks these only when an iteration's children have all succeeded or been skipped. It does not support internal `break-loop` or `continue-loop` signals.
 
+Use `when.policy=latched` for a loop child whose branch choice must remain
+stable for the current iteration. The next iteration clears descendant
+latches. A break, natural completion, or limit decision terminalizes the loop
+and closes any descendant that becomes unreachable.
+
 ## 5. Validate and Smoke Test
 
 Run `validate-spec`, then `build`, then `validate-template`. Finally instantiate the generated template with `xc-orchestration-runtime init` and confirm that `next` returns the intended first node or parallel batch.

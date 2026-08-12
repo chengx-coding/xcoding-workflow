@@ -560,14 +560,14 @@ def child_command(args: argparse.Namespace, readiness_path: Path) -> List[str]:
         "xcoding.viewer.server",
         "--_child",
         "--ready-file",
-        str(readiness_path),
+        str(readiness_path.resolve()),
     ]
     for tree in args.tree:
-        command.extend(["--tree", tree])
+        command.extend(["--tree", str(Path(tree).resolve())])
     for allow_root in args.allow_root:
-        command.extend(["--allow-root", allow_root])
+        command.extend(["--allow-root", str(Path(allow_root).resolve())])
     if args.config:
-        command.extend(["--config", args.config])
+        command.extend(["--config", str(Path(args.config).resolve())])
     if args.host:
         command.extend(["--host", args.host])
     if args.port is not None:
@@ -608,6 +608,7 @@ def launch_background(args: argparse.Namespace) -> int:
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
         "close_fds": True,
+        "cwd": tempfile.gettempdir(),
     }
     if os.name == "nt":
         process_kwargs["creationflags"] = (

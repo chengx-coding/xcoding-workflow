@@ -14,6 +14,10 @@ from .bundle.resources import inspect_installed_bundle
 from .setup_plan import inspect_target_readiness
 
 
+MINIMUM_PYTHON = (3, 12)
+FORMAL_VERIFICATION_BASELINE = (3, 12, 13)
+
+
 class DoctorReadinessError(RuntimeError):
     """One or more required doctor checks failed."""
 
@@ -38,23 +42,54 @@ def _check(
     }
 
 
+def python_readiness(
+    implementation: str,
+    version_info: tuple[int, ...],
+) -> dict[str, Any]:
+    """Classify Python compatibility separately from formal evidence."""
+    normalized = tuple(version_info[:3])
+    version_ready = normalized[:2] >= MINIMUM_PYTHON
+    implementation_ready = implementation == "CPython"
+    ready = implementation_ready and version_ready
+    matches_baseline = (
+        implementation_ready
+        and normalized == FORMAL_VERIFICATION_BASELINE
+    )
+    if matches_baseline:
+        evidence_tier = "formal-verification-baseline"
+    elif ready:
+        evidence_tier = "accepted-not-formally-verified"
+    else:
+        evidence_tier = "unsupported"
+    return {
+        "ready": ready,
+        "minimum_version": ".".join(map(str, MINIMUM_PYTHON)),
+        "formal_verification_baseline": ".".join(
+            map(str, FORMAL_VERIFICATION_BASELINE)
+        ),
+        "matches_formal_verification_baseline": matches_baseline,
+        "evidence_tier": evidence_tier,
+    }
+
+
 def doctor_report(target_root: Path | None = None) -> dict[str, Any]:
     """Run only read-only probes and return or raise with the complete report."""
     inspection = inspect_installed_bundle()
     checks: list[dict[str, Any]] = []
     warnings: list[dict[str, str]] = []
 
-    python_ready = (
-        platform.python_implementation() == "CPython"
-        and sys.version_info[:2] == (3, 12)
+    implementation = platform.python_implementation()
+    python_status = python_readiness(
+        implementation,
+        tuple(sys.version_info[:3]),
     )
     checks.append(
         _check(
             "python",
             required=True,
-            status="pass" if python_ready else "fail",
+            status="pass" if python_status["ready"] else "fail",
             details={
-                "implementation": platform.python_implementation(),
+                "implementation": implementation,
                 "version": platform.python_version(),
                 "executable": sys.executable,
                 "base_executable": getattr(
@@ -63,6 +98,7 @@ def doctor_report(target_root: Path | None = None) -> dict[str, Any]:
                     sys.executable,
                 ),
                 "required": inspection.manifest.python_requires,
+                **python_status,
             },
         )
     )
@@ -161,4 +197,10 @@ def doctor_report(target_root: Path | None = None) -> dict[str, Any]:
     return report
 
 
-__all__ = ["DoctorReadinessError", "doctor_report"]
+__all__ = [
+    "DoctorReadinessError",
+    "FORMAL_VERIFICATION_BASELINE",
+    "MINIMUM_PYTHON",
+    "doctor_report",
+    "python_readiness",
+]

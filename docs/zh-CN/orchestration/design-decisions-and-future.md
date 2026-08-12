@@ -84,7 +84,7 @@ Viewer 只消费快照，不能修改编排状态。它绑定 loopback，默认�
 
 ### 带认证的只读 Package Daemon
 
-Prerelease package 可以通过只绑定 `127.0.0.1`、带 bearer 认证的 server 暴露
+已安装的 `xcoding-workflow` package 可以通过只绑定 `127.0.0.1`、带 bearer 认证的 server 暴露
 typed runtime query。它只接受启动时传入的 runtime 文件，使用进程本地 opaque
 ID，并传输有界、只保留最新状态且不可 replay/持久化的摘要。Direct 命令继续
 作为 mutation 边界，也不依赖 daemon。

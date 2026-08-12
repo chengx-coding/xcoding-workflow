@@ -1363,6 +1363,13 @@ def when_policy(node: ET.Element) -> str:
     return node.get("when.policy", "reactive")
 
 
+def when_result(node: ET.Element, bb: Dict[str, str]) -> bool:
+    latched = node.get("when.latched", "")
+    if when_policy(node) == "latched" and latched in {"true", "false"}:
+        return latched == "true"
+    return eval_when(node.get("when", ""), bb)
+
+
 def incomplete_dependency_ids(
     root: ET.Element,
     node: ET.Element,
@@ -1418,7 +1425,7 @@ def ancestor_readiness_blocker(
                 "blocker_status": parent_status,
             }
         when = parent.get("when")
-        if when and not eval_when(when, blackboard_values):
+        if when and not when_result(parent, blackboard_values):
             return {
                 "reason": "ancestor_condition_false",
                 "blocker_node_id": parent_id,
@@ -1462,7 +1469,7 @@ def node_readiness_blocker(
         reason = "condition_false" if status == "skipped" and node.get("skip_reason") == "when" else "node_status"
         return {"reason": reason}
     when = node.get("when")
-    if when and not eval_when(when, blackboard_values):
+    if when and not when_result(node, blackboard_values):
         return {"reason": "condition_false"}
     incomplete = incomplete_dependency_ids(root, node, node_lookup)
     if incomplete:
@@ -1490,6 +1497,7 @@ def reset_subtree(node: ET.Element) -> None:
         "skipped_at",
         "skip_reason",
         "failure_reason",
+        "when.latched",
     ]:
         node.attrib.pop(attr, None)
     result = find_direct(node, "result")
@@ -1498,6 +1506,9 @@ def reset_subtree(node: ET.Element) -> None:
     if node_type(node) == "loop":
         node.set("loop.iteration", "1")
         node.attrib.pop("loop.last_completed_iteration", None)
+        node.attrib.pop("loop.terminal_iteration", None)
+        node.attrib.pop("loop.terminal_reason", None)
+        node.attrib.pop("loop.terminal_status", None)
         history = find_direct(node, "history")
         if history is not None:
             node.remove(history)
@@ -1567,7 +1578,10 @@ def normalize_conditions(root: ET.Element) -> bool:
         was_conditionally_skipped = status == "skipped" and node.get("skip_reason") == "when"
         if (status not in RUNNABLE_STATUSES and not was_conditionally_skipped) or not is_unlocked_by_ancestors(root, node):
             continue
-        should_run = eval_when(when, bb)
+        should_run = when_result(node, bb)
+        if when_policy(node) == "latched" and "when.latched" not in node.attrib:
+            node.set("when.latched", "true" if should_run else "false")
+            changed = True
         if not should_run and status in RUNNABLE_STATUSES:
             node.set("status", "skipped")
             node.set("skip_reason", "when")
@@ -1594,13 +1608,70 @@ def record_loop_history(node: ET.Element, reason: str) -> None:
     )
 
 
+def loop_terminal_decision(node: ET.Element) -> Optional[Tuple[str, str, str]]:
+    status = node.get("loop.terminal_status", "")
+    reason = node.get("loop.terminal_reason", "")
+    iteration = node.get("loop.terminal_iteration", "")
+    if status in {"succeeded", "failed", "blocked"} and reason in {"break", "natural", "limit"}:
+        return status, reason, iteration or node.get("loop.iteration", "1")
+
+    current = node.get("loop.iteration", "1")
+    if node.get("loop.last_completed_iteration", "") != current:
+        return None
+    history = find_direct(node, "history")
+    if history is None:
+        return None
+    entries = history.findall("iteration")
+    if not entries or entries[-1].get("index") != current:
+        return None
+    inferred_reason = entries[-1].get("reason", "")
+    if inferred_reason in {"break", "natural"}:
+        return "succeeded", inferred_reason, current
+    if inferred_reason == "limit":
+        return node.get("loop.on_limit", "failed"), inferred_reason, current
+    return None
+
+
+def close_loop_descendants(node: ET.Element) -> bool:
+    changed = False
+    for child in children(node):
+        for descendant in iter_nodes(child):
+            if descendant.get("status", "pending") in TERMINAL_STATUSES:
+                continue
+            descendant.set("status", "skipped")
+            descendant.set("skip_reason", "loop_closed")
+            descendant.set("skipped_at", utc_now())
+            for attr in ("started_at", "failed_at", "blocked_at", "agent", "failure_reason"):
+                descendant.attrib.pop(attr, None)
+            changed = True
+    return changed
+
+
+def persist_loop_terminal_decision(
+    node: ET.Element,
+    status: str,
+    reason: str,
+    iteration: str,
+) -> bool:
+    changed = False
+    for key, value in (
+        ("loop.terminal_iteration", iteration),
+        ("loop.terminal_reason", reason),
+        ("loop.terminal_status", status),
+    ):
+        if node.get(key) != value:
+            node.set(key, value)
+            changed = True
+    return close_loop_descendants(node) or changed
+
+
 def recompute_containers(root: ET.Element) -> bool:
     changed = False
     for node in reversed(list(iter_nodes(root))):
         kids = children(node)
         if not kids:
             old_status = node.get("status", "pending")
-            if old_status == "skipped" and node.get("skip_reason") in {"switch", "when"}:
+            if old_status == "skipped" and node.get("skip_reason") in {"switch", "when", "loop_closed"}:
                 continue
             if is_dynamic_group(node) and dynamic_group_state(node) == "closed":
                 if old_status != "succeeded":
@@ -1608,10 +1679,24 @@ def recompute_containers(root: ET.Element) -> bool:
                     changed = True
             continue
         old_status = node.get("status", "pending")
-        if old_status == "skipped" and node.get("skip_reason") in {"switch", "when"}:
+        if old_status == "skipped" and node.get("skip_reason") in {"switch", "when", "loop_closed"}:
             continue
         statuses = [child.get("status", "pending") for child in kids]
         ntype = node_type(node)
+        if ntype == "loop":
+            terminal = loop_terminal_decision(node)
+            if terminal is not None:
+                terminal_status, terminal_reason, terminal_iteration = terminal
+                changed = persist_loop_terminal_decision(
+                    node,
+                    terminal_status,
+                    terminal_reason,
+                    terminal_iteration,
+                ) or changed
+                if old_status != terminal_status:
+                    node.set("status", terminal_status)
+                    changed = True
+                continue
         if ntype == "loop" and all(status in SUCCESS_STATUSES for status in statuses):
             iteration = int(node.get("loop.iteration", "1"))
             maximum = int(node.get("loop.max_iterations", "1"))
@@ -1630,6 +1715,12 @@ def recompute_containers(root: ET.Element) -> bool:
             if should_break:
                 record_loop_history(node, "break")
                 new_status = "succeeded"
+                changed = persist_loop_terminal_decision(
+                    node,
+                    new_status,
+                    "break",
+                    str(iteration),
+                ) or changed
             elif should_continue and iteration < maximum:
                 record_loop_history(node, "continue")
                 for child in kids:
@@ -1643,9 +1734,21 @@ def recompute_containers(root: ET.Element) -> bool:
                 new_status = node.get("loop.on_limit", "failed")
                 if new_status not in {"failed", "blocked", "succeeded"}:
                     new_status = "failed"
+                changed = persist_loop_terminal_decision(
+                    node,
+                    new_status,
+                    "limit",
+                    str(iteration),
+                ) or changed
             else:
                 record_loop_history(node, "natural")
                 new_status = "succeeded"
+                changed = persist_loop_terminal_decision(
+                    node,
+                    new_status,
+                    "natural",
+                    str(iteration),
+                ) or changed
         elif any(status == "failed" for status in statuses):
             new_status = "failed"
         elif any(status == "blocked" for status in statuses):
@@ -2503,6 +2606,10 @@ def instantiate_template_node(
         "depends_on_template",
         "iteration",
         "loop.iteration",
+        "when.latched",
+        "loop.terminal_iteration",
+        "loop.terminal_reason",
+        "loop.terminal_status",
     }
     for key, value in template_node.attrib.items():
         if key not in excluded:
@@ -2657,6 +2764,14 @@ def validate_template_root(root: ET.Element, check_integrity: bool = True) -> Li
             errors.append(f"{tid}: invalid when.policy {policy}")
         if policy and not node.get("when"):
             errors.append(f"{tid}: when.policy requires when")
+        for runtime_key in (
+            "when.latched",
+            "loop.terminal_iteration",
+            "loop.terminal_reason",
+            "loop.terminal_status",
+        ):
+            if node.get(runtime_key) is not None:
+                errors.append(f"{tid}: {runtime_key} is runtime-owned")
         dynamic_state = node.get("dynamic.state", "")
         if dynamic_state and (node_role(node) != "dynamic-group" or dynamic_state not in VALID_DYNAMIC_GROUP_STATES):
             errors.append(f"{tid}: invalid dynamic.state {dynamic_state}")
@@ -2788,6 +2903,11 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
             errors.append(f"{node_id}: invalid when.policy {policy}")
         if policy and not node.get("when"):
             errors.append(f"{node_id}: when.policy requires when")
+        latched = node.get("when.latched", "")
+        if "when.latched" in node.attrib and (
+            policy != "latched" or latched not in {"true", "false"}
+        ):
+            errors.append(f"{node_id}: invalid when.latched")
         dynamic_state = node.get("dynamic.state", "")
         if dynamic_state and (node_role(node) != "dynamic-group" or dynamic_state not in VALID_DYNAMIC_GROUP_STATES):
             errors.append(f"{node_id}: invalid dynamic.state {dynamic_state}")
@@ -2810,6 +2930,33 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
                 errors.append(f"{node_id}: invalid loop.on_limit")
             if not node_children:
                 errors.append(f"{node_id}: loop requires at least one child")
+            terminal_status = node.get("loop.terminal_status", "")
+            terminal_reason = node.get("loop.terminal_reason", "")
+            terminal_iteration = node.get("loop.terminal_iteration", "")
+            if any((terminal_status, terminal_reason, terminal_iteration)) and not all(
+                (terminal_status, terminal_reason, terminal_iteration)
+            ):
+                errors.append(f"{node_id}: incomplete loop terminal decision")
+            if terminal_status and terminal_status not in {"succeeded", "failed", "blocked"}:
+                errors.append(f"{node_id}: invalid loop.terminal_status")
+            if terminal_reason and terminal_reason not in {"break", "natural", "limit"}:
+                errors.append(f"{node_id}: invalid loop.terminal_reason")
+            if terminal_iteration:
+                try:
+                    if int(terminal_iteration) < 1:
+                        errors.append(f"{node_id}: loop.terminal_iteration must be positive")
+                    elif terminal_iteration != node.get("loop.iteration", "1"):
+                        errors.append(f"{node_id}: loop terminal iteration must match loop.iteration")
+                except ValueError:
+                    errors.append(f"{node_id}: loop.terminal_iteration must be an integer")
+            if terminal_status and terminal_status != status:
+                errors.append(f"{node_id}: loop terminal status does not match node status")
+            if terminal_reason in {"break", "natural"} and terminal_status != "succeeded":
+                errors.append(f"{node_id}: {terminal_reason} loop decision must succeed")
+            if terminal_reason == "limit" and terminal_status != node.get("loop.on_limit"):
+                errors.append(f"{node_id}: limit loop decision must match loop.on_limit")
+        elif any(key.startswith("loop.terminal_") for key in node.attrib):
+            errors.append(f"{node_id}: loop terminal decision requires type=loop")
         if normalized_type == "composite" and not node_children and node_role(node) != "dynamic-group":
             errors.append(f"{node_id}: composite without children must have role=dynamic-group")
         if mode == "switch":

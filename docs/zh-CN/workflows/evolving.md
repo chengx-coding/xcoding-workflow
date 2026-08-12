@@ -30,7 +30,7 @@
 
 在 `agents-src/agents/` 下修改持久、可移植的定义。工具、模型、权限、sandbox 和 frontmatter 差异应通过目标元数据表达，而不是分叉共享正文。
 
-运行已跟踪的 [agent 导出器](../../../agents-src/export_agents.py)，重新生成 Claude Code、OpenCode 和 Codex 定义。生成的目标文件是可评审输出，不是编辑入口。
+运行已跟踪的 [agent 导出器](../../../agents-src/export_agents.py)，重新生成 Claude Code、OpenCode、Codex 和 Trae 定义。生成的目标文件是可评审输出，不是编辑入口。
 
 ### 编排
 
@@ -62,4 +62,4 @@
 
 公开页面只能链接干净检出中存在的文件，不链接 workshop 状态、本地 Agent 发现 asset、项目指引或其他被忽略、排除的维护文件。
 
-项目当前尚未发布正式的 Python 版本或 Agent 宿主兼容矩阵。文档和工作流变更不得暗示尚未定义并验证的兼容性保证。
+Release 契约定义了显式 Python、平台与 Agent 宿主矩阵。文档只能描述该契约声明的正式基线和实验性 cell；只有 candidate-bound 证据验证全部必需 cell 后，公开 release 才能声明支持。可接受的 Python 版本、检测到的 executable 或未经验证的宿主都不得被提升为兼容性保证。

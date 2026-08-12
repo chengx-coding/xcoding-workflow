@@ -98,10 +98,18 @@ guards run first, so stale `--expected-revision` remains `state_conflict` and a
 successful sealed tree remains `tree_sealed`.
 
 Nodes with `when` default to `when.policy=reactive`, so a conditionally skipped
-node may become pending when the condition turns true. A template may set
-`when.policy=latched` to make a conditional skip final for that instance.
-Neither policy overwrites `failed`; a condition is reevaluated only after an
-explicit `retry-failed` transition.
+node may become pending when the condition turns true. With
+`when.policy=latched`, the runtime stores the first condition result reached
+after dependency, ancestor, and sequence blockers clear; both true and false
+results remain fixed for that runtime node instance. A loop iteration reset
+clears descendant latches for the next iteration. Neither policy overwrites
+`failed`; after an explicit `retry-failed`, reactive conditions reevaluate and
+latched conditions retain the stored result for that node instance.
+
+When a loop chooses break, natural completion, or its configured limit outcome,
+the runtime stores that terminal decision and closes any nonterminal descendant
+as `skipped` with `skip_reason=loop_closed`. Reloads and later blackboard writes
+preserve the decision and cannot return a completed historical loop to running.
 
 ## Failed Attempt Recovery
 

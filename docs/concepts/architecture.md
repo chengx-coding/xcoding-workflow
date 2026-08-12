@@ -19,7 +19,7 @@ Canonical sources are changed before anything derived from them. Skills communic
 
 ## Generated Outputs And Adapters
 
-`agents-src/claude-agents/`, `agents-src/opencode-agents/`, and `agents-src/codex-agents/` are generated target-specific agent definitions. The [agent exporter](../../agents-src/export_agents.py) validates canonical definitions and reproduces those outputs.
+`agents-src/claude-agents/`, `agents-src/opencode-agents/`, `agents-src/codex-agents/`, and `agents-src/trae-agents/` are generated target-specific agent definitions. The [agent exporter](../../agents-src/export_agents.py) validates canonical definitions and reproduces those outputs.
 
 Agent-host discovery locations and installation directories are adapters, not new sources of truth. For example, the tracked [Skill sync script](../../build_agents.py) mirrors canonical Skill packages into a checkout-local discovery directory. Changes still begin in `skills/xc-*/`.
 
@@ -27,7 +27,7 @@ This separation keeps tool-specific metadata, permissions, and file formats at t
 
 ## Package, Bundle, And Runtime Application Infrastructure
 
-The repository also contains prerelease product feasibility infrastructure in `pyproject.toml`, `src/xcoding/`, `build_support/`, and package-specific files under `install/`, `scripts/`, and `.github/`. It builds a package and immutable Bundle for isolated local and CI probes. This is a repository build boundary, not another workflow authoring surface.
+The repository also contains product package and release-verification infrastructure in `pyproject.toml`, `src/xcoding/`, `build_support/`, `scripts/`, and `.github/`. It builds the `xcoding-workflow` package and immutable Bundle and verifies candidate-independent package contracts. This is a repository build boundary, not another workflow authoring surface.
 
 The Bundle is a build-time snapshot. `skills/xc-*/` remains the only canonical
 source for Skills, while package runtime and Viewer implementation/resources

@@ -14,8 +14,11 @@ Templates are managed `schema_version="1"` XML artifacts. Every node uses a stab
 Template dependencies use `depends_on_template="local:<template_id>"`. The runtime rewrites them to globally unique runtime node IDs. Use `metadata.*` for domain-specific classification rather than adding runtime node types.
 
 Conditional nodes default to `when.policy=reactive`; set
-`when.policy=latched` for a one-time optional branch that must not reopen when
-shared control values later change. A `role=dynamic-group` starts open and may
+`when.policy=latched` when the first condition result reached by a runtime node
+instance must persist instead of following later shared control changes. Loop
+iterations reset descendant latches for their next iteration; completed loops
+persist their terminal decision and close unreachable descendants. A
+`role=dynamic-group` starts open and may
 declare `dynamic.state=closed` only when the template intentionally contains
 no future dynamic work.
 

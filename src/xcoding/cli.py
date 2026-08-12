@@ -1,4 +1,4 @@
-"""Stable command-line interface for the prerelease xcoding package."""
+"""Stable command-line interface for the xcoding package."""
 
 from __future__ import annotations
 
@@ -14,11 +14,12 @@ from .bundle.manifest import BundleValidationError
 from .bundle.resources import inspect_installed_bundle, installed_bundle_root
 from .doctor import DoctorReadinessError, doctor_report
 from .runtime import application as runtime_application
-from .setup_plan import (
-    SetupInputError,
-    SetupReadinessError,
-    empty_setup_plan,
-    setup_plan,
+from .setup_plan import SetupInputError, SetupReadinessError
+from .setup_transaction import (
+    SetupTransactionError,
+    recover as recover_setup,
+    rollback as rollback_setup,
+    setup as run_setup,
 )
 from .version import version_report
 
@@ -82,8 +83,10 @@ def _build_parser() -> argparse.ArgumentParser:
     setup = commands.add_parser("setup", add_help=False)
     setup.add_argument("--dry-run", action="store_true")
     setup.add_argument("--json", action="store_true", dest="json_output")
-    setup.add_argument("--adapter")
-    setup.add_argument("--target-root")
+    setup.add_argument("--project-root")
+    setup.add_argument("--host", action="append", default=[])
+    setup.add_argument("--rollback", action="store_true")
+    setup.add_argument("--recover", action="store_true")
     return parser
 
 
@@ -184,7 +187,7 @@ def _require_json(arguments: argparse.Namespace) -> None:
     if not getattr(arguments, "json_output", False):
         raise CliInputError(
             "json-required",
-            "Stage 1 commands require an explicit --json option",
+            "xcoding machine-readable commands require an explicit --json option",
         )
 
 
@@ -198,37 +201,35 @@ def _execute(arguments: argparse.Namespace, command: str) -> dict[str, Any]:
         target = Path(arguments.target_root) if arguments.target_root else None
         return doctor_report(target)
     if command == "setup":
-        if not arguments.dry_run:
+        if arguments.project_root is None:
             raise CliInputError(
-                "dry-run-required",
-                "setup is available only with explicit --dry-run",
-                details={
-                    "plan": empty_setup_plan(
-                        arguments.adapter,
-                        arguments.target_root,
-                    )
-                },
+                "project_root_required",
+                "setup requires an explicit --project-root",
             )
-        if arguments.target_root is None:
+        if arguments.rollback and arguments.recover:
             raise CliInputError(
-                "target-required",
-                "setup --dry-run requires an explicit --target-root",
-                details={
-                    "plan": empty_setup_plan(arguments.adapter, None),
-                },
+                "setup_mode_conflict",
+                "setup accepts only one of --rollback or --recover",
             )
-        if arguments.adapter is None:
+        if arguments.rollback or arguments.recover:
+            if arguments.host or arguments.dry_run:
+                raise CliInputError(
+                    "setup_mode_conflict",
+                    "rollback and recovery do not accept --host or --dry-run",
+                )
+            if arguments.rollback:
+                return rollback_setup(arguments.project_root)
+            return recover_setup(arguments.project_root)
+        if not arguments.host:
             raise CliInputError(
-                "adapter-required",
-                "setup --dry-run requires an explicit --adapter",
-                details={
-                    "plan": empty_setup_plan(
-                        None,
-                        arguments.target_root,
-                    )
-                },
+                "host_required",
+                "setup requires at least one explicit --host",
             )
-        return setup_plan(arguments.adapter, Path(arguments.target_root))
+        return run_setup(
+            arguments.project_root,
+            arguments.host,
+            dry_run=arguments.dry_run,
+        )
     raise CliInputError("invalid_arguments", "unknown command")
 
 
@@ -265,7 +266,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
         return EXIT_BUNDLE
-    except (DoctorReadinessError, SetupReadinessError) as error:
+    except (DoctorReadinessError, SetupReadinessError, SetupTransactionError) as error:
         _emit(_failure(command, error.code, str(error), error.details))
         return EXIT_READINESS
     except OSError as error:

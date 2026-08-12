@@ -282,6 +282,106 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
         core.apply_integrity(root, "template", config)
         core.atomic_write_text(path, core.serialize_xml(root, "template"))
 
+    def write_loop_template(self, path: Path, config: dict[str, object]) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": "latched-loop"})
+        variables = ET.SubElement(root, "blackboard")
+        variable = ET.SubElement(variables, "var", {"key": "review.open_issues"})
+        variable.text = "false"
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": "Latched loop",
+                "type": "composite",
+                "role": "root",
+                "mode": "sequence",
+                "executor": "main",
+            },
+        )
+        workflow_children = ET.SubElement(workflow, "children")
+        loop = ET.SubElement(
+            workflow_children,
+            "node",
+            {
+                "template_id": "review-loop",
+                "title": "Review loop",
+                "type": "loop",
+                "role": "review-loop",
+                "mode": "sequence",
+                "executor": "main",
+                "loop.max_iterations": "2",
+                "loop.continue_when": "review.open_issues == true",
+                "loop.break_when": "review.open_issues == false",
+                "loop.on_limit": "blocked",
+            },
+        )
+        loop_children = ET.SubElement(loop, "children")
+        ET.SubElement(
+            loop_children,
+            "node",
+            {
+                "template_id": "review",
+                "title": "Review",
+                "type": "task",
+                "role": "review",
+                "executor": "main",
+            },
+        )
+        ET.SubElement(
+            loop_children,
+            "node",
+            {
+                "template_id": "revise",
+                "title": "Revise",
+                "type": "task",
+                "role": "revise",
+                "executor": "main",
+                "when": "review.open_issues == true",
+                "when.policy": "latched",
+                "depends_on_template": "local:review",
+            },
+        )
+        deferred = ET.SubElement(
+            loop_children,
+            "node",
+            {
+                "template_id": "deferred",
+                "title": "Deferred branch",
+                "type": "composite",
+                "role": "deferred",
+                "mode": "sequence",
+                "executor": "main",
+                "when": "review.deferred == true",
+                "when.policy": "latched",
+            },
+        )
+        deferred_children = ET.SubElement(deferred, "children")
+        ET.SubElement(
+            deferred_children,
+            "node",
+            {
+                "template_id": "deferred-work",
+                "title": "Deferred work",
+                "type": "task",
+                "role": "deferred-work",
+                "executor": "main",
+            },
+        )
+        ET.SubElement(
+            workflow_children,
+            "node",
+            {
+                "template_id": "finish",
+                "title": "Finish",
+                "type": "task",
+                "role": "finish",
+                "executor": "main",
+            },
+        )
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
     def write_dynamic_group_template(self, path: Path, config: dict[str, object]) -> None:
         root = ET.Element("orchestration", {"schema_version": "1", "name": "dynamic-group"})
         ET.SubElement(root, "blackboard")
@@ -1857,6 +1957,141 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
 
             self.assertEqual(ready_after_enable(""), ["optional-work"])
             self.assertEqual(ready_after_enable("latched"), ["finish"])
+
+            def ready_after_disable(policy: str) -> tuple[list[str], dict[str, object]]:
+                template = project / f"{policy or 'reactive'}-true.xml"
+                self.write_conditional_template(template, config, policy)
+                initialized = self.run_cli(
+                    "init",
+                    "--template",
+                    str(template),
+                    "--runtime-path",
+                    str(context / "work-orders" / f"{policy or 'reactive'}-true" / "runtime"),
+                    "--work-order-id",
+                    f"{policy or 'reactive'}-true",
+                    "--var",
+                    "optional.enabled=true",
+                    cwd=project,
+                )
+                tree_path = Path(str(initialized["tree_path"]))
+                prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+                self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+                self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+                self.run_cli("set", "--tree", str(tree_path), "--set", "optional.enabled=false", cwd=project)
+                group = self.run_cli(
+                    "find",
+                    "--tree",
+                    str(tree_path),
+                    "--template-id",
+                    "optional-group",
+                    cwd=project,
+                )["nodes"][0]
+                ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+                return [str(node["template_id"]) for node in ready], group
+
+            self.assertEqual(ready_after_disable("")[0], ["finish"])
+            latched_ready, latched_group = ready_after_disable("latched")
+            self.assertEqual(latched_ready, ["optional-work"])
+            self.assertEqual(latched_group["attributes"]["when.latched"], "true")
+
+    def test_terminal_loop_latches_each_iteration_and_survives_reload_and_shared_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            template = project / "latched-loop.xml"
+            self.write_loop_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "latched-loop" / "runtime"),
+                "--work-order-id",
+                "latched-loop",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+
+            first_review = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(first_review["id"]), cwd=project)
+            self.run_cli("set", "--tree", str(tree_path), "--set", "review.open_issues=true", cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(first_review["id"]), cwd=project)
+
+            first_revise = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(first_revise["template_id"], "revise")
+            self.assertEqual(first_revise["attributes"]["when.latched"], "true")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(first_revise["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(first_revise["id"]), cwd=project)
+
+            second_review = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(second_review["template_id"], "review")
+            active_loop = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "review-loop",
+                cwd=project,
+            )["nodes"][0]
+            self.assertEqual(active_loop["attributes"]["loop.iteration"], "2")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(second_review["id"]), cwd=project)
+            self.run_cli("set", "--tree", str(tree_path), "--set", "review.open_issues=false", cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(second_review["id"]), cwd=project)
+
+            loop = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "review-loop",
+                cwd=project,
+            )["nodes"][0]
+            revise = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "revise",
+                cwd=project,
+            )["nodes"][0]
+            deferred_work = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "deferred-work",
+                cwd=project,
+            )["nodes"][0]
+            self.assertEqual(loop["status"], "succeeded")
+            self.assertEqual(loop["attributes"]["loop.terminal_status"], "succeeded")
+            self.assertEqual(loop["attributes"]["loop.terminal_reason"], "break")
+            self.assertEqual(loop["attributes"]["loop.terminal_iteration"], "2")
+            self.assertEqual(revise["status"], "skipped")
+            self.assertEqual(revise["attributes"]["when.latched"], "false")
+            self.assertEqual(deferred_work["status"], "skipped")
+            self.assertEqual(deferred_work["attributes"]["skip_reason"], "loop_closed")
+
+            self.run_cli("set", "--tree", str(tree_path), "--set", "review.open_issues=true", cwd=project)
+            for command in ("next", "summary", "next"):
+                result = self.run_cli(command, "--tree", str(tree_path), cwd=project)
+                self.assertEqual([node["template_id"] for node in result["ready"]], ["finish"])
+                self.assertEqual(result["integrity"]["status"], "valid")
+            reloaded_loop = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "review-loop",
+                cwd=project,
+            )["nodes"][0]
+            self.assertEqual(reloaded_loop["status"], "succeeded")
+            self.assertEqual(reloaded_loop["attributes"]["loop.terminal_reason"], "break")
 
     def test_dynamic_groups_report_waiting_state_and_reject_closed_appends(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

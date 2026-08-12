@@ -2,11 +2,7 @@
 
 **语言：** [English](../../getting-started/quick-start.md) | **简体中文**
 
-本指南从消费项目开始，并假设 `PATH` 中已有必要的 `xcoding` 工具，且 Agent
-宿主能够发现安装好的 `xc-*` Skill 包。如果任一前提缺失，请先阅读
-[安装](installation.md)。Skill 安装使用 `install_skills.py` 或受管安装器；
-两者都不会安装 `xcoding`。`build_agents.py` 只用于 xcoding-workflow 检出
-目录的开发镜像。
+本指南从消费项目开始，并假设 `PATH` 中已有必要的 `xcoding` 工具，且至少一个 Agent 宿主已经由 `xcoding setup` 配置。如果任一前提缺失，请先阅读[安装](installation.md)。安装 wheel 会提供工具；setup 会在显式项目根目录中安装并拥有所选宿主的 XC Skills 与 subagent 定义。`build_agents.py` 只用于 xcoding-workflow 检出目录的开发镜像。
 
 ## 1. 选择消费项目
 
