@@ -11,6 +11,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -305,26 +306,53 @@ class CandidateIdentityTests(unittest.TestCase):
             descriptor_path=root / "candidate.json",
         )
 
+    def initialize_project(self, parent: Path) -> tuple[Path, str]:
+        project = parent / "project"
+        project.mkdir()
+        self.git(project, "init", "-q")
+        (project / "base.txt").write_bytes(b"baseline\n")
+        self.git(project, "add", "base.txt")
+        self.git(
+            project,
+            "-c",
+            "user.name=XC Test",
+            "-c",
+            "user.email=xc-test@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "baseline",
+        )
+        return project, self.git(project, "rev-parse", "HEAD")
+
+    def seal_clean(
+        self,
+        project: Path,
+        root: Path,
+        baseline: str,
+        *,
+        candidate_paths: list[str] | None = None,
+    ) -> dict[str, object]:
+        root.mkdir()
+        return verify_wheel.seal_candidate(
+            project_root=project,
+            disposable_root=root,
+            baseline_revision=baseline,
+            candidate_paths=candidate_paths,
+            clean_head=True,
+            archive_path=root / "candidate.zip",
+            descriptor_path=root / "candidate.json",
+        )
+
+    def assert_candidate_invalid(self, callable_object, *args, **kwargs) -> None:
+        with self.assertRaises(VerificationError) as raised:
+            callable_object(*args, **kwargs)
+        self.assertEqual(raised.exception.code, "candidate_invalid")
+
     def test_candidate_identity_is_deterministic_and_byte_sensitive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             parent = Path(temporary)
-            project = parent / "project"
-            project.mkdir()
-            self.git(project, "init", "-q")
-            (project / "base.txt").write_bytes(b"baseline\n")
-            self.git(project, "add", "base.txt")
-            self.git(
-                project,
-                "-c",
-                "user.name=XC Test",
-                "-c",
-                "user.email=xc-test@example.invalid",
-                "commit",
-                "-q",
-                "-m",
-                "baseline",
-            )
-            baseline = self.git(project, "rev-parse", "HEAD")
+            project, baseline = self.initialize_project(parent)
             (project / "base.txt").write_bytes(b"candidate\n")
             (project / "new.txt").write_bytes(b"new\n")
 
@@ -358,6 +386,205 @@ class CandidateIdentityTests(unittest.TestCase):
                 first["candidate_source_archive_sha256"],
                 changed["candidate_source_archive_sha256"],
             )
+
+            descriptor = json.loads(
+                (parent / "seal-a" / "candidate.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(descriptor["schema_version"], 2)
+            self.assertEqual(descriptor["candidate_origin"], "dirty-worktree")
+            self.assertEqual(descriptor["source_state"], "work-order-candidate")
+
+    def test_clean_head_is_deterministic_and_bound_to_commit_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            project, baseline = self.initialize_project(parent)
+            baseline_tree = self.git(project, "rev-parse", f"{baseline}^{{tree}}")
+
+            first = self.seal_clean(project, parent / "seal-a", baseline)
+            second = self.seal_clean(project, parent / "seal-b", baseline)
+
+            self.assertEqual(
+                (parent / "seal-a" / "candidate.zip").read_bytes(),
+                (parent / "seal-b" / "candidate.zip").read_bytes(),
+            )
+            self.assertEqual(
+                (parent / "seal-a" / "candidate.json").read_bytes(),
+                (parent / "seal-b" / "candidate.json").read_bytes(),
+            )
+            self.assertEqual(first["candidate_origin"], "clean-head")
+            self.assertEqual(first["candidate_git_tree"], baseline_tree)
+            self.assertEqual(first["baseline_git_tree"], baseline_tree)
+            self.assertEqual(first["candidate_path_count"], 0)
+            descriptor = json.loads(
+                (parent / "seal-a" / "candidate.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(descriptor["candidate_paths"], [])
+            self.assertEqual(descriptor["candidate_git_tree"], baseline_tree)
+            self.assertEqual(descriptor["baseline_git_tree"], baseline_tree)
+            self.assertEqual(descriptor["source_state"], "work-order-candidate")
+
+    def test_clean_head_rejects_every_git_status_category(self) -> None:
+        mutations = {
+            "staged": lambda project: (
+                (project / "staged.txt").write_bytes(b"staged\n"),
+                self.git(project, "add", "staged.txt"),
+            ),
+            "tracked": lambda project: (project / "base.txt").write_bytes(b"changed\n"),
+            "deleted": lambda project: (project / "base.txt").unlink(),
+            "untracked": lambda project: (project / "new.txt").write_bytes(b"new\n"),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                parent = Path(temporary)
+                project, baseline = self.initialize_project(parent)
+                mutate(project)
+                self.assert_candidate_invalid(
+                    self.seal_clean,
+                    project,
+                    parent / "seal",
+                    baseline,
+                )
+
+    def test_candidate_modes_and_baseline_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            project, baseline = self.initialize_project(parent)
+            self.assert_candidate_invalid(
+                self.seal_clean,
+                project,
+                parent / "both",
+                baseline,
+                candidate_paths=["base.txt"],
+            )
+            neither = parent / "neither"
+            neither.mkdir()
+            self.assert_candidate_invalid(
+                verify_wheel.seal_candidate,
+                project_root=project,
+                disposable_root=neither,
+                baseline_revision=baseline,
+                archive_path=neither / "candidate.zip",
+                descriptor_path=neither / "candidate.json",
+            )
+            self.assert_candidate_invalid(
+                self.seal_clean,
+                project,
+                parent / "wrong-head",
+                "0" * 40,
+            )
+
+    def test_dirty_mode_preserves_exact_status_matching(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            project, baseline = self.initialize_project(parent)
+            (project / "base.txt").write_bytes(b"candidate\n")
+            (project / "new.txt").write_bytes(b"new\n")
+            for label, paths in (
+                ("missing", ["base.txt"]),
+                ("extra", ["base.txt", "new.txt", "other.txt"]),
+            ):
+                with self.subTest(label=label):
+                    root = parent / label
+                    root.mkdir()
+                    self.assert_candidate_invalid(
+                        verify_wheel.seal_candidate,
+                        project_root=project,
+                        disposable_root=root,
+                        baseline_revision=baseline,
+                        candidate_paths=paths,
+                        archive_path=root / "candidate.zip",
+                        descriptor_path=root / "candidate.json",
+                    )
+
+    def test_clean_head_rejects_repository_change_during_sealing(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            project, baseline = self.initialize_project(parent)
+            root = parent / "seal"
+            original_write = verify_wheel._write_candidate_archive
+
+            def write_then_mutate(path, inventory) -> None:
+                original_write(path, inventory)
+                (project / "changed-during-seal.txt").write_bytes(b"changed\n")
+
+            with mock.patch.object(
+                verify_wheel,
+                "_write_candidate_archive",
+                side_effect=write_then_mutate,
+            ):
+                self.assert_candidate_invalid(
+                    self.seal_clean,
+                    project,
+                    root,
+                    baseline,
+                )
+            self.assertFalse((root / "candidate.zip").exists())
+            self.assertFalse((root / "candidate.json").exists())
+
+    def test_clean_head_rejects_clean_commit_transition_between_final_snapshots(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            project, baseline = self.initialize_project(parent)
+            root = parent / "seal"
+            original_snapshot = verify_wheel._git_snapshot
+            calls = 0
+
+            def snapshot_then_commit(repository: Path) -> tuple[str, list[str]]:
+                nonlocal calls
+                calls += 1
+                if calls == 3:
+                    (project / "second-commit.txt").write_bytes(b"second\n")
+                    self.git(project, "add", "second-commit.txt")
+                    self.git(
+                        project,
+                        "-c",
+                        "user.name=XC Test",
+                        "-c",
+                        "user.email=xc-test@example.invalid",
+                        "commit",
+                        "-q",
+                        "-m",
+                        "second",
+                    )
+                return original_snapshot(repository)
+
+            with mock.patch.object(
+                verify_wheel,
+                "_git_snapshot",
+                side_effect=snapshot_then_commit,
+            ):
+                self.assert_candidate_invalid(
+                    self.seal_clean,
+                    project,
+                    root,
+                    baseline,
+                )
+            self.assertEqual(calls, 3)
+            self.assertFalse((root / "candidate.zip").exists())
+            self.assertFalse((root / "candidate.json").exists())
+
+    def test_candidate_cli_requires_exactly_one_origin_mode(self) -> None:
+        parser = verify_wheel._parser()
+        common = [
+            "candidate",
+            "--project-root",
+            str(REPOSITORY_ROOT),
+            "--disposable-root",
+            str(REPOSITORY_ROOT.parent),
+            "--baseline-revision",
+            "0" * 40,
+            "--archive",
+            str(REPOSITORY_ROOT.parent / "candidate.zip"),
+            "--descriptor",
+            str(REPOSITORY_ROOT.parent / "candidate.json"),
+        ]
+        with mock.patch("sys.stderr", io.StringIO()):
+            with self.assertRaises(SystemExit):
+                parser.parse_args(common)
+            with self.assertRaises(SystemExit):
+                parser.parse_args(
+                    common + ["--clean-head", "--candidate-path", "base.txt"]
+                )
 
 
 if __name__ == "__main__":
