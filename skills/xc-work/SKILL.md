@@ -187,7 +187,21 @@ scheduling. If the solution, acceptance, ownership, or side effects must
 change, add alternate recovery work or a user gate instead of retrying the
 old contract.
 
+For any failed, blocked, or gate-rejected node, select the recovery pattern
+from `references/recovery-patterns.md`: retry the unchanged contract (P1), add
+an alternate-approach recovery node (P2), rescope through the owning solution
+gate (P3), or escalate through a main-session user gate (P4). The choice
+follows contract change and evidence, never convenience.
+
 Adaptive work has no global node ceiling. Each loop remains bounded, while reviewed dynamic subtrees and recovery groups may be added as evidence requires. A user-requested fast pace limits optional depth only; it never removes required acceptance, verification, approval, audit, or recovery.
+
+When confirmed scope splits into independent workstreams, the main session may run a feature farm — parallel milestone or feature subtrees under one work order — following `references/feature-farms.md`: dependency-aware batching, one node per worker, short blackboard control values with node-specific source keys, a post-farm integration node that resolves conflicts against the approved solution and baselines, and user-gate escalation for ambiguous conflicts.
+
+When a work order completes, a milestone seals, or repeated interception, retry, or block patterns appear, collect governance-loop evidence read-only with `scripts/governance_stats.py` and review it against plan expectations following `references/governance-loop.md`: gate outcomes, retry hotspots, block hotspots, and route-share drift. A governance loop review recommends policy changes but never applies them; calibration-boundary changes stay model-independent.
+
+### Pacing and Loop Bounds
+
+The main-session bounded-loop rule is governance policy from AGENTS.md, not a runtime mechanism in the adaptive template. Large adaptive work has no global node ceiling, so the total number of loops is unbounded while each loop remains bounded. Within one loop, the confirmed `pace` parameter and the confirmed task facts (scope, clarity, risk, verification, coordination, duration, audit) control how much work fits into that loop. Individual loop templates that declare loops are bounded by their own loop constructs (`loop.max_iterations` and `loop.on_limit`), which xc-orchestration-author owns; the adaptive work-order template contains no loop nodes, and the main session must not invent alternate loop bounds. The direct path keeps fact confirmation within a single bounded loop. Confirmed facts are re-checked whenever new evidence appears, and unknown facts are never assumed confirmed.
 
 ## Run Operation
 
@@ -220,6 +234,8 @@ explicit recovery nodes or a gate.
 ## Runtime Source Publication
 
 Control-packet source keys contain UTF-8 compact JSON arrays of terminal runtime leaf IDs and are written only through runtime `set` or a terminal operation's `--set`. The solution, objective, and result keys select document writer leaves because those leaves declare the durable document artifacts. Dynamic implementation and verification nodes use the node-specific keys and metadata defined by their owning Skills. If a declared source is unavailable, non-terminal, or semantically insufficient, do not invent a reference or weaken the threshold; schedule the missing work or block the consumer leaf.
+
+Main sessions consume worker `--summary` values as compact state deltas and pointers rather than narrative. Workers write those summaries per the Structured Summary Convention in the single-node worker contract (`subagent-contract.md` reference of `xc-orchestration-runtime`). The runtime requires `--summary` and `--validation` presence on completion; it does not parse the summary's content structure.
 
 ## Mode Rules
 

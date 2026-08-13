@@ -18,6 +18,54 @@ import plan_work
 import plan_work_policy as policy
 
 
+MINIMAL_PLAN_SNAPSHOT = (
+    '{"schema_version":1,"ok":true,"mode":"change","pace":"fast","capabilities":'
+    '{"goal_document":false,"analysis":false,"clarification":false,"solution":false,'
+    '"approval":false,"split_implementation":false,"separate_verification":false,'
+    '"independent_review":false,"result_document":false,"resumable_recovery":false},'
+    '"implementation_units_min":1,"verification_scopes":["focused"],"depth":'
+    '{"analysis_perspectives":0,"review_passes":0,"recovery_exercises":0},'
+    '"optional_depth":{"analysis_perspectives":{"floor":0,"value":0,"trimmed":true},'
+    '"review_passes":{"floor":0,"value":0,"trimmed":true},"recovery_exercises":'
+    '{"floor":0,"value":0,"trimmed":true},"regression_scope":{"floor":["focused"],'
+    '"value":["focused"],"trimmed":true}},"required_nodes":[{"logical_key":'
+    '"implementation-1","role":"implementation","artifact_min":1,'
+    '"verification_scope":"focused"},{"logical_key":"finalize","role":"finalizer",'
+    '"artifact_min":0}],"required_provenance":{"goal_document":[],"analysis":[],'
+    '"clarification":[],"solution":[],"approval":[],"split_implementation":[],'
+    '"separate_verification":[],"independent_review":[],"result_document":[],'
+    '"resumable_recovery":[]},"facts":{"governance":{"needs_persistence":"yes",'
+    '"material_impact":"yes","difficult_rollback":"no","crosses_sessions":"no",'
+    '"multiple_actors":"no","audit_required":"no"},"bridge_policy":"none","task":'
+    '{"scope":"single-location","clarity":"exact","risk":"low","verification":'
+    '"focused","coordination":"single","duration":"single-step","audit":'
+    '"runtime-only"}},"reason_codes":["mode:change","task:verification:focused"],'
+    '"planning_status":"planned","diagnostic":null,"plan_receipt":'
+    '{"schema_version":1,"request_sha256":'
+    '"0ba415c1d84b1c062757d9d8e908cac628f88c0a2f4c91de36192d87c40a2570",'
+    '"bridge_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    'aaaaaaaa","mode":"change","pace":"fast","capabilities":{"goal_document":'
+    'false,"analysis":false,"clarification":false,"solution":false,"approval":'
+    'false,"split_implementation":false,"separate_verification":false,'
+    '"independent_review":false,"result_document":false,"resumable_recovery":'
+    'false},"implementation_units_min":1,"verification_scopes":["focused"],'
+    '"depth":{"analysis_perspectives":0,"review_passes":0,"recovery_exercises":'
+    '0},"optional_depth":{"analysis_perspectives":{"floor":0,"value":0,'
+    '"trimmed":true},"review_passes":{"floor":0,"value":0,"trimmed":true},'
+    '"recovery_exercises":{"floor":0,"value":0,"trimmed":true},"regression_scope":'
+    '{"floor":["focused"],"value":["focused"],"trimmed":true}},"required_nodes":'
+    '[{"logical_key":"implementation-1","role":"implementation","artifact_min":1,'
+    '"verification_scope":"focused"},{"logical_key":"finalize","role":"finalizer",'
+    '"artifact_min":0}],"facts":{"governance":{"needs_persistence":"yes",'
+    '"material_impact":"yes","difficult_rollback":"no","crosses_sessions":"no",'
+    '"multiple_actors":"no","audit_required":"no"},"bridge_policy":"none","task":'
+    '{"scope":"single-location","clarity":"exact","risk":"low","verification":'
+    '"focused","coordination":"single","duration":"single-step","audit":'
+    '"runtime-only"}},"plan_id":'
+    '"0927c908cbd45d8cb2d0645c508aa9826cb2bda413bafc0cb79a6781be1e9940"}}'
+)
+
+
 class AdaptivePlanningTests(unittest.TestCase):
     def base_facts(self) -> dict[str, str]:
         return {
@@ -130,6 +178,382 @@ class AdaptivePlanningTests(unittest.TestCase):
             adaptive["depth"]["review_passes"] + 1,
         )
         self.assertIn("regression", thorough["verification_scopes"])
+        self.assertIn("performance", thorough["verification_scopes"])
+
+    def test_fast_pins_optional_knobs_to_floors(self) -> None:
+        facts = self.base_facts()
+        facts["pace"] = "fast"
+        payload = policy.build_plan(facts)
+        optional = payload["optional_depth"]
+        self.assertEqual(
+            set(optional),
+            set(policy.OPTIONAL_DEPTH_FLOORS),
+        )
+        for name, entry in optional.items():
+            self.assertEqual(entry["value"], entry["floor"], name)
+            self.assertTrue(entry["trimmed"], name)
+        self.assertEqual(optional["analysis_perspectives"]["floor"], 0)
+        self.assertEqual(optional["review_passes"]["floor"], 0)
+        self.assertEqual(optional["recovery_exercises"]["floor"], 0)
+        self.assertEqual(optional["regression_scope"]["floor"], ["focused"])
+        self.assertEqual(
+            payload["plan_receipt"]["optional_depth"],
+            payload["optional_depth"],
+        )
+
+    def test_fast_with_fact_required_capabilities_never_trims_below_floor(self) -> None:
+        facts = self.base_facts()
+        facts["scope"] = "module"
+        facts["risk"] = "high"
+        facts["pace"] = "fast"
+        payload = policy.build_plan(facts)
+        self.assertTrue(payload["capabilities"]["analysis"])
+        self.assertTrue(payload["capabilities"]["independent_review"])
+        self.assertTrue(payload["capabilities"]["resumable_recovery"])
+        self.assertTrue(payload["capabilities"]["split_implementation"])
+        self.assertTrue(payload["capabilities"]["separate_verification"])
+        self.assertIn("regression", payload["verification_scopes"])
+        optional = payload["optional_depth"]
+        self.assertEqual(
+            optional["analysis_perspectives"],
+            {"floor": 1, "value": 1, "trimmed": True},
+        )
+        self.assertEqual(
+            optional["review_passes"],
+            {"floor": 1, "value": 1, "trimmed": True},
+        )
+        self.assertEqual(
+            optional["recovery_exercises"],
+            {"floor": 0, "value": 0, "trimmed": True},
+        )
+        self.assertEqual(
+            optional["regression_scope"]["floor"],
+            ["focused", "regression"],
+        )
+        self.assertEqual(
+            optional["regression_scope"]["value"],
+            ["focused", "regression"],
+        )
+        self.assertTrue(optional["regression_scope"]["trimmed"])
+
+    def test_thorough_raises_optional_knobs_above_floor(self) -> None:
+        facts = self.base_facts()
+        facts["risk"] = "high"
+        facts["pace"] = "thorough"
+        thorough = policy.build_plan(facts)
+        optional = thorough["optional_depth"]
+        self.assertGreater(
+            optional["analysis_perspectives"]["value"],
+            optional["analysis_perspectives"]["floor"],
+        )
+        self.assertGreater(
+            optional["review_passes"]["value"],
+            optional["review_passes"]["floor"],
+        )
+        self.assertGreater(
+            optional["recovery_exercises"]["value"],
+            optional["recovery_exercises"]["floor"],
+        )
+        self.assertEqual(
+            optional["regression_scope"]["floor"],
+            ["focused"],
+        )
+        self.assertEqual(
+            optional["regression_scope"]["value"],
+            ["focused", "regression", "performance"],
+        )
+        for name, entry in optional.items():
+            self.assertFalse(entry["trimmed"], name)
+
+    def test_optional_depth_floors_identical_across_paces(self) -> None:
+        floors_by_pace: dict[str, dict[str, object]] = {}
+        for pace in policy.PACE_VALUES:
+            facts = self.base_facts()
+            facts["scope"] = "module"
+            facts["risk"] = "high"
+            facts["pace"] = pace
+            payload = policy.build_plan(facts)
+            floors_by_pace[pace] = {
+                name: payload["optional_depth"][name]["floor"]
+                for name in payload["optional_depth"]
+            }
+        self.assertEqual(floors_by_pace["fast"], floors_by_pace["adaptive"])
+        self.assertEqual(floors_by_pace["fast"], floors_by_pace["thorough"])
+
+    def test_adaptive_optional_depth_matches_floor_untrimmed(self) -> None:
+        facts = self.base_facts()
+        facts["pace"] = "adaptive"
+        payload = policy.build_plan(facts)
+        for name, entry in payload["optional_depth"].items():
+            self.assertEqual(entry["value"], entry["floor"], name)
+            self.assertFalse(entry["trimmed"], name)
+
+    def test_existing_fact_vectors_stay_byte_identical(self) -> None:
+        payload = policy.build_plan(self.base_facts())
+        serialized = json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        self.assertEqual(serialized, MINIMAL_PLAN_SNAPSHOT)
+        for grade in (
+            "documentation_grade",
+            "decomposition_grade",
+            "review_grade",
+        ):
+            self.assertNotIn(grade, payload)
+            self.assertNotIn(grade, payload["plan_receipt"])
+
+    def test_verification_ladder_extends_compat_tuple(self) -> None:
+        self.assertEqual(
+            policy.VERIFICATION_SCOPES,
+            ("focused", "regression", "multi-environment"),
+        )
+        self.assertEqual(
+            policy.VERIFICATION_SCOPE_LADDER,
+            ("smoke", "focused", "regression", "multi-environment", "performance"),
+        )
+
+    def test_smoke_grade_combines_into_implementation_node(self) -> None:
+        facts = self.base_facts()
+        facts["verification"] = "smoke"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["verification_scopes"], ["smoke"])
+        self.assertFalse(payload["capabilities"]["separate_verification"])
+        implementation = [
+            item
+            for item in payload["required_nodes"]
+            if item["logical_key"].startswith("implementation-")
+        ]
+        self.assertEqual(len(implementation), 1)
+        self.assertEqual(implementation[0]["verification_scope"], "smoke")
+        self.assertFalse(
+            any(
+                item["logical_key"].startswith("verification-")
+                for item in payload["required_nodes"]
+            )
+        )
+
+    def test_smoke_requires_tiny_scope_and_low_risk(self) -> None:
+        facts = self.base_facts()
+        facts["verification"] = "smoke"
+        facts["risk"] = "medium"
+        with self.assertRaises(policy.PlanningInputError) as context:
+            policy.build_plan(facts)
+        self.assertEqual(context.exception.code, "planning_input_contradictory")
+        facts = self.base_facts()
+        facts["verification"] = "smoke"
+        facts["scope"] = "module"
+        with self.assertRaises(policy.PlanningInputError) as context:
+            policy.build_plan(facts)
+        self.assertEqual(context.exception.code, "planning_input_contradictory")
+
+    def test_performance_grade_only_via_thorough_or_explicit_fact(self) -> None:
+        facts = self.base_facts()
+        payload = policy.build_plan(facts)
+        self.assertNotIn("performance", payload["verification_scopes"])
+        facts = self.base_facts()
+        facts["pace"] = "thorough"
+        payload = policy.build_plan(facts)
+        self.assertEqual(
+            payload["verification_scopes"],
+            ["focused", "regression", "performance"],
+        )
+        keys = [
+            item["logical_key"]
+            for item in payload["required_nodes"]
+            if item["logical_key"].startswith("verification-")
+        ]
+        self.assertEqual(
+            keys,
+            ["verification-focused", "verification-regression", "verification-performance"],
+        )
+        facts = self.base_facts()
+        facts["verification"] = "performance"
+        payload = policy.build_plan(facts)
+        self.assertEqual(
+            payload["verification_scopes"],
+            ["focused", "performance"],
+        )
+        keys = [
+            item["logical_key"]
+            for item in payload["required_nodes"]
+            if item["logical_key"].startswith("verification-")
+        ]
+        self.assertEqual(keys, ["verification-focused", "verification-performance"])
+
+    def test_documentation_grade_derived_and_payload_only(self) -> None:
+        payload = policy.build_plan(self.base_facts())
+        self.assertNotIn("documentation_grade", payload)
+        facts = self.base_facts()
+        facts["audit_required"] = "yes"
+        facts["audit"] = "result"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["documentation_grade"], "inline")
+        self.assertNotIn("documentation_grade", payload["plan_receipt"])
+        facts = self.base_facts()
+        facts["risk"] = "high"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["documentation_grade"], "full-user")
+        facts = self.base_facts()
+        facts["mode"] = "investigation"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["documentation_grade"], "spec-design")
+
+    def test_decomposition_grade_recorded_in_receipt(self) -> None:
+        payload = policy.build_plan(self.base_facts())
+        self.assertNotIn("decomposition_grade", payload)
+        self.assertNotIn("decomposition_grade", payload["plan_receipt"])
+        facts = self.base_facts()
+        facts["scope"] = "module"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["decomposition_grade"], "sequence")
+        self.assertEqual(payload["plan_receipt"]["decomposition_grade"], "sequence")
+        facts = self.base_facts()
+        facts["scope"] = "cross-cutting"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["decomposition_grade"], "feature-farms")
+        facts = self.base_facts()
+        facts["crosses_sessions"] = "yes"
+        facts["duration"] = "cross-session"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["decomposition_grade"], "milestone-subtrees")
+        facts = self.base_facts()
+        facts["multiple_actors"] = "yes"
+        facts["coordination"] = "multi-party"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["decomposition_grade"], "milestone-subtrees")
+        facts = self.base_facts()
+        facts["mode"] = "review"
+        facts["scope"] = "cross-cutting"
+        payload = policy.build_plan(facts)
+        self.assertNotIn("decomposition_grade", payload)
+
+    def test_review_grade_mapping(self) -> None:
+        payload = policy.build_plan(self.base_facts())
+        self.assertNotIn("review_grade", payload)
+        facts = self.base_facts()
+        facts["risk"] = "medium"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["review_grade"], "self-check")
+        facts = self.base_facts()
+        facts["risk"] = "high"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["review_grade"], "independent")
+        facts = self.base_facts()
+        facts["coordination"] = "review"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["review_grade"], "independent")
+        facts = self.base_facts()
+        facts["audit_required"] = "yes"
+        facts["risk"] = "high"
+        facts["audit"] = "full"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["review_grade"], "architecture-gate")
+        self.assertEqual(
+            payload["plan_receipt"]["review_grade"],
+            "architecture-gate",
+        )
+
+    def test_grade_floors_preserved_across_paces(self) -> None:
+        grades_by_pace: dict[str, tuple[str, str, str]] = {}
+        scopes_by_pace: dict[str, list[str]] = {}
+        for pace in policy.PACE_VALUES:
+            facts = self.base_facts()
+            facts["scope"] = "module"
+            facts["audit_required"] = "yes"
+            facts["risk"] = "high"
+            facts["audit"] = "full"
+            facts["pace"] = pace
+            payload = policy.build_plan(facts)
+            grades_by_pace[pace] = (
+                payload["documentation_grade"],
+                payload["decomposition_grade"],
+                payload["review_grade"],
+            )
+            scopes_by_pace[pace] = payload["verification_scopes"]
+        self.assertEqual(
+            grades_by_pace["fast"],
+            ("full-user", "sequence", "architecture-gate"),
+        )
+        self.assertEqual(grades_by_pace["fast"], grades_by_pace["adaptive"])
+        self.assertEqual(grades_by_pace["fast"], grades_by_pace["thorough"])
+
+    def test_fast_never_downgrades_a_grade_below_its_fact_floor(self) -> None:
+        facts = self.base_facts()
+        facts["verification"] = "performance"
+        facts["pace"] = "fast"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["verification_scopes"], ["focused", "performance"])
+        self.assertEqual(
+            payload["optional_depth"]["regression_scope"]["floor"],
+            ["focused", "performance"],
+        )
+        self.assertEqual(
+            payload["optional_depth"]["regression_scope"]["value"],
+            ["focused", "performance"],
+        )
+        facts = self.base_facts()
+        facts["audit_required"] = "yes"
+        facts["risk"] = "high"
+        facts["audit"] = "full"
+        facts["pace"] = "fast"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["review_grade"], "architecture-gate")
+        self.assertEqual(payload["documentation_grade"], "full-user")
+        self.assertTrue(payload["capabilities"]["independent_review"])
+
+    def test_smoke_manifest_binding_is_tolerated(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bridge = Path(temporary) / "WORKFLOW.md"
+            bridge.write_text("# Workflow\n", encoding="utf-8")
+            facts = self.base_facts()
+            facts["verification"] = "smoke"
+            facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
+            receipt = policy.build_plan(facts)["plan_receipt"]
+            source_map = {"implementation-1": {"node_id": "rt_smoke_worker"}}
+            packet = {
+                "packet": {
+                    "target": {
+                        "logical_key": "finalize",
+                        "role": "work-order-finalize",
+                    },
+                    "blackboard": [
+                        {"key": "work_order.plan_id", "value": receipt["plan_id"]}
+                    ],
+                    "source_categories": [
+                        {
+                            "name": "plan-implementation-1",
+                            "sources": [
+                                {
+                                    "node_id": "rt_smoke_worker",
+                                    "logical_key": "implementation-1",
+                                    "role": "implementation",
+                                    "status": "succeeded",
+                                    "artifacts": ["smoke-artifact.md"],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            }
+            code, payload = self.invoke(
+                SCRIPTS / "validate_adaptive_manifest.py",
+                [
+                    "--receipt-json",
+                    json.dumps(receipt, separators=(",", ":")),
+                    "--source-map-json",
+                    json.dumps(source_map, separators=(",", ":")),
+                    "--packet-json",
+                    json.dumps(packet, separators=(",", ":")),
+                    "--request",
+                    facts["request"],
+                    "--bridge",
+                    str(bridge),
+                ],
+            )
+            self.assertEqual(code, 0)
+            self.assertEqual(payload["min_sources"], 1)
 
     def test_governance_tightening_never_removes_capabilities(self) -> None:
         base = policy.build_plan(self.base_facts())

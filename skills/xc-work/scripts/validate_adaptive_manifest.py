@@ -171,7 +171,7 @@ def main() -> int:
             key == f"verification-{expected_scope}"
             or (
                 key.startswith("implementation-")
-                and expected_scope == "focused"
+                and expected_scope in ("focused", "smoke")
             )
         ):
             return fail("invalid_verification_binding", [key])

@@ -1,0 +1,98 @@
+{
+  "name": "jit-milestone",
+  "schema_version": 1,
+  "blackboard": {
+    "milestone.accepted": "pending",
+    "milestone.evidence_sources": "[]",
+    "milestone.demo_sources": "[]"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "JIT Milestone",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "milestone-group",
+        "title": "Milestone",
+        "type": "composite",
+        "role": "dynamic-group",
+        "mode": "sequence",
+        "executor": "main",
+        "children": [
+          {
+            "template_id": "milestone-work-group",
+            "title": "Milestone Implementation and Verification",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main"
+          },
+          {
+            "template_id": "milestone-acceptance-gate",
+            "title": "Accept milestone",
+            "type": "gate",
+            "role": "milestone-acceptance",
+            "executor": "main",
+            "instructions": "Present the milestone evidence to the user and record one acceptance decision.",
+            "deliverables": "milestone.accepted blackboard value set to approved or revision-required.",
+            "acceptance": "The gate outcome is approved or revision-required with a recorded decision.",
+            "metadata": {
+              "control_packet": {
+                "category": {
+                  "demo-evidence": {
+                    "selectors": "[\"bb:milestone.demo_sources\"]",
+                    "min_sources": "1",
+                    "artifact_min": "1"
+                  },
+                  "milestone-evidence": {
+                    "selectors": "[\"bb:milestone.evidence_sources\"]",
+                    "min_sources": "1",
+                    "artifact_min": "1"
+                  }
+                },
+                "blackboard_keys": "[\"milestone.accepted\"]"
+              },
+              "completion": {
+                "required_fields": "[\"summary\",\"validation\"]"
+              },
+              "gate": {
+                "outcomes": "[\"approved\",\"revision-required\"]",
+                "decision_required": "true",
+                "outcome_key": "milestone.accepted"
+              }
+            }
+          },
+          {
+            "template_id": "milestone-finalizer",
+            "title": "Finalize milestone",
+            "type": "task",
+            "role": "milestone-finalize",
+            "executor": "main",
+            "instructions": "Verify that every milestone evidence source is present and accepted, then record the milestone completion.",
+            "deliverables": "A sealed milestone completion record.",
+            "acceptance": "milestone.accepted == approved and the control packet resolves against milestone.evidence_sources.",
+            "depends_on_template": "local:milestone-acceptance-gate",
+            "metadata": {
+              "control_packet": {
+                "category": {
+                  "milestone-evidence": {
+                    "selectors": "[\"bb:milestone.evidence_sources\"]",
+                    "min_sources": "1",
+                    "artifact_min": "1"
+                  }
+                },
+                "blackboard_keys": "[\"milestone.accepted\"]"
+              },
+              "completion": {
+                "required_fields": "[\"summary\",\"validation\"]"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

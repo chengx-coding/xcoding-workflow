@@ -72,6 +72,76 @@ class AgentExportTests(unittest.TestCase):
         self.assertTrue(trae.startswith("---\nname: delegate-agent\n"))
         self.assertIn(body, trae)
 
+    def test_exporter_target_set_is_exactly_four_host_targets_and_check_guards_each(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "agents-src"
+            shutil.copytree(REPOSITORY_ROOT / "agents-src", root)
+            exporter = root / "export_agents.py"
+
+            generated = subprocess.run(
+                [sys.executable, str(exporter)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            self.assertEqual(
+                generated.returncode,
+                0,
+                generated.stderr or generated.stdout,
+            )
+
+            directories = {
+                entry.name for entry in root.iterdir() if entry.is_dir()
+            }
+            self.assertEqual(
+                directories,
+                {
+                    "agents",
+                    "claude-agents",
+                    "opencode-agents",
+                    "codex-agents",
+                    "trae-agents",
+                },
+            )
+
+            target_files = {
+                "claude-agents": "delegate-agent.md",
+                "opencode-agents": "delegate-agent.md",
+                "codex-agents": "delegate-agent.toml",
+                "trae-agents": "delegate-agent.md",
+            }
+            for directory, filename in target_files.items():
+                missing = root / directory / filename
+                self.assertTrue(
+                    missing.is_file(), f"{missing} was not generated"
+                )
+                missing.unlink()
+                checked = subprocess.run(
+                    [sys.executable, str(exporter), "--check"],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    check=False,
+                )
+                self.assertEqual(checked.returncode, 1)
+                self.assertIn(f"{directory}/{filename}", checked.stderr)
+
+                regenerated = subprocess.run(
+                    [sys.executable, str(exporter)],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    check=False,
+                )
+                self.assertEqual(
+                    regenerated.returncode,
+                    0,
+                    regenerated.stderr or regenerated.stdout,
+                )
+
     def test_check_rejects_extra_missing_and_stale_generated_output(
         self,
     ) -> None:

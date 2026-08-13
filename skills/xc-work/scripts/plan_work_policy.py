@@ -40,12 +40,83 @@ CAPABILITIES = (
     "resumable_recovery",
 )
 VERIFICATION_SCOPES = ("focused", "regression", "multi-environment")
+VERIFICATION_SCOPE_LADDER = ("smoke", *VERIFICATION_SCOPES, "performance")
+DOCUMENTATION_GRADES = ("none", "inline", "spec-design", "full-user")
+DECOMPOSITION_GRADES = (
+    "single-node",
+    "sequence",
+    "milestone-subtrees",
+    "feature-farms",
+)
+REVIEW_GRADES = ("none", "self-check", "independent", "architecture-gate")
 MODES = ("investigation", "change", "repair", "review", "maintenance")
 MUTATION_MODES = frozenset({"change", "repair", "maintenance"})
 MUTATION_ONLY_CAPABILITIES = frozenset(
     {"split_implementation", "separate_verification"}
 )
 PACE_VALUES = ("adaptive", "fast", "thorough")
+OPTIONAL_DEPTH_FLOORS: dict[str, dict[str, object]] = {
+    "analysis_perspectives": {"enabled_capability": "analysis"},
+    "review_passes": {"enabled_capability": "independent_review"},
+    "recovery_exercises": {"enabled_capability": None},
+    "regression_scope": {"fact_required_scopes": True},
+}
+
+
+def compute_optional_depth_floors(
+    capabilities: dict[str, bool],
+    fact_required_scopes: Sequence[str],
+) -> dict[str, object]:
+    floors: dict[str, object] = {}
+    for name, spec in OPTIONAL_DEPTH_FLOORS.items():
+        capability = spec.get("enabled_capability")
+        if capability is not None:
+            floors[name] = 1 if capabilities[capability] else 0
+        elif spec.get("fact_required_scopes"):
+            floors[name] = list(fact_required_scopes)
+        else:
+            floors[name] = 0
+    return floors
+
+
+def derive_documentation_grade(capabilities: dict[str, bool]) -> str:
+    goal = capabilities["goal_document"]
+    result = capabilities["result_document"]
+    design = capabilities["analysis"] or capabilities["solution"]
+    if goal and result:
+        return "full-user"
+    if goal or design:
+        return "spec-design"
+    if result:
+        return "inline"
+    return "none"
+
+
+def derive_decomposition_grade(facts: dict[str, str], units: int) -> str:
+    if facts["mode"] not in MUTATION_MODES:
+        return "single-node"
+    if facts["scope"] == "cross-cutting":
+        return "feature-farms"
+    if facts["duration"] == "cross-session" or facts["coordination"] == "multi-party":
+        return "milestone-subtrees"
+    if units >= 2:
+        return "sequence"
+    return "single-node"
+
+
+def derive_review_grade(
+    capabilities: dict[str, bool],
+    facts: dict[str, str],
+) -> str:
+    if facts["risk"] == "high" and facts["audit"] == "full":
+        return "architecture-gate"
+    if capabilities["independent_review"]:
+        return "independent"
+    if capabilities["separate_verification"]:
+        return "self-check"
+    return "none"
+
+
 OPTIONS = {
     **{f"--{name.replace('_', '-')}": name for name in GOVERNANCE_FACTS},
     "--bridge-policy": "bridge_policy",
@@ -67,7 +138,7 @@ VALUES = {
     "scope": frozenset({"single-location", "module", "cross-cutting", "unknown"}),
     "clarity": frozenset({"exact", "known-root", "uncertain", "unknown"}),
     "risk": frozenset({"low", "medium", "high", "unknown"}),
-    "verification": frozenset({"focused", "regression", "multi-environment", "unknown"}),
+    "verification": frozenset({"focused", "regression", "multi-environment", "smoke", "performance", "unknown"}),
     "coordination": frozenset({"single", "review", "multi-party", "unknown"}),
     "duration": frozenset({"single-step", "multi-step", "cross-session", "unknown"}),
     "audit": frozenset({"runtime-only", "result", "full", "unknown"}),
@@ -162,6 +233,10 @@ def _contradictions(facts: dict[str, str]) -> list[str]:
         issues.append("audit_required")
     if facts["audit_required"] == "yes" and facts["audit"] == "runtime-only":
         issues.append("audit")
+    if facts["verification"] == "smoke" and (
+        facts["risk"] != "low" or facts["scope"] != "single-location"
+    ):
+        issues.append("verification")
     return list(dict.fromkeys(issues))
 
 
@@ -236,7 +311,8 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
     if facts["mode"] in {"investigation", "review"}:
         enable(("analysis",), f"mode:{facts['mode']}")
     elif facts["mode"] in MUTATION_MODES:
-        add_scope("focused", f"mode:{facts['mode']}")
+        base_scope = "smoke" if facts["verification"] == "smoke" else "focused"
+        add_scope(base_scope, f"mode:{facts['mode']}")
 
     for name in GOVERNANCE_FACTS:
         value = facts[name]
@@ -301,9 +377,11 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
             ),
         },
         "verification": {
+            "smoke": (),
             "focused": (),
             "regression": ("separate_verification",),
             "multi-environment": ("separate_verification", "independent_review"),
+            "performance": ("separate_verification",),
         },
         "coordination": {
             "single": (),
@@ -358,6 +436,10 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         units = 0
         scopes = []
 
+    fact_required_scopes = [
+        name for name in VERIFICATION_SCOPE_LADDER if name in scopes
+    ]
+    floors = compute_optional_depth_floors(capabilities, fact_required_scopes)
     depth = {
         "analysis_perspectives": 1 if capabilities["analysis"] else 0,
         "review_passes": 1 if capabilities["independent_review"] else 0,
@@ -377,6 +459,13 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
             if code not in provenance["separate_verification"]:
                 provenance["separate_verification"].append(code)
             add_scope("regression", code)
+            add_scope("performance", code)
+    elif facts["pace"] == "fast":
+        depth = {
+            "analysis_perspectives": floors["analysis_perspectives"],
+            "review_passes": floors["review_passes"],
+            "recovery_exercises": floors["recovery_exercises"],
+        }
 
     if capabilities["analysis"] != (depth["analysis_perspectives"] >= 1):
         raise PlanningInputError("planning_invariant_failed", ["analysis_perspectives"])
@@ -387,7 +476,33 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
     ):
         raise PlanningInputError("planning_invariant_failed", ["implementation_units_min"])
 
-    ordered_scopes = [name for name in VERIFICATION_SCOPES if name in scopes]
+    ordered_scopes = [name for name in VERIFICATION_SCOPE_LADDER if name in scopes]
+    optional_depth: dict[str, dict[str, object]] = {
+        "analysis_perspectives": {
+            "floor": floors["analysis_perspectives"],
+            "value": depth["analysis_perspectives"],
+            "trimmed": facts["pace"] == "fast",
+        },
+        "review_passes": {
+            "floor": floors["review_passes"],
+            "value": depth["review_passes"],
+            "trimmed": facts["pace"] == "fast",
+        },
+        "recovery_exercises": {
+            "floor": floors["recovery_exercises"],
+            "value": depth["recovery_exercises"],
+            "trimmed": facts["pace"] == "fast",
+        },
+        "regression_scope": {
+            "floor": floors["regression_scope"],
+            "value": ordered_scopes,
+            "trimmed": facts["pace"] == "fast",
+        },
+    }
+    if facts["pace"] == "fast":
+        for name in OPTIONAL_DEPTH_FLOORS:
+            if optional_depth[name]["value"] != optional_depth[name]["floor"]:
+                raise PlanningInputError("planning_invariant_failed", [name])
     required_nodes: list[dict[str, object]] = []
 
     def add_required(
@@ -418,7 +533,7 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         add_required("solution-approval", "approval", artifact_min=0)
     for index in range(units):
         verification_scope = (
-            "focused"
+            ("smoke" if facts["verification"] == "smoke" else "focused")
             if index == 0
             and facts["mode"] in MUTATION_MODES
             and not capabilities["separate_verification"]
@@ -447,6 +562,9 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         "bridge_policy": facts["bridge_policy"],
         "task": {name: facts[name] for name in TASK_FACTS},
     }
+    documentation_grade = derive_documentation_grade(capabilities)
+    decomposition_grade = derive_decomposition_grade(facts, units)
+    review_grade = derive_review_grade(capabilities, facts)
     receipt_body = {
         "schema_version": 1,
         "request_sha256": hashlib.sha256(facts["request"].encode("utf-8")).hexdigest(),
@@ -457,14 +575,19 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         "implementation_units_min": units,
         "verification_scopes": ordered_scopes,
         "depth": depth,
+        "optional_depth": optional_depth,
         "required_nodes": required_nodes,
         "facts": nested_facts,
     }
+    if decomposition_grade != "single-node":
+        receipt_body["decomposition_grade"] = decomposition_grade
+    if review_grade != "none":
+        receipt_body["review_grade"] = review_grade
     plan_id = hashlib.sha256(
         compact_json(receipt_body, sort_keys=True).encode("utf-8")
     ).hexdigest()
     plan_receipt = {**receipt_body, "plan_id": plan_id}
-    return {
+    payload = {
         "schema_version": 1,
         "ok": True,
         "mode": facts["mode"],
@@ -473,6 +596,7 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         "implementation_units_min": units,
         "verification_scopes": ordered_scopes,
         "depth": depth,
+        "optional_depth": optional_depth,
         "required_nodes": required_nodes,
         "required_provenance": provenance,
         "facts": nested_facts,
@@ -481,6 +605,13 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         "diagnostic": None,
         "plan_receipt": plan_receipt,
     }
+    if documentation_grade != "none":
+        payload["documentation_grade"] = documentation_grade
+    if decomposition_grade != "single-node":
+        payload["decomposition_grade"] = decomposition_grade
+    if review_grade != "none":
+        payload["review_grade"] = review_grade
+    return payload
 
 
 def error_payload(error: PlanningInputError) -> dict[str, object]:

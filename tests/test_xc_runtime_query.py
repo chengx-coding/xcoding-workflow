@@ -80,6 +80,8 @@ class RuntimeQueryTests(unittest.TestCase):
                 "reopen-group",
                 "reopen",
                 "repair-integrity",
+                "restore-point",
+                "archive-subtree",
             },
         )
 

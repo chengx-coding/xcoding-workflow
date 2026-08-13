@@ -100,7 +100,7 @@ class RuntimeCliParityTests(unittest.TestCase):
     def environment(self) -> application.RuntimeEnvironment:
         return application.RuntimeEnvironment(MINIMAL_TEMPLATE)
 
-    def test_shared_spec_declares_all_23_commands_with_exact_arguments(
+    def test_shared_spec_declares_all_25_commands_with_exact_arguments(
         self,
     ) -> None:
         expected = (
@@ -127,6 +127,8 @@ class RuntimeCliParityTests(unittest.TestCase):
             "integrity-status",
             "repair-integrity",
             "validate",
+            "restore-point",
+            "archive-subtree",
         )
         self.assertEqual(commands.COMMAND_NAMES, expected)
         self.assertEqual(

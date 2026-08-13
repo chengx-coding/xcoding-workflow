@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="jit-milestone" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
+  <meta>
+    <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="19568a6b24bafb44f1d1a52eb88fdb51db252e487d7c8f00350ad4a3816af98d" />
+  </meta>
+  <blackboard>
+    <var key="milestone.accepted">pending</var>
+    <var key="milestone.evidence_sources">[]</var>
+    <var key="milestone.demo_sources">[]</var>
+  </blackboard>
+  <node executor="main" mode="sequence" role="root" template_id="root" title="JIT Milestone" type="composite">
+    <children>
+      <node executor="main" mode="sequence" role="dynamic-group" template_id="milestone-group" title="Milestone" type="composite">
+        <children>
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="milestone-work-group" title="Milestone Implementation and Verification" type="composite" />
+          <node executor="main" role="milestone-acceptance" template_id="milestone-acceptance-gate" title="Accept milestone" type="gate" metadata.control_packet.category.demo-evidence.selectors="[&quot;bb:milestone.demo_sources&quot;]" metadata.control_packet.category.demo-evidence.min_sources="1" metadata.control_packet.category.demo-evidence.artifact_min="1" metadata.control_packet.category.milestone-evidence.selectors="[&quot;bb:milestone.evidence_sources&quot;]" metadata.control_packet.category.milestone-evidence.min_sources="1" metadata.control_packet.category.milestone-evidence.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;milestone.accepted&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;approved&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="milestone.accepted">
+            <instructions>Present the milestone evidence to the user and record one acceptance decision.</instructions>
+            <deliverables>milestone.accepted blackboard value set to approved or revision-required.</deliverables>
+            <acceptance>The gate outcome is approved or revision-required with a recorded decision.</acceptance>
+          </node>
+          <node depends_on_template="local:milestone-acceptance-gate" executor="main" role="milestone-finalize" template_id="milestone-finalizer" title="Finalize milestone" type="task" metadata.control_packet.category.milestone-evidence.selectors="[&quot;bb:milestone.evidence_sources&quot;]" metadata.control_packet.category.milestone-evidence.min_sources="1" metadata.control_packet.category.milestone-evidence.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;milestone.accepted&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]">
+            <instructions>Verify that every milestone evidence source is present and accepted, then record the milestone completion.</instructions>
+            <deliverables>A sealed milestone completion record.</deliverables>
+            <acceptance>milestone.accepted == approved and the control packet resolves against milestone.evidence_sources.</acceptance>
+          </node>
+        </children>
+      </node>
+    </children>
+  </node>
+</orchestration>
