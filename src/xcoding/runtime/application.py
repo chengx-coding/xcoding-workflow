@@ -11,13 +11,14 @@ import argparse
 import json
 import sys
 import uuid
+import xml.etree.ElementTree as ET
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import commands, core
+from . import commands, core, restore_points
 
 
 @dataclass(frozen=True)
@@ -457,6 +458,23 @@ def cmd_embed_subtree(args: argparse.Namespace) -> Dict[str, Any]:
         )
 
 
+def cmd_archive_subtree(args: argparse.Namespace) -> Dict[str, Any]:
+    with runtime_mutation(args, "archive-subtree") as (path, tree, config):
+        stub = core.archive_subtree(tree.getroot(), args.subtree, args.reason)
+        return write_runtime(
+            tree,
+            path,
+            config,
+            "archive-subtree",
+            {
+                "node": core.snapshot_node(tree.getroot(), stub),
+                "archived_subtrees": core.archived_subtree_count(tree.getroot()),
+                "counts": core.status_counts(tree.getroot()),
+            },
+            commit_on_write=False,
+        )
+
+
 def cmd_close_group(args: argparse.Namespace) -> Dict[str, Any]:
     with runtime_mutation(args, "close-group") as (path, tree, config):
         group = core.close_dynamic_group(tree.getroot(), args.group)
@@ -514,6 +532,7 @@ def cmd_summary(args: argparse.Namespace) -> Dict[str, Any]:
         "integrity": integrity,
         "revision": core.runtime_revision(root),
         "counts": core.status_counts(root),
+        "archived_subtrees": core.archived_subtree_count(root),
         "blackboard": core.blackboard(root),
         "awaiting_dynamic_groups": core.awaiting_dynamic_groups(root),
         "ready": snapshot_ready(root, args.limit),
@@ -523,12 +542,18 @@ def cmd_summary(args: argparse.Namespace) -> Dict[str, Any]:
 def cmd_show(args: argparse.Namespace) -> Dict[str, Any]:
     path, tree, _, integrity = parse_runtime_for_read(args)
     root = tree.getroot()
-    return {
+    node = core.find_node(root, args.node)
+    payload = {
         "tree_path": str(path),
         "integrity": integrity,
         "revision": core.runtime_revision(root),
-        "node": core.snapshot_node(root, core.find_node(root, args.node)),
+        "node": core.snapshot_node(root, node),
     }
+    if core.is_archived_stub(node):
+        projection = core.archived_record_projection(root, node)
+        if projection is not None:
+            payload["archived_record"] = projection
+    return payload
 
 
 def cmd_control_packet(args: argparse.Namespace) -> Dict[str, Any]:
@@ -545,12 +570,18 @@ def cmd_control_packet(args: argparse.Namespace) -> Dict[str, Any]:
 def cmd_find(args: argparse.Namespace) -> Dict[str, Any]:
     path, tree, _, integrity = parse_runtime_for_read(args)
     root = tree.getroot()
-    nodes = [
-        core.snapshot_node(root, node)
-        for node in core.iter_nodes(root)
-        if node.get("template_id") == args.template_id
-        and (not args.instance_id or node.get("origin_instance_id") == args.instance_id)
-    ]
+    nodes: List[Dict[str, Any]] = []
+    for node in core.iter_nodes(root):
+        if node.get("template_id") != args.template_id:
+            continue
+        if args.instance_id and node.get("origin_instance_id") != args.instance_id:
+            continue
+        entry = core.snapshot_node(root, node)
+        if core.is_archived_stub(node):
+            projection = core.archived_record_projection(root, node)
+            if projection is not None:
+                entry = {**entry, "archived_record": projection}
+        nodes.append(entry)
     return {
         "tree_path": str(path),
         "integrity": integrity,
@@ -601,11 +632,14 @@ def cmd_repair_integrity(args: argparse.Namespace) -> Dict[str, Any]:
         core.require_expected_revision(root, args.expected_revision)
         previous_integrity = core.verify_integrity(root, "runtime")
         core.stabilize(root)
+        archived_registry_repairs = core.repair_archived_registry(root)
         errors = core.validate_runtime_root(root, check_integrity=False)
         if errors:
             raise core.TreeValidationError("runtime structural validation failed", {"errors": errors})
         result = write_runtime(tree, path, config, "repair-integrity", {"reason": args.reason})
         result["previous_integrity"] = previous_integrity
+        if archived_registry_repairs:
+            result["archived_registry_repairs"] = archived_registry_repairs
         return result
 
 
@@ -631,6 +665,171 @@ def cmd_validate(args: argparse.Namespace) -> Dict[str, Any]:
         "errors": errors,
         "node_count": sum(1 for _ in core.iter_nodes(root)),
     }
+
+
+def cmd_restore_point_create(args: argparse.Namespace) -> Dict[str, Any]:
+    path = Path(args.tree)
+    config = config_for(args, path)
+    with core.runtime_write_lock(path):
+        tree, integrity = core.read_tree_with_integrity(path, config, "runtime")
+        core.require_target_runtime_schema(tree.getroot())
+        core.require_writable_integrity(integrity)
+        errors = core.validate_runtime_root(tree.getroot(), check_integrity=False)
+        if errors:
+            raise core.TreeValidationError("runtime structural validation failed", {"errors": errors})
+        artifacts = restore_points.collect_declared_artifacts(path, tree.getroot())
+        restore_point_id = restore_points.new_restore_point_id()
+        created_at = core.utc_now()
+        manifest = restore_points.write_restore_point(
+            path,
+            restore_point_id,
+            (args.name or "").strip(),
+            path.read_bytes(),
+            artifacts,
+            created_at,
+        )
+        return {
+            "tree_path": str(path),
+            "revision": core.runtime_revision(tree.getroot()),
+            "restore_point": {
+                "id": restore_point_id,
+                "created_at": created_at,
+                "name": manifest["name"],
+                "tree_sha256": manifest["tree_sha256"],
+                "tree_stored_as": manifest["tree_stored_as"],
+                "artifacts": manifest["artifacts"],
+                "directory": manifest["directory"],
+            },
+        }
+
+
+def cmd_restore_point_list(args: argparse.Namespace) -> Dict[str, Any]:
+    path = Path(args.tree)
+    _, tree, _, _ = parse_runtime_for_read(args)
+    root = tree.getroot()
+    return {
+        "tree_path": str(path),
+        "revision": core.runtime_revision(root),
+        "restore_points": restore_points.list_restore_points(path),
+    }
+
+
+def cmd_restore_point_restore(args: argparse.Namespace) -> Dict[str, Any]:
+    path = Path(args.tree)
+    config = config_for(args, path)
+    with core.runtime_write_lock(path):
+        live_tree, integrity = core.read_tree_with_integrity(path, config, "runtime")
+        core.require_target_runtime_schema(live_tree.getroot())
+        core.require_writable_integrity(integrity)
+        live_root = live_tree.getroot()
+        errors = core.validate_runtime_root(live_root, check_integrity=False)
+        if errors:
+            raise core.TreeValidationError("runtime structural validation failed", {"errors": errors})
+        core.require_expected_revision(live_root, args.expected_revision)
+        reason = args.reason.strip()
+        if not reason:
+            raise core.TreeValidationError("restore reason must not be empty")
+        restored = restore_points.load_verified_restore_point(path, args.restore_point)
+        workshop = restore_points.workshop_root_for(path)
+        artifact_entries: List[Dict[str, Any]] = []
+        for entry in restored["artifacts"]:
+            artifact_entries.append(
+                {
+                    **entry,
+                    "resolved_path": restore_points.require_inside_workshop(
+                        workshop,
+                        entry["resolved_path"],
+                        "restored artifact",
+                    ),
+                }
+            )
+        restored_root = ET.fromstring(restored["tree_bytes"])
+        core.require_target_runtime_schema(restored_root)
+        errors = core.validate_runtime_root(restored_root, check_integrity=False)
+        if errors:
+            raise core.TreeValidationError("restored runtime structural validation failed", {"errors": errors})
+
+        def epoch_of(root: ET.Element) -> int:
+            raw = root.get("epoch", "0")
+            try:
+                return max(int(raw), 0)
+            except ValueError:
+                return 0
+
+        next_epoch = max(epoch_of(restored_root), epoch_of(live_root)) + 1
+        restored_revision = core.runtime_revision(restored_root)
+        metadata = core.find_meta(restored_root)
+        if metadata is None:
+            raise core.TreeValidationError("restored runtime metadata is missing")
+        history = core.ensure_direct(metadata, "restore_history")
+        ET.SubElement(
+            history,
+            "restore",
+            {
+                "epoch": str(next_epoch),
+                "restored_at": core.utc_now(),
+                "reason": reason,
+                "restore_point_id": args.restore_point,
+                "restored_revision": str(restored_revision),
+                "previous_revision": str(core.runtime_revision(live_root)),
+                "previous_status": live_root.get("status", "pending"),
+            },
+        )
+        restored_root.set("epoch", str(next_epoch))
+        restored_root.set("revision", str(core.runtime_revision(live_root)))
+        restored_tree = ET.ElementTree(restored_root)
+
+        artifact_paths = [entry["resolved_path"] for entry in artifact_entries]
+        original_tree = path.read_bytes()
+        artifact_state = [
+            (resolved, resolved.read_bytes() if resolved.is_file() else None)
+            for resolved in artifact_paths
+        ]
+
+        def rollback() -> None:
+            core.atomic_write_bytes(path, original_tree)
+            for resolved, data in artifact_state:
+                if data is None:
+                    resolved.unlink(missing_ok=True)
+                else:
+                    core.atomic_write_bytes(resolved, data)
+
+        try:
+            for entry in artifact_entries:
+                core.atomic_write_bytes(
+                    entry["resolved_path"],
+                    entry["stored_path"].read_bytes(),
+                )
+            payload = write_runtime(
+                restored_tree,
+                path,
+                config,
+                "restore-point-restore",
+                {
+                    "restore_point_id": args.restore_point,
+                    "reason": reason,
+                    "epoch": str(next_epoch),
+                    "restored_revision": str(restored_revision),
+                    "artifacts_restored": [str(item) for item in artifact_paths],
+                },
+                commit_paths=artifact_paths,
+                commit_on_write=True,
+            )
+        except Exception:
+            rollback()
+            raise
+        if payload["status"] == "persisted_uncommitted":
+            rollback()
+            raise core.RuntimeErrorBase(
+                "restore-point checkpoint could not be committed; runtime state was restored",
+                {
+                    "status": "persisted_uncommitted",
+                    "operation": "restore-point-restore",
+                    "tree_path": str(path),
+                    "commit": payload["commit"],
+                },
+            )
+        return payload
 
 
 def execute(

@@ -31,6 +31,8 @@ COMMAND_NAMES = (
     "integrity-status",
     "repair-integrity",
     "validate",
+    "restore-point",
+    "archive-subtree",
 )
 
 
@@ -296,6 +298,48 @@ def build_parser() -> argparse.ArgumentParser:
     )
     add_tree_argument(validate)
     validate.set_defaults(func=application.cmd_validate)
+
+    restore_point = sub.add_parser(
+        "restore-point",
+        help="Capture, list, or restore workshop-scoped restore points.",
+    )
+    restore_point_sub = restore_point.add_subparsers(
+        dest="restore_point_command",
+        required=True,
+    )
+
+    restore_point_create = restore_point_sub.add_parser(
+        "create",
+        help="Capture a verified restore point of a runtime tree.",
+    )
+    add_tree_argument(restore_point_create)
+    restore_point_create.add_argument("--name", default="")
+    restore_point_create.set_defaults(func=application.cmd_restore_point_create)
+
+    restore_point_list = restore_point_sub.add_parser(
+        "list",
+        help="List captured restore points in deterministic order.",
+    )
+    add_tree_argument(restore_point_list)
+    restore_point_list.set_defaults(func=application.cmd_restore_point_list)
+
+    restore_point_restore = restore_point_sub.add_parser(
+        "restore",
+        help="Restore a verified restore point with an auditable reason.",
+    )
+    add_mutation_tree_argument(restore_point_restore)
+    restore_point_restore.add_argument("--restore-point", required=True)
+    restore_point_restore.add_argument("--reason", required=True)
+    restore_point_restore.set_defaults(func=application.cmd_restore_point_restore)
+
+    archive_subtree = sub.add_parser(
+        "archive-subtree",
+        help="Archive a succeeded or closed subtree into the read-only archived registry.",
+    )
+    add_mutation_tree_argument(archive_subtree)
+    archive_subtree.add_argument("--subtree", required=True)
+    archive_subtree.add_argument("--reason", required=True)
+    archive_subtree.set_defaults(func=application.cmd_archive_subtree)
 
     if tuple(sub.choices) != COMMAND_NAMES:
         raise RuntimeError("runtime command specification is incomplete")

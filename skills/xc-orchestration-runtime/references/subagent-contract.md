@@ -95,3 +95,27 @@ session may repeat the same approved leaf contract with
 archives the prior failure evidence as an attempt before returning the leaf to
 scheduling. Replacement work, revised acceptance, or a different solution
 requires the owning lifecycle's recovery nodes or user gate instead.
+
+## Structured Summary Convention
+
+`--summary` values are consumed by the main session. To save context and keep
+cross-node state readable, write `complete` summaries as one lead sentence
+plus semicolon-separated fields, not as narrative:
+
+```text
+scope=<what changed>; delta=<state changes and pointers>; artifacts=<declared artifact paths>; evidence=<commands and outcomes>; blockers=<none>
+```
+
+- `scope` names the bounded change or investigation this node performed.
+- `delta` lists state changes and short blackboard or artifact pointers written by this node.
+- `artifacts` lists the declared artifact paths this node produced.
+- `evidence` lists commands run and their outcomes.
+- `blockers` is `none` on `complete`. Workers reporting `fail` or `block` do
+  not write this summary: those commands accept `--reason`, not `--summary`,
+  and the reason text carries the failure report the field would otherwise
+  duplicate.
+
+This is a writing convention, not a parser contract: the runtime applies no
+schema validation or parsing behavior to `--summary`, and the schema never
+replaces required completion fields, gates, or check receipts. `--validation`
+remains the separate validation outcome.

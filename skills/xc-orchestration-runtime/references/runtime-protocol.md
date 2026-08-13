@@ -42,6 +42,8 @@ snapshot             Export the viewer JSON model.
 integrity-status     Report access policy and checksum state.
 repair-integrity     Explicitly restore managed metadata after a mismatch.
 validate             Validate a managed runtime tree or template.
+restore-point        Capture, list, or restore workshop-scoped restore points.
+archive-subtree      Archive a succeeded or closed subtree into the read-only archived registry.
 ```
 
 All commands return JSON. `--json` is accepted for host compatibility.
@@ -253,3 +255,86 @@ xcoding runtime repair-integrity --tree <tree_ref> --reason "<reason>"
 ```
 
 The repair operation validates structure, restores managed metadata, recalculates the canonical checksum, reloads the written tree, and follows configured workshop-commit rules. A failed workshop commit returns `persisted_uncommitted`; recovery validates existing artifacts and retries or reconciles through the runtime rather than directly editing the tree.
+
+## Restore Points
+
+`restore-point` manages workshop-scoped recovery snapshots stored next to the
+runtime tree:
+
+```text
+restore-point create  --tree TREE [--name NAME]
+restore-point list    --tree TREE
+restore-point restore --tree TREE --restore-point ID --reason REASON [--expected-revision N]
+```
+
+`create` validates tree integrity and structure, then writes
+`<runtime_dir>/restore-points/<id>/` containing `manifest.json` (id,
+created_at, name, tree sha256, and a per-file artifact sha256 list), a
+canonical copy of `orchestration.xml`, and copies of every declared terminal
+artifact. Declared artifacts must exist and resolve inside the same workshop
+Git repository as the tree. `list` enumerates restore points with metadata in
+deterministic order.
+
+`restore` verifies every stored manifest checksum fail closed (mismatch or a
+missing stored file aborts before any mutation), writes the stored tree bytes
+over the live tree, restores stored artifact copies to their declared paths,
+recomputes integrity metadata, records an auditable restore epoch with the
+reason, and persists through the existing path-scoped checkpoint rules. A
+sealed successful tree accepts restore with an explicit non-empty reason;
+restore is never silent, and restoring a sealed snapshot re-seals the tree.
+`--expected-revision` guards optimistic restores with `state_conflict` before
+any mutation. Stable failures are `restore_point_not_found`,
+`restore_point_invalid_id`, `restore_point_checksum_mismatch`,
+`restore_point_file_missing`, `restore_point_path_violation`, and
+`restore_point_manifest_invalid`. The runtime revision remains monotonic
+across restores.
+
+## Subtree Archiving
+
+`archive-subtree` retires a completed subtree from active scheduling while
+preserving its complete record inside the managed tree:
+
+```text
+archive-subtree --tree TREE --subtree NODE --reason REASON [--expected-revision N]
+```
+
+Eligibility requires the subtree root to be `succeeded` or a `closed` dynamic
+group. The runtime root node is never archiveable, and the subtree must not
+contain running leaves, ready leaves (including pending leaves that the
+readiness predicate would schedule), archived stubs (nested archiving is
+refused so every live stub keeps its own registry record), or dependency
+targets of live nodes outside the subtree; each refusal uses a stable error
+code: `archive_node_not_found`, `archive_root_refused`,
+`archive_status_refused`, `archive_running_leaf`, `archive_ready_leaf`,
+`archive_dependency_target`, `archive_nested_archived_stub`, and
+`archive_reason_required`. Refusals are read-only.
+
+The live tree replaces the subtree root with an `archived` stub that keeps
+the node identity (`id`, `template_id`, `role`, `title`, type metadata) plus
+`archived_at`, `archived_reason`, `archived_revision`, and an
+`archived.record_id` pointer. The full original node — children, results,
+checks, and declared artifacts — is stored as a serialized record in the
+managed tree's `archived_subtrees` registry, so the existing canonical
+checksum covers archived history.
+
+Registry consistency is enforced symmetrically: every registry entry must
+have a matching live archived stub, and every archived stub's
+`archived.record_id` must have a matching registry entry. `validate` fails
+on either direction. `repair-integrity` restores a recordless stub's entry
+deterministically when the registry holds exactly one record whose root node
+id equals the stub id; any other recordless stub is rejected with the stable
+`archived_stub_record_missing` diagnostic instead of guessing.
+
+Archived stubs are read-only history: they are never ready and never appear
+in `ready`/`next` batches, sequence predecessors treat them as completed,
+and `add-node`, `embed-subtree`, `close-group`, and `reopen-group` refuse
+them with `archived_stub_read_only`. `summary` reports `archived_subtrees`
+and excludes archived stubs from active `counts`. `show` and `find` surface
+the archived record with its audit metadata for archived stubs, and
+`artifacts` keeps terminal artifact paths declared inside archived records
+discoverable with `archived: true`.
+
+`--reason` is required and recorded. The mutation follows ordinary
+path-scoped checkpoint rules (deferred commit like `retry-failed`, with
+automatic promotion when archiving newly seals the root), and a stale
+`--expected-revision` returns `state_conflict` before any mutation.

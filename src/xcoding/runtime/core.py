@@ -65,7 +65,21 @@ TEMPLATE_NOTICE = (
 SUCCESS_STATUSES = {"succeeded", "skipped"}
 TERMINAL_STATUSES = {"succeeded", "failed", "blocked", "skipped"}
 RUNNABLE_STATUSES = {"pending", "ready"}
-VALID_STATUSES = {"pending", "ready", "running", "succeeded", "failed", "blocked", "skipped"}
+VALID_STATUSES = {"pending", "ready", "running", "succeeded", "failed", "blocked", "skipped", "archived"}
+ARCHIVED_STATUS = "archived"
+ARCHIVED_SUBTREES_TAG = "archived_subtrees"
+ARCHIVED_ENTRY_TAG = "archive"
+ARCHIVED_STUB_IDENTITY_KEYS = (
+    "template_id",
+    "origin_template_id",
+    "origin_instance_id",
+    "logical_key",
+    "title",
+    "type",
+    "role",
+    "executor",
+    "mode",
+)
 VALID_TYPES = {"composite", "task", "gate", "loop"}
 VALID_MODES = {"", "sequence", "parallel", "switch"}
 VALID_EXECUTORS = {"main", "subagent", "tool", "service"}
@@ -181,6 +195,46 @@ class GateOutcomeConflictError(RuntimeErrorBase):
 
 class GateOutcomeNotAllowedError(RuntimeErrorBase):
     code = "gate_outcome_not_allowed"
+
+
+class ArchiveNodeNotFoundError(RuntimeErrorBase):
+    code = "archive_node_not_found"
+
+
+class ArchiveRootRefusedError(RuntimeErrorBase):
+    code = "archive_root_refused"
+
+
+class ArchiveStatusRefusedError(RuntimeErrorBase):
+    code = "archive_status_refused"
+
+
+class ArchiveRunningLeafError(RuntimeErrorBase):
+    code = "archive_running_leaf"
+
+
+class ArchiveReadyLeafError(RuntimeErrorBase):
+    code = "archive_ready_leaf"
+
+
+class ArchiveReasonRequiredError(RuntimeErrorBase):
+    code = "archive_reason_required"
+
+
+class ArchiveDependencyTargetError(RuntimeErrorBase):
+    code = "archive_dependency_target"
+
+
+class ArchivedStubError(RuntimeErrorBase):
+    code = "archived_stub_read_only"
+
+
+class ArchiveNestedArchivedStubError(RuntimeErrorBase):
+    code = "archive_nested_archived_stub"
+
+
+class ArchivedRecordMissingError(RuntimeErrorBase):
+    code = "archived_stub_record_missing"
 
 
 def utc_now() -> str:
@@ -1273,6 +1327,10 @@ def is_dynamic_group(node: ET.Element) -> bool:
     return node_type(node) == "composite" and node_role(node) == "dynamic-group"
 
 
+def is_archived_stub(node: ET.Element) -> bool:
+    return node.get("status") == ARCHIVED_STATUS
+
+
 def dynamic_group_state(node: ET.Element) -> str:
     if not is_dynamic_group(node):
         return ""
@@ -1283,6 +1341,11 @@ def close_dynamic_group(root: ET.Element, group_id: str) -> ET.Element:
     group = find_node(root, group_id)
     if not is_dynamic_group(group):
         raise TreeValidationError("close-group requires a dynamic-group composite", {"group_id": group_id})
+    if is_archived_stub(group):
+        raise ArchivedStubError(
+            "archived subtree stubs are read-only history",
+            {"group_id": group_id},
+        )
     state = dynamic_group_state(group)
     if state not in VALID_DYNAMIC_GROUP_STATES:
         raise TreeValidationError("dynamic group has invalid state", {"group_id": group_id, "state": state})
@@ -1301,6 +1364,11 @@ def reopen_dynamic_group(root: ET.Element, group_id: str, reason: str) -> ET.Ele
     group = find_node(root, group_id)
     if not is_dynamic_group(group):
         raise TreeValidationError("reopen-group requires a dynamic-group composite", {"group_id": group_id})
+    if is_archived_stub(group):
+        raise ArchivedStubError(
+            "archived subtree stubs are read-only history",
+            {"group_id": group_id},
+        )
     state = dynamic_group_state(group)
     if state != "closed":
         raise InvalidTransitionError(
@@ -1330,6 +1398,11 @@ def reopen_dynamic_group(root: ET.Element, group_id: str, reason: str) -> ET.Ele
 def require_dynamic_group_open(parent: ET.Element) -> None:
     if not is_dynamic_group(parent):
         return
+    if is_archived_stub(parent):
+        raise ArchivedStubError(
+            "archived subtree stubs are read-only history",
+            {"group_id": parent.get("id", ""), "state": dynamic_group_state(parent)},
+        )
     state = dynamic_group_state(parent)
     if state == "closed":
         raise DynamicGroupClosedError(
@@ -1382,7 +1455,9 @@ def incomplete_dependency_ids(
     incomplete: List[str] = []
     for dep_id in [item.strip() for item in raw.split(",") if item.strip()]:
         dep = node_lookup.get(dep_id)
-        if dep is None or dep.get("status", "pending") not in SUCCESS_STATUSES:
+        if dep is None or (
+            dep.get("status", "pending") not in SUCCESS_STATUSES and not is_archived_stub(dep)
+        ):
             incomplete.append(dep_id)
     return incomplete
 
@@ -1444,7 +1519,7 @@ def ancestor_readiness_blocker(
                 if sibling is current:
                     break
                 sibling_status = sibling.get("status", "pending")
-                if sibling_status not in SUCCESS_STATUSES:
+                if sibling_status not in SUCCESS_STATUSES and not is_archived_stub(sibling):
                     return {
                         "reason": "sequence_predecessor_incomplete",
                         "blocker_node_id": sibling.get("id", ""),
@@ -1487,6 +1562,8 @@ def is_unlocked_by_ancestors(root: ET.Element, node: ET.Element) -> bool:
 
 
 def reset_subtree(node: ET.Element) -> None:
+    if is_archived_stub(node):
+        return
     node.set("status", "pending")
     for attr in [
         "started_at",
@@ -1559,7 +1636,7 @@ def apply_switches(root: ET.Element) -> bool:
                     child.set("status", "pending")
                     child.attrib.pop("skip_reason", None)
                     changed = True
-            elif status not in TERMINAL_STATUSES:
+            elif status not in TERMINAL_STATUSES and not is_archived_stub(child):
                 child.set("status", "skipped")
                 child.set("skip_reason", "switch")
                 child.set("skipped_at", utc_now())
@@ -1697,7 +1774,9 @@ def recompute_containers(root: ET.Element) -> bool:
                     node.set("status", terminal_status)
                     changed = True
                 continue
-        if ntype == "loop" and all(status in SUCCESS_STATUSES for status in statuses):
+        if ntype == "loop" and all(
+            status in SUCCESS_STATUSES or status == ARCHIVED_STATUS for status in statuses
+        ):
             iteration = int(node.get("loop.iteration", "1"))
             maximum = int(node.get("loop.max_iterations", "1"))
             last_completed = node.get("loop.last_completed_iteration", "")
@@ -1756,12 +1835,15 @@ def recompute_containers(root: ET.Element) -> bool:
         elif (
             node is root_node(root)
             and root.get("reopen_pending") == "true"
-            and all(status in SUCCESS_STATUSES for status in statuses)
+            and all(status in SUCCESS_STATUSES or status == ARCHIVED_STATUS for status in statuses)
         ):
             new_status = "running"
-        elif all(status in SUCCESS_STATUSES for status in statuses):
+        elif all(status in SUCCESS_STATUSES or status == ARCHIVED_STATUS for status in statuses):
             new_status = "succeeded"
-        elif any(status in {"running", "succeeded", "ready"} for status in statuses):
+        elif any(
+            status in {"running", "succeeded", "ready"} or status == ARCHIVED_STATUS
+            for status in statuses
+        ):
             new_status = "running"
         else:
             new_status = "pending"
@@ -1807,7 +1889,7 @@ def ready_from(
     parent_lookup = parents if parents is not None else element_parent_map(root)
     node_lookup = lookup if lookup is not None else nodes_by_id(root)
     blackboard_values = bb if bb is not None else blackboard(root)
-    if limit <= 0 or node.get("status") in TERMINAL_STATUSES:
+    if limit <= 0 or node.get("status") in TERMINAL_STATUSES or is_archived_stub(node):
         return []
     kids = children(node)
     if not kids:
@@ -1831,11 +1913,11 @@ def ready_from(
         return ready[:limit]
     if mode == "switch":
         for child in kids:
-            if child.get("status") != "skipped":
+            if child.get("status") != "skipped" and not is_archived_stub(child):
                 return ready_from(root, child, limit, parent_lookup, node_lookup, blackboard_values)
         return []
     for child in kids:
-        if child.get("status", "pending") in SUCCESS_STATUSES:
+        if child.get("status", "pending") in SUCCESS_STATUSES or is_archived_stub(child):
             continue
         return ready_from(root, child, limit, parent_lookup, node_lookup, blackboard_values)
     return []
@@ -2265,42 +2347,59 @@ def build_control_packet(root: ET.Element, node_id: str) -> Dict[str, Any]:
     }
 
 
+def _artifact_entries_for_node(
+    node: ET.Element,
+    archived: bool,
+    audience: str,
+) -> List[Dict[str, Any]]:
+    metadata = {
+        key: value
+        for key, value in node.attrib.items()
+        if key.startswith("metadata.artifact.")
+    }
+    artifact_audience = metadata.get("metadata.artifact.audience", "internal")
+    if audience and artifact_audience != audience:
+        return []
+    entries: List[Dict[str, Any]] = []
+    results: List[Tuple[int, ET.Element, bool]] = []
+    attempts = find_direct(node, "attempts")
+    if attempts is not None:
+        for attempt in attempts.findall("attempt"):
+            result = find_direct(attempt, "result")
+            if result is not None:
+                results.append((int(attempt.get("number", "0")), result, True))
+    current_result = find_direct(node, "result")
+    if current_result is not None:
+        results.append((attempt_number(node), current_result, False))
+    for number, result, archived_attempt in results:
+        artifacts = find_direct(result, "artifacts")
+        if artifacts is None:
+            continue
+        for artifact in artifacts.findall("artifact"):
+            path = artifact.get("path", "")
+            if path:
+                entry = {
+                    "path": path,
+                    "node_id": node.get("id", ""),
+                    "metadata": dict(sorted(metadata.items())),
+                }
+                if archived:
+                    entry["archived"] = True
+                if archived_attempt or number != 1:
+                    entry["attempt"] = number
+                entries.append(entry)
+    return entries
+
+
 def declared_artifacts(root: ET.Element, audience: str = "") -> List[Dict[str, Any]]:
     entries: List[Dict[str, Any]] = []
     for node in iter_nodes(root):
-        metadata = {
-            key: value
-            for key, value in node.attrib.items()
-            if key.startswith("metadata.artifact.")
-        }
-        artifact_audience = metadata.get("metadata.artifact.audience", "internal")
-        if audience and artifact_audience != audience:
+        if is_archived_stub(node):
             continue
-        results: List[Tuple[int, ET.Element, bool]] = []
-        attempts = find_direct(node, "attempts")
-        if attempts is not None:
-            for attempt in attempts.findall("attempt"):
-                result = find_direct(attempt, "result")
-                if result is not None:
-                    results.append((int(attempt.get("number", "0")), result, True))
-        current_result = find_direct(node, "result")
-        if current_result is not None:
-            results.append((attempt_number(node), current_result, False))
-        for number, result, archived in results:
-            artifacts = find_direct(result, "artifacts")
-            if artifacts is None:
-                continue
-            for artifact in artifacts.findall("artifact"):
-                path = artifact.get("path", "")
-                if path:
-                    entry = {
-                        "path": path,
-                        "node_id": node.get("id", ""),
-                        "metadata": dict(sorted(metadata.items())),
-                    }
-                    if archived or number != 1:
-                        entry["attempt"] = number
-                    entries.append(entry)
+        entries.extend(_artifact_entries_for_node(node, archived=False, audience=audience))
+    for archive, record in archived_records(root).values():
+        for recorded in iter_nodes(record):
+            entries.extend(_artifact_entries_for_node(recorded, archived=True, audience=audience))
     return entries
 
 
@@ -2336,6 +2435,8 @@ def status_counts(root: ET.Element) -> Dict[str, int]:
     result: Dict[str, int] = {}
     for node in iter_nodes(root):
         status = node.get("status", "pending")
+        if status == ARCHIVED_STATUS:
+            continue
         result[status] = result.get(status, 0) + 1
     return result
 
@@ -2474,6 +2575,7 @@ def render_snapshot_svg(snapshot: Dict[str, Any]) -> str:
         "blocked": "#f87171",
         "skipped": "#fbbf24",
         "pending": "#94a3b8",
+        "archived": "#64748b",
     }
     lines = [
         '<?xml version="1.0" encoding="utf-8"?>',
@@ -2893,6 +2995,9 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
         status = node.get("status", "")
         if status not in VALID_STATUSES:
             errors.append(f"{node_id}: invalid status {status}")
+        if status == ARCHIVED_STATUS:
+            errors.extend(validate_archived_stub(node))
+            continue
         errors.extend(validate_attempt_history(node))
         node_children = children(node)
         mode = node.get("mode", "")
@@ -2990,6 +3095,7 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
     for owner, reference in references:
         if reference.strip() not in ids:
             errors.append(f"{owner}: unresolved runtime dependency {reference.strip()}")
+    errors.extend(validate_archived_registry(root))
     try:
         root_type = node_type(runtime_root)
         root_role = node_role(runtime_root)
@@ -3030,6 +3136,11 @@ def create_dynamic_node(
     parent = find_node(root, parent_id)
     if node_type(parent) not in {"composite", "loop"}:
         raise TreeValidationError("dynamic node parent must be composite or loop", {"parent_id": parent_id})
+    if is_archived_stub(parent):
+        raise ArchivedStubError(
+            "archived subtree stubs are read-only history",
+            {"parent_id": parent_id},
+        )
     require_dynamic_group_open(parent)
     if any(existing.get("logical_key") == logical_key for existing in iter_nodes(root)):
         raise TreeValidationError("logical_key already exists in runtime tree", {"logical_key": logical_key})
@@ -3154,6 +3265,11 @@ def embed_template_subtree(
     parent = find_node(root, parent_id)
     if node_type(parent) not in {"composite", "loop"}:
         raise TreeValidationError("subtree parent must be composite or loop", {"parent_id": parent_id})
+    if is_archived_stub(parent):
+        raise ArchivedStubError(
+            "archived subtree stubs are read-only history",
+            {"parent_id": parent_id},
+        )
     require_dynamic_group_open(parent)
     holder = ensure_direct(parent, "children")
     meta = ensure_managed_metadata(root, "runtime", config)
@@ -3190,6 +3306,314 @@ def embed_template_subtree(
         },
     )
     return child_root
+
+
+def archived_registry(root: ET.Element) -> Optional[ET.Element]:
+    return find_direct(root, ARCHIVED_SUBTREES_TAG)
+
+
+def archived_subtree_count(root: ET.Element) -> int:
+    registry = archived_registry(root)
+    if registry is None:
+        return 0
+    return len(registry.findall(ARCHIVED_ENTRY_TAG))
+
+
+def archived_records(root: ET.Element) -> Dict[str, Tuple[ET.Element, ET.Element]]:
+    """Parse the archived registry into {node_id: (archive entry, record node)}."""
+    registry = archived_registry(root)
+    result: Dict[str, Tuple[ET.Element, ET.Element]] = {}
+    if registry is None:
+        return result
+    for archive in registry.findall(ARCHIVED_ENTRY_TAG):
+        archive_id = archive.get("id", "")
+        if not archive_id:
+            continue
+        raw = (archive.text or "").strip()
+        if not raw:
+            continue
+        try:
+            record = ET.fromstring(raw)
+        except ET.ParseError:
+            continue
+        if record.tag == "node" and record.get("id") == archive_id:
+            result[archive_id] = (archive, record)
+    return result
+
+
+def archived_record_projection(root: ET.Element, node: ET.Element) -> Optional[Dict[str, Any]]:
+    """Surface one stub's archived record with its audit metadata."""
+    entry = archived_records(root).get(node.get("id", ""))
+    if entry is None:
+        return None
+    archive, record = entry
+    return {
+        "archived_at": archive.get("archived_at", ""),
+        "reason": archive.get("reason", ""),
+        "archived_revision": archive.get("revision", ""),
+        "record": snapshot_node(root, record),
+    }
+
+
+def active_subtree_leaf_violations(root: ET.Element, node: ET.Element) -> List[Dict[str, str]]:
+    """List running or ready executable leaves inside a subtree."""
+    violations: List[Dict[str, str]] = []
+    parents = element_parent_map(root)
+    lookup = nodes_by_id(root)
+    bb = blackboard(root)
+    for descendant in iter_nodes(node):
+        if descendant is node:
+            continue
+        if node_type(descendant) not in {"task", "gate"} or children(descendant):
+            continue
+        status = descendant.get("status", "pending")
+        if status in {"running", "ready"}:
+            violations.append({"id": descendant.get("id", ""), "status": status})
+            continue
+        if status in RUNNABLE_STATUSES and is_runnable(root, descendant, parents, lookup, bb):
+            violations.append({"id": descendant.get("id", ""), "status": status, "ready": "true"})
+    return violations
+
+
+def archive_subtree(root: ET.Element, node_id: str, reason: str) -> ET.Element:
+    """Replace a terminal subtree with an archived stub plus a registry record."""
+    normalized_reason = reason.strip()
+    if not normalized_reason:
+        raise ArchiveReasonRequiredError(
+            "archive-subtree requires a non-empty reason",
+            {"node_id": node_id},
+        )
+    node = nodes_by_id(root).get(node_id)
+    if node is None:
+        raise ArchiveNodeNotFoundError(
+            "archive-subtree requires an existing node",
+            {"node_id": node_id},
+        )
+    if node is root_node(root):
+        raise ArchiveRootRefusedError(
+            "the runtime root node cannot be archived",
+            {"node_id": node_id},
+        )
+    status = node.get("status", "pending")
+    closed_group = is_dynamic_group(node) and dynamic_group_state(node) == "closed"
+    if status != "succeeded" and not closed_group:
+        raise ArchiveStatusRefusedError(
+            "archive-subtree requires a succeeded subtree or a closed dynamic group",
+            {"node_id": node_id, "status": status, "dynamic.state": dynamic_group_state(node)},
+        )
+    violations = active_subtree_leaf_violations(root, node)
+    running = [item for item in violations if item.get("status") == "running"]
+    ready = [item for item in violations if item.get("status") != "running"]
+    if running:
+        raise ArchiveRunningLeafError(
+            "archive-subtree refuses subtrees with running leaves",
+            {"node_id": node_id, "leaves": sorted(running, key=lambda item: item["id"])},
+        )
+    if ready:
+        raise ArchiveReadyLeafError(
+            "archive-subtree refuses subtrees that are ancestors of ready leaves",
+            {"node_id": node_id, "leaves": sorted(ready, key=lambda item: item["id"])},
+        )
+    subtree_ids = {
+        descendant.get("id", "")
+        for descendant in iter_nodes(node)
+        if descendant.get("id")
+    }
+    dependents: List[Dict[str, str]] = []
+    for live in iter_nodes(root):
+        if live.get("id", "") in subtree_ids:
+            continue
+        for reference in [
+            item.strip()
+            for item in live.get("depends_on", "").split(",")
+            if item.strip()
+        ]:
+            if reference in subtree_ids:
+                dependents.append({"id": live.get("id", ""), "dependency": reference})
+    if dependents:
+        raise ArchiveDependencyTargetError(
+            "archive-subtree refuses subtrees that are dependency targets of live nodes",
+            {"node_id": node_id, "dependents": sorted(dependents, key=lambda item: item["id"])},
+        )
+    nested_stubs = [
+        descendant.get("id", "")
+        for descendant in iter_nodes(node)
+        if descendant is not node and is_archived_stub(descendant)
+    ]
+    if nested_stubs:
+        raise ArchiveNestedArchivedStubError(
+            "archive-subtree refuses subtrees that contain archived stubs",
+            {"node_id": node_id, "nested_stubs": sorted(nested_stubs)},
+        )
+    parent = element_parent_map(root).get(node_id)
+    if parent is None:
+        raise TreeValidationError("subtree has no live parent", {"node_id": node_id})
+    if find_meta(root) is None:
+        raise TreeValidationError("runtime metadata is missing")
+    archived_at = utc_now()
+    revision = str(runtime_revision(root))
+    record_xml = ET.tostring(node, encoding="unicode")
+    registry = ensure_direct(root, ARCHIVED_SUBTREES_TAG)
+    archive = ET.SubElement(
+        registry,
+        ARCHIVED_ENTRY_TAG,
+        {
+            "id": node_id,
+            "archived_at": archived_at,
+            "reason": normalized_reason,
+            "revision": revision,
+        },
+    )
+    archive.text = record_xml
+    stub_attributes = {
+        "id": node_id,
+        "status": ARCHIVED_STATUS,
+        "archived_at": archived_at,
+        "archived_reason": normalized_reason,
+        "archived_revision": revision,
+        "archived.record_id": node_id,
+    }
+    for key in ARCHIVED_STUB_IDENTITY_KEYS:
+        value = node.get(key)
+        if value:
+            stub_attributes[key] = value
+    stub = ET.Element("node", stub_attributes)
+    holder = find_direct(parent, "children")
+    index = list(holder).index(node)
+    holder.remove(node)
+    holder.insert(index, stub)
+    root.attrib.pop("reopen_pending", None)
+    stabilize(root)
+    return stub
+
+
+def validate_archived_stub(node: ET.Element) -> List[str]:
+    errors: List[str] = []
+    node_id = node.get("id", "")
+    if not node.get("archived_at"):
+        errors.append(f"{node_id}: archived stub missing archived_at")
+    if not node.get("archived_reason"):
+        errors.append(f"{node_id}: archived stub missing archived_reason")
+    if node.get("archived.record_id") != node_id:
+        errors.append(f"{node_id}: archived stub record pointer must equal the node id")
+    if children(node):
+        errors.append(f"{node_id}: archived stub must not have children")
+    if find_direct(node, "result") is not None:
+        errors.append(f"{node_id}: archived stub must not carry a result")
+    if find_direct(node, "attempts") is not None:
+        errors.append(f"{node_id}: archived stub must not carry attempts")
+    for key in (
+        "started_at",
+        "completed_at",
+        "failed_at",
+        "blocked_at",
+        "agent",
+        "when",
+        "when.policy",
+        "when.latched",
+        "depends_on",
+        "dynamic.state",
+    ):
+        if node.get(key) is not None:
+            errors.append(f"{node_id}: archived stub must not carry {key}")
+    return errors
+
+
+def validate_archived_registry(root: ET.Element) -> List[str]:
+    errors: List[str] = []
+    registry = archived_registry(root)
+    lookup = nodes_by_id(root)
+    seen: set[str] = set()
+    if registry is not None:
+        for archive in list(registry):
+            if archive.tag != ARCHIVED_ENTRY_TAG:
+                errors.append(f"archived registry contains invalid child {archive.tag}")
+                continue
+            archive_id = archive.get("id", "")
+            if not archive_id:
+                errors.append("archived registry entry missing id")
+                continue
+            if archive_id in seen:
+                errors.append(f"duplicate archived registry id: {archive_id}")
+            seen.add(archive_id)
+            stub = lookup.get(archive_id)
+            if stub is None or stub.get("status") != ARCHIVED_STATUS:
+                errors.append(f"archived registry entry {archive_id} has no matching archived stub")
+            if not archive.get("archived_at"):
+                errors.append(f"archived registry entry {archive_id} missing archived_at")
+            if not archive.get("reason"):
+                errors.append(f"archived registry entry {archive_id} missing reason")
+            if not archive.get("revision"):
+                errors.append(f"archived registry entry {archive_id} missing revision")
+            if list(archive):
+                errors.append(f"archived registry entry {archive_id} must store the record as serialized text")
+            raw = (archive.text or "").strip()
+            if not raw:
+                errors.append(f"archived registry entry {archive_id} missing record")
+                continue
+            try:
+                record = ET.fromstring(raw)
+            except ET.ParseError:
+                errors.append(f"archived registry entry {archive_id} record is not valid XML")
+                continue
+            if record.tag != "node" or record.get("id") != archive_id:
+                errors.append(f"archived registry entry {archive_id} record root must be a node with the matching id")
+    for stub_id, stub in lookup.items():
+        if stub.get("status") != ARCHIVED_STATUS:
+            continue
+        record_id = stub.get("archived.record_id", "")
+        if record_id not in seen:
+            errors.append(
+                f"archived stub {stub_id} has no matching registry entry for record {record_id}"
+            )
+    return errors
+
+
+def repair_archived_registry(root: ET.Element) -> List[Dict[str, str]]:
+    """Restore recoverable stub-to-entry registry links deterministically.
+
+    A stub whose ``archived.record_id`` has no matching registry entry is
+    recovered when the registry holds exactly one record whose root node id
+    equals the stub id; the mismatched entry id is repaired in place. Any
+    other recordless stub raises a stable diagnostic instead of guessing.
+    """
+    records = archived_records(root)
+    by_record_id: Dict[str, List[ET.Element]] = {}
+    registry = archived_registry(root)
+    if registry is not None:
+        for archive in list(registry):
+            if archive.tag != ARCHIVED_ENTRY_TAG:
+                continue
+            raw = (archive.text or "").strip()
+            try:
+                record = ET.fromstring(raw)
+            except ET.ParseError:
+                continue
+            if record.tag == "node" and record.get("id"):
+                by_record_id.setdefault(record.get("id", ""), []).append(archive)
+    repairs: List[Dict[str, str]] = []
+    for node in iter_nodes(root):
+        if not is_archived_stub(node):
+            continue
+        stub_id = node.get("id", "")
+        if stub_id in records:
+            continue
+        candidates = by_record_id.get(stub_id, [])
+        if len(candidates) != 1:
+            raise ArchivedRecordMissingError(
+                "archived stub has no uniquely recoverable registry record; "
+                "restore the record explicitly before repairing integrity",
+                {
+                    "stub_id": stub_id,
+                    "record_id": node.get("archived.record_id", ""),
+                    "candidate_entries": sorted(
+                        entry.get("id", "") for entry in candidates
+                    ),
+                },
+            )
+        candidates[0].set("id", stub_id)
+        repairs.append({"stub_id": stub_id, "entry_id": stub_id})
+    return repairs
 
 
 def require_executable_leaf(root: ET.Element, node_id: str) -> ET.Element:

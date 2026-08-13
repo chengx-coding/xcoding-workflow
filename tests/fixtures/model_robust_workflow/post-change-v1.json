@@ -13,10 +13,10 @@
     "skills/xc-open-work-order/scripts/open_work_order.py": "d7bff58e5de452a05b418769fb2163f7ebba71316d99e8fb2f897b3aaba50428",
     "skills/xc-orchestration-runtime/scripts/orchestration.py": "83513c89ba9319e1c891c6c7757d5f864028aefca2bce696d75620cf448d755c",
     "tests/runtime_cli.py": "31fbe397dbd34c63102eab28061d93b9fe47ad7770e4c6fa1fc2a10234701f43",
-    "src/xcoding/runtime/application.py": "92f5a7fca2123d2c3ab33a565321521bfa820d5149bdd1466a2705324a055281",
-    "src/xcoding/runtime/commands.py": "7a53f07fda09cb07ab5c33be07a4641a97d0e9e8a6a6655c2c6e78fcfab3cb75",
+    "src/xcoding/runtime/application.py": "d6c69d997db52a998372d326d6a7b8ec60f1d2cc9c070bbdb1fc374938bff425",
+    "src/xcoding/runtime/commands.py": "f1ff40181cdc9482e9cb7097d15ee735d7886f80963c9e5bd9089feb18342470",
     "src/xcoding/runtime/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
-    "src/xcoding/runtime/core.py": "4dfbc7b7f61b2f92299715891207856c07546a0d6c43600901b4e8717a192e9b",
+    "src/xcoding/runtime/core.py": "da5d1cee97a657272b91e263782de083a03e979d249a0f997784aeb67d3b8e4d",
     "src/xcoding/runtime/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
     "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
     "src/xcoding/cli.py": "b15521aebb691c471a12a1cc8a26c6ccf7dc7677a3ba4634e4ef3be3f2587315",
@@ -30,7 +30,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "b05eae25acb42ac5dda8c396b97d4c14378ae3f2",
+  "recording_base_commit": "b93f3a3c1c5bd39c84987e1277222fe765604d7e",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -141,7 +141,7 @@
       "T1-M": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 91890,
+            "context_bytes": 91912,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -171,7 +171,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 92554,
+            "context_bytes": 92576,
             "runtime_calls": 35,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -198,7 +198,7 @@
       "T2": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 127713,
+            "context_bytes": 127735,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -229,7 +229,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 128626,
+            "context_bytes": 128648,
             "runtime_calls": 47,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -256,7 +256,7 @@
       "T3": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 193342,
+            "context_bytes": 193364,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -290,7 +290,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 194753,
+            "context_bytes": 194775,
             "runtime_calls": 74,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -317,7 +317,7 @@
       "T4": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 220124,
+            "context_bytes": 220212,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -354,7 +354,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 221784,
+            "context_bytes": 221872,
             "runtime_calls": 89,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -438,175 +438,175 @@
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
-        "current_value": 91890,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
-        "numeric_delta": 27137
+        "current_value": 91912,
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
+        "numeric_delta": 27159
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
-        "current_value": 92554,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
-        "numeric_delta": 27137
+        "current_value": 92576,
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
+        "numeric_delta": 27159
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
-        "current_value": 127713,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
-        "numeric_delta": 37167
+        "current_value": 127735,
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
+        "numeric_delta": 37189
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
-        "current_value": 128626,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
-        "numeric_delta": 37167
+        "current_value": 128648,
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
+        "numeric_delta": 37189
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
-        "current_value": 193342,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
-        "numeric_delta": 53204
+        "current_value": 193364,
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
+        "numeric_delta": 53226
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
-        "current_value": 194753,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
-        "numeric_delta": 53204
+        "current_value": 194775,
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
+        "numeric_delta": 53226
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
-        "current_value": 220124,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
-        "numeric_delta": 55230
+        "current_value": 220212,
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
+        "numeric_delta": 55318
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
-        "current_value": 221784,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
-        "numeric_delta": 55230
+        "current_value": 221872,
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
+        "numeric_delta": 55318
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+        "explanation": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "Refresh governance evidence for formal release runtime, CLI, and Viewer lifecycle changes.",
+    "reason": "Repair node of work order 20260813-0222-elastic-workflow-scaling milestone 19: M19 changed src/xcoding/runtime/{application,commands,core}.py for subtree archiving; the M19 repair hardened nested-archive refusal and stub-to-entry registry consistency without changing harnessed scenario behavior, so current input hashes are re-recorded against the byte-frozen historical baseline.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1111,7 +1111,7 @@
         "T1-M": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 91890,
+              "context_bytes": 91912,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1141,7 +1141,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 92554,
+              "context_bytes": 92576,
               "runtime_calls": 35,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1168,7 +1168,7 @@
         "T2": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 127713,
+              "context_bytes": 127735,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1199,7 +1199,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 128626,
+              "context_bytes": 128648,
               "runtime_calls": 47,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1226,7 +1226,7 @@
         "T3": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 193342,
+              "context_bytes": 193364,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1260,7 +1260,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 194753,
+              "context_bytes": 194775,
               "runtime_calls": 74,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1287,7 +1287,7 @@
         "T4": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 220124,
+              "context_bytes": 220212,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1324,7 +1324,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 221784,
+              "context_bytes": 221872,
               "runtime_calls": 89,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1406,10 +1406,10 @@
       "skills/xc-open-work-order/scripts/open_work_order.py": "d7bff58e5de452a05b418769fb2163f7ebba71316d99e8fb2f897b3aaba50428",
       "skills/xc-orchestration-runtime/scripts/orchestration.py": "83513c89ba9319e1c891c6c7757d5f864028aefca2bce696d75620cf448d755c",
       "tests/runtime_cli.py": "31fbe397dbd34c63102eab28061d93b9fe47ad7770e4c6fa1fc2a10234701f43",
-      "src/xcoding/runtime/application.py": "92f5a7fca2123d2c3ab33a565321521bfa820d5149bdd1466a2705324a055281",
-      "src/xcoding/runtime/commands.py": "7a53f07fda09cb07ab5c33be07a4641a97d0e9e8a6a6655c2c6e78fcfab3cb75",
+      "src/xcoding/runtime/application.py": "d6c69d997db52a998372d326d6a7b8ec60f1d2cc9c070bbdb1fc374938bff425",
+      "src/xcoding/runtime/commands.py": "f1ff40181cdc9482e9cb7097d15ee735d7886f80963c9e5bd9089feb18342470",
       "src/xcoding/runtime/__init__.py": "9e388f5402cfe6ce965e0a9e10c2d7461e178388d76387aa8e33e6ba2eff3cae",
-      "src/xcoding/runtime/core.py": "4dfbc7b7f61b2f92299715891207856c07546a0d6c43600901b4e8717a192e9b",
+      "src/xcoding/runtime/core.py": "da5d1cee97a657272b91e263782de083a03e979d249a0f997784aeb67d3b8e4d",
       "src/xcoding/runtime/query.py": "f27d1979714368dc92ef16e827354d62c6cca0986491aa3a9c56320a594c3fd8",
       "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
       "src/xcoding/cli.py": "b15521aebb691c471a12a1cc8a26c6ccf7dc7677a3ba4634e4ef3be3f2587315",

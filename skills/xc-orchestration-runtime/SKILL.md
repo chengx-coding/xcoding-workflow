@@ -198,5 +198,5 @@ runtime mutation.
 
 - `assets/xc-orchestration-runtime.json`: configuration template.
 - `references/runtime-protocol.md`: public runtime protocol.
-- `references/subagent-contract.md`: single-node worker contract.
+- `references/subagent-contract.md`: public shared single-node worker contract.
 - `references/subtree-embedding.md`: embedded template protocol.
