@@ -46,6 +46,8 @@ Each worker executes exactly the packet's one target node. It reads only supplie
 
 Long reports, diffs, and logs belong in artifacts. The blackboard contains short structured values that influence later scheduling or decisions.
 
+A managed work order has one authoritative progress state: its orchestration runtime tree. A host-provided task list is transient scratch inside one node or derived display only, and it is never evidence for scheduling, a gate, a review, or a completion transition.
+
 ## Scoped Handoffs
 
 A leaf declares domain-named source categories, source and artifact thresholds, and any blackboard keys that may be projected. A direct `node:` selector identifies one source. A `bb:` selector reads a compact UTF-8 JSON array of terminal runtime leaf IDs, such as `["rt_source_a","rt_source_b"]`; it is not a CSV value, wildcard, or permission list. Lifecycle callers publish the actual terminal source IDs before requesting the packet and never substitute an ancestor or group ID.

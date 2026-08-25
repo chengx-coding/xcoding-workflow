@@ -55,6 +55,8 @@ browser UI, local registry, native picker and SVG download. The daemon has no
 UI or picker, accepts only launch-time runtime files, requires a bearer token,
 and serves local tools. Neither surface exposes runtime mutation.
 
+A managed work order has one authoritative progress state: its runtime tree. Host-provided task or todo facilities are derived presentation or transient scratch only and never substitute for runtime scheduling, state verification, gates, or completion.
+
 ## Reusable Workflow Patterns
 
 The control primitives can be composed into recurring patterns without making them runtime syntax:

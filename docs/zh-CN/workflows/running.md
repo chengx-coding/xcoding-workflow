@@ -46,6 +46,8 @@ Worker 发现范围扩大或其他前提时，应在继续修改前 block。主�
 
 长篇报告、diff 和日志属于 artifact。Blackboard 只保存影响后续调度或决策的短结构化值。
 
+受管工作单只有一个权威进度状态：其编排运行时树。宿主提供的任务清单仅是单个节点内的瞬态 scratch 或派生展示，绝不能作为调度、门控、评审或完成转换的依据。
+
 ## 限定范围的交接
 
 叶子节点声明领域命名的来源类别、来源及 artifact 阈值，以及允许投影的 blackboard 键。直接的 `node:` selector 标识一个来源；`bb:` selector 读取一个由终态 runtime 叶子 ID 组成的紧凑 UTF-8 JSON 数组，例如 `["rt_source_a","rt_source_b"]`。它不是 CSV、通配符或权限列表。生命周期调用方必须在请求 packet 前发布真实终态来源 ID，绝不能用 ancestor 或 group ID 替代。
