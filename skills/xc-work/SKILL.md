@@ -237,6 +237,8 @@ Control-packet source keys contain UTF-8 compact JSON arrays of terminal runtime
 
 Main sessions consume worker `--summary` values as compact state deltas and pointers rather than narrative. Workers write those summaries per the Structured Summary Convention in the single-node worker contract (`subagent-contract.md` reference of `xc-orchestration-runtime`). The runtime requires `--summary` and `--validation` presence on completion; it does not parse the summary's content structure.
 
+The orchestration tree is a managed work order's single authoritative progress state. The main session must not maintain a parallel host-provided task list as work-order state; host task facilities are transient node-scoped scratch or derived presentation only.
+
 ## Mode Rules
 
 - `investigation`: normally requires analysis and result, but may skip solution, implementation, and verification.

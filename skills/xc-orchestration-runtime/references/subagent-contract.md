@@ -27,6 +27,7 @@ The main session provides:
    require its successful process exit and top-level success, extract only its
    normalized receipt, and pass that receipt through `--check-result-json`.
    Never pass a validator's legacy outer response.
+10. A host-provided task list is transient scratch only. Do not use it as work-order progress state, do not report its contents as progress evidence, and do not retain it beyond this node.
 
 ## Worker Prompt Skeleton
 

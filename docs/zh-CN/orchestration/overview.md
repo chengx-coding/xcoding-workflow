@@ -55,6 +55,8 @@ registry、native picker 和 SVG download；daemon 没有 UI 或 picker，只接
 启动时传入的 runtime 文件，要求 bearer token，并服务本地工具。两者都不暴露
 runtime mutation。
 
+受管工作单只有一个权威进度状态：其运行时树。宿主提供的任务或 todo 设施仅为派生展示或瞬态 scratch，绝不能替代运行时调度、状态核对、门控或完成。
+
 ## 可复用工作流模式
 
 控制原语可以组合成常见模式，但这些模式不是 runtime 语法。
