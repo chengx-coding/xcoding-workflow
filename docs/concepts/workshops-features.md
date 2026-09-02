@@ -4,7 +4,7 @@
 
 ## The Workshop
 
-Every consumer project uses the fixed conceptual path `.xcoding/` for its managed workshop. The workshop belongs to a Git worktree independent from the project code repository. This keeps workflow documents, runtime checkpoints, and node artifacts out of product commits while preserving their own durable history.
+Every consumer project uses the fixed conceptual path `.xcoding/` for its managed workshop. The default topology is a Git worktree independent from the project code repository, and the choice is made explicitly at setup. That default (`independent-link`) keeps workflow documents, runtime checkpoints, and node artifacts out of product commits while preserving their own durable history. The other topologies (`independent-nested`, `same-repo`, `no-git`) place workshop history inside or beside the product tree and trade that independence for a different placement.
 
 The workshop bridge documents project policy. `WORKFLOW.md` describes project identity, commands, conventions, and constraints. `KNOWLEDGE.md` says whether a project knowledge source exists and how to use it. Neither document is a generic replacement for the canonical `xc-*` Skills.
 

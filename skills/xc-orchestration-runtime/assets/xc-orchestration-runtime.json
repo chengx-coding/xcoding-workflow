@@ -17,5 +17,8 @@
     "watch_interval_seconds": 1,
     "heartbeat_seconds": 15,
     "idle_shutdown_seconds": 120
+  },
+  "workshop": {
+    "topology": "independent-link"
   }
 }

@@ -11,6 +11,11 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 OPEN_WORK_ORDER = REPOSITORY_ROOT / "skills" / "xc-open-work-order" / "scripts" / "open_work_order.py"
+SOURCE_ROOT = REPOSITORY_ROOT / "src"
+
+sys.path.insert(0, str(SOURCE_ROOT))
+
+from xcoding.runtime import core
 
 
 class XcOpenWorkOrderTests(unittest.TestCase):
@@ -181,6 +186,159 @@ class XcOpenWorkOrderTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 2)
         self.assertIn("unrecognized arguments: --context" + "-dir", result.stderr)
+
+    def write_config(self, workshop: Path, config: dict[str, object]) -> None:
+        (workshop / "xc-orchestration-runtime.json").write_text(
+            json.dumps(config), encoding="utf-8"
+        )
+
+    def test_opens_same_repo_workshop_with_explicit_auto_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            project.mkdir()
+            self.run_git(project, "init")
+            workshop = project / ".xcoding"
+            workshop.mkdir()
+            self.write_config(
+                workshop,
+                {
+                    "schema_version": 1,
+                    "git": {"auto_commit": True, "on_commit_failure": "warn"},
+                    "workshop": {"topology": "same-repo"},
+                },
+            )
+
+            code, created = self.invoke(
+                "--workshop",
+                str(workshop),
+                "--project-root",
+                str(project),
+                "--work-order-id",
+                "same-repo-work",
+                cwd=project,
+            )
+
+            self.assertEqual(code, 0)
+            self.assertTrue(created["ok"])
+            self.assertEqual(created["workshop_repo_root"], str(project.resolve()))
+
+    def test_rejects_same_repo_workshop_without_explicit_auto_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            project.mkdir()
+            self.run_git(project, "init")
+            workshop = project / ".xcoding"
+            workshop.mkdir()
+            self.write_config(
+                workshop,
+                {
+                    "schema_version": 1,
+                    "git": {"on_commit_failure": "warn"},
+                    "workshop": {"topology": "same-repo"},
+                },
+            )
+
+            code, payload = self.invoke(
+                "--workshop",
+                str(workshop),
+                "--project-root",
+                str(project),
+                cwd=project,
+            )
+
+            self.assertEqual(code, 2)
+            self.assertFalse(payload["ok"])
+            self.assertIn(
+                "explicit git.auto_commit declaration", payload["error"]["message"]
+            )
+
+    def test_opens_no_git_workshop(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary) / "base"
+            base.mkdir()
+            workshop = base / ".xcoding"
+            workshop.mkdir()
+            self.write_config(
+                workshop,
+                {"schema_version": 1, "workshop": {"topology": "no-git"}},
+            )
+
+            code, created = self.invoke(
+                "--workshop",
+                str(workshop),
+                "--project-root",
+                str(base),
+                "--work-order-id",
+                "no-git-work",
+                cwd=base,
+            )
+
+            self.assertEqual(code, 0)
+            self.assertTrue(created["ok"])
+            self.assertIsNone(created["workshop_repo_root"])
+
+    def test_opens_nested_independent_workshop(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            project.mkdir()
+            self.run_git(project, "init")
+            workshop_repo = project / "workshop-repo"
+            workshop_repo.mkdir()
+            self.run_git(workshop_repo, "init")
+            workshop = workshop_repo / ".xcoding"
+            workshop.mkdir()
+            self.write_config(
+                workshop,
+                {"schema_version": 1, "workshop": {"topology": "independent-nested"}},
+            )
+
+            code, created = self.invoke(
+                "--workshop",
+                str(workshop),
+                "--project-root",
+                str(project),
+                "--work-order-id",
+                "nested-work",
+                cwd=project,
+            )
+
+            self.assertEqual(code, 0)
+            self.assertTrue(created["ok"])
+            self.assertEqual(created["workshop_repo_root"], str(workshop_repo.resolve()))
+
+    def test_rejects_config_with_non_object_workshop(self) -> None:
+        # F1: a `workshop` section that is present but not an object must fail
+        # closed with the parity message, rather than silently using the default.
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary) / "base"
+            base.mkdir()
+            workshop = base / ".xcoding"
+            workshop.mkdir()
+            self.write_config(workshop, {"schema_version": 1, "workshop": "same-repo"})
+
+            code, payload = self.invoke(
+                "--workshop",
+                str(workshop),
+                "--project-root",
+                str(base),
+                cwd=base,
+            )
+
+            self.assertEqual(code, 2)
+            self.assertFalse(payload["ok"])
+            self.assertEqual(payload["error"]["message"], "workshop must be an object")
+
+    def test_core_rejects_same_non_object_workshop_fixture(self) -> None:
+        # F1 parity: the fixture that open_work_order rejects as a WorkOrderError
+        # must also be rejected by the runtime config loader (ConfigError). Mirrors
+        # the config-contract drift-test style.
+        with tempfile.TemporaryDirectory() as temporary:
+            config_path = Path(temporary) / "xc-orchestration-runtime.json"
+            config_path.write_text(json.dumps({"workshop": "same-repo"}), encoding="utf-8")
+
+            with self.assertRaises(core.ConfigError) as ctx:
+                core.load_config(config_path=config_path)
+            self.assertEqual(str(ctx.exception), "workshop must be an object")
 
 
 if __name__ == "__main__":

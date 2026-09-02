@@ -2,7 +2,8 @@
   "name": "workshop-setup",
   "schema_version": 1,
   "blackboard": {
-    "workshop.setup.ready": "false"
+    "workshop.setup.ready": "false",
+    "workshop.topology": "independent-link"
   },
   "root": {
     "template_id": "root",
@@ -18,9 +19,9 @@
         "type": "task",
         "role": "workshop-prepare",
         "executor": "main",
-        "instructions": "Confirm the workshop Git worktree and project-local facts required by WORKFLOW.md and KNOWLEDGE.md.",
-        "deliverables": "Workshop setup inputs recorded in the blackboard and setup artifacts.",
-        "acceptance": "The workshop worktree is independent from the business repository and required project-local facts are available or gated."
+        "instructions": "Confirm the workshop topology recorded in .xcoding/xc-orchestration-runtime.json (workshop.topology), its config entry, and the project-local facts required by WORKFLOW.md and KNOWLEDGE.md.",
+        "deliverables": "Confirmed workshop topology and setup inputs recorded in the blackboard and setup artifacts.",
+        "acceptance": "The workshop.topology config entry is recorded and consistent with the workshop worktree, and required project-local facts are available or gated."
       },
       {
         "template_id": "workflow-document",

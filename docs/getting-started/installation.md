@@ -56,6 +56,8 @@ The host set is complete desired state, not an incremental add list. Repeating a
 
 Setup never infers the project from the current directory, detects hosts automatically, adopts unmanaged files, or accepts a force option.
 
+The workshop repository topology is chosen during the workshop-setup step (default: independent workspace `independent-link`), not by `xcoding setup`.
+
 ## Inspect before writing
 
 Add `--dry-run` to execute Bundle validation, project-root and path safety checks, conflict detection, ownership planning, and lock acquisition without changing the project:

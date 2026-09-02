@@ -27,6 +27,9 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 
+ALLOWED_WORKSHOP_TOPOLOGIES = {"independent-link", "independent-nested", "same-repo", "no-git"}
+WORKSHOP_TOPOLOGY_DEFAULT = "independent-link"
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     "schema_version": 1,
     "git": {
@@ -46,6 +49,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "watch_interval_seconds": 1,
         "heartbeat_seconds": 15,
         "idle_shutdown_seconds": 120,
+    },
+    "workshop": {
+        "topology": WORKSHOP_TOPOLOGY_DEFAULT,
     },
 }
 
@@ -353,6 +359,39 @@ def validate_config(config: Dict[str, Any], source: str) -> None:
     for key in ("port", "watch_interval_seconds", "heartbeat_seconds", "idle_shutdown_seconds"):
         if not isinstance(viewer.get(key), int) or viewer[key] < 0:
             raise ConfigError(f"viewer.{key} must be a non-negative integer", {"source": source})
+    workshop = config.get("workshop")
+    if workshop is not None:
+        if not isinstance(workshop, dict):
+            raise ConfigError("workshop must be an object", {"source": source})
+        topology = workshop.get("topology", WORKSHOP_TOPOLOGY_DEFAULT)
+        if topology not in ALLOWED_WORKSHOP_TOPOLOGIES:
+            raise ConfigError(
+                "workshop.topology must be one of {}".format(
+                    ", ".join(sorted(ALLOWED_WORKSHOP_TOPOLOGIES))
+                ),
+                {"source": source},
+            )
+
+
+def _require_raw_same_repo_auto_commit(data: Dict[str, Any], source: str) -> None:
+    """Enforce that same-repo topology explicitly declares git.auto_commit.
+
+    The rule is evaluated against the raw parsed file (pre-merge) so a builtin
+    default can never silently satisfy it. This keeps a same-repo workshop from
+    inheriting an implicit auto_commit expectation.
+    """
+    workshop = data.get("workshop")
+    if not isinstance(workshop, dict):
+        return
+    if workshop.get("topology") != "same-repo":
+        return
+    git = data.get("git")
+    if isinstance(git, dict) and "auto_commit" in git:
+        return
+    raise ConfigError(
+        "workshop.topology=same-repo requires an explicit git.auto_commit declaration",
+        {"source": source},
+    )
 
 
 def load_config(tree_path: Optional[Path] = None, config_path: Optional[Path] = None) -> Dict[str, Any]:
@@ -368,6 +407,7 @@ def load_config(tree_path: Optional[Path] = None, config_path: Optional[Path] = 
                 {"path": str(source_path), "expected_suffix": ".json"},
             )
         data = parse_json_config(source_path)
+        _require_raw_same_repo_auto_commit(data, str(source_path))
         config = deep_merge(config, data)
         source = str(source_path)
     validate_config(config, source)

@@ -56,6 +56,8 @@ Host set 是完整 desired state，不是增量添加列表。重复同一个 ho
 
 Setup 不会根据当前目录推断项目，不会自动检测宿主，不会接管未纳管文件，也不提供 force 选项。
 
+Workshop 仓库拓扑在 workshop-setup 步骤中选定（默认：独立工作区 `independent-link`），而非由 `xcoding setup` 选择。
+
 ## 写入前检查
 
 追加 `--dry-run` 可以执行 Bundle 验证、项目根目录和路径安全检查、冲突检测、ownership planning 与锁获取，同时不修改项目：

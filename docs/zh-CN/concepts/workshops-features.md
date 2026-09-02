@@ -4,7 +4,7 @@
 
 ## Workshop
 
-每个消费项目都使用固定概念路径 `.xcoding/` 作为受管 workshop。Workshop 属于一个与项目代码仓库相互独立的 Git worktree。这样既能让工作流文档、运行时 checkpoint 和节点 artifact 不进入产品 commit，又能保留它们自身的持久历史。
+每个消费项目都使用固定概念路径 `.xcoding/` 作为受管 workshop。默认拓扑是一个与项目代码仓库相互独立的 Git worktree，该选择在 setup 时显式做出。这个默认值（`independent-link`）既能让工作流文档、运行时 checkpoint 和节点 artifact 不进入产品 commit，又能保留它们自身的持久历史。其他拓扑（`independent-nested`、`same-repo`、`no-git`）把 workshop 历史放在产品树内或旁侧，用独立性换取不同的放置方式。
 
 Workshop 的桥接文档记录项目策略。`WORKFLOW.md` 描述项目身份、命令、约定和约束；`KNOWLEDGE.md` 说明项目知识源是否存在以及如何使用。它们都不能替代通用的规范 `xc-*` Skill。
 
