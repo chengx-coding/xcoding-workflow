@@ -163,9 +163,14 @@ The JSON shape is:
     "watch_interval_seconds": 1,
     "heartbeat_seconds": 15,
     "idle_shutdown_seconds": 120
+  },
+  "workshop": {
+    "topology": "independent-link"
   }
 }
 ```
+
+The `workshop` section is optional and records how the fixed `.xcoding` path relates to the business repository. `workshop.topology` is one of `independent-link` (the default, preserved when the section is absent), `independent-nested`, `same-repo`, or `no-git`. For `same-repo`, the config file must explicitly declare `git.auto_commit`; `load_config` enforces this against the raw parsed file keys, before defaults are merged, so an inherited builtin value never silently satisfies the declaration. The `no-git` topology persists state normally but has no repository to commit to, so `commit_managed_paths` reports `not_applicable`, and `disabled` when `auto_commit=false`.
 
 With `auto_commit=true`, terminal operations checkpoint the tree and declared artifacts in one path-scoped workshop commit. A checkpoint that newly seals the root also includes a complete standalone SVG. If rendering, writing, or committing fails, runtime restores the previous tree and SVG and returns `persisted_uncommitted`; the terminal transition and artifact declarations are not accepted.
 

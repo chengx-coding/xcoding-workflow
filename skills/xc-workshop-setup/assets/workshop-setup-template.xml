@@ -3,17 +3,18 @@
 <orchestration schema_version="1" name="workshop-setup" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="4675cf8d0484ab59101e0326703cf29b2a6ed9aaeeedecdcc2f0a6c59da97ecd" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="90ec08ff0036b2c3d0a905a52446ec6fca1a3bd10eee6a9dd051b7d092c3d18a" />
   </meta>
   <blackboard>
     <var key="workshop.setup.ready">false</var>
+    <var key="workshop.topology">independent-link</var>
   </blackboard>
   <node executor="main" mode="sequence" role="root" template_id="root" title="Workshop Setup" type="composite">
     <children>
       <node executor="main" role="workshop-prepare" template_id="prepare-workshop" title="Prepare workshop setup" type="task">
-        <instructions>Confirm the workshop Git worktree and project-local facts required by WORKFLOW.md and KNOWLEDGE.md.</instructions>
-        <deliverables>Workshop setup inputs recorded in the blackboard and setup artifacts.</deliverables>
-        <acceptance>The workshop worktree is independent from the business repository and required project-local facts are available or gated.</acceptance>
+        <instructions>Confirm the workshop topology recorded in .xcoding/xc-orchestration-runtime.json (workshop.topology), its config entry, and the project-local facts required by WORKFLOW.md and KNOWLEDGE.md.</instructions>
+        <deliverables>Confirmed workshop topology and setup inputs recorded in the blackboard and setup artifacts.</deliverables>
+        <acceptance>The workshop.topology config entry is recorded and consistent with the workshop worktree, and required project-local facts are available or gated.</acceptance>
       </node>
       <node executor="main" mode="sequence" role="dynamic-group" template_id="workflow-document" title="Create project workflow document" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="knowledge-document" title="Create project knowledge guidance" type="composite" />

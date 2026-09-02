@@ -15,11 +15,20 @@ git rev-parse --show-toplevel
 
 The remaining path examples assume this directory is the project root.
 
-## 2. Create an independent workshop
+## 2. Choose the workshop topology
 
-The fixed project path `.xcoding` must resolve inside a Git worktree whose repository root differs from the project repository root. Do not place the workshop history in the business source repository.
+[`xc-workshop-setup`](../../skills/xc-workshop-setup/SKILL.md) asks once how the fixed `.xcoding` path relates to the business repository, then records the answer as `workshop.topology` in `.xcoding/xc-orchestration-runtime.json`. It recommends `independent-link`, the default that preserves the current documented behavior. For scripted or non-interactive use, pass the pinned value as the `workshop_topology` parameter to skip the question.
 
-Run one of the following blocks only when the project has no existing `.xcoding` path. If it already exists, inspect where it resolves and preserve that workshop instead of replacing it.
+The four topologies are:
+
+- `independent-link` (default): the workshop history lives in a separate Git repository outside the project, linked into the project at `.xcoding`. The product `.gitignore` ignores the `.xcoding` link target.
+- `independent-nested`: the workshop history lives in an independent Git repository nested inside the project at `.xcoding`. The product `.gitignore` ignores `.xcoding`.
+- `same-repo`: `.xcoding` is a plain directory versioned directly in the product repository. No `.gitignore` entry is written. Because engine checkpoint commits enter product history and work-order state follows product branches, this topology requires an explicit `git.auto_commit` declaration in the runtime config.
+- `no-git`: `.xcoding` is a plain untracked directory with no Git repository behind it. No `.gitignore` entry is written and there is no checkpoint history.
+
+Run the creation sequence matching the chosen topology below only when the project has no existing `.xcoding` path. If it already exists, inspect where it resolves and preserve that workshop instead of replacing it. For `independent-link` and `independent-nested`, setup also appends a root-anchored `/.xcoding/` entry to the product `.gitignore`; `same-repo` and `no-git` write nothing.
+
+`independent-link` (independent repository outside the project plus a directory link):
 
 POSIX shell:
 
@@ -41,7 +50,52 @@ git -C $WorkshopRoot init
 New-Item -ItemType Junction -Path (Join-Path $ProjectRoot ".xcoding") -Target (Join-Path $WorkshopRoot ".xcoding") | Out-Null
 ```
 
-Confirm that Git reports two different top-level paths:
+`independent-nested` (`git init` inside `<project>/.xcoding`):
+
+POSIX shell:
+
+```sh
+mkdir -p "$(pwd)/.xcoding"
+git -C "$(pwd)/.xcoding" init
+```
+
+Windows PowerShell:
+
+```powershell
+$ProjectRoot = (Get-Location).Path
+New-Item -ItemType Directory -Force (Join-Path $ProjectRoot ".xcoding") | Out-Null
+git -C (Join-Path $ProjectRoot ".xcoding") init
+```
+
+`same-repo` (plain directory versioned in the product repository):
+
+POSIX shell:
+
+```sh
+mkdir -p "$(pwd)/.xcoding"
+```
+
+Windows PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force (Join-Path (Get-Location).Path ".xcoding") | Out-Null
+```
+
+`no-git` (plain untracked directory):
+
+POSIX shell:
+
+```sh
+mkdir -p "$(pwd)/.xcoding"
+```
+
+Windows PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force (Join-Path (Get-Location).Path ".xcoding") | Out-Null
+```
+
+For the two independent topologies, confirm that Git reports two different top-level paths:
 
 ```console
 git -C . rev-parse --show-toplevel
@@ -111,6 +165,6 @@ Adoption derives evidence-backed baselines and does not silently change or repai
 
 ## 5. Let the managed lifecycle control state
 
-Provide decisions at explicit user gates and let the runtime public interfaces own node scheduling, transitions, and checkpoints. Keep code and project commits in the project repository; keep work-order documents, feature baselines, runtime state, and node artifacts in the independent workshop history.
+Provide decisions at explicit user gates and let the runtime public interfaces own node scheduling, transitions, and checkpoints. Keep code and project commits in the project repository; keep work-order documents, feature baselines, runtime state, and node artifacts in the workshop history, which by the default `independent-link` topology is independent of the project repository.
 
 Continue with the [documentation index](../index.md) for concepts, workflow guidance, orchestration details, and the complete Skill reference.

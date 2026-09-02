@@ -576,6 +576,105 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 core.load_config(config_path=legacy)
             self.assertIn("must use JSON", str(raised.exception))
 
+    def test_config_accepts_workshop_topology_section(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(
+                json.dumps({"workshop": {"topology": "independent-nested"}}) + "\n",
+                encoding="utf-8",
+            )
+
+            config = core.load_config(context)
+
+            self.assertEqual(config["workshop"]["topology"], "independent-nested")
+            self.assertEqual(config["_source"], str(config_path))
+
+    def test_config_defaults_topology_when_section_absent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(
+                json.dumps({"schema_version": 1, "git": {"auto_commit": False}}) + "\n",
+                encoding="utf-8",
+            )
+
+            config = core.load_config(context)
+
+            self.assertNotIn("workshop", json.loads(config_path.read_text(encoding="utf-8")))
+            self.assertEqual(config["workshop"]["topology"], core.WORKSHOP_TOPOLOGY_DEFAULT)
+            self.assertEqual(config["workshop"]["topology"], "independent-link")
+
+    def test_config_rejects_unknown_topology_value(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(
+                json.dumps({"workshop": {"topology": "weird"}}) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(context)
+
+            self.assertIn("workshop.topology must be one of", str(raised.exception))
+
+    def test_same_repo_requires_explicit_auto_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+
+            config_path.write_text(
+                json.dumps({"workshop": {"topology": "same-repo"}}) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(context)
+            self.assertIn(
+                "workshop.topology=same-repo requires an explicit git.auto_commit declaration",
+                str(raised.exception),
+            )
+
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "workshop": {"topology": "same-repo"},
+                        "git": {"auto_commit": True, "on_commit_failure": "warn"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            self.assertEqual(config["workshop"]["topology"], "same-repo")
+            self.assertTrue(config["git"]["auto_commit"])
+
+    def test_config_unknown_keys_remain_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "git": {"auto_commit": False},
+                        "future_cli_key": {"nested": "kept"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            config = core.load_config(context)
+
+            self.assertEqual(config["future_cli_key"], {"nested": "kept"})
+            self.assertFalse(config["git"]["auto_commit"])
+
     def test_atomic_write_retries_transient_replace_failure(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             target = Path(temporary) / "orchestration.xml"

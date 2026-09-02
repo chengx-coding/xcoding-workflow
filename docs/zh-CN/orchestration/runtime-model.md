@@ -161,9 +161,14 @@ JSON 结构如下：
     "watch_interval_seconds": 1,
     "heartbeat_seconds": 15,
     "idle_shutdown_seconds": 120
+  },
+  "workshop": {
+    "topology": "independent-link"
   }
 }
 ```
+
+`workshop` 段是可选配置，用于记录固定路径 `.xcoding` 与业务仓库的关系。`workshop.topology` 的取值是 `independent-link`（默认值；段缺省时也取该值）、`independent-nested`、`same-repo` 或 `no-git`。对于 `same-repo`，配置文件必须显式声明 `git.auto_commit`；`load_config` 会在合并默认值之前针对原始解析后的文件键强制执行该规则，因此内建默认值绝不会静默满足该声明。`no-git` 拓扑会正常持久化状态，但由于没有可提交的仓库，`commit_managed_paths` 会报告 `not_applicable`；当 `auto_commit=false` 时报告 `disabled`。
 
 当 `auto_commit=true` 时，终态操作把运行树和声明的 artifacts 放入同一个 path-scoped workshop commit。使根节点新近 sealed 的检查点还包含完整独立 SVG。如果渲染、写入或 commit 失败，runtime 会恢复原有运行树和 SVG，并返回 `persisted_uncommitted`；终态转换和 artifact 声明均不被接受。
 
