@@ -57,6 +57,8 @@ and serves local tools. Neither surface exposes runtime mutation.
 
 A managed work order has one authoritative progress state: its runtime tree. Host-provided task or todo facilities are derived presentation or transient scratch only and never substitute for runtime scheduling, state verification, gates, or completion.
 
+Temporary and process files follow the same work-order-local discipline: they belong under the workbench `tmp/` directory, not in the user home directory, an operating-system temporary location, or project-repository content outside the workbench, unless the task itself requires otherwise and the node records the location, the reason, and the verified removal.
+
 ## Reusable Workflow Patterns
 
 The control primitives can be composed into recurring patterns without making them runtime syntax:

@@ -122,3 +122,5 @@ The caller owns document evolution. It uses the session artifact to update `anal
 - Use `xc-document` for session-artifact structure and validation.
 - Keep long evidence, questions, and answers in the session artifact, never in blackboard values.
 - Do not use clarification to replace evidence gathering, independent review, user approval of a solution, or implementation verification.
+- Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory; keep them out of the user home directory, operating-system temporary locations, and any project-repository content outside the workbench, and never declare them as artifacts.
+- When the task itself requires a location outside the workbench, record the location, the reason, and the verified removal in the node artifact.

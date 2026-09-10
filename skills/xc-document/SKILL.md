@@ -140,3 +140,5 @@ Artifact writers read `metadata.artifact.audience` and `metadata.artifact.conten
 - `tree_ref` is an opaque runtime reference. Validation does not open or inspect the referenced tree.
 - Document content remains owned by the calling document-evolution node or domain Skill.
 - Use templates in `assets/templates/` as starting points; replace all placeholders before validation.
+- Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory; keep them out of the user home directory, operating-system temporary locations, and any project-repository content outside the workbench, and never declare them as artifacts.
+- When the task itself requires a location outside the workbench, record the location, the reason, and the verified removal in the node artifact.

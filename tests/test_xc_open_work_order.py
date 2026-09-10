@@ -82,6 +82,9 @@ class XcOpenWorkOrderTests(unittest.TestCase):
             self.assertEqual(created["feature_ids"], ["payment-refund", "billing-ledger"])
             self.assertTrue(Path(str(created["artifacts_path"])).is_dir())
             self.assertTrue(Path(str(created["runtime_path"])).is_dir())
+            self.assertTrue(Path(str(created["tmp_path"])).is_dir())
+            self.assertEqual(Path(str(created["tmp_path"])).name, "tmp")
+            self.assertEqual(Path(str(created["tmp_path"])).parent, Path(str(created["workbench_path"])))
             self.assertEqual(Path(str(created["workbench_path"])).parent, workshop / "work-orders")
             self.assertEqual(created["workshop_path"], str(workshop.resolve()))
 
@@ -136,6 +139,7 @@ class XcOpenWorkOrderTests(unittest.TestCase):
             self.assertEqual(created["workshop_path"], str(target.resolve()))
             self.assertEqual(Path(str(created["workbench_path"])).parent, target.resolve() / "work-orders")
             self.assertTrue(Path(str(created["runtime_path"])).is_dir())
+            self.assertTrue(Path(str(created["tmp_path"])).is_dir())
 
     def test_rejects_workshop_in_business_repository(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

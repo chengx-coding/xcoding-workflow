@@ -7,7 +7,7 @@ A managed lifecycle preserves decisions and evidence in documents and artifacts 
 ## Lifecycle
 
 1. **Load project policy.** Read the project instructions, workshop bridge, and declared knowledge guidance before choosing commands or making project-specific assumptions.
-2. **Open and initialize the work order.** Create the durable workbench, initialize its managed tree, and fix the work order document language before writing the first top-level document.
+2. **Open and initialize the work order.** Create the durable workbench, initialize its managed tree, and fix the work order document language before writing the first top-level document. Use the `tmp_path` the opener returns for temporary and process files, and create `<workbench>/tmp/` when an existing workbench does not have it.
 3. **Record the goal.** `goal.md` defines the requested outcome, boundaries, constraints, and acceptance direction.
 4. **Establish evidence.** When facts, impact, alternatives, diagnosis, or feature reconciliation are needed, [`xc-analysis`](../../skills/xc-analysis/SKILL.md) records perspective evidence in node artifacts and synthesizes accepted facts into `analysis.md`.
 5. **Clarify human decisions.** When evidence cannot answer a material decision, [`xc-clarify`](../../skills/xc-clarify/SKILL.md) asks bounded questions through main-session gates before solution selection. It does not replace investigation.

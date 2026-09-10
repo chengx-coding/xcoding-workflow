@@ -210,8 +210,10 @@ def open_work_order(
     work_order_id, workbench_path = unique_workbench(work_orders_path, requested_id)
     artifacts_path = workbench_path / "artifacts"
     runtime_path = workbench_path / "runtime"
+    tmp_path = workbench_path / "tmp"
     artifacts_path.mkdir()
     runtime_path.mkdir()
+    tmp_path.mkdir()
     return {
         "ok": True,
         "work_order_id": work_order_id,
@@ -219,6 +221,7 @@ def open_work_order(
         "work_orders_path": str(work_orders_path),
         "runtime_path": str(runtime_path),
         "artifacts_path": str(artifacts_path),
+        "tmp_path": str(tmp_path),
         "workshop_path": str(resolved_workshop),
         "workshop_repo_root": str(workshop_repo_root) if workshop_repo_root else None,
         "project_root": str(resolved_project),

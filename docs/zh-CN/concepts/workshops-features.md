@@ -22,9 +22,12 @@ Work order 是一次调查、变更、修复、评审或维护工作的持久单
   result.md
   runtime/
   artifacts/
+  tmp/              # 临时文件与过程文件
 ```
 
 `goal.md`、`analysis.md`、`solution.md` 和 `result.md` 持久保存目标、证据、决策和结果。动态状态、执行顺序、重试状态、循环状态和 blocker 属于受管运行时树；worker 的详细证据应写入 `artifacts/`，而不是运行时 blackboard。
+
+临时脚本、中间产物和过程文件属于 `tmp/`，开启器把该路径作为 `tmp_path` 返回。使用返回的路径，而不是自行发明一个位置；既有 workbench 没有该目录时创建它。必须在工作台之外工作的节点记录位置、理由和被验证的移除。
 
 一个 work order 可以关联零个、一个或多个已有 feature。通用的 [work 生命周期](../../../skills/xc-work/SKILL.md)不会仅因为一项变更需要持久管理就自动创建 feature。
 

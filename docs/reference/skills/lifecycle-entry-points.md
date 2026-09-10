@@ -19,9 +19,9 @@ These Skills select and govern complete workflow lifecycles.
 [Canonical contract](../../../skills/xc-open-work-order/SKILL.md)
 
 - **Invoke when:** a lifecycle needs a durable work-order ID, runtime path, and artifacts path.
-- **Purpose:** validate workshop separation and create the standard `artifacts/` and `runtime/` workbench directories.
+- **Purpose:** validate workshop separation and create the standard `artifacts/`, `runtime/`, and `tmp/` workbench directories.
 - **Public entry:** `open_work_order.py` with required `workshop_path`; optional `project_root`, `topic`, `work_order_id`, and repeated `feature_ids`.
-- **Typical usage:** call it before runtime initialization and consume the absolute paths returned as JSON.
+- **Typical usage:** call it before runtime initialization and consume the absolute paths returned as JSON, including `tmp_path` for temporary and process files.
 - **Boundaries:** it creates no documents, runtime tree, feature directory, log, or Git commit; callers must not reconstruct returned paths.
 
 ## `xc-work`

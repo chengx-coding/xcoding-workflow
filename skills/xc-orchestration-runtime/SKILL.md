@@ -31,6 +31,8 @@ transaction, persistence, Viewer, or fallback implementation.
 - Runtime trees use `schema_version="1"`. Earlier formats and CLI semantics are unsupported.
 - A terminal operation is valid only for a `running` task or gate. A successful root is sealed until the main session explicitly reopens it after a user-approved reason.
 - A managed work order has one authoritative progress state: its runtime tree. Host-provided task or todo facilities are derived presentation or node-scoped scratch only; they must not substitute for runtime scheduling, state verification, gates, or completion.
+- Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory; keep them out of the user home directory, operating-system temporary locations, and any project-repository content outside the workbench, and never declare them as artifacts.
+- When the task itself requires a location outside the workbench, record the location, the reason, and the verified removal in the node artifact.
 
 ## Runtime Lifecycle
 

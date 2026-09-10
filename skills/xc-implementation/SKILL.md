@@ -64,3 +64,5 @@ The source list must contain the terminal leaf that owns the accepted solution a
 - Execute exactly one runtime node and report only through the runtime public command.
 - Do not introduce unapproved product scope, migrations, or external side effects.
 - A failed or blocked implementation preserves evidence. The caller may use runtime `retry-failed --reason` only to repeat the same approved leaf contract; alternate scope, acceptance, or side effects require explicit recovery work or a user gate.
+- Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory; keep them out of the user home directory, operating-system temporary locations, and any project-repository content outside the workbench, and never declare them as artifacts.
+- When the task itself requires a location outside the workbench, record the location, the reason, and the verified removal in the node artifact.

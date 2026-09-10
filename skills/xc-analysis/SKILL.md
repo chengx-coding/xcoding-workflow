@@ -44,3 +44,5 @@ Analysis node artifacts default to internal English. A caller may explicitly mar
 - Analysis does not modify product code or feature baselines.
 - It does not infer project commands, knowledge sources, or business rules absent from the project bridge and supplied inputs.
 - It never stores detailed analysis in the runtime blackboard or reads runtime XML directly.
+- Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory; keep them out of the user home directory, operating-system temporary locations, and any project-repository content outside the workbench, and never declare them as artifacts.
+- When the task itself requires a location outside the workbench, record the location, the reason, and the verified removal in the node artifact.

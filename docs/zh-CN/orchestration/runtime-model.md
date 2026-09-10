@@ -112,6 +112,8 @@ Blackboard 保存跨节点短值；点分名称只是约定，不是 schema。�
 4. Worker 写入持久产物并调用 `complete`、`fail` 或 `block`。
 5. 主会话复核 runtime 状态。
 
+临时脚本、中间产物和过程文件属于工作单开启器返回的工作台 `tmp/` 目录。worker 与主会话在既有 workbench 没有该目录时创建它，绝不把这类文件声明为 artifact；任务要求工作台之外的位置时，记录位置、理由和被验证的移除。
+
 Worker 遇到 `state_conflict` 或 `tree_sealed` 时应上报，而不是重试含义不明确的写入。Failed 表示一次执行尝试失败；blocked 表示缺少可恢复的人类、外部或环境前置条件。两者都不能被静默跳过。主会话可以显式重试同一个失败叶子契约；worker 不自行重试。
 
 ## 转换、完整性与并发

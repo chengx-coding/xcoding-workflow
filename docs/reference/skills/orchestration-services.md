@@ -23,7 +23,7 @@ These services design, run, and visualize managed orchestration without taking o
 - **Public entry:** the required package exposes lifecycle, query, and recovery operations as `xcoding runtime <command> ...`. Opt-in completion adds repeated `--check-result-json`; opt-in gates add `--gate-outcome` and `--decision`.
 - **Additional package entries:** `xcoding viewer` launches the local browser Viewer and `xcoding daemon serve` exposes the optional authenticated read-only tool API. Runtime commands do not discover or require the daemon.
 - **Typical usage:** initialize a template, request ready work, read the selected leaf's scoped packet, start only that executable leaf, and terminate it with concise evidence and declared artifacts. When the same approved leaf contract should run after failure, `retry-failed --reason` archives the attempt and restores ordinary scheduling.
-- **Boundaries:** managed XML is never read or edited directly; workers execute exactly one node, source projection is not start authority, invalid integrity requires explicit repair, and successful trees remain sealed until an approved reopen.
+- **Boundaries:** managed XML is never read or edited directly; workers execute exactly one node, source projection is not start authority, invalid integrity requires explicit repair, successful trees remain sealed until an approved reopen, and temporary or process files stay under the workbench `tmp/` directory and are never declared as artifacts.
 
 ### Runtime Implementation Ownership
 

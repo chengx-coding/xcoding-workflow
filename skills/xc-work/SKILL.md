@@ -210,6 +210,7 @@ Omitting `operation` or specifying `operation=run` preserves the existing manage
 1. Read `AGENTS.md`, `.xcoding/WORKFLOW.md`, and `.xcoding/KNOWLEDGE.md`.
 2. Verify every supplied `feature_id` already exists. Do not create or adopt a feature.
 3. Call `xc-open-work-order`, initialize `assets/work-order-template.xml`, determine and validate `work_order.document_language` through `xc-document`, then complete `prepare-work-order`. An explicit `document_language` wins; otherwise use only the initiating request's clearly dominant language or `en`.
+   Consume the returned `tmp_path` as the only location for the main session's temporary and process files, and create `<workbench>/tmp/` when an existing workbench does not have it.
 4. Create `goal.md` through document evolution. Before every top-level work order document subtree, set `document.content_language` to `work_order.document_language`. Set blackboard controls based on the requested mode and required gates.
 5. When analysis is needed, schedule `xc-analysis` nodes and synthesize accepted evidence into `analysis.md`.
 6. When feature IDs are present, embed `xc-feature-reconciliation` sequentially under `reconciliation-group` before selecting a work order solution.
@@ -257,3 +258,5 @@ Work orders may analyze and design for the same feature concurrently. Before any
 - Dynamic state, task ordering, retry state, and blockers remain in the runtime tree, not in documents.
 - Governance routing is independent of model name, model vendor, context-window size, environment labels, and project technology stack. The same confirmed fact vector always produces the same route.
 - Do not re-detect language from later user messages. A user may explicitly correct `work_order.document_language`; revise already declared top-level work order documents and `metadata.artifact.audience=user` reports through runtime-managed document-evolution work.
+- Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory; keep them out of the user home directory, operating-system temporary locations, and any project-repository content outside the workbench, and never declare them as artifacts.
+- When the task itself requires a location outside the workbench, record the location, the reason, and the verified removal in the node artifact.

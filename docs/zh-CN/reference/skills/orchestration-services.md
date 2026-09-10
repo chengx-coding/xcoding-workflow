@@ -23,7 +23,7 @@
 - **公开入口：** 必要 package 以 `xcoding runtime <command> ...` 暴露生命周期、查询和恢复操作。Opt-in completion 增加可重复的 `--check-result-json`；opt-in gate 增加 `--gate-outcome` 和 `--decision`。
 - **其他 package 入口：** `xcoding viewer` 启动本地 browser Viewer，`xcoding daemon serve` 暴露可选、带认证的只读工具 API。Runtime 命令不会发现或要求 daemon。
 - **典型用法：** 从模板初始化，请求 ready work，读取所选叶子节点的 scoped packet，仅启动该可执行叶子，并用简洁证据和声明 artifact 终止它。失败后需要再次执行同一个已批准叶子契约时，`retry-failed --reason` 会归档该 attempt 并恢复普通调度。
-- **主要边界：** 绝不直接读取或编辑受管 XML；worker 只执行一个节点，来源投影不是 start 权限，完整性无效时需显式修复，成功树在获批 reopen 前保持 sealed。
+- **主要边界：** 绝不直接读取或编辑受管 XML；worker 只执行一个节点，来源投影不是 start 权限，完整性无效时需显式修复，成功树在获批 reopen 前保持 sealed；临时与过程文件留在工作台 `tmp/` 目录下，且绝不声明为 artifact。
 
 ### Runtime 实现所有权
 

@@ -10,7 +10,7 @@
     "tests/test_xc_workflow_governance.py": "bf4e1f0e76e9138a60e7e23aa163e631fa2d057e7e4c5f6331ee507e39b999f6",
     "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
     "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
-    "skills/xc-open-work-order/scripts/open_work_order.py": "a41c1e3279da2a29a09e1703fb9f2e5a300a67276628964c7b3aa548e8ba569e",
+    "skills/xc-open-work-order/scripts/open_work_order.py": "5afd6c67aaadb218833fc51d195bce3a3847c02afc659fb7d864ce7df9ffc0eb",
     "skills/xc-orchestration-runtime/scripts/orchestration.py": "83513c89ba9319e1c891c6c7757d5f864028aefca2bce696d75620cf448d755c",
     "tests/runtime_cli.py": "31fbe397dbd34c63102eab28061d93b9fe47ad7770e4c6fa1fc2a10234701f43",
     "src/xcoding/runtime/application.py": "d6c69d997db52a998372d326d6a7b8ec60f1d2cc9c070bbdb1fc374938bff425",
@@ -30,7 +30,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "2fd3a45c1fbcc44fc90d47c596ea43dd696aa54a",
+  "recording_base_commit": "a99f633aa44cca3139d4a0bb7f7cdb69a9a19888",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -439,174 +439,174 @@
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
         "current_value": 91912,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 27159
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
         "current_value": 92576,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 27159
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
         "current_value": 127735,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 37189
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
         "current_value": 128648,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 37189
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
         "current_value": 193364,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 53226
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
         "current_value": 194775,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 53226
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
         "current_value": 220212,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 55318
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
         "current_value": 221872,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 55318
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "review fix F1 parity and O1 message ordering",
+        "explanation": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "review fix F1 parity and O1 message ordering",
+    "reason": "work order 20260910-2014-workbench-scratch-locality: refresh pinned input hashes after the opener change that adds the workbench tmp/ directory and tmp_path to skills/xc-open-work-order/scripts/open_work_order.py",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1403,7 +1403,7 @@
       "tests/test_xc_workflow_governance.py": "bf4e1f0e76e9138a60e7e23aa163e631fa2d057e7e4c5f6331ee507e39b999f6",
       "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
       "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
-      "skills/xc-open-work-order/scripts/open_work_order.py": "a41c1e3279da2a29a09e1703fb9f2e5a300a67276628964c7b3aa548e8ba569e",
+      "skills/xc-open-work-order/scripts/open_work_order.py": "5afd6c67aaadb218833fc51d195bce3a3847c02afc659fb7d864ce7df9ffc0eb",
       "skills/xc-orchestration-runtime/scripts/orchestration.py": "83513c89ba9319e1c891c6c7757d5f864028aefca2bce696d75620cf448d755c",
       "tests/runtime_cli.py": "31fbe397dbd34c63102eab28061d93b9fe47ad7770e4c6fa1fc2a10234701f43",
       "src/xcoding/runtime/application.py": "d6c69d997db52a998372d326d6a7b8ec60f1d2cc9c070bbdb1fc374938bff425",
