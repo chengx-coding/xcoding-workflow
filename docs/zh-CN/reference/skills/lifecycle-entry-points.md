@@ -19,9 +19,9 @@
 [规范契约](../../../../skills/xc-open-work-order/SKILL.md)
 
 - **何时调用：** 生命周期需要持久工作订单 ID、runtime 路径和 artifacts 路径时。
-- **用途：** 验证 workshop 隔离，并创建标准的 `artifacts/` 与 `runtime/` 工作台目录。
+- **用途：** 验证 workshop 隔离，并创建标准的 `artifacts/`、`runtime/` 与 `tmp/` 工作台目录。
 - **公开入口：** `open_work_order.py`，必填 `workshop_path`；可选 `project_root`、`topic`、`work_order_id` 和重复的 `feature_ids`。
-- **典型用法：** 在初始化运行时前调用，并直接使用 JSON 返回的绝对路径。
+- **典型用法：** 在初始化运行时前调用，并直接使用 JSON 返回的绝对路径，包括用于临时文件与过程文件的 `tmp_path`。
 - **主要边界：** 不创建文档、运行时树、功能目录、日志或 Git commit；调用方不得自行重建返回路径。
 
 ## `xc-work`

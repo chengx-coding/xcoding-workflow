@@ -59,3 +59,5 @@ Select only terminal leaves whose artifacts supply the evidence this verificatio
 - Do not invent test commands, tools, environments, thresholds, or pass criteria.
 - Do not modify product behavior only to make a validation command pass without returning to the caller's solution and implementation nodes.
 - Preserve credentials, sensitive output, and raw logs outside general node artifacts unless the project bridge explicitly requires durable retention.
+- Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory; keep them out of the user home directory, operating-system temporary locations, and any project-repository content outside the workbench, and never declare them as artifacts.
+- When the task itself requires a location outside the workbench, record the location, the reason, and the verified removal in the node artifact.

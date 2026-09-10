@@ -41,3 +41,5 @@ Temporary diagnostic source changes require explicit caller authorization, a dec
 - Do not represent a suspected cause as confirmed.
 - Do not hard-code project logs, test frameworks, environments, or access methods.
 - External access, production data, or destructive reproduction prerequisites are blockers, not reasons to fabricate evidence.
+- Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory; keep them out of the user home directory, operating-system temporary locations, and any project-repository content outside the workbench, and never declare them as artifacts.
+- When the task itself requires a location outside the workbench, record the location, the reason, and the verified removal in the node artifact.

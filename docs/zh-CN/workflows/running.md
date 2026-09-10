@@ -7,7 +7,7 @@
 ## 生命周期
 
 1. **加载项目策略。** 在选择命令或作出项目专属假设前，读取项目指引、workshop 桥接和已声明的知识指引。
-2. **打开并初始化 work order。** 创建持久 workbench，初始化受管树，并在写入第一份顶层文档前固定 work order 文档语言。
+2. **打开并初始化 work order。** 创建持久 workbench，初始化受管树，并在写入第一份顶层文档前固定 work order 文档语言。使用开启器返回的 `tmp_path` 存放临时文件与过程文件；既有 workbench 没有该目录时创建 `<workbench>/tmp/`。
 3. **记录目标。** `goal.md` 定义请求结果、边界、约束和验收方向。
 4. **建立证据。** 需要事实、影响、备选方案、诊断或 feature 协调时，[`xc-analysis`](../../../skills/xc-analysis/SKILL.md)把不同视角的证据记录到节点 artifact，并将接受的事实综合到 `analysis.md`。
 5. **澄清人类决策。** 当证据无法回答重要决策时，[`xc-clarify`](../../../skills/xc-clarify/SKILL.md)在方案选择前通过主会话 gate 提出有界问题。它不能代替调查。

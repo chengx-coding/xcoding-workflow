@@ -55,13 +55,15 @@ The script creates:
 <workshop_path>/work-orders/<work_order_id>/
   artifacts/
   runtime/
+  tmp/
 ```
 
-Use the returned `runtime_path` to initialize the main orchestration tree. `xc-open-work-order` does not create documents, trees, logs, feature directories, or Git commits.
+Use the returned `runtime_path` to initialize the main orchestration tree and the returned `tmp_path` for temporary and process files. `xc-open-work-order` does not create documents, trees, logs, feature directories, or Git commits.
 
 ## Constraints
 
 - The supplied `workshop_path` MUST name the fixed `.xcoding` path. Its resolved target MUST be inside a dedicated workshop Git worktree.
 - The script MUST NOT create a feature directory. Only the new-feature and feature-adoption workflows may do so.
+- The script creates `tmp/` for every new workbench and returns it as `tmp_path`. A caller that writes temporary or process files uses that path, and creates `tmp/` itself when an existing workbench does not have it.
 - Callers MUST use the returned paths rather than reconstructing workbench paths.
 - The script handles slug normalization and collision suffixes internally.

@@ -28,6 +28,7 @@ The main session provides:
    normalized receipt, and pass that receipt through `--check-result-json`.
    Never pass a validator's legacy outer response.
 10. A host-provided task list is transient scratch only. Do not use it as work-order progress state, do not report its contents as progress evidence, and do not retain it beyond this node.
+11. Temporary scripts, intermediate outputs, scratch fixtures, and process files belong under the workbench `tmp/` directory. Use the path returned by the work-order opener, and create the directory when an existing workbench does not have it. Never declare a temporary or process file as an artifact. When the task itself requires a location outside the workbench, record the location, the reason, and the verified removal in the node artifact.
 
 ## Worker Prompt Skeleton
 
@@ -44,6 +45,7 @@ Rules:
 - Use supplied blackboard values, references, and artifacts as inputs.
 - Produce the requested deliverables.
 - On success, call complete with a summary, validation outcome, and artifact paths.
+- Keep temporary and process files under the workbench `tmp/` directory; never declare them as artifacts, and record the location, reason, and verified removal for any task-required location outside the workbench.
 - On failure, call fail or block with a specific reason and required recovery condition.
 ```
 

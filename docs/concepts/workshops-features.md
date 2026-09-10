@@ -22,9 +22,12 @@ A standard workbench has this conceptual shape:
   result.md
   runtime/
   artifacts/
+  tmp/              # temporary and process files
 ```
 
 `goal.md`, `analysis.md`, `solution.md`, and `result.md` preserve durable intent, evidence, decisions, and outcomes. Dynamic status, ordering, retry state, loop state, and blockers belong to the managed runtime tree. Detailed worker evidence belongs under `artifacts/`, not in the runtime blackboard.
+
+Temporary scripts, intermediate outputs, and process files belong under `tmp/`, and the opener returns that path as `tmp_path`. Use the returned path rather than inventing a location, and create the directory when an existing workbench does not have it. A node that must work outside the workbench records the location, the reason, and the verified removal.
 
 A work order may relate to zero, one, or multiple existing features. The common [work lifecycle](../../skills/xc-work/SKILL.md) does not manufacture a feature merely because a change is persistent.
 

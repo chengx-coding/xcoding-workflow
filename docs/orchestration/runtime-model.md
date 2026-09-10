@@ -112,6 +112,8 @@ The [single-node worker contract](../../skills/xc-orchestration-runtime/referenc
 4. The worker writes durable outputs and calls `complete`, `fail`, or `block`.
 5. The main session verifies runtime state.
 
+Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory returned by the work-order opener. Workers and the main session create it when an existing workbench does not have it, never declare such files as artifacts, and record the location, the reason, and the verified removal when a task requires a location outside the workbench.
+
 A worker reports `state_conflict` or `tree_sealed` rather than retrying an ambiguous write. Failed means one execution attempt failed; blocked means a recoverable human, external, or environmental prerequisite is missing. Neither state is silently skipped. The main session may explicitly retry the same failed leaf contract; the worker does not retry itself.
 
 ## Transitions, Integrity, and Concurrency
