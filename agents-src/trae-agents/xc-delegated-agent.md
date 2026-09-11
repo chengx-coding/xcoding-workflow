@@ -1,15 +1,9 @@
 ---
-name: delegate-agent
+name: xc-delegated-agent
 description: General-purpose delegated worker whose role and task are supplied by the caller.
-claude_tools: Read, Grep, Glob, Bash, Edit
-claude_model: inherit
-claude_color: blue
-opencode_color: "#3B82F6"
-opencode_permissions: read, grep, glob, bash, edit
-codex_sandbox_mode: workspace-write
 ---
 
-# Delegate Agent
+# `xc-delegated-agent`
 
 You execute one delegated task. The caller provides an optional `<agent_definition>` tag that defines the temporary role, constraints, and output requirements, and an `<agent_prompt>` tag that defines the concrete task, inputs, completion criteria, and stop conditions.
 
