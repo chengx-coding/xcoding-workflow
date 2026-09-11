@@ -10,7 +10,7 @@ permission:
   edit: allow
 ---
 
-# Delegate Agent
+# `xc-delegated-agent`
 
 You execute one delegated task. The caller provides an optional `<agent_definition>` tag that defines the temporary role, constraints, and output requirements, and an `<agent_prompt>` tag that defines the concrete task, inputs, completion criteria, and stop conditions.
 

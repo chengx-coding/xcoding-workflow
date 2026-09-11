@@ -58,18 +58,18 @@ class AgentExportTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
 
-        source = (REPOSITORY_ROOT / "agents-src" / "agents" / "delegate-agent.md").read_text(encoding="utf-8")
+        source = (REPOSITORY_ROOT / "agents-src" / "agents" / "xc-delegated-agent.md").read_text(encoding="utf-8")
         body = source.split("---", 2)[2].strip()
-        claude = (REPOSITORY_ROOT / "agents-src" / "claude-agents" / "delegate-agent.md").read_text(encoding="utf-8")
-        opencode = (REPOSITORY_ROOT / "agents-src" / "opencode-agents" / "delegate-agent.md").read_text(encoding="utf-8")
-        codex = (REPOSITORY_ROOT / "agents-src" / "codex-agents" / "delegate-agent.toml").read_text(encoding="utf-8")
-        trae = (REPOSITORY_ROOT / "agents-src" / "trae-agents" / "delegate-agent.md").read_text(encoding="utf-8")
+        claude = (REPOSITORY_ROOT / "agents-src" / "claude-agents" / "xc-delegated-agent.md").read_text(encoding="utf-8")
+        opencode = (REPOSITORY_ROOT / "agents-src" / "opencode-agents" / "xc-delegated-agent.md").read_text(encoding="utf-8")
+        codex = (REPOSITORY_ROOT / "agents-src" / "codex-agents" / "xc-delegated-agent.toml").read_text(encoding="utf-8")
+        trae = (REPOSITORY_ROOT / "agents-src" / "trae-agents" / "xc-delegated-agent.md").read_text(encoding="utf-8")
 
         self.assertIn(body, claude)
         self.assertIn(body, opencode)
         self.assertIn("developer_instructions", codex)
         self.assertIn("You execute one delegated task.", codex)
-        self.assertTrue(trae.startswith("---\nname: delegate-agent\n"))
+        self.assertTrue(trae.startswith("---\nname: xc-delegated-agent\n"))
         self.assertIn(body, trae)
 
     def test_exporter_target_set_is_exactly_four_host_targets_and_check_guards_each(
@@ -108,10 +108,10 @@ class AgentExportTests(unittest.TestCase):
             )
 
             target_files = {
-                "claude-agents": "delegate-agent.md",
-                "opencode-agents": "delegate-agent.md",
-                "codex-agents": "delegate-agent.toml",
-                "trae-agents": "delegate-agent.md",
+                "claude-agents": "xc-delegated-agent.md",
+                "opencode-agents": "xc-delegated-agent.md",
+                "codex-agents": "xc-delegated-agent.toml",
+                "trae-agents": "xc-delegated-agent.md",
             }
             for directory, filename in target_files.items():
                 missing = root / directory / filename
@@ -176,7 +176,7 @@ class AgentExportTests(unittest.TestCase):
             self.assertIn("trae-agents/obsolete-agent.md", checked.stderr)
 
             extra.unlink()
-            expected = root / "trae-agents" / "delegate-agent.md"
+            expected = root / "trae-agents" / "xc-delegated-agent.md"
             expected.unlink()
             missing = subprocess.run(
                 [sys.executable, str(exporter), "--check"],
@@ -186,7 +186,7 @@ class AgentExportTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(missing.returncode, 1)
-            self.assertIn("trae-agents/delegate-agent.md", missing.stderr)
+            self.assertIn("trae-agents/xc-delegated-agent.md", missing.stderr)
 
             regenerated = subprocess.run(
                 [sys.executable, str(exporter)],
@@ -205,7 +205,7 @@ class AgentExportTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(stale.returncode, 1)
-            self.assertIn("trae-agents/delegate-agent.md", stale.stderr)
+            self.assertIn("trae-agents/xc-delegated-agent.md", stale.stderr)
 
 
 if __name__ == "__main__":

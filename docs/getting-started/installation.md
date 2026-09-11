@@ -40,7 +40,7 @@ The installation creates `xcoding`; there is no `xc` alias. XC does not distribu
 Run setup with an explicit existing project root and at least one explicit host. Repeat `--host` for every host that should remain installed:
 
 ```console
-xcoding setup --project-root /absolute/path/to/project --host codex --host opencode --host claude-code --host trae
+xcoding setup --project-root /absolute/path/to/project --host codex --host opencode --host claude-code --host trae --json
 ```
 
 Host identifiers and project-relative targets are fixed:
@@ -63,7 +63,7 @@ The workshop repository topology is chosen during the workshop-setup step (defau
 Add `--dry-run` to execute Bundle validation, project-root and path safety checks, conflict detection, ownership planning, and lock acquisition without changing the project:
 
 ```console
-xcoding setup --project-root /absolute/path/to/project --host codex --host trae --dry-run
+xcoding setup --project-root /absolute/path/to/project --host codex --host trae --dry-run --json
 ```
 
 The dry run reports create, replace, remove, and unchanged operations and always returns `writes_performed: false`. Setup fails closed before mutation when the Bundle is invalid, the project root or lock cannot be proven, a target crosses a link or reparse point, an unmanaged target conflicts, a managed file has drifted, or unexpected setup state exists. Resolve the reported ownership or path issue; do not overwrite it manually and retry blindly.
@@ -85,7 +85,7 @@ Do not edit or delete these files to bypass a failure. Setup removes only paths 
 If setup reports `recovery_required`, close the interrupted journal explicitly:
 
 ```console
-xcoding setup --project-root /absolute/path/to/project --recover
+xcoding setup --project-root /absolute/path/to/project --recover --json
 ```
 
 Recovery inspects the durable journal and either completes a transaction whose manifest was already committed or restores the prior generation. It is idempotent for the same recoverable state and does not accept `--host` or `--dry-run`.
@@ -93,10 +93,59 @@ Recovery inspects the durable journal and either completes a transaction whose m
 To restore the immediately preceding successful generation, use:
 
 ```console
-xcoding setup --project-root /absolute/path/to/project --rollback
+xcoding setup --project-root /absolute/path/to/project --rollback --json
 ```
 
 Rollback also rejects `--host` and `--dry-run`. It is available only when a valid previous generation exists and no open journal requires recovery. Neither operation deletes unowned files or overwrites drifted managed bytes. A lock, identity, journal, backup, or rollback failure remains a machine-readable error that requires diagnosis; it is never converted into a best-effort destructive cleanup.
+
+## Migrate a renamed agent definition
+
+A canonical agent definition is installed under one filename per host, and that filename is part of the managed state of every project that installed it. The agent definition formerly installed as `delegate-agent` is now `xc-delegated-agent`, so a project that installed the earlier name sees one removal paired with one creation per selected host. The host roots are unchanged, and only the installed filename changes:
+
+| Host ID | Installed before | Installed after |
+| --- | --- | --- |
+| `claude-code` | `.claude/agents/delegate-agent.md` | `.claude/agents/xc-delegated-agent.md` |
+| `codex` | `.codex/agents/delegate-agent.toml` | `.codex/agents/xc-delegated-agent.toml` |
+| `opencode` | `.opencode/agents/delegate-agent.md` | `.opencode/agents/xc-delegated-agent.md` |
+| `trae` | `.trae/agents/delegate-agent.md` | `.trae/agents/xc-delegated-agent.md` |
+
+The change happens on the next successful `xcoding setup` after the upgrade to the release that carries the new name. Setup deletes the old-named file and installs the new-named file inside the same transaction; shared Skill files are reported `unchanged`. The transaction is not name-aware. It is the ordinary desired-state reconciliation described above, applied to a Bundle whose resource paths changed.
+
+Run the dry run first:
+
+```console
+xcoding setup --project-root /absolute/path/to/project --host codex --host opencode --host claude-code --host trae --dry-run --json
+```
+
+It reports the removal and the creation as paired operations, returns `writes_performed: false`, and leaves every file untouched. `--json` is not optional here: every machine-readable `xcoding` command requires an explicit `--json`, and omitting it exits with code 2 and the `json-required` error instead of returning a plan. Because the dry run executes the complete preflight, it also reports the blocking conditions below before anything is written.
+
+Setup removes a previously installed file only when all four conditions hold at once: the path is recorded in the ownership manifest, the path is absent from the desired set computed from the currently installed Bundle and the selected host set, the file exists on disk, and its SHA-256 equals the manifest record. Nothing else in the transaction can delete a project file.
+
+A migrating consumer must therefore leave the old-named agent file byte-identical until the upgrade run, and must not delete, move, or rename it: a hand-deleted manifest-owned file blocks the migration rather than helping it. The consumer must also not pre-create anything at the new path, even an exact copy of the packaged definition.
+
+Every condition below fails closed and performs no write. Three of the five conditions name the offending path in `error.details.path`: `unmanaged_conflict` and both `managed_content_changed` variants. `recovery_required` and `journal_invalid` report no path: their error envelope carries an empty `details` object, so a consumer that parses `error.details.path` must handle its absence for those two. The code is the `error.code` value in the machine-readable error envelope, and the process exit code is 4:
+
+- `unmanaged_conflict` — a file already exists at the new path but is not manifest-owned. Setup never adopts an unmanaged file.
+- `managed_content_changed` — a manifest-owned file's bytes no longer equal the recorded bytes. A local edit to the old-named agent file blocks the migration.
+- `managed_content_changed` — a manifest-owned file is missing from disk. A hand-deleted old-named agent file blocks the migration.
+- `recovery_required` — an interrupted transaction's journal is present. Ordinary setup refuses and demands `--recover`.
+- `journal_invalid` — `--recover` runs under a different Bundle than the one that opened the interrupted transaction, reported as `recovery package Bundle differs from the interrupted transaction`. The consumer cannot proceed until the original wheel is reinstalled.
+
+Because the wheel is what changed, close any interrupted setup with the wheel that is installed now, before the upgrade:
+
+```console
+xcoding setup --project-root /absolute/path/to/project --recover --json
+```
+
+If the wheel is replaced first, `--recover` fails with `journal_invalid` and ordinary setup fails with `recovery_required`, and neither advances until the original wheel is back.
+
+There is no repair command and no force or adopt option. If a managed file was customized, the only supported remedy is restoring that file's installed bytes; a customization worth keeping must be moved out of the managed path first.
+
+After a successful migration, the old-named file is gone from each configured host root, the new-named file is present, and `.agents/.xcoding-setup/manifest.json` lists the new paths. The old name still remains in the current generation's rollback backup under `.agents/.xcoding-setup/backup/<generation>/`, and `xcoding setup --rollback --json` restores the immediately preceding generation, which puts the old name back. It accepts neither `--host` nor `--dry-run`, and it refuses while a journal requires recovery. Setup also leaves a vacated host directory in place. A check that searches the project for the old name must therefore say where that name remains legitimate. References the consumer wrote by the host-visible emitted name, or by filename on a host without one, are outside what the repository can detect; the consumer updates them.
+
+### Version-disposition basis for this rename
+
+The rename is not being treated as a change that breaks a documented public contract, so it is delivered as an ordinary `0.1.x` patch rather than being routed into `0.2.0` or another later minor version. This is a recorded user judgement, and it is in tension with the maintenance policy sentence above: no tracked statement in this repository makes an installed agent filename or a host-visible agent handle a contract term, and this page records only the host identifiers and their project-relative target roots. The tension is not resolved here. The version number and its carriers are unchanged: `pyproject.toml` stays at `0.1.0`, and any version bump is deferred to a later release.
 
 ## Release and maintenance policy
 

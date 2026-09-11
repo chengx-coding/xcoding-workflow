@@ -40,7 +40,7 @@ xcoding doctor --json
 使用显式存在的项目根目录和至少一个显式宿主运行 setup。对需要保留的每个宿主重复 `--host`：
 
 ```console
-xcoding setup --project-root /absolute/path/to/project --host codex --host opencode --host claude-code --host trae
+xcoding setup --project-root /absolute/path/to/project --host codex --host opencode --host claude-code --host trae --json
 ```
 
 宿主标识和项目相对目标固定如下：
@@ -63,7 +63,7 @@ Workshop 仓库拓扑在 workshop-setup 步骤中选定（默认：独立工作�
 追加 `--dry-run` 可以执行 Bundle 验证、项目根目录和路径安全检查、冲突检测、ownership planning 与锁获取，同时不修改项目：
 
 ```console
-xcoding setup --project-root /absolute/path/to/project --host codex --host trae --dry-run
+xcoding setup --project-root /absolute/path/to/project --host codex --host trae --dry-run --json
 ```
 
 Dry run 会报告 create、replace、remove 和 unchanged 操作，并始终返回 `writes_performed: false`。如果 Bundle 无效、项目根或锁无法证明、目标跨越 link 或 reparse point、未纳管目标冲突、受管文件发生漂移，或存在意外 setup 状态，setup 会在 mutation 前关闭失败。应解决报告的 ownership 或路径问题；不要手工覆盖后盲目重试。
@@ -85,7 +85,7 @@ Dry run 会报告 create、replace、remove 和 unchanged 操作，并始终返�
 如果 setup 报告 `recovery_required`，应显式闭合中断 journal：
 
 ```console
-xcoding setup --project-root /absolute/path/to/project --recover
+xcoding setup --project-root /absolute/path/to/project --recover --json
 ```
 
 Recovery 检查 durable journal；如果 manifest 已经提交，就完成该 transaction，否则恢复先前 generation。对于同一个可恢复状态，该操作是幂等的，并且不接受 `--host` 或 `--dry-run`。
@@ -93,10 +93,59 @@ Recovery 检查 durable journal；如果 manifest 已经提交，就完成该 tr
 需要恢复紧邻的上一份成功 generation 时，使用：
 
 ```console
-xcoding setup --project-root /absolute/path/to/project --rollback
+xcoding setup --project-root /absolute/path/to/project --rollback --json
 ```
 
 Rollback 同样拒绝 `--host` 和 `--dry-run`。只有有效的上一代 generation 存在且没有 open journal 需要 recovery 时，它才可用。两个操作都不会删除未拥有的文件，也不会覆盖已经漂移的受管 bytes。锁、identity、journal、backup 或 rollback 失败会保留为可机读错误并要求诊断，绝不会转化成 best-effort 破坏性清理。
+
+## 迁移已改名的 agent 定义
+
+canonical agent 定义在每个 host 下以一个文件名安装，而该文件名是每个安装过它的项目受管状态的一部分。原先以 `delegate-agent` 安装的 agent 定义现在是 `xc-delegated-agent`，因此安装过旧名的项目会看到每个所选 host 上一处删除与一处创建成对出现。host 根不变，只有安装文件名改变：
+
+| Host ID | 变更前安装 | 变更后安装 |
+| --- | --- | --- |
+| `claude-code` | `.claude/agents/delegate-agent.md` | `.claude/agents/xc-delegated-agent.md` |
+| `codex` | `.codex/agents/delegate-agent.toml` | `.codex/agents/xc-delegated-agent.toml` |
+| `opencode` | `.opencode/agents/delegate-agent.md` | `.opencode/agents/xc-delegated-agent.md` |
+| `trae` | `.trae/agents/delegate-agent.md` | `.trae/agents/xc-delegated-agent.md` |
+
+该变更发生在升级到携带新名的 release 之后的下一次成功 `xcoding setup`。Setup 在同一个 transaction 内删除旧名文件并安装新名文件；共享 Skill 文件报告为 `unchanged`。该 transaction 不感知名称，它就是上文描述的普通 desired-state 协调作用在一个资源路径已改变的 Bundle 上。
+
+先运行 dry run：
+
+```console
+xcoding setup --project-root /absolute/path/to/project --host codex --host opencode --host claude-code --host trae --dry-run --json
+```
+
+它把删除与创建报告成对操作，返回 `writes_performed: false`，且不改动任何文件。`--json` 在此不可省略：`xcoding` 的每个可机读命令都要求显式 `--json`，漏写会以退出码 2 和 `json-required` 错误结束，而不是返回计划。由于 dry run 会执行完整 preflight，它也会在写入任何内容之前报告下列阻塞条件。
+
+Setup 只有在四个条件同时成立时才删除此前安装的文件：路径记录在所有权 manifest 中；路径不在由当前已安装 Bundle 与所选 host 集合算出的期望集合中；文件在磁盘上存在；它的 SHA-256 等于 manifest 记录。transaction 中没有任何其他操作能删除项目文件。
+
+因此，迁移的消费方必须让旧名 agent 文件保持字节不变直到升级运行，且不得删除、移动或改名它：手工删除一个 manifest 拥有的文件会阻塞迁移，而不是帮助迁移。消费方也不得在新路径预先创建任何内容，即使它与包内定义逐字节相同。
+
+下列每个条件都失败即拒绝，并且不执行任何写入。五个条件中有三个会在 `error.details.path` 中给出出问题的路径：`unmanaged_conflict` 与 `managed_content_changed` 的两种情形。`recovery_required` 与 `journal_invalid` 不报告路径：它们的错误信封携带空的 `details` 对象，因此解析 `error.details.path` 的消费方必须处理这两个条件下该字段缺失的情况。其中的 code 是机读错误信封里的 `error.code`，进程退出码为 4：
+
+- `unmanaged_conflict`——新路径处已经存在文件，但它不被 manifest 拥有。Setup 从不接管未纳管文件。
+- `managed_content_changed`——manifest 拥有的文件字节不再等于已记录字节。对旧名 agent 文件的本地编辑会阻塞迁移。
+- `managed_content_changed`——manifest 拥有的文件从磁盘上消失。手工删除旧名 agent 文件会阻塞迁移。
+- `recovery_required`——存在中断 transaction 的 journal。普通 setup 拒绝并要求 `--recover`。
+- `journal_invalid`——`--recover` 在与打开该中断 transaction 的 Bundle 不同的 Bundle 下运行，报文为 `recovery package Bundle differs from the interrupted transaction`。消费方在装回原 wheel 之前无法前进。
+
+由于改变的是 wheel，应在升级之前用当前已安装的 wheel 关闭任何中断的 setup：
+
+```console
+xcoding setup --project-root /absolute/path/to/project --recover --json
+```
+
+如果先更换 wheel，`--recover` 会以 `journal_invalid` 失败，普通 setup 会以 `recovery_required` 失败，而且在原 wheel 装回之前两者都无法推进。
+
+不存在修复命令，也不存在 force 或 adopt 选项。如果受管文件被定制过，唯一受支持的补救是恢复该文件的安装字节；想保留的定制必须先移出受管路径。
+
+迁移成功后，旧名文件从每个已配置 host 根消失，新名文件出现，`.agents/.xcoding-setup/manifest.json` 列出新路径。旧名仍留在当前 generation 的回滚备份 `.agents/.xcoding-setup/backup/<generation>/` 中，而 `xcoding setup --rollback --json` 恢复紧邻的上一代 generation，也就是把旧名放回。它既不接受 `--host` 也不接受 `--dry-run`，并且在 journal 需要 recovery 时拒绝执行。Setup 也会保留腾空的 host 目录。因此，检索项目是否仍存在旧名的检查必须说明该名称在何处合法存在。消费方按 host 可见 emitted name 写下的引用，或在没有该字段的 host 上按文件名写下的引用，属于仓库无法检测的范围，由消费方自行更新。
+
+### 本次改名的版本处置依据
+
+本次改名不被判定为破坏已文档化公开契约的变更，因此作为普通 `0.1.x` 补丁交付，而不是被路由到 `0.2.0` 或更晚的 minor 版本。这是一项记录在案的用户判断，且与上文的维护政策句子处于张力之中：本仓库中没有任何受跟踪明文把已安装 agent 文件名或 host 可见 agent handle 定为契约条款，本页也只记录 host 标识符及其项目相对目标根。该张力在此不化解。版本号及其载体不变：`pyproject.toml` 保持 `0.1.0`，任何版本提升都推迟到后续发布。
 
 ## Release 与维护政策
 

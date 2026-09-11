@@ -13,7 +13,18 @@ XC 是一套可移植、由 Skill 驱动的编码工作流。它覆盖发现、�
 仓库有两类规范工作流创作源：
 
 - `skills/xc-*/` 负责通用工作流 Skill。每个包的 `SKILL.md` 是公开的发现和操作契约，`references/`、`scripts/` 与 `assets/` 为该契约提供支持。
-- `agents-src/agents/` 负责持久、可移植的 subagent 定义。已跟踪的 [delegate agent 定义](../../../agents-src/agents/delegate-agent.md)是工具中立的规范 agent 示例。
+- `agents-src/agents/` 负责持久、可移植的 subagent 定义。已跟踪的 [`xc-delegated-agent` 定义](../../../agents-src/agents/xc-delegated-agent.md)是工具中立的规范 agent 示例。
+
+`agents-src/agents/` 下的规范 agent 定义遵循同一条命名规则。该规则约束这个目录里的每一个规范 agent 定义，而不是只约束当前这一个。
+
+- **`xc-` 前缀。** 规范 agent 标识符以 `xc-` 开头，该前缀同时落在文件词干（规范文件名去掉 `.md` 后的部分）与 frontmatter `name` 上。标识符因此与 `skills/xc-*/` 共用同一个可移植的 `xc-` 命名空间。与 Skill 一侧不同，agent 一侧的该前缀没有任何机械检查强制。
+- **`-agent` 后缀。** 标识符形态为 `xc-<描述性名称>-agent`。用户键入的 handle（宿主对外暴露的身份串）是 Claude Code、Codex 与 Trae 生成物中的 `name` 字段，或 OpenCode 的文件名，而不是路径，因此安装目录里的 `agents` 一词在路径意义上冗余、在 handle 意义上不冗余。该后缀正是 agent 标识符与 Skill 标识符的区分手段，因为 `skills/` 下没有任何包名以 `-agent` 结尾。
+- **词干与名称相等。** 规范文件的词干逐字等于 frontmatter `name`。Claude Code、Codex 与 Trae 逐字输出该名称，因此在这三者上 `stem == canonical name == emitted name` 按构造成立。这条相等没有机械检查强制：导出器只要求 `name` 与 `description` 非空，其 check 模式与构建期的精确集合策略都只比较路径集合，从不比较词干与名称。只改其中一侧会留下一个被现有全部守卫接受的分歧状态。
+- **不输出 name 字段的宿主。** OpenCode 输出不携带 `name` 字段，其身份就是文件名，不变式在该宿主上退化为 `stem == 生成文件名`；该文件名由按词干推导的导出过程保证，无须读取任何字段。这条陈述的对象是本仓库发出的产物；OpenCode 本身是否以该文件名作为用户可见的 handle，属于本仓库任何受跟踪文件都未陈述的外部程序行为。
+- **H1 标题。** 规范 agent 定义把标识符逐字写成 H1，采用反引号包裹的小写原形，例如 `` # `xc-delegated-agent` ``。H1 会逐字进入全部 4 个生成正文，因此它与标识符同属一条身份链上的可见面。
+- **字符类。** 标识符匹配 `[a-z0-9]+(?:-[a-z0-9]+)*`：ASCII 小写字母与数字，段之间为单个连字符。该字符类约束文件词干与 frontmatter `name`，而词干与名称相等已使两者成为同一个值；H1 中的反引号不属于被约束的值。今天没有任何检查强制该字符类。
+- **适用范围。** 规则适用于 `agents-src/agents/` 下的每一个规范 agent 定义。构建期从规范词干集合推导期望的生成文件集合，因此关于词干的规则天然是集合级规则；当前清单只有一个元素，这是当下的事实，而不是设计决定。
+- **只成文的强度。** 本规则只成文：它不新增任何机械检查，全部约束力等于文档纪律。退役名不被阻止，因为 Skill 一侧有退役包阻止表，而 agent 一侧没有对应机制，因此一个退役的 agent 名称可以重新出现而不触发任何失败。尤其是，由于没有任何工具比较文件词干与 frontmatter `name`，将来任何一次只改一侧的改动仍会通过 `python agents-src/export_agents.py --check`。
 
 任何派生产物都必须在规范源修改之后更新。Skill 之间只通过 Skill 名称和已记录的公开参数通信，一个 Skill 不会读取另一个 Skill 的私有 reference 或脚本。
 

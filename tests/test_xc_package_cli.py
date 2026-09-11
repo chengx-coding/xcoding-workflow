@@ -341,10 +341,10 @@ class PackageCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertTrue(payload["result"]["committed"])
         expected_agents = (
-            ".codex/agents/delegate-agent.toml",
-            ".opencode/agents/delegate-agent.md",
-            ".claude/agents/delegate-agent.md",
-            ".trae/agents/delegate-agent.md",
+            ".codex/agents/xc-delegated-agent.toml",
+            ".opencode/agents/xc-delegated-agent.md",
+            ".claude/agents/xc-delegated-agent.md",
+            ".trae/agents/xc-delegated-agent.md",
         )
         for relative in expected_agents:
             self.assertTrue(project.joinpath(*relative.split("/")).is_file())
@@ -361,8 +361,8 @@ class PackageCliTests(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0)
-        self.assertFalse((project / ".trae/agents/delegate-agent.md").exists())
-        self.assertTrue((project / ".codex/agents/delegate-agent.toml").is_file())
+        self.assertFalse((project / ".trae/agents/xc-delegated-agent.md").exists())
+        self.assertTrue((project / ".codex/agents/xc-delegated-agent.toml").is_file())
         self.assertTrue((project / ".agents/skills/xc-analysis/SKILL.md").is_file())
 
         result, payload = self.run_cli(
