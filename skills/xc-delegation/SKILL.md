@@ -80,7 +80,7 @@ serialized or placed in the worker-visible envelope.
 
 ## Constraints
 
-- v1 profiles MUST set `delegation.allowed=false`, `max_depth=0`, block required denials, and disable silent and legacy fallback.
+- Current Skill-local profiles MUST set `delegation.allowed=false`, `max_depth=0`, block required denials, and disable silent and legacy fallback. The source profile has no root `schema_version`; validators reject the retired field rather than dual-accepting or silently migrating it.
 - Effective capabilities are the parameter intersection of profile request, XC ceiling, project ceiling, node authorization, caller narrowing, and host support for the selected security mode.
 - `enforced`, `validated-only`, and `legacy-prompt` are distinct. No host or capability may be labeled `enforced` without a pinned non-placeholder adapter version and complete structured allow, deny, bypass, path-isolation, secret-visibility, and terminal-binding-visibility evidence.
 - Profile resources use safe NFC POSIX-relative paths inside the profile directory. Absolute, drive, UNC, backslash, dot-segment, NTFS alternate-stream, reserved-device, trailing-dot-or-space, link, junction, generic reparse, collision, changed-during-read, and digest-mismatched inputs fail closed.

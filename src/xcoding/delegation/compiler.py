@@ -280,7 +280,7 @@ def _compile_envelope(
         "compatibility": {
             "legacy_fallback": False,
             "on_unsupported": "block",
-            "mode": "profile-v1",
+            "mode": "prepared-profile",
         },
         "overlay": None
         if resolved["overlay"] is None

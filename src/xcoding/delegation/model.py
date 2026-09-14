@@ -9,7 +9,10 @@ from .errors import fail
 from .paths import validate_path_set, validate_relative_path, validate_slug
 
 
-PROFILE_SCHEMA_VERSION = 1
+# Skill-local profile sources are current-only.  Version markers remain on
+# every cross-boundary protocol object below, but the profile source itself
+# deliberately has no root schema_version carrier.
+PROTOCOL_SCHEMA_VERSION = 1
 CAPABILITY_VOCABULARY = "xc-delegation-capabilities/v1"
 RESOLVED_PROFILE_KIND = "xc-resolved-worker-profile/v1"
 NODE_PACKET_KIND = "xc-delegation-node-packet/v1"
@@ -63,7 +66,6 @@ _NODE_ID = re.compile(r"rt_[A-Za-z0-9][A-Za-z0-9_.:-]*(?:__[A-Za-z0-9][A-Za-z0-9
 
 PROFILE_FIELDS = frozenset(
     {
-        "schema_version",
         "profile_id",
         "owner_skill",
         "description",
@@ -154,7 +156,7 @@ def require_boolean(value: object, *, field: str) -> bool:
 
 
 def _require_schema_one(value: Mapping[str, Any], *, label: str) -> None:
-    if value.get("schema_version") != PROFILE_SCHEMA_VERSION:
+    if value.get("schema_version") != PROTOCOL_SCHEMA_VERSION:
         fail("schema_version_unsupported", "validate", f"{label}.schema_version must be 1")
 
 
@@ -293,7 +295,6 @@ def _validate_outputs(value: object) -> dict[str, Any]:
 def validate_profile(value: object) -> dict[str, Any]:
     profile = require_object(value, field="profile")
     require_exact_fields(profile, PROFILE_FIELDS, label="profile")
-    _require_schema_one(profile, label="profile")
     profile_id = validate_slug(profile["profile_id"], field="profile_id")
     owner = validate_slug(profile["owner_skill"], field="owner_skill", prefix="xc-")
     description = require_string(profile["description"], field="description", maximum=4096)
@@ -323,7 +324,7 @@ def validate_profile(value: object) -> dict[str, Any]:
     delegation = require_object(profile["delegation"], field="delegation")
     require_exact_fields(delegation, {"allowed", "max_depth"}, label="delegation")
     if delegation != {"allowed": False, "max_depth": 0}:
-        fail("nested_delegation_forbidden", "validate", "v1 profiles must disable nested delegation")
+        fail("nested_delegation_forbidden", "validate", "profiles must disable nested delegation")
     failure_policy = require_object(profile["failure_policy"], field="failure_policy")
     require_exact_fields(
         failure_policy,
@@ -335,13 +336,12 @@ def validate_profile(value: object) -> dict[str, Any]:
         "on_required_capability": "block",
         "silent_fallback": False,
     }:
-        fail("failure_policy_invalid", "validate", "v1 failure policy must block without silent fallback")
+        fail("failure_policy_invalid", "validate", "profiles must block without silent fallback")
     compatibility = require_object(profile["compatibility"], field="compatibility")
     require_exact_fields(compatibility, {"legacy_fallback", "on_unsupported"}, label="compatibility")
     if compatibility != {"legacy_fallback": False, "on_unsupported": "block"}:
-        fail("compatibility_invalid", "validate", "v1 compatibility must block without legacy fallback")
+        fail("compatibility_invalid", "validate", "profiles must block without legacy fallback")
     return {
-        "schema_version": 1,
         "profile_id": profile_id,
         "owner_skill": owner,
         "description": description,
@@ -641,7 +641,7 @@ __all__ = [
     "NODE_PROFILE_REF_FIELDS",
     "NODE_PROFILE_REF_KIND",
     "PROFILE_FIELDS",
-    "PROFILE_SCHEMA_VERSION",
+    "PROTOCOL_SCHEMA_VERSION",
     "PROJECT_POLICY_KIND",
     "RESOLVED_PROFILE_KIND",
     "require_exact_fields",

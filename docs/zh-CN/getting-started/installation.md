@@ -114,7 +114,7 @@ xcoding setup --project-root /absolute/path/to/project --rollback --json
 
 Rollback 同样拒绝 `--host` 和 `--dry-run`。只有有效的上一代 generation 存在且没有 open journal 需要 recovery 时，它才可用。两个操作都不会删除未拥有的文件，也不会覆盖已经漂移的受管 bytes。锁、identity、journal、backup 或 rollback 失败会保留为可机读错误并要求诊断，绝不会转化成 best-effort 破坏性清理。
 
-Capability statement 与 Agent、Skill 文件遵循同一套 transaction、recovery 和 rollback 规则。回滚到尚未包含这些声明的 generation 时，系统会明确报告为 `legacy-prompt` 兼容，不会伪装成支持 profile-v1。`xcoding doctor --json` 把 delegation adapter 作为必需检查，报告已安装模式，并对每一份非 enforced 声明给出 warning。
+Capability statement 与 Agent、Skill 文件遵循同一套 transaction、recovery 和 rollback 规则。回滚到尚未包含这些声明的 generation 时，系统会明确报告为 `legacy-prompt` 兼容，不会伪装成支持 `prepared-profile`。`xcoding doctor --json` 把 delegation adapter 作为必需检查，报告已安装模式，并对每一份非 enforced 声明给出 warning。Skill 内部 profile 采用 current-only 格式，必须在不带根 `schema_version` 的情况下重新生成；旧 profile 文档会被拒绝，不会静默迁移。
 
 ## 迁移已改名的 agent 定义
 

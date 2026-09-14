@@ -40,9 +40,9 @@ Agent 宿主的发现位置和安装目录属于适配器，不是新的事实�
 
 [`xc-delegation`](../../../skills/xc-delegation/SKILL.md) 允许所属 Skill 把私有 worker profile 保存在 `assets/workers/<profile-id>/` 下，同时复用向每个受支持宿主交付的持久 `xc-delegated-agent`。私有 profile 不是第二份持久 Agent 定义：它只能从所属 Skill 根目录解析，必须通过严格 schema 校验，并针对某个正在运行的节点 attempt 编译成一份确定性的 dispatch envelope。
 
-主会话先从 runtime 获取只读 assignment packet，再由 `xcoding delegate prepare` 对六个彼此独立的能力层取交集：profile 请求、XC 上限、项目上限、节点拥有的授权、调用方收窄和宿主声明。任何一层都不能放宽此前的拒绝。Dynamic overlay 只能进一步收窄已解析 profile；无效或不受支持的 v1 输入会失败关闭，不会回退到 prompt 定义的角色。
+Skill 内部的源 profile 采用 current-only 格式：根对象不携带 `schema_version`，已经废弃的根版本字段会被拒绝，而不会静默迁移。主会话先从 runtime 获取只读 assignment packet，再由 `xcoding delegate prepare` 对六个彼此独立的能力层取交集：profile 请求、XC 上限、项目上限、节点拥有的授权、调用方收窄和宿主声明。任何一层都不能放宽此前的拒绝。Dynamic overlay 只能进一步收窄已解析 profile；无效或不受支持的 v1 输入会失败关闭，不会回退到 prompt 定义的角色。
 
-`xc-delegated-agent` 提供两种显式兼容模式。`profile-v1` 只接受标记为 dispatch-authoritative 的已准备 envelope，并通过分配到的进程内 terminal binding 报告恰好一种获准节点结果。`legacy-prompt` 只接受显式选择的 prompt 定义角色，且绝不声称获得 v1 校验或强制。若一个私有角色变为跨 Skill 共享、可由用户直接选择，或依赖独立的持久模型或权限身份，就应提升为 `agents-src/agents/` 下的规范定义。
+`xc-delegated-agent` 提供两种显式兼容模式。`prepared-profile` 只接受标记为 dispatch-authoritative 的已准备 envelope，并通过分配到的进程内 terminal binding 报告恰好一种获准节点结果。`legacy-prompt` 只接受显式选择的 prompt 定义角色，且绝不声称获得 v1 校验或强制。若一个私有角色变为跨 Skill 共享、可由用户直接选择，或依赖独立的持久模型或权限身份，就应提升为 `agents-src/agents/` 下的规范定义。
 
 宿主 capability statement 是构建与 setup 资源，不是第三方宿主强制执行 envelope 的证明。当前四份声明均为 `validated-only`，adapter version 尚未验证；network 与 secret 能力仍不受支持。只有匹配固定版本的端到端证据才能使用 `enforced`。
 

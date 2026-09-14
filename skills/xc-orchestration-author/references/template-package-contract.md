@@ -62,6 +62,10 @@ metadata.worker_profile.context_bindings
 metadata.delegation.authorization
 ```
 
+The `metadata.worker_profile.schema_version=1` member versions the runtime
+assignment declaration. It is independent from the current-only Skill-local
+profile source, whose root object has no `schema_version` field.
+
 Control-packet categories require `selectors`, `min_sources`, and
 `artifact_min`. Completion artifact bounds require both `min` and `max`; each
 declared check requires a subject. Structured gates require outcomes and an

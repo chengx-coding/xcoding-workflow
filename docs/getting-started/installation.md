@@ -114,7 +114,7 @@ xcoding setup --project-root /absolute/path/to/project --rollback --json
 
 Rollback also rejects `--host` and `--dry-run`. It is available only when a valid previous generation exists and no open journal requires recovery. Neither operation deletes unowned files or overwrites drifted managed bytes. A lock, identity, journal, backup, or rollback failure remains a machine-readable error that requires diagnosis; it is never converted into a best-effort destructive cleanup.
 
-Capability statements participate in the same transaction, recovery, and rollback rules as the Agent and Skill files. Rolling back to a generation that predates those statements is reported explicitly as `legacy-prompt` compatibility; it does not masquerade as profile-v1 support. `xcoding doctor --json` treats delegation adapters as a required check, reports the installed mode, and warns for every non-enforced statement.
+Capability statements participate in the same transaction, recovery, and rollback rules as the Agent and Skill files. Rolling back to a generation that predates those statements is reported explicitly as `legacy-prompt` compatibility; it does not masquerade as `prepared-profile` support. `xcoding doctor --json` treats delegation adapters as a required check, reports the installed mode, and warns for every non-enforced statement. Skill-local profiles are current-only and must be regenerated without a root `schema_version`; old profile documents are rejected rather than silently migrated.
 
 ## Migrate a renamed agent definition
 

@@ -90,7 +90,8 @@ class AgentExportTests(unittest.TestCase):
         self.assertTrue(trae.startswith("---\nname: xc-delegated-agent\n"))
         self.assertIn(body, trae)
         for content in (source, claude, opencode, codex, trae):
-            self.assertIn("profile-v1", content)
+            self.assertIn("prepared-profile", content)
+            self.assertNotIn("In `profile-v1` mode", content)
             self.assertIn("legacy-prompt", content)
             self.assertIn("dispatch_authoritative=true", content)
             self.assertIn("never retry it through the legacy route", content)

@@ -239,6 +239,11 @@ keys, non-finite numbers, noncanonical JSON, unknown members, legacy prompt
 mode, and cross-node undeclared references fail closed. Runtime validation
 does not load or interpret the private Skill profile.
 
+The declaration's schema version belongs to this runtime assignment protocol.
+The Skill-local profile source is current-only and has no root
+`schema_version`; an old source carrying that field is rejected by the
+delegation validator rather than silently migrated.
+
 The callable in-process terminal broker is the only bounded worker-side
 terminal path for these assignments. It derives each physical artifact path
 from the active workbench root and the authorized portable logical path, then
