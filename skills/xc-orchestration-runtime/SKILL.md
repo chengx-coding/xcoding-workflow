@@ -14,8 +14,10 @@ The required `xcoding` package owns the runtime implementation under
 
 - `core.py` owns the tree model, scheduling, integrity, locking and persistence primitives.
 - `application.py` owns command use cases, read/write transactions, rollback and stable result/error mapping.
-- `commands.py` owns the complete 23-command parser specification.
-- `query.py` owns the typed nine-command read-only transport allowlist and parameter validation.
+- `assignment.py` owns the least-context, read-only Skill-local worker assignment projection.
+- `terminal.py` owns process-local, single-use assigned-node terminal authority.
+- `commands.py` owns the complete 26-command parser specification.
+- `query.py` owns the typed ten-command read-only transport allowlist and parameter validation.
 
 This Skill is not self-contained. Install the matching `xcoding` package
 before using it. `scripts/orchestration.py` is a legacy executable adapter
@@ -26,7 +28,7 @@ transaction, persistence, Viewer, or fallback implementation.
 
 - Agents MUST NOT directly read, summarize, edit, patch, or reformat managed orchestration XML. Use this Skill's documented public runtime commands.
 - The main session requests ready nodes, starts delegated work, handles `executor=main` gates, and checks summaries. It does not need the full tree.
-- A worker executes exactly one assigned node and reports through `complete`, `fail`, or `block`.
+- A worker executes exactly one assigned node. A Skill-local worker receives an assignment packet and reports through its single-use terminal capability, never through general runtime mutation authority.
 - A known node ID is not start authority. `start` accepts only an executable leaf that satisfies the same readiness predicate used by `next`.
 - Runtime trees use `schema_version="1"`. Earlier formats and CLI semantics are unsupported.
 - A terminal operation is valid only for a `running` task or gate. A successful root is sealed until the main session explicitly reopens it after a user-approved reason.
@@ -81,10 +83,14 @@ transport switch.
 
 Additional commands are `fail`, `block`, `unblock`, `retry-failed`, `set`, `add-node`,
 `embed-subtree`, `close-group`, `reopen-group`, `reopen`, `summary`, `show`,
-`find`, `artifacts`, `control-packet`, `snapshot`, `integrity-status`,
-`repair-integrity`, and `validate`. `control-packet --node` returns only the
+`find`, `artifacts`, `control-packet`, `assignment-packet`, `snapshot`, `integrity-status`,
+`repair-integrity`, `validate`, `restore-point`, and `archive-subtree`. `control-packet --node` returns only the
 target leaf's declared sources, selected blackboard values, readiness blockers,
-and control projection. `reopen-group --reason` is an auditable recovery
+and control projection. After `start`, `assignment-packet --node <id> --attempt
+<number>` returns the exact node packet, worker-profile reference, selected
+context, target contract, and deterministic digests without a tree path,
+siblings, future nodes, full blackboard, configuration, restore state, or
+mutation authority. `reopen-group --reason` is an auditable recovery
 operation for a closed dynamic group. `add-node --before` may then insert
 explicitly approved recovery work before a blocked direct child.
 
@@ -115,7 +121,8 @@ revisions remain `state_conflict`; successful sealed trees remain
 `add-node` accepts repeated `--metadata metadata.<key>=value` values for dynamic node metadata. Use `metadata.artifact.audience=internal|user` and `metadata.artifact.content_language=en|work_order.document_language` to declare an artifact's audience and language selector. `artifacts --audience user` lists only paths declared through terminal `complete`, `fail`, or `block` operations and their node metadata; it never scans the workshop repository.
 
 The runtime fail-closes recognized `metadata.control_packet.*`,
-`metadata.completion.*`, and `metadata.gate.*` declarations during template
+`metadata.completion.*`, `metadata.gate.*`, `metadata.worker_profile.*`, and
+`metadata.delegation.*` declarations during template
 validation, initialization, and dynamic node creation. Other `metadata.*`
 remains domain-owned. Control packets are leaf-only and never inherit ancestor
 metadata. Opt-in completion may require fields, artifact cardinality and path,
@@ -123,6 +130,34 @@ and normalized `--check-result-json` receipts. Receipts are untrusted caller
 self-reports: exact structural matches are accepted even when fabricated.
 Opt-in gates require a declared `--gate-outcome` and may require `--decision`
 while atomically publishing an outcome key.
+
+A Skill-local worker declaration is valid only on a `type=task`,
+`executor=subagent` leaf and contains exactly five
+`metadata.worker_profile.*` members: `schema_version=1`, canonical
+`owner_skill`, canonical `profile_id`, `security_mode=enforced|validated-only`,
+and compact canonical `context_bindings` JSON. Bindings may select only the
+target contract, a category declared by that node's control packet, or a key
+declared by that node's selected blackboard list. The separately owned
+`metadata.delegation.authorization` object is the runtime/node ceiling for the
+node packet's public capability grants; assignment callers cannot supply or
+widen it, and the runtime never reads the owning Skill's private profile.
+
+The in-process terminal broker accepts only a running Skill-local subagent
+task and an exact current attempt. It issues one opaque 256-bit bearer for a
+bounded subset of the node-owned terminal and artifact grants, binds it to the
+resolved tree, work order, profile metadata, envelope/prepare-receipt digests,
+and a maximum 600-second lifetime, and keeps the raw bearer process-local and
+redacted. Each logical artifact resolves to the one matching path below the
+active workbench; another workshop file is never a valid binding. Complete
+requests are structurally and byte bounded before serialization. The first
+authenticated use consumes it even when the request is
+malformed, unauthorized, stale, rejected by completion policy, or fails its
+checkpoint. Successful uses persist only a non-secret terminal-authority
+record with logical artifact paths and SHA-256 digests. A node-attempt binding
+remains occupied while the first use is `consuming`, preventing concurrent
+re-issue before that terminal transaction returns. The broker reuses the
+ordinary locked terminal transaction and rollback path; the daemon remains
+read-only and exposes no broker mutation endpoint.
 
 Every write response returns a monotonic `revision`. Callers MAY pass it back as `--expected-revision <value>` on a later write; a mismatch returns `state_conflict`. The runtime serializes writes for one local tree even when callers omit that option.
 

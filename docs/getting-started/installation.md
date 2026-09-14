@@ -52,11 +52,27 @@ Host identifiers and project-relative targets are fixed:
 | `claude-code` | `.claude/agents` | `.claude/skills` |
 | `trae` | `.trae/agents` | `.agents/skills` |
 
+Each selected host also receives its versioned `xc-delegation` capability statement as package-owned setup state. Setup validates that statement against the Bundle and reports its adapter version and security mode. The current Claude Code, Codex, OpenCode, and Trae statements are `adapter_version=unverified` and `mode=validated-only`; network and secret grants are unsupported. These statements prove deterministic preparation compatibility, not host sandbox enforcement.
+
 The host set is complete desired state, not an incremental add list. Repeating a host is harmless. On a later successful setup, adding a host installs its mapping; omitting a previously selected host removes only unchanged paths owned solely by that host. Shared Skills remain while any selected host owns them.
 
 Setup never infers the project from the current directory, detects hosts automatically, adopts unmanaged files, or accepts a force option.
 
 The workshop repository topology is chosen during the workshop-setup step (default: independent workspace `independent-link`), not by `xcoding setup`.
+
+## Prepare a Skill-local worker
+
+An owning `xc-*` Skill may define a private profile at `assets/workers/<profile-id>/profile.json` and delegate it through the installed `xc-delegated-agent`. The public [`xc-delegation` contract](../../skills/xc-delegation/SKILL.md) defines the profile, policy, overlay, adapter, and envelope inputs. The supported command surface is:
+
+```console
+xcoding delegate validate-profile --skill-root /absolute/path/to/skill --profile-id read-only-evidence --json
+xcoding delegate resolve-profile --skill-root /absolute/path/to/skill --profile-id read-only-evidence --json
+xcoding delegate prepare --skill-root /absolute/path/to/skill --profile-id read-only-evidence --node-packet-json node.json --node-profile-ref-json profile-ref.json --project-policy-json project-policy.json --adapter-id codex --caller-constraints-json caller.json --out envelope.json --json
+```
+
+The node packet and profile reference come from the runtime's read-only `assignment-packet` operation for the exact running subagent attempt. Only a successful `prepare` result may set `dispatch_authoritative=true`. Validation, resolution, diagnostic compilation, and the read-only `scan-legacy` operation do not authorize dispatch. A malformed, stale, denied, expired, or unsupported v1 request stops; it never silently retries as `legacy-prompt`.
+
+Private profiles stay with their owning Skill. Use a persistent canonical Agent instead when a role is shared across Skills, directly selectable by users, or needs a distinct persistent model or permission identity.
 
 ## Inspect before writing
 
@@ -97,6 +113,8 @@ xcoding setup --project-root /absolute/path/to/project --rollback --json
 ```
 
 Rollback also rejects `--host` and `--dry-run`. It is available only when a valid previous generation exists and no open journal requires recovery. Neither operation deletes unowned files or overwrites drifted managed bytes. A lock, identity, journal, backup, or rollback failure remains a machine-readable error that requires diagnosis; it is never converted into a best-effort destructive cleanup.
+
+Capability statements participate in the same transaction, recovery, and rollback rules as the Agent and Skill files. Rolling back to a generation that predates those statements is reported explicitly as `legacy-prompt` compatibility; it does not masquerade as profile-v1 support. `xcoding doctor --json` treats delegation adapters as a required check, reports the installed mode, and warns for every non-enforced statement.
 
 ## Migrate a renamed agent definition
 

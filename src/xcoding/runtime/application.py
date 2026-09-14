@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import commands, core, restore_points
+from . import assignment, commands, core, restore_points
 
 
 @dataclass(frozen=True)
@@ -565,6 +565,15 @@ def cmd_control_packet(args: argparse.Namespace) -> Dict[str, Any]:
         "revision": core.runtime_revision(root),
         "packet": core.build_control_packet(root, args.node),
     }
+
+
+def cmd_assignment_packet(args: argparse.Namespace) -> Dict[str, Any]:
+    _, tree, _, _ = parse_runtime_for_read(args)
+    return assignment.build_assignment_packet(
+        tree.getroot(),
+        args.node,
+        args.attempt,
+    )
 
 
 def cmd_find(args: argparse.Namespace) -> Dict[str, Any]:

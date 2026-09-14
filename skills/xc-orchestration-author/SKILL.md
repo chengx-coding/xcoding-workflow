@@ -26,9 +26,18 @@ The runtime supports sequence, parallel, switch/case, simple `when` conditions, 
 
 ## Control Metadata
 
-Flow-spec leaves may opt in to the runtime's `metadata.control_packet.*`, `metadata.completion.*`, and `metadata.gate.*` contracts. Values that represent arrays MUST be compact JSON array strings. Control-packet and completion declarations belong only to `task` or `gate` leaves; gate declarations belong only to `gate` leaves.
+Flow-spec leaves may opt in to the runtime's `metadata.control_packet.*`, `metadata.completion.*`, `metadata.gate.*`, `metadata.worker_profile.*`, and `metadata.delegation.*` contracts. Values that represent arrays or objects MUST be compact canonical JSON strings. Control-packet and completion declarations belong only to `task` or `gate` leaves; gate declarations belong only to `gate` leaves.
 
-The author validates every recognized key, owner, required pairing, and value during `validate-spec`, before any template is built. A recognized-prefix error returns `invalid_control_metadata` with stable, key-sorted `details.violations`; `build` rejects the same declaration without creating or replacing its output. Unknown metadata outside the three recognized prefixes remains valid and is preserved.
+Skill-local workers declare exactly `metadata.worker_profile.schema_version`,
+`owner_skill`, `profile_id`, `security_mode`, and `context_bindings` on a
+`type=task`, `executor=subagent` leaf. Binding IDs are canonical lowercase
+slugs and may select only `target-contract`, a control-packet category declared
+on the same node, or a blackboard key in that node's declared selection. The
+optional `metadata.delegation.authorization` object is a node-owned capability
+ceiling using the public delegation grant vocabulary. It is not private Skill
+profile content and cannot be supplied later by an assignment caller.
+
+The author validates every recognized key, owner, required pairing, and value during `validate-spec`, before any template is built. A recognized-prefix error returns `invalid_control_metadata` with stable, key-sorted `details.violations`; `build` rejects the same declaration without creating or replacing its output. Unknown metadata outside the five recognized prefixes remains valid and is preserved.
 
 ## Workflow
 

@@ -4,6 +4,16 @@
 
 这些支撑 Skill 执行获批变更并评估其证据。
 
+## `xc-delegation`
+
+[规范契约](../../../../skills/xc-delegation/SKILL.md)
+
+- **何时调用：** Skill 通过持久 delegated Agent 委派一个私有 worker 角色，需要严格 profile 解析、能力收窄、确定性准备或只读 legacy 发现时。
+- **用途：** 校验 Skill 内部 worker profile，并为一个节点 attempt 编译 dispatch envelope，而不把私有角色变成持久 Agent。
+- **公开入口：** 必填 `skill_root` 与 `profile_id`；prepare 还需要精确 runtime node/profile packet、项目 policy、调用方约束、adapter ID 和输出路径。Dynamic overlay 可选且只能收窄。
+- **典型用法：** 在所属 Skill 的 `assets/workers/` 下编写 profile，完成校验，取得精确运行中 attempt 的 assignment wrapper，调用 `xcoding delegate prepare`，并且只 dispatch authoritative envelope。
+- **主要边界：** v1 不会静默回退到 legacy prompt；能力层只能收窄；runtime 状态与 terminal authority 仍由 runtime 拥有；当前宿主声明在没有固定版本端到端证据时不声称 enforcement。
+
 ## `xc-implementation`
 
 [规范契约](../../../../skills/xc-implementation/SKILL.md)

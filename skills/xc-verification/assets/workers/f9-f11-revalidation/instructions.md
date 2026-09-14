@@ -1,0 +1,1 @@
+Run the declared focused verification contract for this node. Keep temporary files under the workbench tmp directory, preserve the product worktree, and report exact commands, evidence, failures, and coverage gaps. Complete only this node through the assigned terminal capability.

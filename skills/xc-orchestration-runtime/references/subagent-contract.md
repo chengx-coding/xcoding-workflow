@@ -4,7 +4,8 @@ A subagent is a single-node worker, not an orchestrator.
 
 ## Input
 
-The main session provides:
+For an ordinary persistent worker without Skill-local profile metadata, the
+main session provides:
 
 - `tree_ref`
 - One node JSON returned by `next`, or its explicitly declared
@@ -13,16 +14,23 @@ The main session provides:
 - Domain Skill references and artifact paths named by the node
 - Required user decisions or blackboard values, including `work_order.document_language` when the node writes a user-facing artifact
 
+For a Skill-local worker, the main session instead starts the node and obtains
+`assignment-packet --node <node_id> --attempt <attempt>`. The worker receives
+only that least-context wrapper, the resolved Skill profile resources selected
+by `xc-delegation`, its logical artifact locations, and one opaque in-process
+terminal capability. It does not receive a tree reference, general runtime
+CLI, or mutation parameters.
+
 ## Rules
 
 1. Do not directly read or edit orchestration XML.
 2. Execute only the assigned node.
 3. Do not change global control flow unless the node explicitly authorizes `add-node` or `embed-subtree`.
 4. Write important outputs to the declared artifact path or target system; never leave them only in chat.
-5. On completion, call the runtime public command with a concise summary, validation outcome, and artifact paths.
+5. On completion, use only the terminal interface supplied for this node. A Skill-local worker submits an exact `complete`, `fail`, or `block` request through its single-use capability; it never calls a general runtime mutation command.
 6. Artifact paths intended for an automatic checkpoint commit must be inside the workshop Git repository.
 7. Read `metadata.artifact.audience` and `metadata.artifact.content_language` from the supplied node. Default to `internal` and `en`; resolve `work_order.document_language` only for an explicitly declared user-facing artifact.
-8. Complete, fail, or block only the supplied node after it has been started. Report `state_conflict` or `tree_sealed` to the main session instead of retrying an ambiguous mutation.
+8. Complete, fail, or block only the supplied node after it has been started. A terminal capability is bound to its exact work order, node, attempt, profile metadata, and delegation digests. Report any rejection to the main session instead of retrying or requesting broader authority.
 9. When completion metadata requires a check, run the declared validator,
    require its successful process exit and top-level success, extract only its
    normalized receipt, and pass that receipt through `--check-result-json`.
@@ -49,7 +57,37 @@ Rules:
 - On failure, call fail or block with a specific reason and required recovery condition.
 ```
 
+For a Skill-local worker, replace the tree reference and node JSON with the
+assignment wrapper. Do not place the terminal bearer in the prompt; the host
+keeps it in process and exposes only a callable terminal operation.
+
+## Skill-Local Terminal Requests
+
+The three worker-visible request objects have exact fields:
+
+```json
+{"schema_version":1,"operation":"complete","summary":"...","validation":"...","artifacts":["logical/path"],"check_results":[{}]}
+{"schema_version":1,"operation":"fail","reason":"...","artifacts":["logical/path"]}
+{"schema_version":1,"operation":"block","reason":"...","artifacts":["logical/path"]}
+```
+
+Artifact paths are logical relative paths from the prepared worker contract.
+The broker maps them to pre-authorized absolute workshop files, verifies
+repository containment, rejects links and reparse points, performs a stable
+regular-file read, and records SHA-256. There is no worker-provided tree path,
+node selector, blackboard update, gate decision, retry, repair, dynamic-node,
+restore, or arbitrary command field.
+
+The capability is single use. Its first authenticated call consumes it even if
+the request is malformed, unauthorized, stale, rejected by completion policy,
+or the checkpoint fails. The worker must return that outcome to the main
+session; it must not replay the request. An unauthenticated call does not
+consume a valid capability.
+
 ## Complete
+
+The CLI below is the legacy persistent-worker path. A Skill-local worker uses
+the exact terminal request above instead.
 
 ```powershell
 xcoding runtime complete `
@@ -67,6 +105,9 @@ required `--decision <text>`. For an opt-in completion check, add one
 are untrusted self-reports rather than proof that the validator ran.
 
 ## Fail or Block
+
+The CLI below is the legacy persistent-worker path. A Skill-local worker uses
+the exact terminal request above instead.
 
 ```powershell
 xcoding runtime fail `

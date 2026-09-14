@@ -1,0 +1,1 @@
+Review every declared English/zh-CN documentation pair and the root README pair semantically and read-only. Keep temporary files under the workbench tmp directory, record provenance and outcomes, and complete only this node through the assigned terminal capability.

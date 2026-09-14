@@ -47,6 +47,10 @@ EXPECTED_PROVENANCE = {
 }
 
 SKILL_PATH = "skills/xc-alpha/SKILL.md"
+DELEGATION_SKILL_PATH = "skills/xc-delegation/SKILL.md"
+CAPABILITY_STATEMENT_PATH = (
+    "skills/xc-delegation/assets/adapters/test-host.json"
+)
 ADAPTER_PATH = "adapters/test-host/delegate-agent.md"
 
 
@@ -62,6 +66,22 @@ requires-python = ">=3.12"
 """,
         )
         self.write("skills/xc-alpha/SKILL.md", "alpha\r\nbytes\r\n")
+        self.write(
+            DELEGATION_SKILL_PATH,
+            "---\nname: xc-delegation\n---\n",
+        )
+        self.write_json(
+            CAPABILITY_STATEMENT_PATH,
+            {
+                "schema_version": 1,
+                "kind": "xc-delegation-adapter-capabilities/v1",
+                "adapter_id": "test-host",
+                "adapter_version": "fixture",
+                "mode": "validated-only",
+                "evidence": [],
+                "capabilities": [],
+            },
+        )
         self.write(
             "agents-src/agents/delegate-agent.md",
             "---\nname: delegate-agent\n---\nbody\n",
@@ -109,6 +129,7 @@ print("exported 1 agents")
                 "adapters": [
                     {
                         "adapter_id": "test-host",
+                        "capability_statement": CAPABILITY_STATEMENT_PATH,
                         "generated_root": "agents-src/generated-agents",
                         "generated_filename_suffix": ".md",
                         "bundle_root": "adapters/test-host",
@@ -236,6 +257,8 @@ class CollectorTests(BundleTestCase):
                 {
                     "bundle-manifest.json",
                     SKILL_PATH,
+                    DELEGATION_SKILL_PATH,
+                    CAPABILITY_STATEMENT_PATH,
                     ADAPTER_PATH,
                 },
             )
@@ -246,13 +269,13 @@ class CollectorTests(BundleTestCase):
             )
             self.assertEqual(
                 inspection.partition_counts,
-                {"skill": 1, "viewer": 0, "host-adapter": 1},
+                {"skill": 3, "viewer": 0, "host-adapter": 1},
             )
             self.assertEqual(
                 inspection.adapter_partition_counts,
                 {"test-host": 1},
             )
-            self.assertEqual(inspection.resource_count, 2)
+            self.assertEqual(inspection.resource_count, 4)
             self.assertFalse((candidate.root / "src" / "xcoding" / "_bundle").exists())
             manifest_bytes = (first / "bundle-manifest.json").read_bytes()
             self.assertTrue(manifest_bytes.endswith(b"\n"))
@@ -260,6 +283,69 @@ class CollectorTests(BundleTestCase):
             self.assertEqual(
                 canonical_json_bytes(json.loads(manifest_bytes)),
                 manifest_bytes,
+            )
+
+    def test_host_capability_statement_is_required_and_canonical(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            missing_parent = parent / "missing"
+            missing_parent.mkdir()
+            missing = self.create_candidate(missing_parent)
+            statement = missing.root.joinpath(
+                *CAPABILITY_STATEMENT_PATH.split("/")
+            )
+            statement.unlink()
+            missing.git("add", "-A")
+            missing.commit("remove statement")
+            stage = parent / "missing-stage"
+            stage.mkdir()
+
+            self.assert_build_code(
+                "resource_missing",
+                collect_bundle,
+                missing.root,
+                stage,
+                PROVENANCE,
+            )
+
+            invalid_parent = parent / "invalid"
+            invalid_parent.mkdir()
+            invalid = self.create_candidate(invalid_parent)
+            statement = invalid.root.joinpath(
+                *CAPABILITY_STATEMENT_PATH.split("/")
+            )
+            value = json.loads(statement.read_text(encoding="utf-8"))
+            value["mode"] = "claimed-enforced"
+            statement.write_bytes(canonical_json_bytes(value))
+            invalid.git("add", CAPABILITY_STATEMENT_PATH)
+            invalid.commit("invalidate statement")
+            stage = parent / "invalid-stage"
+            stage.mkdir()
+
+            self.assert_build_code(
+                "manifest_invalid",
+                collect_bundle,
+                invalid.root,
+                stage,
+                PROVENANCE,
+            )
+
+            value["mode"] = "enforced"
+            statement.write_bytes(canonical_json_bytes(value))
+            invalid.git("add", CAPABILITY_STATEMENT_PATH)
+            invalid.commit("claim enforcement without evidence")
+            unsubstantiated_stage = parent / "unsubstantiated-stage"
+            unsubstantiated_stage.mkdir()
+            error = self.assert_build_code(
+                "manifest_invalid",
+                collect_bundle,
+                invalid.root,
+                unsubstantiated_stage,
+                PROVENANCE,
+            )
+            self.assertEqual(
+                error.details["delegation_code"],
+                "adapter_version_unpinned",
             )
 
     def test_rejects_untracked_skill_and_tracked_generated_extra_files(self) -> None:
@@ -793,7 +879,7 @@ class ManifestVerificationTests(BundleTestCase):
             inspection = bundle_resources.inspect_installed_bundle(
                 expected_provenance=EXPECTED_PROVENANCE
             )
-        self.assertEqual(inspection.resource_count, 2)
+        self.assertEqual(inspection.resource_count, 4)
         self.assertRegex(inspection.manifest_sha256, r"^[0-9a-f]{64}$")
 
 

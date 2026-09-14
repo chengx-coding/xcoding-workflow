@@ -22,6 +22,7 @@
   "adapters": [
     {
       "adapter_id": "claude-code",
+      "capability_statement": "skills/xc-delegation/assets/adapters/claude-code.json",
       "generated_root": "agents-src/claude-agents",
       "generated_filename_suffix": ".md",
       "bundle_root": "adapters/claude-code",
@@ -30,6 +31,7 @@
     },
     {
       "adapter_id": "codex",
+      "capability_statement": "skills/xc-delegation/assets/adapters/codex.json",
       "generated_root": "agents-src/codex-agents",
       "generated_filename_suffix": ".toml",
       "bundle_root": "adapters/codex",
@@ -38,6 +40,7 @@
     },
     {
       "adapter_id": "opencode",
+      "capability_statement": "skills/xc-delegation/assets/adapters/opencode.json",
       "generated_root": "agents-src/opencode-agents",
       "generated_filename_suffix": ".md",
       "bundle_root": "adapters/opencode",
@@ -46,6 +49,7 @@
     },
     {
       "adapter_id": "trae",
+      "capability_statement": "skills/xc-delegation/assets/adapters/trae.json",
       "generated_root": "agents-src/trae-agents",
       "generated_filename_suffix": ".md",
       "bundle_root": "adapters/trae",

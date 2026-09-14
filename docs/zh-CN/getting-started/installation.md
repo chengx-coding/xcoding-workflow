@@ -52,11 +52,27 @@ xcoding setup --project-root /absolute/path/to/project --host codex --host openc
 | `claude-code` | `.claude/agents` | `.claude/skills` |
 | `trae` | `.trae/agents` | `.agents/skills` |
 
+每个所选宿主还会把其带版本的 `xc-delegation` capability statement 作为 package-owned setup 状态接收。Setup 会依据 Bundle 校验该声明，并报告 adapter version 与 security mode。当前 Claude Code、Codex、OpenCode 和 Trae 声明均为 `adapter_version=unverified`、`mode=validated-only`；不支持 network 与 secret grant。这些声明证明确定性准备流程的兼容性，不证明宿主 sandbox 强制执行。
+
 Host set 是完整 desired state，不是增量添加列表。重复同一个 host 不会产生额外效果。后续 setup 成功时，新增 host 会安装其映射；省略以前选择的 host 时，只删除由该 host 单独拥有且未变化的路径。只要仍有任何所选 host 拥有共享 Skills，它们就会保留。
 
 Setup 不会根据当前目录推断项目，不会自动检测宿主，不会接管未纳管文件，也不提供 force 选项。
 
 Workshop 仓库拓扑在 workshop-setup 步骤中选定（默认：独立工作区 `independent-link`），而非由 `xcoding setup` 选择。
+
+## 准备 Skill 内部 Worker
+
+所属 `xc-*` Skill 可以在 `assets/workers/<profile-id>/profile.json` 定义私有 profile，并通过已经安装的 `xc-delegated-agent` 委派。[`xc-delegation` 公开契约](../../../skills/xc-delegation/SKILL.md)规定 profile、policy、overlay、adapter 与 envelope 输入。受支持的命令面如下：
+
+```console
+xcoding delegate validate-profile --skill-root /absolute/path/to/skill --profile-id read-only-evidence --json
+xcoding delegate resolve-profile --skill-root /absolute/path/to/skill --profile-id read-only-evidence --json
+xcoding delegate prepare --skill-root /absolute/path/to/skill --profile-id read-only-evidence --node-packet-json node.json --node-profile-ref-json profile-ref.json --project-policy-json project-policy.json --adapter-id codex --caller-constraints-json caller.json --out envelope.json --json
+```
+
+节点 packet 和 profile reference 来自 runtime 针对精确运行中 subagent attempt 的只读 `assignment-packet` 操作。只有成功的 `prepare` 结果可以设置 `dispatch_authoritative=true`。Validation、resolution、diagnostic compilation 与只读 `scan-legacy` 操作都不授权 dispatch。格式错误、过期、被拒绝、失效或不受支持的 v1 请求会停止，绝不会静默改走 `legacy-prompt`。
+
+私有 profile 留在所属 Skill 内。若角色跨 Skill 共享、可由用户直接选择，或需要独立的持久模型或权限身份，应改用持久规范 Agent。
 
 ## 写入前检查
 
@@ -97,6 +113,8 @@ xcoding setup --project-root /absolute/path/to/project --rollback --json
 ```
 
 Rollback 同样拒绝 `--host` 和 `--dry-run`。只有有效的上一代 generation 存在且没有 open journal 需要 recovery 时，它才可用。两个操作都不会删除未拥有的文件，也不会覆盖已经漂移的受管 bytes。锁、identity、journal、backup 或 rollback 失败会保留为可机读错误并要求诊断，绝不会转化成 best-effort 破坏性清理。
+
+Capability statement 与 Agent、Skill 文件遵循同一套 transaction、recovery 和 rollback 规则。回滚到尚未包含这些声明的 generation 时，系统会明确报告为 `legacy-prompt` 兼容，不会伪装成支持 profile-v1。`xcoding doctor --json` 把 delegation adapter 作为必需检查，报告已安装模式，并对每一份非 enforced 声明给出 warning。
 
 ## 迁移已改名的 agent 定义
 

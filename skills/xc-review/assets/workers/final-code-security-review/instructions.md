@@ -1,0 +1,1 @@
+Review the declared code and security scope independently and read-only. Keep temporary files under the workbench tmp directory, ground every finding in evidence, and complete only this node through the assigned terminal capability.

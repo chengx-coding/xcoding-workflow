@@ -1,0 +1,1 @@
+Run the complete repository regression contract for this node. Keep temporary files under the workbench tmp directory, preserve the real Git index byte-for-byte, and record exact commands, counts, failures, cleanup, and residual gaps. Complete only this node through the assigned terminal capability.

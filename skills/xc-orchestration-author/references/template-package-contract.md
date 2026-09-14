@@ -29,7 +29,13 @@ The package may include domain-specific templates or scripts, but it must not co
 
 ## Control Metadata Requirements
 
-The author recognizes `metadata.control_packet.*`, `metadata.completion.*`, and `metadata.gate.*` in flow specs. These prefixes fail closed: unknown recognized keys, invalid owners, malformed compact JSON arrays, invalid selectors or names, and incomplete paired declarations return `invalid_control_metadata` before output is written. `details.violations` contains stable `{node,key,code}` entries sorted by key, code, and node.
+The author recognizes `metadata.control_packet.*`, `metadata.completion.*`,
+`metadata.gate.*`, `metadata.worker_profile.*`, and `metadata.delegation.*` in
+flow specs. These prefixes fail closed: unknown recognized keys, invalid
+owners, malformed compact canonical JSON, invalid selectors or names, and
+incomplete paired declarations return `invalid_control_metadata` before
+output is written. `details.violations` contains stable `{node,key,code}`
+entries sorted by key, code, and node.
 
 The recognized declarations are:
 
@@ -48,11 +54,36 @@ metadata.completion.check.<check>.facts.<field>
 metadata.gate.outcomes
 metadata.gate.decision_required
 metadata.gate.outcome_key
+metadata.worker_profile.schema_version
+metadata.worker_profile.owner_skill
+metadata.worker_profile.profile_id
+metadata.worker_profile.security_mode
+metadata.worker_profile.context_bindings
+metadata.delegation.authorization
 ```
 
-Control-packet categories require `selectors`, `min_sources`, and `artifact_min`. Completion artifact bounds require both `min` and `max`; each declared check requires a subject. Structured gates require outcomes and an explicit `decision_required` value. Unknown ordinary `metadata.*` outside the recognized prefixes remains compatible and is preserved.
+Control-packet categories require `selectors`, `min_sources`, and
+`artifact_min`. Completion artifact bounds require both `min` and `max`; each
+declared check requires a subject. Structured gates require outcomes and an
+explicit `decision_required` value. Worker-profile metadata requires all five
+members together on a task subagent leaf, and its bindings may reference only
+that node's target contract, declared control categories, and selected
+blackboard keys. Delegation authorization is a node-owned public grant ceiling,
+not private Skill-profile content. Unknown ordinary `metadata.*` outside the
+recognized prefixes remains compatible and is preserved.
 
-Stable violation codes are `unknown_control_metadata_key`, `invalid_metadata_owner`, `invalid_control_packet_category`, `missing_control_packet_category_member`, `invalid_selector_list`, `duplicate_selector`, `invalid_min_sources`, `invalid_artifact_min`, `invalid_blackboard_keys`, `invalid_required_fields`, `invalid_artifact_bounds`, `invalid_artifact_path_selector`, `invalid_check_names`, `missing_check_subject`, `invalid_check_subject_selector`, `invalid_check_fact_name`, `invalid_check_fact_selector`, `invalid_gate_outcomes`, `invalid_gate_decision_required`, and `invalid_gate_outcome_key`.
+Worker-profile and delegation violations additionally use
+`unknown_worker_profile_metadata_key`, `missing_worker_profile_metadata_key`,
+`worker_profile_metadata_too_large`,
+`invalid_worker_profile_schema_version`,
+`invalid_worker_profile_owner_skill`, `invalid_worker_profile_id`,
+`invalid_worker_profile_security_mode`,
+`invalid_worker_profile_context_bindings`,
+`worker_profile_category_not_declared`,
+`worker_profile_blackboard_key_not_declared`,
+`unknown_delegation_metadata_key`, and
+`invalid_delegation_authorization`. Existing control, completion, gate, and
+owner violation codes remain unchanged.
 
 The author and runtime own independent validators. Their acceptance and violation codes are checked against `tests/fixtures/orchestration/control-metadata-conformance-v1.json`; production code MUST NOT import or call the other Skill's private implementation.
 

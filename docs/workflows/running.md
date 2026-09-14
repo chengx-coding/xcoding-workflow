@@ -56,6 +56,16 @@ The packet contains only the target leaf contract, declared source result fields
 
 This boundary limits runtime protocol disclosure; it is not host mediation. The runtime cannot prevent an agent from using ordinary host tools before `start`, and it cannot enforce which identity actually invokes the CLI. Hosts and calling Skills must enforce those boundaries.
 
+## Skill-local worker dispatch
+
+An opt-in subagent leaf declares exactly five `metadata.worker_profile.*` values: schema version, owning Skill, profile ID, security mode, and context bindings. Node-owned `metadata.delegation.authorization` is a separate capability ceiling; it is not profile content and callers cannot widen it. Authoring and runtime validation both reject partial profiles, unknown members, undeclared context selections, or malformed authorization.
+
+After `start`, the main session requests `assignment-packet --node <id> --attempt <n>`. That read-only wrapper contains the exact running node packet, profile reference, target contract, minimized control packet, and deterministic linkage digests. It excludes the tree path, siblings, future nodes, full blackboard, restore state, bearer material, and mutation authority. The owning Skill passes the wrapper's exact node/profile members to `xcoding delegate prepare` and dispatches only the resulting authoritative envelope.
+
+For `profile-v1`, a trusted same-process host gateway may issue one opaque terminal capability bound to that tree, work order, node, attempt, profile, delegation receipt, allowed operation subset, and artifact mapping. The first authenticated call consumes the capability even when validation or persistence fails. TTL, revocation, stale attempts, replaced artifacts, missing grants, or checkpoint failure all fail closed. Successful `complete`, `fail`, or `block` reuses runtime locking, validation, checkpoint, and rollback; the worker never receives general runtime CLI mutation authority. Process restart invalidates every active capability.
+
+The daemon remains read-only and exposes `assignment-packet` only as a typed query. It does not expose terminal mutation or bearer issuance. The current host statements validate envelope compatibility but do not establish third-party filesystem, process, network, secret, or identity enforcement; those claims require fixed-version end-to-end evidence.
+
 ## Completion And Gates
 
 Opt-in completion metadata can require non-empty `summary` or `validation`, artifact minimum and maximum counts, an exact literal or blackboard-selected artifact path, and declared normalized check receipts. `complete` accepts one repeated `--check-result-json` value per declared check. A receipt has the exact shape `{"schema_version":1,"check":"...","ok":true,"subject":"...","facts":{...}}`; the runtime validates its shape, declared name, `ok`, subject, and fact values, then stores only the normalized receipt.

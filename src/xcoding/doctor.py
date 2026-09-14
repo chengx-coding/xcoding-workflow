@@ -10,7 +10,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .bundle.resources import inspect_installed_bundle
+from .bundle.resources import inspect_installed_bundle, installed_bundle_root
+from .delegation.adapters import load_bundle_adapter_statement
+from .delegation.errors import DelegationError
 from .setup_plan import inspect_target_readiness
 
 
@@ -69,6 +71,61 @@ def python_readiness(
         ),
         "matches_formal_verification_baseline": matches_baseline,
         "evidence_tier": evidence_tier,
+    }
+
+
+def delegation_adapter_readiness(
+    inspection: Any,
+    bundle_root: Any,
+) -> dict[str, Any]:
+    """Validate and report every packaged host capability statement."""
+    adapter_ids = sorted(
+        {
+            record.adapter_id
+            for record in inspection.manifest.resources
+            if record.kind == "host-adapter" and record.adapter_id is not None
+        }
+    )
+    statements: list[dict[str, Any]] = []
+    errors: list[dict[str, str]] = []
+    for adapter_id in adapter_ids:
+        try:
+            statement = load_bundle_adapter_statement(
+                bundle_root,
+                adapter_id,
+            )
+        except DelegationError as error:
+            errors.append(
+                {
+                    "adapter_id": adapter_id,
+                    "code": error.code,
+                    "phase": error.phase,
+                    "message": str(error),
+                }
+            )
+            continue
+        statements.append(
+            {
+                "adapter_id": statement["adapter_id"],
+                "adapter_version": statement["adapter_version"],
+                "mode": statement["mode"],
+                "evidence": statement["evidence"],
+                "capabilities": statement["capabilities"],
+            }
+        )
+    if not adapter_ids:
+        errors.append(
+            {
+                "adapter_id": "",
+                "code": "adapter_statement_missing",
+                "phase": "adapter",
+                "message": "Bundle has no host adapter partitions",
+            }
+        )
+    return {
+        "ready": not errors,
+        "statements": statements,
+        "errors": errors,
     }
 
 
@@ -166,6 +223,30 @@ def doctor_report(target_root: Path | None = None) -> dict[str, Any]:
         )
     )
 
+    delegation_adapters = delegation_adapter_readiness(
+        inspection,
+        installed_bundle_root(),
+    )
+    checks.append(
+        _check(
+            "delegation-adapters",
+            required=True,
+            status="pass" if delegation_adapters["ready"] else "fail",
+            details=delegation_adapters,
+        )
+    )
+    for statement in delegation_adapters["statements"]:
+        if statement["mode"] != "enforced":
+            warnings.append(
+                {
+                    "code": "delegation-adapter-not-enforced",
+                    "message": (
+                        f"{statement['adapter_id']} delegation mode is "
+                        f"{statement['mode']}; no host enforcement is claimed"
+                    ),
+                }
+            )
+
     if target_root is None:
         checks.append(
             _check(
@@ -201,6 +282,7 @@ __all__ = [
     "DoctorReadinessError",
     "FORMAL_VERIFICATION_BASELINE",
     "MINIMUM_PYTHON",
+    "delegation_adapter_readiness",
     "doctor_report",
     "python_readiness",
 ]
