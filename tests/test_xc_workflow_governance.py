@@ -1026,7 +1026,15 @@ class WorkflowGovernanceClassifierTests(unittest.TestCase):
         self.assertNotIn("classify_governance.py", contract)
 
     def test_generic_governance_contract_is_model_and_vendor_independent(self) -> None:
-        contract = (REPOSITORY_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+        contract_path = REPOSITORY_ROOT / "AGENTS.md"
+        if not contract_path.exists():
+            # AGENTS.md is checkout-local context and is intentionally omitted
+            # from clean source checkouts. Verify that the repository records
+            # that boundary instead of requiring the local file in CI.
+            ignore = (REPOSITORY_ROOT / ".gitignore").read_text(encoding="utf-8")
+            self.assertRegex(ignore, r"(?m)^AGENTS\.md\s*$")
+            return
+        contract = contract_path.read_text(encoding="utf-8")
         self.assertIn("### Proportional Governance", contract)
         self.assertIn("independent of model name, model vendor, context-window size", contract)
         self.assertIn("Missing, unavailable, malformed, or conflicting evidence", contract)
