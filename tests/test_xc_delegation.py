@@ -356,6 +356,7 @@ class CapabilityCompilerTests(DelegationTestCase):
         self.assertEqual(canonical_json_bytes(first), canonical_json_bytes(second))
         envelope = first["envelope"]
         self.assertIs(envelope["authority"]["dispatch_authoritative"], True)
+        self.assertEqual(envelope["compatibility"]["mode"], "prepared-profile")
         self.assertEqual(
             [item["id"] for item in envelope["capabilities"]["omitted"]],
             ["process.exec.named"],
@@ -725,7 +726,7 @@ class ContractAssetAndMigrationTests(DelegationTestCase):
             [
                 "delegation-envelope-v1.schema.json",
                 "dynamic-overlay-v1.schema.json",
-                "worker-profile-v1.schema.json",
+                "worker-profile.schema.json",
             ],
         )
         for path in schema_root.glob("*.json"):
@@ -739,7 +740,7 @@ class ContractAssetAndMigrationTests(DelegationTestCase):
         except ImportError:
             self.skipTest("jsonschema is unavailable")
         schema = json.loads(
-            (SKILL_ROOT / "assets/schemas/worker-profile-v1.schema.json").read_text(
+            (SKILL_ROOT / "assets/schemas/worker-profile.schema.json").read_text(
                 encoding="utf-8"
             )
         )
@@ -752,8 +753,13 @@ class ContractAssetAndMigrationTests(DelegationTestCase):
         )
         self.assertEqual(list(validator.iter_errors(valid)), [])
         validate_profile(valid)
+        self.assertNotIn("schema_version", valid)
 
         invalid_profiles: list[dict[str, object]] = []
+        retired = copy.deepcopy(valid)
+        retired["schema_version"] = 1
+        invalid_profiles.append(retired)
+
         escaped = copy.deepcopy(valid)
         escaped["instruction_resources"] = ["../escape.md"]
         invalid_profiles.append(escaped)
@@ -775,6 +781,17 @@ class ContractAssetAndMigrationTests(DelegationTestCase):
                 self.assertTrue(list(validator.iter_errors(profile)))
                 with self.assertRaises(DelegationError):
                     validate_profile(profile)
+
+    def test_retired_profile_schema_version_is_rejected(self) -> None:
+        current = json.loads(
+            (SKILL_ROOT / "assets/workers/read-only-evidence/profile.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertNotIn("schema_version", current)
+        retired = copy.deepcopy(current)
+        retired["schema_version"] = 1
+        self.assert_code("schema_fields_invalid", validate_profile, retired)
 
     def test_legacy_scan_is_read_only_bounded_and_never_returns_content(self) -> None:
         tracked = REPOSITORY_ROOT / "agents-src" / "agents" / "xc-delegated-agent.md"

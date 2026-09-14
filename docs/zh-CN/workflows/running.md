@@ -62,7 +62,7 @@ Packet 只包含 target 叶子契约、已声明的来源结果字段与 artifac
 
 节点 `start` 后，主会话请求 `assignment-packet --node <id> --attempt <n>`。该只读 wrapper 包含精确的运行中 node packet、profile reference、target contract、最小化 control packet 与确定性关联 digest；它不包含 tree path、兄弟或未来节点、完整 blackboard、restore 状态、bearer material 或 mutation authority。所属 Skill 把 wrapper 中精确的 node/profile 成员交给 `xcoding delegate prepare`，并且只 dispatch 由此生成的 authoritative envelope。
 
-对于 `profile-v1`，受信任的同进程宿主 gateway 可以签发一个 opaque terminal capability，并将其绑定到 tree、work order、node、attempt、profile、delegation receipt、获准操作子集与 artifact 映射。第一次通过认证的调用即消耗该 capability，即使后续校验或持久化失败也是如此。TTL、撤销、过期 attempt、被替换的 artifact、缺失 grant 或 checkpoint 失败都会关闭失败。成功的 `complete`、`fail` 或 `block` 复用 runtime 的锁、校验、checkpoint 和 rollback；worker 不会获得通用 runtime CLI mutation authority。进程重启会使所有活动 capability 失效。
+对于 `prepared-profile`，受信任的同进程宿主 gateway 可以签发一个 opaque terminal capability，并将其绑定到 tree、work order、node、attempt、profile、delegation receipt、获准操作子集与 artifact 映射。第一次通过认证的调用即消耗该 capability，即使后续校验或持久化失败也是如此。TTL、撤销、过期 attempt、被替换的 artifact、缺失 grant 或 checkpoint 失败都会关闭失败。成功的 `complete`、`fail` 或 `block` 复用 runtime 的锁、校验、checkpoint 和 rollback；worker 不会获得通用 runtime CLI mutation authority。进程重启会使所有活动 capability 失效。
 
 Daemon 继续保持只读，只把 `assignment-packet` 暴露为 typed query；它不暴露 terminal mutation 或 bearer 签发。当前宿主声明只验证 envelope 兼容性，不建立第三方 filesystem、process、network、secret 或 identity enforcement；这些主张需要固定版本的端到端证据。
 

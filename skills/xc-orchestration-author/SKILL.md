@@ -37,6 +37,10 @@ optional `metadata.delegation.authorization` object is a node-owned capability
 ceiling using the public delegation grant vocabulary. It is not private Skill
 profile content and cannot be supplied later by an assignment caller.
 
+The `schema_version=1` member versions this runtime assignment declaration;
+the owning Skill's current-only source profile intentionally has no root
+`schema_version` field.
+
 The author validates every recognized key, owner, required pairing, and value during `validate-spec`, before any template is built. A recognized-prefix error returns `invalid_control_metadata` with stable, key-sorted `details.violations`; `build` rejects the same declaration without creating or replacing its output. Unknown metadata outside the five recognized prefixes remains valid and is preserved.
 
 ## Workflow

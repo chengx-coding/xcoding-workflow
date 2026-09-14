@@ -141,6 +141,8 @@ declared by that node's selected blackboard list. The separately owned
 `metadata.delegation.authorization` object is the runtime/node ceiling for the
 node packet's public capability grants; assignment callers cannot supply or
 widen it, and the runtime never reads the owning Skill's private profile.
+The assignment `schema_version=1` is a cross-boundary protocol marker; it does
+not require or imply a root version field in the Skill-local source profile.
 
 The in-process terminal broker accepts only a running Skill-local subagent
 task and an exact current attempt. It issues one opaque 256-bit bearer for a
