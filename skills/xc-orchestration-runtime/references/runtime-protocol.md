@@ -38,6 +38,7 @@ reopen               Reopen a sealed successful tree with an auditable reason.
 summary / show / find Read progress, one node, or nodes with a template ID.
 artifacts            List only terminally declared artifact paths and node metadata.
 control-packet        Return one leaf's explicitly declared scoped packet.
+assignment-packet     Return one running Skill-local worker's least-context assignment.
 snapshot             Export the viewer JSON model.
 integrity-status     Report access policy and checksum state.
 repair-integrity     Explicitly restore managed metadata after a mismatch.
@@ -64,6 +65,17 @@ Write responses include a monotonic `revision`. A caller MAY include
 `--expected-revision <value>` in a later write; a mismatch returns
 `state_conflict`. The runtime serializes local cross-process writes regardless
 of whether a caller supplies that optimistic precondition.
+
+`assignment-packet --node NODE --attempt N` is read-only and valid only after
+`start` for the exact current attempt of a `type=task`, `executor=subagent`
+leaf with valid worker-profile metadata. Its wrapper contains the exact public
+delegation node packet and profile reference, target contract, minimized
+control packet, and SHA-256 digests. It deliberately excludes the runtime path,
+siblings, future nodes, full blackboard, bearer material, configuration,
+restore state, and generic mutation authority. The node packet's capability
+ceiling comes only from the node-owned canonical
+`metadata.delegation.authorization` declaration; an assignment caller has no
+authorization input and cannot widen it.
 
 ## Node and State Rules
 
@@ -211,11 +223,70 @@ terminal mutation, and a simultaneous `--set` of that key returns
 `gate_outcome_conflict`. Runtime gate structure still does not authenticate
 the CLI caller.
 
-The three recognized metadata prefixes fail closed with
+The five recognized metadata prefixes fail closed with
 `invalid_control_metadata` for unknown keys, invalid owners, malformed values,
 or incomplete declarations. Unknown metadata outside those prefixes remains
 allowed. Nodes without these declarations preserve schema-version-1 command
 and result shapes.
+
+`metadata.worker_profile.*` declares a Skill-local worker only on a task
+subagent leaf. All five members are required together: schema version, owning
+Skill, profile ID, security mode, and canonical context bindings. Context may
+select only the target contract, categories declared on that same node's
+control packet, and keys in that node's selected blackboard list. Metadata is
+limited to 8 KiB, 32 bindings, depth 16, and 128-byte identifiers; duplicate
+keys, non-finite numbers, noncanonical JSON, unknown members, legacy prompt
+mode, and cross-node undeclared references fail closed. Runtime validation
+does not load or interpret the private Skill profile.
+
+The callable in-process terminal broker is the only bounded worker-side
+terminal path for these assignments. It derives each physical artifact path
+from the active workbench root and the authorized portable logical path, then
+requires lexical and resolved NFC/case-normalized equality with the caller's
+binding. Repository-wide containment alone is insufficient. Logical paths
+reject NTFS alternate streams, Windows device names, trailing dot or space
+aliases, and reparse traversal. The broker additionally
+binds a 256-bit opaque capability to one tree/work-order/node/attempt/profile
+and the delegation envelope/prepare receipt, and applies a default 300-second
+TTL with a hard 600-second maximum. The capability is never serialized,
+persisted, logged, placed in a prompt or environment, or returned by a CLI;
+its representation redacts the secret.
+
+Worker requests have one of these exact shapes:
+
+```json
+{"schema_version":1,"operation":"complete","summary":"...","validation":"...","artifacts":["logical/path"],"check_results":[{}]}
+{"schema_version":1,"operation":"fail","reason":"...","artifacts":["logical/path"]}
+{"schema_version":1,"operation":"block","reason":"...","artifacts":["logical/path"]}
+```
+
+Complete requests are bounded before serialization: at most 32 check-result
+objects, 32 levels, 4,096 JSON nodes, 256 members per nested container, 16 KiB
+per string and per check-result object, and 64 KiB for the complete canonical
+request. Cycles, non-string keys, non-finite values, and non-JSON values fail
+through the stable terminal-authority error boundary.
+
+The first authenticated call moves the capability to `consuming` before
+request validation and always ends as `consumed`, including stale,
+unauthorized, completion-rejected, or checkpoint-failed requests.
+Unauthenticated calls do not consume it. Per-capability locking admits at most
+one transaction for concurrent same-token calls. The node-attempt binding
+remains occupied throughout `consuming`, so a concurrent issue cannot pre-create
+a replacement authority before the terminal transaction returns. The existing per-tree
+lock serializes different nodes. Revoked and monotonic-clock-expired
+capabilities fail closed. Unrelated runtime revisions do not invalidate a
+capability when its bound node attempt and profile metadata are unchanged.
+
+A successful broker transition persists an `xc-node-terminal/v1` record with
+only its public capability ID, node/attempt/operation/status, timestamps,
+delegation digests, logical artifact paths and file digests, and request
+digest. The record never claims authentication and contains no bearer or
+bearer hash. Attempt retry, restore, and subtree archive preserve it as part of
+ordinary result history. Artifact declaration appends are idempotent by exact
+physical path, so block -> unblock -> completion on one attempt retains
+terminal history without duplicating the result artifact list. The daemon
+continues to expose only typed read-only queries and has no terminal broker
+endpoint.
 
 When `auto_commit=true`, `complete`, `fail`, and `block` create terminal checkpoints. Each checkpoint includes the managed tree and every declared `--artifact` path in one path-scoped workshop commit. A non-terminal mutation that newly seals the root is also a completion checkpoint. Every newly sealed checkpoint includes the generated complete-tree SVG beside `orchestration.xml`. Declared checkpoint artifacts must exist inside the same workshop Git repository as the tree. Rendering, writing, or commit failure restores the pre-operation XML and SVG bytes; a rejected commit returns `persisted_uncommitted`, and the terminal state, revision, and declarations are not accepted. When `auto_commit=false`, checkpoint creation and checkpoint path validation are disabled; the terminal state, declarations, and newly sealed SVG are persisted without a workshop commit. `init`, `start`, `set`, `add-node`, `embed-subtree`, `unblock`, and `retry-failed` otherwise persist state but defer commit creation to the next checkpoint.
 

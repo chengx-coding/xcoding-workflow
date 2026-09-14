@@ -283,6 +283,38 @@
       },
       "valid": false,
       "violation_codes": ["unknown_control_metadata_key"]
+    },
+    {
+      "id": "invalid-partial-worker-profile",
+      "node_type": "task",
+      "metadata": {
+        "metadata.worker_profile.schema_version": "1",
+        "metadata.worker_profile.owner_skill": "xc-analysis"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_metadata_owner", "missing_worker_profile_metadata_key"]
+    },
+    {
+      "id": "invalid-worker-profile-binding-reference",
+      "node_type": "task",
+      "metadata": {
+        "metadata.worker_profile.schema_version": "1",
+        "metadata.worker_profile.owner_skill": "xc-analysis",
+        "metadata.worker_profile.profile_id": "evidence-worker",
+        "metadata.worker_profile.security_mode": "validated-only",
+        "metadata.worker_profile.context_bindings": "{\"evidence\":{\"category\":\"missing\",\"source\":\"control-packet\"}}"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_metadata_owner", "worker_profile_category_not_declared"]
+    },
+    {
+      "id": "invalid-delegation-authorization",
+      "node_type": "task",
+      "metadata": {
+        "metadata.delegation.authorization": "{\"capabilities\":[{\"id\":\"unknown.capability\",\"values\":[\"value\"]}]}"
+      },
+      "valid": false,
+      "violation_codes": ["invalid_delegation_authorization", "invalid_metadata_owner"]
     }
   ]
 }

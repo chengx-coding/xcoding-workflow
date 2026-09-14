@@ -15,6 +15,7 @@ READ_ONLY_COMMANDS = (
     "summary",
     "show",
     "control-packet",
+    "assignment-packet",
     "find",
     "artifacts",
     "snapshot",
@@ -164,6 +165,25 @@ def _limit(parameters: dict[str, object]) -> int:
     return value
 
 
+def _attempt(parameters: dict[str, object]) -> int:
+    value = parameters.get("attempt")
+    if type(value) is not int:
+        _reject(
+            "attempt must be an integer",
+            "parameter_not_integer",
+            parameter="attempt",
+        )
+    if value < 1 or value > 1_000_000:
+        _reject(
+            "attempt is outside the supported range",
+            "parameter_out_of_range",
+            parameter="attempt",
+            minimum=1,
+            maximum=1_000_000,
+        )
+    return value
+
+
 def _base_namespace(
     tree_path: Path,
     environment: application.RuntimeEnvironment,
@@ -203,6 +223,14 @@ def _build_namespace(
     elif command in {"show", "control-packet"}:
         _fields(values, allowed=("node",), required=("node",))
         namespace.node = _string(values, "node", required=True)
+    elif command == "assignment-packet":
+        _fields(
+            values,
+            allowed=("node", "attempt"),
+            required=("node", "attempt"),
+        )
+        namespace.node = _string(values, "node", required=True)
+        namespace.attempt = _attempt(values)
     elif command == "find":
         _fields(
             values,
@@ -243,6 +271,7 @@ def _build_namespace(
         "summary": application.cmd_summary,
         "show": application.cmd_show,
         "control-packet": application.cmd_control_packet,
+        "assignment-packet": application.cmd_assignment_packet,
         "find": application.cmd_find,
         "artifacts": application.cmd_artifacts,
         "snapshot": application.cmd_snapshot,

@@ -16,6 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from src.xcoding.delegation.adapters import parse_adapter_statement
+from src.xcoding.delegation.errors import DelegationError
+
 
 BUNDLE_SCHEMA_VERSION = 1
 RUNTIME_TREE_SCHEMA = 1
@@ -679,6 +682,7 @@ def _load_adapter_inputs(
             raw_adapter,
             {
                 "adapter_id",
+                "capability_statement",
                 "generated_root",
                 "generated_filename_suffix",
                 "bundle_root",
@@ -690,6 +694,40 @@ def _load_adapter_inputs(
         adapter_id = raw_adapter["adapter_id"]
         if not isinstance(adapter_id, str) or not _ADAPTER_ID.fullmatch(adapter_id):
             _raise_invalid(f"adapters[{index}].adapter_id is not canonical")
+        capability_statement = validate_relative_path(
+            raw_adapter["capability_statement"],
+            field=f"adapters[{index}].capability_statement",
+        )
+        expected_statement = (
+            "skills/xc-delegation/assets/adapters/"
+            f"{adapter_id}.json"
+        )
+        if capability_statement != expected_statement:
+            _raise_invalid(
+                f"adapters[{index}].capability_statement must equal "
+                "skills/xc-delegation/assets/adapters/<adapter-id>.json"
+            )
+        _require_tracked_regular(
+            [capability_statement],
+            tracked,
+            label=f"{adapter_id} capability statement",
+        )
+        _assert_safe_components(
+            project_root,
+            capability_statement,
+            label=f"{adapter_id} capability statement",
+        )
+        statement_path = project_root.joinpath(
+            *capability_statement.split("/")
+        )
+        try:
+            parse_adapter_statement(statement_path.read_bytes(), adapter_id)
+        except DelegationError as error:
+            _raise_invalid(
+                f"{adapter_id} capability statement is invalid",
+                delegation_code=error.code,
+                delegation_phase=error.phase,
+            )
         generated_root = validate_relative_path(
             raw_adapter["generated_root"],
             field=f"adapters[{index}].generated_root",

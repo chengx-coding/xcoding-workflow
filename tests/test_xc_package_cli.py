@@ -340,6 +340,22 @@ class PackageCliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0)
         self.assertTrue(payload["result"]["committed"])
+        self.assertEqual(
+            [
+                (
+                    item["adapter_id"],
+                    item["adapter_version"],
+                    item["mode"],
+                )
+                for item in payload["result"]["delegation_adapters"]
+            ],
+            [
+                ("claude-code", "unverified", "validated-only"),
+                ("codex", "unverified", "validated-only"),
+                ("opencode", "unverified", "validated-only"),
+                ("trae", "unverified", "validated-only"),
+            ],
+        )
         expected_agents = (
             ".codex/agents/xc-delegated-agent.toml",
             ".opencode/agents/xc-delegated-agent.md",
@@ -350,6 +366,20 @@ class PackageCliTests(unittest.TestCase):
             self.assertTrue(project.joinpath(*relative.split("/")).is_file())
         self.assertTrue((project / ".agents/skills/xc-analysis/SKILL.md").is_file())
         self.assertTrue((project / ".claude/skills/xc-analysis/SKILL.md").is_file())
+        for skill_root in (".agents/skills", ".claude/skills"):
+            for adapter_id in hosts:
+                statement_path = project.joinpath(
+                    *(
+                        f"{skill_root}/xc-delegation/assets/adapters/"
+                        f"{adapter_id}.json"
+                    ).split("/")
+                )
+                statement = json.loads(
+                    statement_path.read_text(encoding="utf-8")
+                )
+                self.assertEqual(statement["adapter_id"], adapter_id)
+                self.assertEqual(statement["mode"], "validated-only")
+                self.assertNotIn("enforced", statement["evidence"])
 
         result, payload = self.run_cli(
             "setup",
@@ -364,6 +394,12 @@ class PackageCliTests(unittest.TestCase):
         self.assertFalse((project / ".trae/agents/xc-delegated-agent.md").exists())
         self.assertTrue((project / ".codex/agents/xc-delegated-agent.toml").is_file())
         self.assertTrue((project / ".agents/skills/xc-analysis/SKILL.md").is_file())
+        self.assertFalse(
+            (
+                project
+                / ".claude/skills/xc-delegation/assets/adapters/claude-code.json"
+            ).exists()
+        )
 
         result, payload = self.run_cli(
             "setup",
@@ -377,6 +413,12 @@ class PackageCliTests(unittest.TestCase):
         self.assertTrue(payload["result"]["rollback"])
         for relative in expected_agents:
             self.assertTrue(project.joinpath(*relative.split("/")).is_file())
+        self.assertTrue(
+            (
+                project
+                / ".claude/skills/xc-delegation/assets/adapters/claude-code.json"
+            ).is_file()
+        )
         state = project / ".agents/.xcoding-setup"
         self.assertTrue((state / "manifest.json").is_file())
         self.assertFalse((state / "journal.json").exists())
@@ -416,6 +458,11 @@ class PackageCliTests(unittest.TestCase):
                 return_value=inspection,
             ),
             mock.patch.object(
+                doctor_module,
+                "installed_bundle_root",
+                return_value=self.bundle,
+            ),
+            mock.patch.object(
                 doctor_module.importlib.util,
                 "find_spec",
                 return_value=None,
@@ -439,6 +486,25 @@ class PackageCliTests(unittest.TestCase):
         self.assertIn("xcoding-not-on-path", warning_codes)
         self.assertNotIn("xc-not-on-path", warning_codes)
         self.assertIn("tk-unavailable", warning_codes)
+        self.assertIn("delegation-adapter-not-enforced", warning_codes)
+        adapter_check = next(
+            check
+            for check in report["checks"]
+            if check["id"] == "delegation-adapters"
+        )
+        self.assertEqual(adapter_check["status"], "pass")
+        self.assertEqual(
+            {
+                statement["adapter_id"]: statement["mode"]
+                for statement in adapter_check["details"]["statements"]
+            },
+            {
+                "claude-code": "validated-only",
+                "codex": "validated-only",
+                "opencode": "validated-only",
+                "trae": "validated-only",
+            },
+        )
         self.assertNotIn("tkinter", sys.modules)
 
     def test_public_commands_do_not_touch_tree_network_or_daemon_surfaces(self) -> None:

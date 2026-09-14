@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import io
 import os
+import shutil
 import subprocess
 import ctypes
 import sys
@@ -19,6 +20,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
 from xcoding.bundle.manifest import ResourceRecord
 from xcoding import setup_transaction as setup_module
+from xcoding import setup_plan as setup_plan_module
 from xcoding import cli as cli_module
 
 
@@ -52,6 +54,31 @@ class SetupTransactionTests(unittest.TestCase):
                 b"---\ndescription: delegate\n---\ndelegate\n",
             ),
         }
+        for adapter_id in setup_module.HOST_ORDER:
+            statement = {
+                "schema_version": 1,
+                "kind": "xc-delegation-adapter-capabilities/v1",
+                "adapter_id": adapter_id,
+                "adapter_version": "fixture",
+                "mode": "validated-only",
+                "evidence": [],
+                "capabilities": [],
+            }
+            entries[
+                f"skills/xc-delegation/assets/adapters/{adapter_id}.json"
+            ] = (
+                "skill",
+                None,
+                (
+                    json.dumps(
+                        statement,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    )
+                    + "\n"
+                ).encode("utf-8"),
+            )
         for bundle_path, (kind, adapter_id, data) in entries.items():
             path = self.bundle.joinpath(*bundle_path.split("/"))
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -108,6 +135,16 @@ class SetupTransactionTests(unittest.TestCase):
 
         self.assertFalse(result["writes_performed"])
         self.assertEqual(result["hosts"], ["codex", "trae"])
+        self.assertEqual(
+            [
+                (item["adapter_id"], item["adapter_version"], item["mode"])
+                for item in result["delegation_adapters"]
+            ],
+            [
+                ("codex", "fixture", "validated-only"),
+                ("trae", "fixture", "validated-only"),
+            ],
+        )
         self.assertTrue(result["root_identity"])
         self.assertIn("lock_identity", result)
         self.assertEqual(
@@ -115,6 +152,158 @@ class SetupTransactionTests(unittest.TestCase):
             sorted(path.relative_to(self.root) for path in self.root.rglob("*")),
         )
         self.assertFalse((self.root / ".agents").exists())
+
+    def test_setup_fails_closed_on_missing_or_invalid_capability_statement(
+        self,
+    ) -> None:
+        statement = (
+            self.bundle
+            / "skills"
+            / "xc-delegation"
+            / "assets"
+            / "adapters"
+            / "codex.json"
+        )
+        original = statement.read_bytes()
+        for state in ("missing", "invalid"):
+            with self.subTest(state=state):
+                statement.parent.mkdir(parents=True, exist_ok=True)
+                statement.write_bytes(original)
+                if state == "missing":
+                    statement.unlink()
+                else:
+                    statement.write_bytes(b"{}\n")
+
+                with self.assertRaises(
+                    setup_module.SetupTransactionError
+                ) as raised:
+                    setup_module.setup(self.root, ["codex"], dry_run=True)
+
+                self.assertEqual(
+                    raised.exception.code,
+                    "host_capability_statement_invalid",
+                )
+                self.assertFalse((self.root / ".agents").exists())
+
+    def test_setup_rejects_unsubstantiated_enforced_adapter_statement(
+        self,
+    ) -> None:
+        statement = (
+            self.bundle
+            / "skills"
+            / "xc-delegation"
+            / "assets"
+            / "adapters"
+            / "codex.json"
+        )
+        value = json.loads(statement.read_text(encoding="utf-8"))
+        value["mode"] = "enforced"
+        statement.write_bytes(setup_module._canonical_json(value))
+
+        with self.assertRaises(setup_module.SetupTransactionError) as raised:
+            setup_module.setup(self.root, ["codex"], dry_run=True)
+
+        self.assertEqual(
+            raised.exception.code,
+            "host_capability_statement_invalid",
+        )
+        self.assertEqual(
+            raised.exception.details["delegation_code"],
+            "adapter_version_unpinned",
+        )
+        self.assertFalse((self.root / ".agents").exists())
+
+    def test_upgrade_and_rollback_restore_capability_statement_bytes(
+        self,
+    ) -> None:
+        setup_module.setup(self.root, ["codex"])
+        installed = (
+            self.root
+            / ".agents"
+            / "skills"
+            / "xc-delegation"
+            / "assets"
+            / "adapters"
+            / "codex.json"
+        )
+        original = installed.read_bytes()
+        source = (
+            self.bundle
+            / "skills"
+            / "xc-delegation"
+            / "assets"
+            / "adapters"
+            / "codex.json"
+        )
+        statement = json.loads(source.read_text(encoding="utf-8"))
+        statement["adapter_version"] = "fixture-upgrade"
+        upgraded = (
+            json.dumps(
+                statement,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode("utf-8")
+        source.write_bytes(upgraded)
+
+        result = setup_module.setup(self.root, ["codex"])
+
+        self.assertEqual(
+            result["delegation_adapters"][0]["adapter_version"],
+            "fixture-upgrade",
+        )
+        self.assertEqual(installed.read_bytes(), upgraded)
+
+        rolled_back = setup_module.rollback(self.root)
+
+        self.assertTrue(rolled_back["rollback"])
+        self.assertEqual(installed.read_bytes(), original)
+        self.assertEqual(
+            rolled_back["delegation_adapters"][0]["adapter_version"],
+            "fixture",
+        )
+
+    def test_rollback_to_legacy_generation_is_explicit_and_supported(
+        self,
+    ) -> None:
+        setup_module.setup(self.root, ["codex"])
+        manifest_path = self.root / ".agents/.xcoding-setup/manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["files"] = [
+            item
+            for item in manifest["files"]
+            if not item["path"].startswith(
+                ".agents/skills/xc-delegation/"
+            )
+        ]
+        manifest_path.write_bytes(setup_module._canonical_json(manifest))
+        shutil.rmtree(self.root / ".agents/skills/xc-delegation")
+
+        setup_module.setup(self.root, ["codex"])
+        rolled_back = setup_module.rollback(self.root)
+
+        self.assertTrue(rolled_back["rollback"])
+        self.assertEqual(
+            rolled_back["delegation_adapters"],
+            [
+                {
+                    "adapter_id": "codex",
+                    "adapter_version": None,
+                    "mode": "legacy-prompt",
+                    "statement_present": False,
+                    "evidence": [],
+                    "capabilities": [],
+                }
+            ],
+        )
+        self.assertFalse(
+            (
+                self.root
+                / ".agents/skills/xc-delegation/assets/adapters/codex.json"
+            ).exists()
+        )
 
     def test_runtime_host_mapping_matches_bundle_build_contract(self) -> None:
         configuration = json.loads(
@@ -134,6 +323,34 @@ class SetupTransactionTests(unittest.TestCase):
             {
                 host: (agents.as_posix(), skills.as_posix())
                 for host, (agents, skills) in setup_module.HOST_TARGETS.items()
+            },
+        )
+
+    def test_read_only_setup_plan_reports_capability_mode(self) -> None:
+        with (
+            mock.patch.object(
+                setup_plan_module,
+                "inspect_installed_bundle",
+                return_value=self.inspection,
+            ),
+            mock.patch.object(
+                setup_plan_module,
+                "installed_bundle_root",
+                return_value=self.bundle,
+            ),
+        ):
+            plan = setup_plan_module.setup_plan("codex", self.root)
+
+        self.assertFalse(plan["writes_performed"])
+        self.assertEqual(
+            plan["delegation_adapter"],
+            {
+                "adapter_id": "codex",
+                "adapter_version": "fixture",
+                "mode": "validated-only",
+                "statement_present": True,
+                "evidence": [],
+                "capabilities": [],
             },
         )
 
@@ -727,6 +944,11 @@ project = Path(sys.argv[3])
 records = []
 for bundle_path, kind, adapter in (
     ("skills/xc-alpha/SKILL.md", "skill", None),
+    (
+        "skills/xc-delegation/assets/adapters/trae.json",
+        "skill",
+        None,
+    ),
     ("adapters/trae/delegate-agent.md", "host-adapter", "trae"),
 ):
     data = bundle.joinpath(*bundle_path.split("/")).read_bytes()

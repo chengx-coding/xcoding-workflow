@@ -56,6 +56,7 @@ class RuntimeQueryTests(unittest.TestCase):
                 "summary",
                 "show",
                 "control-packet",
+                "assignment-packet",
                 "find",
                 "artifacts",
                 "snapshot",

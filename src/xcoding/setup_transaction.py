@@ -27,6 +27,11 @@ from .bundle.resources import (
     inspect_installed_bundle,
     installed_bundle_root,
 )
+from .delegation.adapters import (
+    load_bundle_adapter_statement,
+    parse_adapter_statement,
+)
+from .delegation.errors import DelegationError
 
 
 SETUP_SCHEMA_VERSION = 1
@@ -948,9 +953,114 @@ def _validate_hosts(hosts: Sequence[str]) -> tuple[str, ...]:
     return tuple(host for host in HOST_ORDER if host in set(hosts))
 
 
-def _desired_files(hosts: tuple[str, ...]) -> dict[str, dict[str, Any]]:
+def _delegation_adapter_summaries(
+    hosts: tuple[str, ...],
+    inspection: Any,
+    bundle_root: Any,
+) -> list[dict[str, Any]]:
+    bundled_skill_paths = {
+        record.bundle_path
+        for record in inspection.manifest.resources
+        if record.kind == "skill"
+    }
+    summaries: list[dict[str, Any]] = []
+    for host in hosts:
+        statement_path = (
+            f"skills/xc-delegation/assets/adapters/{host}.json"
+        )
+        if statement_path not in bundled_skill_paths:
+            raise SetupTransactionError(
+                "host_capability_statement_missing",
+                "selected host has no packaged delegation capability statement",
+                details={"host": host, "bundle_path": statement_path},
+            )
+        try:
+            statement = load_bundle_adapter_statement(bundle_root, host)
+        except DelegationError as error:
+            raise SetupTransactionError(
+                "host_capability_statement_invalid",
+                "selected host delegation capability statement is invalid",
+                details={
+                    "host": host,
+                    "delegation_code": error.code,
+                    "delegation_phase": error.phase,
+                },
+            ) from error
+        summaries.append(
+            {
+                "adapter_id": statement["adapter_id"],
+                "adapter_version": statement["adapter_version"],
+                "mode": statement["mode"],
+                "statement_present": True,
+                "evidence": statement["evidence"],
+                "capabilities": statement["capabilities"],
+            }
+        )
+    return summaries
+
+
+def _rollback_adapter_summaries(
+    hosts: tuple[str, ...],
+    desired: Mapping[str, Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    summaries: list[dict[str, Any]] = []
+    for host in hosts:
+        _agent_root, skill_root = HOST_TARGETS[host]
+        relative = (
+            skill_root
+            / "xc-delegation"
+            / "assets"
+            / "adapters"
+            / f"{host}.json"
+        ).as_posix()
+        record = desired.get(relative)
+        if record is None or not isinstance(record.get("data"), bytes):
+            summaries.append(
+                {
+                    "adapter_id": host,
+                    "adapter_version": None,
+                    "mode": "legacy-prompt",
+                    "statement_present": False,
+                    "evidence": [],
+                    "capabilities": [],
+                }
+            )
+            continue
+        try:
+            statement = parse_adapter_statement(record["data"], host)
+        except DelegationError as error:
+            raise SetupTransactionError(
+                "rollback_unavailable",
+                "rollback delegation capability statement is invalid",
+                details={
+                    "host": host,
+                    "delegation_code": error.code,
+                    "delegation_phase": error.phase,
+                },
+            ) from error
+        summaries.append(
+            {
+                "adapter_id": statement["adapter_id"],
+                "adapter_version": statement["adapter_version"],
+                "mode": statement["mode"],
+                "statement_present": True,
+                "evidence": statement["evidence"],
+                "capabilities": statement["capabilities"],
+            }
+        )
+    return summaries
+
+
+def _desired_files(
+    hosts: tuple[str, ...],
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
     inspection = inspect_installed_bundle()
     bundle_root = installed_bundle_root()
+    adapter_summaries = _delegation_adapter_summaries(
+        hosts,
+        inspection,
+        bundle_root,
+    )
     desired: dict[str, dict[str, Any]] = {}
 
     def add(relative: PurePosixPath, source_relative: str, owner: str) -> None:
@@ -1010,7 +1120,7 @@ def _desired_files(hosts: tuple[str, ...]) -> dict[str, dict[str, Any]]:
                 details={"first": folded[collision], "second": path},
             )
         folded[collision] = path
-    return desired
+    return desired, adapter_summaries
 
 
 def _state_paths(root: Path) -> dict[str, Path]:
@@ -1246,6 +1356,7 @@ def _preflight(
     root: Path,
     hosts: tuple[str, ...],
     desired: dict[str, dict[str, Any]],
+    delegation_adapters: list[dict[str, Any]],
     *,
     allow_journal: bool = False,
 ) -> dict[str, Any]:
@@ -1310,6 +1421,7 @@ def _preflight(
         "hosts": list(hosts),
         "source_generation": None if manifest is None else manifest.get("generation"),
         "bundle_manifest_sha256": inspection.manifest_sha256,
+        "delegation_adapters": delegation_adapters,
         "operations": operations,
         "writes_performed": False,
     }
@@ -2478,10 +2590,15 @@ def setup(
 ) -> dict[str, Any]:
     root = _resolve_project_root(project_root)
     selected = _validate_hosts(hosts)
-    desired = _desired_files(selected)
+    desired, delegation_adapters = _desired_files(selected)
     with project_lock(root) as lock:
         lock.verify()
-        plan = _preflight(root, selected, desired)
+        plan = _preflight(
+            root,
+            selected,
+            desired,
+            delegation_adapters,
+        )
         plan["root_identity"] = list(lock.identity)
         plan["lock_identity"] = (
             "Global\\XcodingSetup-v1-" + "-".join(f"{part:08x}" for part in lock.identity)
@@ -2883,7 +3000,12 @@ def rollback(project_root: str | os.PathLike[str]) -> dict[str, Any]:
                 "source": "rollback",
             }
         hosts = tuple(previous.get("hosts", []))
-        plan = _preflight(root, hosts, desired)
+        plan = _preflight(
+            root,
+            hosts,
+            desired,
+            _rollback_adapter_summaries(hosts, desired),
+        )
         result = _apply_transaction(root, lock, hosts, desired, plan)
         result["rolled_back_from"] = generation
         result["rollback"] = True

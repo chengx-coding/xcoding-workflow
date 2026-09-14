@@ -36,6 +36,16 @@ Agent 宿主的发现位置和安装目录属于适配器，不是新的事实�
 
 这种分离把工具专属的元数据、权限和文件格式限制在边缘，同时保持共享行为可移植。
 
+## Skill 内部 Worker 与通用 delegated Agent
+
+[`xc-delegation`](../../../skills/xc-delegation/SKILL.md) 允许所属 Skill 把私有 worker profile 保存在 `assets/workers/<profile-id>/` 下，同时复用向每个受支持宿主交付的持久 `xc-delegated-agent`。私有 profile 不是第二份持久 Agent 定义：它只能从所属 Skill 根目录解析，必须通过严格 schema 校验，并针对某个正在运行的节点 attempt 编译成一份确定性的 dispatch envelope。
+
+主会话先从 runtime 获取只读 assignment packet，再由 `xcoding delegate prepare` 对六个彼此独立的能力层取交集：profile 请求、XC 上限、项目上限、节点拥有的授权、调用方收窄和宿主声明。任何一层都不能放宽此前的拒绝。Dynamic overlay 只能进一步收窄已解析 profile；无效或不受支持的 v1 输入会失败关闭，不会回退到 prompt 定义的角色。
+
+`xc-delegated-agent` 提供两种显式兼容模式。`profile-v1` 只接受标记为 dispatch-authoritative 的已准备 envelope，并通过分配到的进程内 terminal binding 报告恰好一种获准节点结果。`legacy-prompt` 只接受显式选择的 prompt 定义角色，且绝不声称获得 v1 校验或强制。若一个私有角色变为跨 Skill 共享、可由用户直接选择，或依赖独立的持久模型或权限身份，就应提升为 `agents-src/agents/` 下的规范定义。
+
+宿主 capability statement 是构建与 setup 资源，不是第三方宿主强制执行 envelope 的证明。当前四份声明均为 `validated-only`，adapter version 尚未验证；network 与 secret 能力仍不受支持。只有匹配固定版本的端到端证据才能使用 `enforced`。
+
 ## Package、Bundle 与 Runtime Application 基础设施
 
 仓库还在 `pyproject.toml`、`src/xcoding/`、`build_support/`、`scripts/` 和 `.github/` 中包含产品 package 与 release 验证基础设施。它构建 `xcoding-workflow` package 和不可变 Bundle，并验证与具体 candidate 无关的 package 契约。这只是仓库构建边界，不是新的工作流创作源。
@@ -47,7 +57,7 @@ adapter 使用的构建输入，不是事实源。`build_support/host_adapters.j
 如何把这些生成输入映射到 Bundle。当前 Bundle 不再包含 Viewer 实现 partition。
 
 `src/xcoding/runtime/` 是运行时树模型、Runtime Application Service、持久化
-事务、共享 23 命令规范、typed read-only query facade 和默认模板的可编辑源。
+事务、共享 26 命令规范、typed read-only query facade 和默认模板的可编辑源。
 `src/xcoding/viewer/` 拥有 Viewer server、picker、lifecycle 和静态前端。
 `src/xcoding/daemon/` 拥有带认证的只读工具 API。
 
@@ -59,7 +69,7 @@ console command 执行 `xcoding runtime`。工具缺失时返回
 
 `xcoding daemon serve` 是可选本地只读 transport。它只绑定 `127.0.0.1`，
 要求 process-lifetime bearer token 和精确 Host/Origin 检查，只接受启动时传入
-的 runtime 文件，暴露九个 typed read-only query，并传输有界、非持久的 SSE
+的 runtime 文件，暴露十个 typed read-only query，并传输有界、非持久的 SSE
 摘要。`xcoding runtime` 继续在本地直接执行，不发现或启动 daemon；
 `xcoding viewer` 仍是独立的浏览器查看 surface。
 

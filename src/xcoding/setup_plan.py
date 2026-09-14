@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from .bundle.resources import inspect_installed_bundle, installed_bundle_root
+from .delegation.adapters import load_bundle_adapter_statement
+from .delegation.errors import DelegationError
 
 
 _ADAPTER_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\Z")
@@ -323,6 +325,33 @@ def setup_plan(adapter_id: str, target_root: Path) -> dict[str, Any]:
         )
 
     bundle_root = installed_bundle_root()
+    statement_path = (
+        f"skills/xc-delegation/assets/adapters/{adapter_id}.json"
+    )
+    if not any(
+        record.kind == "skill" and record.bundle_path == statement_path
+        for record in inspection.manifest.resources
+    ):
+        raise SetupInputError(
+            "host-capability-statement-missing",
+            "adapter has no packaged delegation capability statement",
+            details={
+                "adapter": adapter_id,
+                "bundle_path": statement_path,
+            },
+        )
+    try:
+        statement = load_bundle_adapter_statement(bundle_root, adapter_id)
+    except DelegationError as error:
+        raise SetupInputError(
+            "host-capability-statement-invalid",
+            "adapter delegation capability statement is invalid",
+            details={
+                "adapter": adapter_id,
+                "delegation_code": error.code,
+                "delegation_phase": error.phase,
+            },
+        ) from error
     operations: list[dict[str, Any]] = []
     issues = list(readiness["issues"])
     prefix = f"adapters/{adapter_id}/"
@@ -369,6 +398,14 @@ def setup_plan(adapter_id: str, target_root: Path) -> dict[str, Any]:
         "adapter_id": adapter_id,
         "target_root": str(target_root),
         "bundle_manifest_sha256": inspection.manifest_sha256,
+        "delegation_adapter": {
+            "adapter_id": statement["adapter_id"],
+            "adapter_version": statement["adapter_version"],
+            "mode": statement["mode"],
+            "statement_present": True,
+            "evidence": statement["evidence"],
+            "capabilities": statement["capabilities"],
+        },
         "operations": operations,
         "drift": drift,
         "readiness": readiness,

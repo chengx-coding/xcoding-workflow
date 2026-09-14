@@ -46,6 +46,24 @@ class AgentExportTests(unittest.TestCase):
         )
         self.assertEqual(trae["generated_root"], "agents-src/trae-agents")
         self.assertEqual(trae["bundle_root"], "adapters/trae")
+        self.assertEqual(
+            {
+                adapter["adapter_id"]: adapter["capability_statement"]
+                for adapter in configuration["adapters"]
+            },
+            {
+                adapter_id: (
+                    "skills/xc-delegation/assets/adapters/"
+                    f"{adapter_id}.json"
+                )
+                for adapter_id in (
+                    "claude-code",
+                    "codex",
+                    "opencode",
+                    "trae",
+                )
+            },
+        )
 
     def test_generated_agents_are_current_and_share_worker_body(self) -> None:
         result = subprocess.run(
@@ -68,9 +86,15 @@ class AgentExportTests(unittest.TestCase):
         self.assertIn(body, claude)
         self.assertIn(body, opencode)
         self.assertIn("developer_instructions", codex)
-        self.assertIn("You execute one delegated task.", codex)
+        self.assertIn("You execute exactly one delegated task", codex)
         self.assertTrue(trae.startswith("---\nname: xc-delegated-agent\n"))
         self.assertIn(body, trae)
+        for content in (source, claude, opencode, codex, trae):
+            self.assertIn("profile-v1", content)
+            self.assertIn("legacy-prompt", content)
+            self.assertIn("dispatch_authoritative=true", content)
+            self.assertIn("never retry it through the legacy route", content)
+            self.assertIn("Do not delegate another worker.", content)
 
     def test_exporter_target_set_is_exactly_four_host_targets_and_check_guards_each(
         self,

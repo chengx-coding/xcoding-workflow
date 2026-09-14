@@ -4,6 +4,16 @@
 
 These supporting Skills execute approved changes and assess their evidence.
 
+## `xc-delegation`
+
+[Canonical contract](../../../skills/xc-delegation/SKILL.md)
+
+- **Invoke when:** a Skill delegates one private worker role through the persistent delegated Agent and needs strict profile resolution, capability narrowing, deterministic preparation, or read-only legacy discovery.
+- **Purpose:** validate Skill-local worker profiles and compile one node-attempt-bound dispatch envelope without making the private role a persistent Agent.
+- **Public entry:** required `skill_root` and `profile_id`; preparation additionally requires exact runtime node/profile packets, project policy, caller constraints, adapter ID, and output path. A dynamic overlay is optional and narrowing-only.
+- **Typical usage:** author a profile under the owning Skill's `assets/workers/`, validate it, obtain the exact running-attempt assignment wrapper, call `xcoding delegate prepare`, and dispatch only an authoritative envelope.
+- **Boundaries:** v1 never silently falls back to legacy prompts; capability layers only narrow; runtime state and terminal authority remain runtime-owned; current host statements do not claim enforcement without pinned end-to-end evidence.
+
 ## `xc-implementation`
 
 [Canonical contract](../../../skills/xc-implementation/SKILL.md)

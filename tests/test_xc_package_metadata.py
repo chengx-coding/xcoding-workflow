@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 import tomllib
 import unittest
 from pathlib import Path
@@ -13,6 +15,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
 from xcoding import doctor
 from xcoding.bundle.resources import DISTRIBUTION_NAME
+from xcoding.delegation.errors import DelegationError
 
 
 class PackageMetadataTests(unittest.TestCase):
@@ -55,7 +58,21 @@ class PackageMetadataTests(unittest.TestCase):
 
     def test_doctor_reports_non_formal_accepted_runtime_evidence(self) -> None:
         inspection = mock.Mock()
-        inspection.manifest = SimpleNamespace(python_requires=">=3.12")
+        inspection.manifest = SimpleNamespace(
+            python_requires=">=3.12",
+            resources=tuple(
+                SimpleNamespace(
+                    kind="host-adapter",
+                    adapter_id=adapter_id,
+                )
+                for adapter_id in (
+                    "claude-code",
+                    "codex",
+                    "opencode",
+                    "trae",
+                )
+            ),
+        )
         inspection.as_dict.return_value = {"resource_count": 1}
         with (
             mock.patch.object(
@@ -84,6 +101,22 @@ class PackageMetadataTests(unittest.TestCase):
                 "find_spec",
                 return_value=None,
             ),
+            mock.patch.object(
+                doctor,
+                "installed_bundle_root",
+                return_value=object(),
+            ),
+            mock.patch.object(
+                doctor,
+                "load_bundle_adapter_statement",
+                side_effect=lambda _root, adapter_id: {
+                    "adapter_id": adapter_id,
+                    "adapter_version": "unverified",
+                    "mode": "validated-only",
+                    "evidence": [],
+                    "capabilities": [],
+                },
+            ),
         ):
             report = doctor.doctor_report()
 
@@ -100,6 +133,133 @@ class PackageMetadataTests(unittest.TestCase):
                 "matches_formal_verification_baseline"
             ],
             False,
+        )
+        adapter_check = next(
+            check
+            for check in report["checks"]
+            if check["id"] == "delegation-adapters"
+        )
+        self.assertEqual(adapter_check["status"], "pass")
+        self.assertEqual(
+            [
+                statement["adapter_id"]
+                for statement in adapter_check["details"]["statements"]
+            ],
+            ["claude-code", "codex", "opencode", "trae"],
+        )
+        self.assertTrue(
+            all(
+                statement["mode"] == "validated-only"
+                for statement in adapter_check["details"]["statements"]
+            )
+        )
+        self.assertEqual(
+            sum(
+                warning["code"] == "delegation-adapter-not-enforced"
+                for warning in report["warnings"]
+            ),
+            4,
+        )
+
+    def test_doctor_fails_closed_on_invalid_adapter_statement(self) -> None:
+        inspection = SimpleNamespace(
+            manifest=SimpleNamespace(
+                resources=(
+                    SimpleNamespace(
+                        kind="host-adapter",
+                        adapter_id="codex",
+                    ),
+                )
+            )
+        )
+        error = DelegationError(
+            "json_not_canonical",
+            "adapter",
+            "invalid statement",
+        )
+        with mock.patch.object(
+            doctor,
+            "load_bundle_adapter_statement",
+            side_effect=error,
+        ):
+            result = doctor.delegation_adapter_readiness(
+                inspection,
+                object(),
+            )
+
+        self.assertFalse(result["ready"])
+        self.assertEqual(result["statements"], [])
+        self.assertEqual(
+            result["errors"],
+            [
+                {
+                    "adapter_id": "codex",
+                    "code": "json_not_canonical",
+                    "phase": "adapter",
+                    "message": "invalid statement",
+                }
+            ],
+        )
+
+    def test_doctor_rejects_unsubstantiated_enforced_adapter_statement(
+        self,
+    ) -> None:
+        inspection = SimpleNamespace(
+            manifest=SimpleNamespace(
+                resources=(
+                    SimpleNamespace(
+                        kind="host-adapter",
+                        adapter_id="codex",
+                    ),
+                )
+            )
+        )
+        source = json.loads(
+            (
+                REPOSITORY_ROOT
+                / "skills"
+                / "xc-delegation"
+                / "assets"
+                / "adapters"
+                / "codex.json"
+            ).read_text(encoding="utf-8")
+        )
+        source["mode"] = "enforced"
+        for capability in source["capabilities"]:
+            capability["support"] = "enforced"
+
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle_root = Path(temporary)
+            target = (
+                bundle_root
+                / "skills"
+                / "xc-delegation"
+                / "assets"
+                / "adapters"
+                / "codex.json"
+            )
+            target.parent.mkdir(parents=True)
+            target.write_text(
+                json.dumps(
+                    source,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n",
+                encoding="utf-8",
+                newline="",
+            )
+            result = doctor.delegation_adapter_readiness(
+                inspection,
+                bundle_root,
+            )
+
+        self.assertFalse(result["ready"])
+        self.assertEqual(result["statements"], [])
+        self.assertEqual(
+            result["errors"][0]["code"],
+            "adapter_version_unpinned",
         )
 
 

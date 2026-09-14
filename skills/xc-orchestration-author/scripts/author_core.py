@@ -66,6 +66,35 @@ CONTROL_METADATA_PREFIXES = (
     "metadata.control_packet.",
     "metadata.completion.",
     "metadata.gate.",
+    "metadata.worker_profile.",
+    "metadata.delegation.",
+)
+WORKER_PROFILE_METADATA_KEYS = (
+    "metadata.worker_profile.schema_version",
+    "metadata.worker_profile.owner_skill",
+    "metadata.worker_profile.profile_id",
+    "metadata.worker_profile.security_mode",
+    "metadata.worker_profile.context_bindings",
+)
+WORKER_PROFILE_SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+WORKER_PROFILE_METADATA_MAX_BYTES = 8 * 1024
+WORKER_PROFILE_CONTEXT_MAX_BINDINGS = 32
+WORKER_PROFILE_CONTEXT_MAX_DEPTH = 16
+WORKER_PROFILE_IDENTIFIER_MAX_BYTES = 128
+DELEGATION_AUTHORIZATION_KEY = "metadata.delegation.authorization"
+DELEGATION_CAPABILITY_IDS = frozenset(
+    {
+        "network.outbound.allowlisted",
+        "process.exec.named",
+        "project.read.declared",
+        "project.write.owned",
+        "runtime.terminal.assigned-node",
+        "secret.use.named",
+        "skill.invoke.declared",
+        "workbench.read.declared",
+        "workbench.write.artifact",
+        "workbench.write.tmp",
+    }
 )
 ATOMIC_REPLACE_ATTEMPTS = 5
 ATOMIC_REPLACE_RETRY_DELAY_SECONDS = 0.05
@@ -354,6 +383,180 @@ def _deduplicate_control_violations(
     return [{"key": key, "code": code} for key, code in sorted(unique)]
 
 
+def _strict_json_value(value: str) -> Any:
+    def reject_duplicates(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
+        for key, item in pairs:
+            if key in result:
+                raise ValueError(f"duplicate key: {key}")
+            result[key] = item
+        return result
+
+    return json.loads(
+        value,
+        object_pairs_hook=reject_duplicates,
+        parse_constant=lambda token: (_ for _ in ()).throw(
+            ValueError(f"non-finite number: {token}")
+        ),
+    )
+
+
+def _json_depth(value: Any) -> int:
+    if isinstance(value, dict):
+        return 1 + max((_json_depth(item) for item in value.values()), default=0)
+    if isinstance(value, list):
+        return 1 + max((_json_depth(item) for item in value), default=0)
+    return 1
+
+
+def _bounded_worker_identifier(value: Any, *, owner_skill: bool = False) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value.encode("utf-8")) <= WORKER_PROFILE_IDENTIFIER_MAX_BYTES
+        and bool(WORKER_PROFILE_SLUG_RE.fullmatch(value))
+        and (not owner_skill or value.startswith("xc-") and len(value) > 3)
+    )
+
+
+def _worker_profile_bindings(value: str) -> Optional[Dict[str, Dict[str, str]]]:
+    try:
+        parsed = _strict_json_value(value)
+        canonical = json.dumps(
+            parsed,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (json.JSONDecodeError, TypeError, ValueError, UnicodeError, RecursionError):
+        return None
+    if canonical != value or not isinstance(parsed, dict):
+        return None
+    if len(parsed) > WORKER_PROFILE_CONTEXT_MAX_BINDINGS:
+        return None
+    try:
+        if _json_depth(parsed) > WORKER_PROFILE_CONTEXT_MAX_DEPTH:
+            return None
+    except RecursionError:
+        return None
+    normalized: Dict[str, Dict[str, str]] = {}
+    for binding_id, raw_binding in parsed.items():
+        if not _bounded_worker_identifier(binding_id) or not isinstance(raw_binding, dict):
+            return None
+        source = raw_binding.get("source")
+        if source == "target-contract" and set(raw_binding) == {"source"}:
+            normalized[binding_id] = {"source": source}
+        elif source == "control-packet" and set(raw_binding) == {"source", "category"}:
+            category = raw_binding.get("category")
+            if not _bounded_worker_identifier(category):
+                return None
+            normalized[binding_id] = {"source": source, "category": category}
+        elif source == "blackboard" and set(raw_binding) == {"source", "key"}:
+            key = raw_binding.get("key")
+            if (
+                not isinstance(key, str)
+                or len(key.encode("utf-8")) > WORKER_PROFILE_IDENTIFIER_MAX_BYTES
+                or not BLACKBOARD_KEY_RE.fullmatch(key)
+            ):
+                return None
+            normalized[binding_id] = {"source": source, "key": key}
+        else:
+            return None
+    return normalized
+
+
+def _safe_relative_delegation_path(value: str) -> bool:
+    if (
+        not value
+        or "\\" in value
+        or value.startswith("/")
+        or re.match(r"[A-Za-z]:", value)
+    ):
+        return False
+    return not any(
+        part in {"", ".", ".."}
+        or any(ord(character) < 32 for character in part)
+        for part in value.split("/")
+    )
+
+
+def _delegation_authorization(value: str) -> Optional[Dict[str, Any]]:
+    if len(value.encode("utf-8")) > 64 * 1024:
+        return None
+    try:
+        parsed = _strict_json_value(value)
+        canonical = json.dumps(
+            parsed,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (json.JSONDecodeError, TypeError, ValueError, UnicodeError, RecursionError):
+        return None
+    if canonical != value or not isinstance(parsed, dict) or set(parsed) != {"capabilities"}:
+        return None
+    capabilities = parsed.get("capabilities")
+    if not isinstance(capabilities, list) or len(capabilities) > len(DELEGATION_CAPABILITY_IDS):
+        return None
+    identifiers: List[str] = []
+    path_capabilities = {
+        "project.read.declared",
+        "project.write.owned",
+        "workbench.read.declared",
+        "workbench.write.artifact",
+        "workbench.write.tmp",
+    }
+    for grant in capabilities:
+        if not isinstance(grant, dict) or set(grant) != {"id", "values"}:
+            return None
+        identifier = grant.get("id")
+        values = grant.get("values")
+        if identifier not in DELEGATION_CAPABILITY_IDS or not isinstance(values, list) or not values:
+            return None
+        if (
+            len(values) > 128
+            or any(
+                not isinstance(item, str)
+                or not item
+                or len(item.encode("utf-8")) > 1024
+                for item in values
+            )
+            or values != sorted(set(values))
+        ):
+            return None
+        identifiers.append(identifier)
+        for item in values:
+            if identifier in path_capabilities and (
+                item == "*" or not _safe_relative_delegation_path(item)
+            ):
+                return None
+            if identifier == "runtime.terminal.assigned-node" and item not in {
+                "block",
+                "complete",
+                "fail",
+            }:
+                return None
+            if identifier == "network.outbound.allowlisted" and (
+                "/" in item
+                or "://" in item
+                or not re.fullmatch(r"[a-z0-9.-]+(?::[0-9]{1,5})?", item)
+            ):
+                return None
+            if (
+                identifier not in path_capabilities
+                and identifier not in {
+                    "runtime.terminal.assigned-node",
+                    "network.outbound.allowlisted",
+                }
+                and not WORKER_PROFILE_SLUG_RE.fullmatch(item)
+            ):
+                return None
+    if identifiers != sorted(set(identifiers)):
+        return None
+    return parsed
+
+
 def validate_control_metadata_for_node(node: ET.Element) -> List[Dict[str, str]]:
     metadata = {
         key: value
@@ -575,6 +778,126 @@ def validate_control_metadata_for_node(node: ET.Element) -> List[Dict[str, str]]
     outcome_key = "metadata.gate.outcome_key"
     if outcome_key in gate_keys and not BLACKBOARD_KEY_RE.fullmatch(gate_keys[outcome_key]):
         violations.append(_control_violation(outcome_key, "invalid_gate_outcome_key"))
+
+    worker_keys = {
+        key: value
+        for key, value in metadata.items()
+        if key.startswith("metadata.worker_profile.")
+    }
+    if worker_keys:
+        expected_worker_keys = set(WORKER_PROFILE_METADATA_KEYS)
+        for key in sorted(set(worker_keys) - expected_worker_keys):
+            violations.append(
+                _control_violation(key, "unknown_worker_profile_metadata_key")
+            )
+        for key in sorted(expected_worker_keys - set(worker_keys)):
+            violations.append(
+                _control_violation(key, "missing_worker_profile_metadata_key")
+            )
+        if node_type(node) != "task" or children(node) or node.get("executor") != "subagent":
+            violations.extend(
+                _control_violation(key, "invalid_metadata_owner")
+                for key in worker_keys
+            )
+        if (
+            sum(len(value.encode("utf-8")) for value in worker_keys.values())
+            > WORKER_PROFILE_METADATA_MAX_BYTES
+        ):
+            violations.append(
+                _control_violation(
+                    "metadata.worker_profile.context_bindings",
+                    "worker_profile_metadata_too_large",
+                )
+            )
+        schema_key = "metadata.worker_profile.schema_version"
+        if schema_key in worker_keys and worker_keys[schema_key] != "1":
+            violations.append(
+                _control_violation(schema_key, "invalid_worker_profile_schema_version")
+            )
+        owner_key = "metadata.worker_profile.owner_skill"
+        if owner_key in worker_keys and not _bounded_worker_identifier(
+            worker_keys[owner_key], owner_skill=True
+        ):
+            violations.append(
+                _control_violation(owner_key, "invalid_worker_profile_owner_skill")
+            )
+        profile_key = "metadata.worker_profile.profile_id"
+        if profile_key in worker_keys and not _bounded_worker_identifier(worker_keys[profile_key]):
+            violations.append(
+                _control_violation(profile_key, "invalid_worker_profile_id")
+            )
+        mode_key = "metadata.worker_profile.security_mode"
+        if mode_key in worker_keys and worker_keys[mode_key] not in {
+            "enforced",
+            "validated-only",
+        }:
+            violations.append(
+                _control_violation(mode_key, "invalid_worker_profile_security_mode")
+            )
+        bindings_key = "metadata.worker_profile.context_bindings"
+        bindings = (
+            _worker_profile_bindings(worker_keys[bindings_key])
+            if bindings_key in worker_keys
+            else None
+        )
+        if bindings_key in worker_keys and bindings is None:
+            violations.append(
+                _control_violation(
+                    bindings_key,
+                    "invalid_worker_profile_context_bindings",
+                )
+            )
+        if bindings is not None:
+            declared_categories = set(category_members)
+            declared_blackboard = set(
+                _json_string_list(control_keys.get(blackboard_key, "[]")) or []
+            )
+            for binding in bindings.values():
+                if (
+                    binding["source"] == "control-packet"
+                    and binding["category"] not in declared_categories
+                ):
+                    violations.append(
+                        _control_violation(
+                            bindings_key,
+                            "worker_profile_category_not_declared",
+                        )
+                    )
+                if (
+                    binding["source"] == "blackboard"
+                    and binding["key"] not in declared_blackboard
+                ):
+                    violations.append(
+                        _control_violation(
+                            bindings_key,
+                            "worker_profile_blackboard_key_not_declared",
+                        )
+                    )
+
+    delegation_keys = {
+        key: value
+        for key, value in metadata.items()
+        if key.startswith("metadata.delegation.")
+    }
+    if delegation_keys:
+        for key in sorted(set(delegation_keys) - {DELEGATION_AUTHORIZATION_KEY}):
+            violations.append(
+                _control_violation(key, "unknown_delegation_metadata_key")
+            )
+        if node_type(node) != "task" or children(node) or node.get("executor") != "subagent":
+            violations.extend(
+                _control_violation(key, "invalid_metadata_owner")
+                for key in delegation_keys
+            )
+        if DELEGATION_AUTHORIZATION_KEY in delegation_keys:
+            value = delegation_keys[DELEGATION_AUTHORIZATION_KEY]
+            if _delegation_authorization(value) is None:
+                violations.append(
+                    _control_violation(
+                        DELEGATION_AUTHORIZATION_KEY,
+                        "invalid_delegation_authorization",
+                    )
+                )
     return _deduplicate_control_violations(violations)
 
 

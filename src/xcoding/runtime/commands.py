@@ -25,6 +25,7 @@ COMMAND_NAMES = (
     "summary",
     "show",
     "control-packet",
+    "assignment-packet",
     "find",
     "artifacts",
     "snapshot",
@@ -251,6 +252,15 @@ def build_parser() -> argparse.ArgumentParser:
     add_tree_argument(control_packet)
     control_packet.add_argument("--node", required=True)
     control_packet.set_defaults(func=application.cmd_control_packet)
+
+    assignment_packet = sub.add_parser(
+        "assignment-packet",
+        help="Build a least-context assignment for one running subagent task.",
+    )
+    add_tree_argument(assignment_packet)
+    assignment_packet.add_argument("--node", required=True)
+    assignment_packet.add_argument("--attempt", required=True, type=int)
+    assignment_packet.set_defaults(func=application.cmd_assignment_packet)
 
     find = sub.add_parser("find", help="Find runtime nodes by template ID.")
     add_tree_argument(find)

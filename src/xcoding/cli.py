@@ -244,6 +244,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         from .daemon import cli as daemon_cli
 
         return daemon_cli.main(raw_arguments[1:])
+    if raw_arguments[:1] == ["delegate"]:
+        from .delegation import commands as delegation_commands
+
+        return delegation_commands.main(raw_arguments[1:])
     if raw_arguments[:1] == ["runtime"]:
         return _runtime_main(raw_arguments[1:])
     command = _command_name(raw_arguments)

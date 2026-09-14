@@ -56,6 +56,16 @@ Packet 只包含 target 叶子契约、已声明的来源结果字段与 artifac
 
 这个边界限制的是运行时协议披露，不是宿主 mediation。Runtime 无法阻止 agent 在 `start` 前使用普通宿主工具，也不能强制验证实际调用 CLI 的身份；这些边界必须由宿主和调用 Skill 执行。
 
+## Skill 内部 Worker 委派
+
+选择加入该机制的 subagent 叶节点必须声明恰好五个 `metadata.worker_profile.*` 值：schema version、所属 Skill、profile ID、security mode 与 context bindings。节点拥有的 `metadata.delegation.authorization` 是另一份独立能力上限；它不是 profile 内容，调用方也不能放宽它。Authoring 与 runtime 校验都会拒绝不完整 profile、未知成员、未声明的 context 选择或格式错误的授权。
+
+节点 `start` 后，主会话请求 `assignment-packet --node <id> --attempt <n>`。该只读 wrapper 包含精确的运行中 node packet、profile reference、target contract、最小化 control packet 与确定性关联 digest；它不包含 tree path、兄弟或未来节点、完整 blackboard、restore 状态、bearer material 或 mutation authority。所属 Skill 把 wrapper 中精确的 node/profile 成员交给 `xcoding delegate prepare`，并且只 dispatch 由此生成的 authoritative envelope。
+
+对于 `profile-v1`，受信任的同进程宿主 gateway 可以签发一个 opaque terminal capability，并将其绑定到 tree、work order、node、attempt、profile、delegation receipt、获准操作子集与 artifact 映射。第一次通过认证的调用即消耗该 capability，即使后续校验或持久化失败也是如此。TTL、撤销、过期 attempt、被替换的 artifact、缺失 grant 或 checkpoint 失败都会关闭失败。成功的 `complete`、`fail` 或 `block` 复用 runtime 的锁、校验、checkpoint 和 rollback；worker 不会获得通用 runtime CLI mutation authority。进程重启会使所有活动 capability 失效。
+
+Daemon 继续保持只读，只把 `assignment-packet` 暴露为 typed query；它不暴露 terminal mutation 或 bearer 签发。当前宿主声明只验证 envelope 兼容性，不建立第三方 filesystem、process、network、secret 或 identity enforcement；这些主张需要固定版本的端到端证据。
+
 ## 完成与 Gate
 
 Opt-in completion metadata 可以要求非空 `summary` 或 `validation`、artifact 数量上下界、与 literal 或 blackboard selector 完全相同的 artifact 路径，以及已声明的归一化 check receipt。`complete` 通过可重复的 `--check-result-json` 接收每个已声明 check 的 receipt。Receipt 的精确形状是 `{"schema_version":1,"check":"...","ok":true,"subject":"...","facts":{...}}`；runtime 会验证其形状、已声明名称、`ok`、subject 和 fact 值，并且只保存归一化 receipt。

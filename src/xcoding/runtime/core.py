@@ -100,7 +100,55 @@ CONTROL_METADATA_PREFIXES = (
     "metadata.control_packet.",
     "metadata.completion.",
     "metadata.gate.",
+    "metadata.worker_profile.",
+    "metadata.delegation.",
 )
+WORKER_PROFILE_METADATA_KEYS = (
+    "metadata.worker_profile.schema_version",
+    "metadata.worker_profile.owner_skill",
+    "metadata.worker_profile.profile_id",
+    "metadata.worker_profile.security_mode",
+    "metadata.worker_profile.context_bindings",
+)
+WORKER_PROFILE_SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+WORKER_PROFILE_METADATA_MAX_BYTES = 8 * 1024
+WORKER_PROFILE_CONTEXT_MAX_BINDINGS = 32
+WORKER_PROFILE_CONTEXT_MAX_DEPTH = 16
+WORKER_PROFILE_IDENTIFIER_MAX_BYTES = 128
+DELEGATION_AUTHORIZATION_KEY = "metadata.delegation.authorization"
+DELEGATION_CAPABILITY_IDS = frozenset(
+    {
+        "network.outbound.allowlisted",
+        "process.exec.named",
+        "project.read.declared",
+        "project.write.owned",
+        "runtime.terminal.assigned-node",
+        "secret.use.named",
+        "skill.invoke.declared",
+        "workbench.read.declared",
+        "workbench.write.artifact",
+        "workbench.write.tmp",
+    }
+)
+TERMINAL_AUTHORITY_KIND = "xc-node-terminal/v1"
+TERMINAL_AUTHORITY_FIELDS = frozenset(
+    {
+        "schema_version",
+        "kind",
+        "capability_id",
+        "node_id",
+        "attempt",
+        "operation",
+        "consumed_at",
+        "envelope_sha256",
+        "prepare_receipt_id",
+        "prepare_receipt_sha256",
+        "artifacts",
+        "terminal_status",
+        "request_sha256",
+    }
+)
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 CHECK_RESULT_MAX_BYTES = 8192
 ATOMIC_REPLACE_ATTEMPTS = 5
 ATOMIC_REPLACE_RETRY_DELAY_SECONDS = 0.05
@@ -485,6 +533,235 @@ def _deduplicate_control_violations(violations: Sequence[Dict[str, str]]) -> Lis
     return [{"key": key, "code": code} for key, code in sorted(unique)]
 
 
+def _strict_json_value(value: str) -> Any:
+    def reject_duplicates(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
+        for key, item in pairs:
+            if key in result:
+                raise ValueError(f"duplicate key: {key}")
+            result[key] = item
+        return result
+
+    return json.loads(
+        value,
+        object_pairs_hook=reject_duplicates,
+        parse_constant=lambda token: (_ for _ in ()).throw(
+            ValueError(f"non-finite number: {token}")
+        ),
+    )
+
+
+def _json_depth(value: Any) -> int:
+    if isinstance(value, dict):
+        return 1 + max((_json_depth(item) for item in value.values()), default=0)
+    if isinstance(value, list):
+        return 1 + max((_json_depth(item) for item in value), default=0)
+    return 1
+
+
+def _bounded_worker_identifier(value: Any, *, owner_skill: bool = False) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value.encode("utf-8")) <= WORKER_PROFILE_IDENTIFIER_MAX_BYTES
+        and bool(WORKER_PROFILE_SLUG_RE.fullmatch(value))
+        and (not owner_skill or value.startswith("xc-") and len(value) > 3)
+    )
+
+
+def _worker_profile_bindings(value: str) -> Optional[Dict[str, Dict[str, str]]]:
+    try:
+        parsed = _strict_json_value(value)
+        canonical = json.dumps(
+            parsed,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (json.JSONDecodeError, TypeError, ValueError, UnicodeError, RecursionError):
+        return None
+    if canonical != value or not isinstance(parsed, dict):
+        return None
+    if len(parsed) > WORKER_PROFILE_CONTEXT_MAX_BINDINGS:
+        return None
+    try:
+        if _json_depth(parsed) > WORKER_PROFILE_CONTEXT_MAX_DEPTH:
+            return None
+    except RecursionError:
+        return None
+    normalized: Dict[str, Dict[str, str]] = {}
+    for binding_id, raw_binding in parsed.items():
+        if not _bounded_worker_identifier(binding_id) or not isinstance(raw_binding, dict):
+            return None
+        source = raw_binding.get("source")
+        if source == "target-contract" and set(raw_binding) == {"source"}:
+            normalized[binding_id] = {"source": source}
+        elif source == "control-packet" and set(raw_binding) == {"source", "category"}:
+            category = raw_binding.get("category")
+            if not _bounded_worker_identifier(category):
+                return None
+            normalized[binding_id] = {"source": source, "category": category}
+        elif source == "blackboard" and set(raw_binding) == {"source", "key"}:
+            key = raw_binding.get("key")
+            if (
+                not isinstance(key, str)
+                or len(key.encode("utf-8")) > WORKER_PROFILE_IDENTIFIER_MAX_BYTES
+                or not BLACKBOARD_KEY_RE.fullmatch(key)
+            ):
+                return None
+            normalized[binding_id] = {"source": source, "key": key}
+        else:
+            return None
+    return normalized
+
+
+def _safe_relative_delegation_path(value: str) -> bool:
+    if (
+        not value
+        or "\\" in value
+        or value.startswith("/")
+        or re.match(r"[A-Za-z]:", value)
+    ):
+        return False
+    return not any(
+        part in {"", ".", ".."}
+        or any(ord(character) < 32 for character in part)
+        for part in value.split("/")
+    )
+
+
+def _delegation_authorization(value: str) -> Optional[Dict[str, Any]]:
+    if len(value.encode("utf-8")) > 64 * 1024:
+        return None
+    try:
+        parsed = _strict_json_value(value)
+        canonical = json.dumps(
+            parsed,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (json.JSONDecodeError, TypeError, ValueError, UnicodeError, RecursionError):
+        return None
+    if canonical != value or not isinstance(parsed, dict) or set(parsed) != {"capabilities"}:
+        return None
+    capabilities = parsed.get("capabilities")
+    if not isinstance(capabilities, list) or len(capabilities) > len(DELEGATION_CAPABILITY_IDS):
+        return None
+    identifiers: List[str] = []
+    path_capabilities = {
+        "project.read.declared",
+        "project.write.owned",
+        "workbench.read.declared",
+        "workbench.write.artifact",
+        "workbench.write.tmp",
+    }
+    for grant in capabilities:
+        if not isinstance(grant, dict) or set(grant) != {"id", "values"}:
+            return None
+        identifier = grant.get("id")
+        values = grant.get("values")
+        if identifier not in DELEGATION_CAPABILITY_IDS or not isinstance(values, list) or not values:
+            return None
+        if (
+            len(values) > 128
+            or any(
+                not isinstance(item, str)
+                or not item
+                or len(item.encode("utf-8")) > 1024
+                for item in values
+            )
+            or values != sorted(set(values))
+        ):
+            return None
+        identifiers.append(identifier)
+        for item in values:
+            if identifier in path_capabilities and (
+                item == "*" or not _safe_relative_delegation_path(item)
+            ):
+                return None
+            if identifier == "runtime.terminal.assigned-node" and item not in {
+                "block",
+                "complete",
+                "fail",
+            }:
+                return None
+            if identifier == "network.outbound.allowlisted" and (
+                "/" in item
+                or "://" in item
+                or not re.fullmatch(r"[a-z0-9.-]+(?::[0-9]{1,5})?", item)
+            ):
+                return None
+            if (
+                identifier not in path_capabilities
+                and identifier not in {
+                    "runtime.terminal.assigned-node",
+                    "network.outbound.allowlisted",
+                }
+                and not WORKER_PROFILE_SLUG_RE.fullmatch(item)
+            ):
+                return None
+    if identifiers != sorted(set(identifiers)):
+        return None
+    return parsed
+
+
+def worker_profile_ref_for_node(node: ET.Element) -> Dict[str, Any]:
+    """Return the validated public worker-profile reference declared by a node."""
+    violations = validate_control_metadata_for_node(node)
+    worker_violations = [
+        item
+        for item in violations
+        if item["key"].startswith("metadata.worker_profile.")
+    ]
+    if worker_violations:
+        raise InvalidControlMetadataError(
+            "worker profile metadata declaration is invalid",
+            {"violations": worker_violations},
+        )
+    values = {
+        key: node.get(key, "")
+        for key in WORKER_PROFILE_METADATA_KEYS
+        if node.get(key) is not None
+    }
+    if not values:
+        raise InvalidControlMetadataError(
+            "node does not declare worker profile metadata",
+            {
+                "violations": [
+                    _control_violation(
+                        "metadata.worker_profile.schema_version",
+                        "worker_profile_not_declared",
+                    )
+                ]
+            },
+        )
+    bindings = _worker_profile_bindings(
+        values["metadata.worker_profile.context_bindings"]
+    )
+    if bindings is None:
+        raise InvalidControlMetadataError(
+            "worker profile metadata declaration is invalid",
+            {
+                "violations": [
+                    _control_violation(
+                        "metadata.worker_profile.context_bindings",
+                        "invalid_worker_profile_context_bindings",
+                    )
+                ]
+            },
+        )
+    return {
+        "schema_version": 1,
+        "kind": "xc-node-worker-profile-ref/v1",
+        "owner_skill": values["metadata.worker_profile.owner_skill"],
+        "profile_id": values["metadata.worker_profile.profile_id"],
+        "security_mode": values["metadata.worker_profile.security_mode"],
+        "context_bindings": bindings,
+    }
+
+
 def validate_control_metadata_for_node(node: ET.Element) -> List[Dict[str, str]]:
     metadata = {
         key: value
@@ -692,6 +969,126 @@ def validate_control_metadata_for_node(node: ET.Element) -> List[Dict[str, str]]
     outcome_key = "metadata.gate.outcome_key"
     if outcome_key in gate_keys and not BLACKBOARD_KEY_RE.fullmatch(gate_keys[outcome_key]):
         violations.append(_control_violation(outcome_key, "invalid_gate_outcome_key"))
+
+    worker_keys = {
+        key: value
+        for key, value in metadata.items()
+        if key.startswith("metadata.worker_profile.")
+    }
+    if worker_keys:
+        expected_worker_keys = set(WORKER_PROFILE_METADATA_KEYS)
+        for key in sorted(set(worker_keys) - expected_worker_keys):
+            violations.append(
+                _control_violation(key, "unknown_worker_profile_metadata_key")
+            )
+        for key in sorted(expected_worker_keys - set(worker_keys)):
+            violations.append(
+                _control_violation(key, "missing_worker_profile_metadata_key")
+            )
+        if node_type(node) != "task" or children(node) or node.get("executor") != "subagent":
+            violations.extend(
+                _control_violation(key, "invalid_metadata_owner")
+                for key in worker_keys
+            )
+        if (
+            sum(len(value.encode("utf-8")) for value in worker_keys.values())
+            > WORKER_PROFILE_METADATA_MAX_BYTES
+        ):
+            violations.append(
+                _control_violation(
+                    "metadata.worker_profile.context_bindings",
+                    "worker_profile_metadata_too_large",
+                )
+            )
+        schema_key = "metadata.worker_profile.schema_version"
+        if schema_key in worker_keys and worker_keys[schema_key] != "1":
+            violations.append(
+                _control_violation(schema_key, "invalid_worker_profile_schema_version")
+            )
+        owner_key = "metadata.worker_profile.owner_skill"
+        if owner_key in worker_keys and not _bounded_worker_identifier(
+            worker_keys[owner_key], owner_skill=True
+        ):
+            violations.append(
+                _control_violation(owner_key, "invalid_worker_profile_owner_skill")
+            )
+        profile_key = "metadata.worker_profile.profile_id"
+        if profile_key in worker_keys and not _bounded_worker_identifier(worker_keys[profile_key]):
+            violations.append(
+                _control_violation(profile_key, "invalid_worker_profile_id")
+            )
+        mode_key = "metadata.worker_profile.security_mode"
+        if mode_key in worker_keys and worker_keys[mode_key] not in {
+            "enforced",
+            "validated-only",
+        }:
+            violations.append(
+                _control_violation(mode_key, "invalid_worker_profile_security_mode")
+            )
+        bindings_key = "metadata.worker_profile.context_bindings"
+        bindings = (
+            _worker_profile_bindings(worker_keys[bindings_key])
+            if bindings_key in worker_keys
+            else None
+        )
+        if bindings_key in worker_keys and bindings is None:
+            violations.append(
+                _control_violation(
+                    bindings_key,
+                    "invalid_worker_profile_context_bindings",
+                )
+            )
+        if bindings is not None:
+            declared_categories = set(category_members)
+            declared_blackboard = set(
+                _json_string_list(control_keys.get(blackboard_key, "[]")) or []
+            )
+            for binding in bindings.values():
+                if (
+                    binding["source"] == "control-packet"
+                    and binding["category"] not in declared_categories
+                ):
+                    violations.append(
+                        _control_violation(
+                            bindings_key,
+                            "worker_profile_category_not_declared",
+                        )
+                    )
+                if (
+                    binding["source"] == "blackboard"
+                    and binding["key"] not in declared_blackboard
+                ):
+                    violations.append(
+                        _control_violation(
+                            bindings_key,
+                            "worker_profile_blackboard_key_not_declared",
+                        )
+                    )
+
+    delegation_keys = {
+        key: value
+        for key, value in metadata.items()
+        if key.startswith("metadata.delegation.")
+    }
+    if delegation_keys:
+        for key in sorted(set(delegation_keys) - {DELEGATION_AUTHORIZATION_KEY}):
+            violations.append(
+                _control_violation(key, "unknown_delegation_metadata_key")
+            )
+        if node_type(node) != "task" or children(node) or node.get("executor") != "subagent":
+            violations.extend(
+                _control_violation(key, "invalid_metadata_owner")
+                for key in delegation_keys
+            )
+        if DELEGATION_AUTHORIZATION_KEY in delegation_keys:
+            value = delegation_keys[DELEGATION_AUTHORIZATION_KEY]
+            if _delegation_authorization(value) is None:
+                violations.append(
+                    _control_violation(
+                        DELEGATION_AUTHORIZATION_KEY,
+                        "invalid_delegation_authorization",
+                    )
+                )
     return _deduplicate_control_violations(violations)
 
 
@@ -1976,6 +2373,164 @@ def node_path(root: ET.Element, node: ET.Element) -> List[str]:
     return list(reversed(result))
 
 
+def deduplicate_result_artifacts(node: ET.Element) -> None:
+    """Normalize only the current result's artifact paths by first occurrence."""
+    result = find_direct(node, "result")
+    holder = find_direct(result, "artifacts") if result is not None else None
+    if holder is None:
+        return
+    seen: set[str] = set()
+    for artifact in list(holder.findall("artifact")):
+        path = artifact.get("path", "")
+        if path in seen:
+            holder.remove(artifact)
+        else:
+            seen.add(path)
+
+
+def append_terminal_authority(node: ET.Element, record: Dict[str, Any]) -> None:
+    """Append one non-secret canonical terminal authority record."""
+    result = ensure_node_child(node, "result")
+    holder = ensure_direct(result, "terminal_authorities")
+    authority = ET.SubElement(holder, "authority")
+    authority.text = json.dumps(
+        record,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    )
+
+
+def _terminal_authority_records(result: ET.Element) -> List[Dict[str, Any]]:
+    holder = find_direct(result, "terminal_authorities")
+    if holder is None:
+        return []
+    records: List[Dict[str, Any]] = []
+    for authority in holder.findall("authority"):
+        raw = (authority.text or "").strip()
+        try:
+            parsed = _strict_json_value(raw)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            continue
+        if isinstance(parsed, dict):
+            records.append(parsed)
+    return records
+
+
+def validate_terminal_authorities(
+    node_id: str,
+    attempt: int,
+    result: ET.Element,
+) -> List[str]:
+    errors: List[str] = []
+    holder = find_direct(result, "terminal_authorities")
+    if holder is None:
+        return errors
+    if len(result.findall("terminal_authorities")) != 1:
+        errors.append(f"{node_id}: result has duplicate terminal authority holders")
+    if any(child.tag != "authority" for child in list(holder)):
+        errors.append(f"{node_id}: terminal authority holder has unsupported children")
+    seen: set[str] = set()
+    status_by_operation = {
+        "complete": "succeeded",
+        "fail": "failed",
+        "block": "blocked",
+    }
+    for index, authority in enumerate(holder.findall("authority")):
+        raw = (authority.text or "").strip()
+        label = f"{node_id}: terminal authority {index}"
+        if list(authority) or authority.attrib:
+            errors.append(f"{label} must contain only canonical JSON text")
+        try:
+            record = _strict_json_value(raw)
+            canonical = json.dumps(
+                record,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            )
+        except (json.JSONDecodeError, TypeError, ValueError, UnicodeError):
+            errors.append(f"{label} is not strict JSON")
+            continue
+        if canonical != raw:
+            errors.append(f"{label} is not canonical JSON")
+        if not isinstance(record, dict) or set(record) != TERMINAL_AUTHORITY_FIELDS:
+            errors.append(f"{label} has invalid fields")
+            continue
+        if record.get("schema_version") != 1 or record.get("kind") != TERMINAL_AUTHORITY_KIND:
+            errors.append(f"{label} has invalid schema")
+        capability_id = record.get("capability_id")
+        if not isinstance(capability_id, str) or not re.fullmatch(r"[0-9a-f]{32}", capability_id):
+            errors.append(f"{label} has invalid capability_id")
+        elif capability_id in seen:
+            errors.append(f"{label} duplicates capability_id")
+        else:
+            seen.add(capability_id)
+        if record.get("node_id") != node_id:
+            errors.append(f"{label} targets a different node")
+        if record.get("attempt") != attempt:
+            errors.append(f"{label} targets a different attempt")
+        operation = record.get("operation")
+        if operation not in status_by_operation:
+            errors.append(f"{label} has invalid operation")
+        elif record.get("terminal_status") != status_by_operation[operation]:
+            errors.append(f"{label} operation and terminal_status disagree")
+        consumed_at = record.get("consumed_at")
+        if not isinstance(consumed_at, str) or not consumed_at:
+            errors.append(f"{label} missing consumed_at")
+        else:
+            try:
+                consumed_time = datetime.fromisoformat(consumed_at)
+            except ValueError:
+                errors.append(f"{label} has invalid consumed_at")
+            else:
+                if consumed_time.tzinfo is None or consumed_time.utcoffset() != timezone.utc.utcoffset(None):
+                    errors.append(f"{label} consumed_at must include UTC offset")
+        if (
+            not isinstance(record.get("prepare_receipt_id"), str)
+            or not record["prepare_receipt_id"]
+            or len(record["prepare_receipt_id"].encode("utf-8")) > 256
+        ):
+            errors.append(f"{label} has invalid prepare_receipt_id")
+        for field in (
+            "envelope_sha256",
+            "prepare_receipt_sha256",
+            "request_sha256",
+        ):
+            if not isinstance(record.get(field), str) or not SHA256_RE.fullmatch(record[field]):
+                errors.append(f"{label} has invalid {field}")
+        artifacts = record.get("artifacts")
+        if not isinstance(artifacts, list) or len(artifacts) > 32:
+            errors.append(f"{label} has invalid artifacts")
+            continue
+        paths: List[str] = []
+        for artifact in artifacts:
+            if not isinstance(artifact, dict) or set(artifact) != {"path", "sha256"}:
+                errors.append(f"{label} has invalid artifact record")
+                continue
+            path = artifact.get("path")
+            digest = artifact.get("sha256")
+            if (
+                not isinstance(path, str)
+                or not path
+                or path.startswith("/")
+                or "\\" in path
+                or re.match(r"[A-Za-z]:", path)
+                or any(ord(character) < 32 for character in path)
+                or any(part in {"", ".", ".."} for part in path.split("/"))
+            ):
+                errors.append(f"{label} has invalid logical artifact path")
+            else:
+                paths.append(path)
+            if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
+                errors.append(f"{label} has invalid artifact digest")
+        if len(paths) != len(set(paths)):
+            errors.append(f"{label} has duplicate logical artifact paths")
+    return errors
+
+
 def result_snapshot(node: ET.Element) -> Dict[str, Any]:
     result = find_direct(node, "result")
     if result is None:
@@ -1989,6 +2544,8 @@ def result_snapshot(node: ET.Element) -> Dict[str, Any]:
                 json.loads((check.text or "").strip())
                 for check in child.findall("check")
             ]
+        elif child.tag == "terminal_authorities":
+            payload["terminal_authorities"] = _terminal_authority_records(result)
         else:
             payload[child.tag] = (child.text or "").strip()
     return payload
@@ -2078,6 +2635,8 @@ def validate_attempt_history(node: ET.Element) -> List[str]:
             errors.append(f"{node_id}: archived attempt {number} missing result")
         elif find_direct(result, "failure_reason") is None:
             errors.append(f"{node_id}: archived attempt {number} missing failure_reason")
+        if result is not None:
+            errors.extend(validate_terminal_authorities(node_id, number, result))
         if any(child.tag != "result" for child in list(item)):
             errors.append(f"{node_id}: archived attempt {number} has unsupported children")
     return errors
@@ -3039,6 +3598,19 @@ def validate_runtime_root(root: ET.Element, check_integrity: bool = True) -> Lis
             errors.extend(validate_archived_stub(node))
             continue
         errors.extend(validate_attempt_history(node))
+        current_result = find_direct(node, "result")
+        if (
+            current_result is not None
+            and normalized_type in {"task", "gate"}
+            and not children(node)
+        ):
+            errors.extend(
+                validate_terminal_authorities(
+                    node_id,
+                    attempt_number(node),
+                    current_result,
+                )
+            )
         node_children = children(node)
         mode = node.get("mode", "")
         if mode not in VALID_MODES:
@@ -3687,8 +4259,12 @@ def append_result_artifacts(result: ET.Element, artifacts: Optional[Sequence[str
     if not artifacts:
         return
     holder = ensure_direct(result, "artifacts")
+    seen = {artifact.get("path", "") for artifact in holder.findall("artifact")}
     for artifact in artifacts:
+        if artifact in seen:
+            continue
         ET.SubElement(holder, "artifact", {"path": artifact})
+        seen.add(artifact)
 
 
 def append_result_checks(result: ET.Element, receipts: Sequence[Dict[str, Any]]) -> None:

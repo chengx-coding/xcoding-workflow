@@ -36,6 +36,16 @@ Agent-host discovery locations and installation directories are adapters, not ne
 
 This separation keeps tool-specific metadata, permissions, and file formats at the edge while the shared behavior remains portable.
 
+## Skill-local workers and the delegated Agent
+
+[`xc-delegation`](../../skills/xc-delegation/SKILL.md) lets an owning Skill keep a private worker profile under `assets/workers/<profile-id>/` while reusing the persistent `xc-delegated-agent` supplied to every supported host. A private profile is not a second persistent Agent definition: it is resolved only through the owning Skill root, validated against strict schemas, and compiled into one deterministic dispatch envelope for one running node attempt.
+
+The main session obtains a read-only assignment packet from the runtime, then `xcoding delegate prepare` intersects six independent capability layers: the profile request, XC ceiling, project ceiling, node-owned authorization, caller narrowing, and host statement. No layer can widen an earlier denial. Dynamic overlays can only narrow the resolved profile, and an invalid or unsupported v1 input fails closed without falling back to a prompt-defined role.
+
+`xc-delegated-agent` exposes two explicit compatibility modes. `profile-v1` accepts only a dispatch-authoritative prepared envelope and uses the assigned in-process terminal binding for exactly one allowed node result. `legacy-prompt` accepts an explicitly selected prompt-defined role and never claims v1 validation or enforcement. A private role that becomes shared across Skills, directly user-selectable, or dependent on a distinct persistent model or permission identity is promoted to a canonical definition under `agents-src/agents/`.
+
+Host capability statements are build and setup resources, not proof that a third-party host enforces the envelope. The current four statements are `validated-only` with unverified adapter versions; network and secret capabilities remain unsupported. `enforced` requires matching fixed-version end-to-end evidence.
+
 ## Package, Bundle, And Runtime Application Infrastructure
 
 The repository also contains product package and release-verification infrastructure in `pyproject.toml`, `src/xcoding/`, `build_support/`, `scripts/`, and `.github/`. It builds the `xcoding-workflow` package and immutable Bundle and verifies candidate-independent package contracts. This is a repository build boundary, not another workflow authoring surface.
@@ -50,7 +60,7 @@ generated inputs map into the Bundle. The current Bundle has no Viewer
 implementation partition.
 
 `src/xcoding/runtime/` is the editable source for the runtime tree model,
-Runtime Application Service, persistence transactions, shared 23-command
+Runtime Application Service, persistence transactions, shared 26-command
 specification, typed read-only query facade, and default template.
 `src/xcoding/viewer/` owns the Viewer server, picker, lifecycle, and static
 frontend. `src/xcoding/daemon/` owns the authenticated read-only tool API.
@@ -64,7 +74,7 @@ fallback when the tool is missing.
 
 `xcoding daemon serve` is an optional local read-only transport. It binds only
 to `127.0.0.1`, requires a process-lifetime bearer token and exact Host/Origin
-checks, accepts only launch-time runtime files, exposes nine typed read-only
+checks, accepts only launch-time runtime files, exposes ten typed read-only
 queries, and streams bounded non-durable SSE summaries. `xcoding runtime`
 remains direct local execution and does not discover or start the daemon.
 `xcoding viewer` remains a separate browser inspection surface.

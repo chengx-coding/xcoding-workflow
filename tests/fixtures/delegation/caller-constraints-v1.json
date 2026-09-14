@@ -1,0 +1,1 @@
+{"grants":[{"id":"project.read.declared","values":["README.md"]},{"id":"runtime.terminal.assigned-node","values":["block","complete","fail"]},{"id":"skill.invoke.declared","values":["xc-analysis"]},{"id":"workbench.write.artifact","values":["artifacts/evidence.md"]}],"kind":"xc-delegation-caller-constraints/v1","schema_version":1}
