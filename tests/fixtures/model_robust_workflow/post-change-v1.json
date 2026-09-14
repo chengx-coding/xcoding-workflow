@@ -7,7 +7,7 @@
   "input_hashes": {
     "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
     "tests/workflow_scenario_harness.py": "ce924f0d87579eaf48a4ae983dfd1d89d274ce416b3c1e361c39eed7edb5454d",
-    "tests/test_xc_workflow_governance.py": "bf4e1f0e76e9138a60e7e23aa163e631fa2d057e7e4c5f6331ee507e39b999f6",
+    "tests/test_xc_workflow_governance.py": "0a5f024c1d3d10689b6dce4ec16801633213f42185f13fdd203a42b0470c2446",
     "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
     "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
     "skills/xc-open-work-order/scripts/open_work_order.py": "5afd6c67aaadb218833fc51d195bce3a3847c02afc659fb7d864ce7df9ffc0eb",
@@ -1400,7 +1400,7 @@
     "input_hashes": {
       "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
       "tests/workflow_scenario_harness.py": "ce924f0d87579eaf48a4ae983dfd1d89d274ce416b3c1e361c39eed7edb5454d",
-      "tests/test_xc_workflow_governance.py": "bf4e1f0e76e9138a60e7e23aa163e631fa2d057e7e4c5f6331ee507e39b999f6",
+      "tests/test_xc_workflow_governance.py": "0a5f024c1d3d10689b6dce4ec16801633213f42185f13fdd203a42b0470c2446",
       "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
       "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
       "skills/xc-open-work-order/scripts/open_work_order.py": "5afd6c67aaadb218833fc51d195bce3a3847c02afc659fb7d864ce7df9ffc0eb",
