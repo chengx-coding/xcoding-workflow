@@ -1,0 +1,283 @@
+# Change Report Structure and Analysis Contract
+
+Normative contract for the single-file report. Identifiers are addresses: the H, A, V, C and
+D numbers below are cited by the scripts, the validator's failure messages and the tests.
+Implementation constants named here live in `scripts/build_manifest.py`.
+
+## Position and naming
+
+- **H1** The deliverable path is `<workbench>/artifacts/<report-node-id>/change-report.html`.
+  Both placeholders come from engine return values; never join them by hand.
+- **H2** The coverage manifest is `change-report-manifest.json` in the same directory.
+- **H2a** The accuracy verdicts are `change-report-verdicts.json` in the same directory. The
+  three files always share one directory.
+- **H3** `change-report.html` is a single file: double-click opens it; no server, no network,
+  no adjacent file, no `assets/` directory.
+- **H4** The report is never written into the project repository. Intermediate files live
+  under `<workbench>/tmp/` and are never declared as artefacts.
+- **H5** The node declares these paths as `--artifact` in its runtime terminal state and
+  declares `metadata.artifact.audience=user` with
+  `metadata.artifact.content_language=work_order.document_language`.
+
+## Page structure (fixed order, no additions, no reordering)
+
+Sections carry these exact ids; the validator reads the order from the document.
+
+| H | Section id | Content |
+|---|---|---|
+| H6 | `section-overview` | what changed, why, impact, reading guide |
+| H7 | `section-change-map` | the change map and the exclusion table |
+| H8 | `section-process-position` | where the change sits in the wider flow, before/after |
+| H9 | `section-units` | one section per analysable change unit |
+| H10 | `section-related-code` | unchanged code quoted to explain context |
+| H11 | `section-diagrams` | diagrams required by the change features |
+| H12 | `section-verification` | referenced verification commands, results, residual risk |
+| H13 | `section-glossary` | every proper noun used in the body, explained once |
+| H14 | `section-report-info` | generation time, manifest hash, baseline, rounds, skips, degradations |
+
+H6-H12 and H14 are judged mechanically (V5). The completeness of H13 and the writing quality
+of H6-H12 are human review items; no script decides whether a term was really explained.
+
+## Change map
+
+- **H15** One row per analysable change unit.
+- **H16** Six columns, in this order: repository-relative path, change kind, unit number,
+  first 12 hex characters of the manifest content hash, code location, link to the unit's
+  analysis section. The code location is `<path>:<start>-<end>` taken from `new_range`, or
+  from `old_range` for a unit whose content side is the old side (a pure deletion). V5
+  asserts both the row count and that the code-location column is non-empty.
+- **H17** The change-map row count equals the manifest's `units_total`. Excluded files are
+  not counted here and do not appear; the equation performs no subtraction.
+- **H18** Excluded entries have their own table with path, category and reason per row, plus
+  the totals. Its row count equals `excluded_total + pre_existing_total`. Exclusions are
+  never hidden in the manifest only.
+
+## Table of contents and anchors
+
+- **H19** The left sidebar is a fixed two-level table of contents: section, then change unit,
+  collapsible.
+- **H20** Collapsing uses native HTML (`<details>`/`<summary>`) and CSS only. No JavaScript.
+- **H21** Every analysable unit has the stable anchor `#unit-<unit_index>`, where
+  `<unit_index>` is the manifest's globally monotonic unit number, not a per-file restart and
+  not a git hunk number. File-level anchors are `#file-<file-slug>`.
+- **H22** `<file-slug>` is built by the script: take the repository-relative path, lowercase
+  it, replace `/`, `\`, `.` and every non-alphanumeric character with `-`, then collapse runs
+  of `-`. The model never writes an anchor by hand.
+- **H23** Cross-references inside the page use in-page anchors. Every unit section carries a
+  previous/next change navigation.
+- **H24** Table-of-contents entries and anchors are validated: every table-of-contents target
+  exists, every manifest anchor exists in the page, and no unit section exists outside the
+  manifest.
+- **H24a** The anchor-to-unit correspondence is surjective: each analysable unit has exactly
+  one `#unit-<unit_index>` section. H24 rules out extras; V2 rules out omissions.
+
+## Per-unit analysis content (all eight fields are required)
+
+- **A1** `what` - what the code does, in words a human reads without the diff.
+- **A2** `why` - the problem it solves; what would happen without it.
+- **A3** `design` - the approach or pattern, and how it cooperates with existing code.
+- **A4** `tradeoffs` - what was given up; what it costs.
+- **A5** `flow-position` - which stage, module or layer of the wider flow it belongs to.
+- **A6** `alternatives` - what else was considered and why it was not chosen.
+- **A7** `business-process` - the business or domain process it takes part in.
+- **A8** `data-and-control` - how it is called, its inputs and outputs, error and boundary
+  handling.
+- **A9** Granularity is the change unit: one unit, one analysis covering that unit's whole
+  diff. Never one blob per file, never one paragraph per diff line.
+- **A10** Joint analysis is allowed: several units may share one analysis, but the section
+  must list every covered anchor in its `data-covers` attribute. The check runs on anchor
+  sets (V2, V3), not on paragraph counts.
+- **A11** Unchanged code may be quoted for context with `report-code-context`, which must
+  carry the file path and a line range in `data-path` and `data-lines` and is visually
+  distinct from changed code. It never participates in hash recomputation.
+- **A12** A pure addition only has to explain why it is needed; a pure deletion only has to
+  explain why it can go and what replaces it. A1-A8 still apply otherwise.
+- **A13** The minimum information threshold is enforced by the validator from one built-in
+  constant table:
+  - `MIN_FIELD_CHARS = 40` characters after whitespace removal, per field;
+  - `PLACEHOLDER_TOKENS` = `todo`, `tbd`, `fixme`, `n/a`, `xxx`, `placeholder`,
+    `lorem ipsum`, `待补充`, `待定` - a field whose text is, or contains, one of these as a
+    standalone token fails;
+  - a field made only of symbols or with no word content fails.
+- **A14** Analysis must be bound to the code it cites, by two mechanical rules:
+  - V10 recomputes the unit's content hash from its code block and compares it with the
+    manifest;
+  - V11 requires at least one code token of the unit's diff to appear in the analysis prose.
+  The length threshold (A13) only prevents blanks; A14 prevents filler.
+- **A15** Binding failure and content error are different things. A14 can decide "this text
+  has nothing to do with this code"; it cannot decide "this text explains the code wrongly".
+  That is the accuracy review worker's judgement, with the human gate as an extra layer when
+  it is open. V14 recomputes the verdict file at the final stage: it checks that every
+  analysable unit is covered, that the verdict vocabulary is respected and that the
+  thresholds hold. It cannot check whether a verdict is right, and the three statements are
+  never merged.
+
+## Code references, diffs and highlighting
+
+- **H25** Every analysable unit has at least one code block showing its diff, and exactly one
+  block per unit is the recomputation object: `class="report-code"` with
+  `data-unit="<unit_index>"`.
+- **H26** Code is quoted verbatim from the repository: no rewriting, reordering or completion.
+  The complete after-state snippet appears in `<pre><code>` with real line numbers. There are
+  exactly two exceptions, and both must be visibly marked:
+  - (a) content matching the C34 sensitive rules is replaced by redaction markers; the original
+    bytes survive only as hashes and lengths;
+  - (b) content that is not valid UTF-8 is decoded with replacement characters and the unit is
+    annotated.
+- **H26a** The recomputation normalisation is fixed:
+  1. take the inner HTML of the unit's `<pre class="report-code"><code>` element;
+  2. drop the line-number column, which the script emits as
+     `<span class="report-lineno">N</span>` followed by one literal tab;
+  3. drop rows marked `report-diff-head`;
+  4. drop rows marked `report-diff-del`;
+  5. strip one leading `+` from rows marked `report-diff-add`;
+  6. unwrap `report-code-changed` markers, keeping their text;
+  7. remove all remaining markup, decode entities, keep every other space and newline;
+  8. encode as UTF-8 and take the SHA-256.
+  Steps 3-5 exist so that the snippet presentation and the unified-diff presentation reduce
+  to the same text (H27). `scripts/build_manifest.py` owns this implementation;
+  `scripts/build_skeleton.py` and `scripts/validate_report.py` import it, so the forward and
+  reverse directions cannot drift.
+- **H27** The default presentation is the complete after-state snippet with the changed lines
+  marked. When the snippet is longer than `MAX_UNIT_LINES_SNIPPET = 60`, or when the changed
+  lines are not contiguous inside the unit's range, the unified-diff presentation is used
+  instead: a `@@ -old,+new @@` header plus `+`/`-` rows. Both presentations must normalise to
+  the same text, otherwise V10 fails. Units whose content side is the old side (pure
+  deletions) always use the snippet presentation, because dropping their rows would normalise
+  to nothing.
+- **H28** The class names are contract: `report-code`, `report-code-changed`,
+  `report-code-context`, `report-diff-add`, `report-diff-del`, `report-anchor`. The inlined
+  stylesheet provides the styling and the validator checks that the classes are used.
+  `report-code-context` is A11 context and never participates in V10.
+- **H29** Highlighting is a lightweight lexical colourer inside the script: comments,
+  strings, numbers and a generic keyword set, emitted as `<span class="tok-*">`. Colours come
+  from the inlined stylesheet.
+- **H30** No Pygments, highlight.js, Prism, Shiki or any other external highlighter, and no
+  network lookup of language definitions.
+- **H31** The language is chosen by file extension. An unknown extension or an unsupported
+  language degrades to escaped monospace text: no error, no interruption.
+- **H32** Colouring is a pure function: the same text and language label always produce
+  byte-identical output. The colourer never changes the code text, only wraps it in spans, so
+  code quoting stays verbatim even when the colouring is imperfect. **"Coloured" is not
+  "syntactically correct":** the keyword set is generic, not a grammar per language, and this
+  is an accepted, documented cost.
+
+## Offline self-containment
+
+- **H33** No external resource and no fetch capability may be *constructed*. Any hit in this
+  enumeration fails:
+  - URL text: `http://`, `https://`, and protocol-relative addresses starting with `//`;
+  - external subresources: any `<link>`, `<script src=...>`, `<img src=...>`,
+    `<img srcset=...>`, `<source src=...>`, `<video>`, `<audio>`, `<track>`,
+    `<input type="image">`;
+  - embedding and fetching: `<iframe>` (with or without `src`), `<object data=...>`,
+    `<embed src=...>`, `<meta http-equiv="refresh">`, `<base href=...>`, `<form action=...>`,
+    and any element carrying `action` or `formaction`;
+  - CSS: `url(...)` and `@import` (including `@import url(...)`, `@import "..."`, and
+    `@font-face` sources) in the inlined `<style>` and in any `style` attribute;
+  - SVG: `<image href=...>`, `<image xlink:href=...>`, `<use href=...>`,
+    `<use xlink:href=...>`, `<feImage>` - except same-document references whose value starts
+    with `#`.
+  Inline SVG therefore carries no `xmlns` attribute: it is not needed inside an HTML document
+  and it would itself be a URL text hit. CSS comments are stripped before the `url(...)` and
+  `@import` scan, because a comment cannot fetch anything.
+- **H33a** Nothing on the page needs the network to display and nothing can start a fetch.
+  H33 is the checkable decomposition of this sentence; the two are not redundant.
+- **H34** Styles are inlined in `<style>`. No web font; system font stacks only.
+- **H35** Diagrams are carried as described in `diagram-spec.md`: `flow` and `state` as inline
+  SVG, `sequence`, `class` and `er` as deterministic HTML tables. Neither carrier needs a
+  script runtime or an external resource.
+- **H36** The `<script>` predicate is mechanical: **every `<script>` whose `type` is not
+  `application/json` fails.** A JSON script block that is allowed must also have an id of the
+  form `diagram-spec-N`, no `src`, and no attribute other than `type` and `id`.
+- **H37** The validator enforces H33-H36 textually and structurally; the result enters the
+  node completion check.
+- **H37a** Code-block exclusion zone: text inside `report-code`, `report-code-changed`,
+  `report-code-context`, `report-diff-add` and `report-diff-del` does not participate in the
+  H33 URL-text scan. The rule is an element-interval exclusion, not a regex exemption: the
+  validator computes the character interval of every excluded element in document order and
+  discards matches that start inside one. **The interval is the element's own parsed subtree,
+  never a blanket remainder**: an element the author never closed is bounded by the first
+  structural boundary it owns, so an unclosed code block cannot exempt the rest of the page.
+  Two reasons: H26 requires verbatim quoting, so a URL
+  in a quoted constant, comment or docstring is data; and a `src`/`data`/`href` value can only
+  appear on a real tag's attribute, never inside quoted code text. The reverse also holds: a
+  bare URL outside a code block still fails.
+- **H37b** The validator distinguishes elements from text with a structured parser
+  (`html.parser` tag and data callbacks). It never guesses tag boundaries with one large
+  regex. Regular expressions are used only for CSS declarations, and only on the text of
+  `<style>` elements and `style` attributes.
+
+## Language and audience
+
+- **H38** The body language is `work_order.document_language`. Code, paths, identifiers,
+  commands and machine output stay verbatim and are not translated.
+- **H39** The single source of truth for writing rules is the public `xc-document`
+  "Default Human-Readable Authoring" contract, including the four ISO 24495-1 principles:
+  relevant, findable, understandable, usable. This Skill does not restate them; it cites them,
+  so the two cannot drift apart.
+- **H40** This Skill declares only its increment over that contract:
+  - HTML presentation: section order (H6-H14), class names (H28), anchor rules (H21, H22),
+    native-only collapsing (H20);
+  - glossary correspondence: the glossary entry set and the in-place first-use explanations in
+    the body must correspond one to one (H13);
+  - diagram summaries: every diagram carries `<title>`, `<desc>` and a visible text summary
+    (D11);
+  - navigation: every unit section carries previous/next change links (H23).
+- **H41** The audience is `user` (the human work order owner), so the report is not an internal
+  English artefact and must follow the work order's document language. This Skill's `SKILL.md`
+  carries the public phrase `public \`xc-document\` human-readable authoring default` so the
+  repository's authoring-contract assertion covers it.
+
+## Strength matrix
+
+The level is fixed by confirmed facts, never by task length or wording, and is written to
+`report.strength` and into the report information section.
+
+| Level | Facts | Mandatory | Optional | Human gate |
+|---|---|---|---|---|
+| `minimal` | `mode in {change, repair, maintenance}`, `risk=low`, `audit=none`, measured `units_total <= MAX_UNITS_MINIMAL = 5` | coverage manifest, change map, one A1-A8 section per unit, verbatim code blocks, V1-V13, offline check, accuracy review | diagrams, related code, glossary | closed by default; opened only on explicit user request |
+| `standard` | every other confirmed fact set | all of `minimal`, plus the diagrams required by D1-D6 and related-code references (A11) | glossary | closed by default; opened only on explicit user request |
+| `full` | `risk=high`, or `audit=required`, or explicit user request | all of `standard`, plus the glossary and per-unit alternative comparison | none | closed by default; opened only on explicit user request |
+
+Three rules constrain the level:
+
+- The level changes content thickness only. All three levels run V1-V13 **and** the accuracy
+  review. `minimal` omits no analysable unit, relaxes no A1-A8 threshold and skips no hash
+  recomputation or token binding. What `minimal` saves is presentation, not proof.
+- The gate is not a property of the level. All three levels default to closed; only an
+  explicit user request opens it. A `full` report has more content, not more checkpoints.
+- The measured unit count can raise the level and never lower it: when `prepare-manifest`
+  measures more units than `MAX_UNITS_MINIMAL` while `minimal` was selected, it publishes
+  `standard` and records `report.strength_upgrade_reason`.
+
+## Analysis text input
+
+`build_skeleton.py` reads an optional analysis JSON. Every field it does not receive is
+rendered as an empty field, which V4 then fails: building a skeleton and validating it are
+different steps, and only the validator judges.
+
+```json
+{
+  "schema_version": 1,
+  "language": "en",
+  "title": "…", "subtitle": "…",
+  "overview": {"what_changed": "…", "why": "…", "impact": "…", "reading_guide": "…"},
+  "process_position": {"narrative": "…", "before": "…", "after": "…"},
+  "related_code": [{"path": "src/x.py", "lines": "10-20", "note": "…", "code": "…"}],
+  "glossary": [{"term": "…", "explanation": "…"}],
+  "verification": {"commands": [{"command": "…", "result": "…"}], "residual_risks": "…"},
+  "diagrams": [{"id": "diagram-1", "type": "flow", "render_mode": "svg", "…": "…"}],
+  "rounds": [{"round": 1, "refresh_reason": "initial", "scope": "…",
+              "manifest_sha256": "…", "at": "…", "sections": "…"}],
+  "report_info": {"gate_note": "…", "skip_note": "…"},
+  "units": {"1": {"fields": {"what": "…", "why": "…", "design": "…", "tradeoffs": "…",
+                             "flow-position": "…", "alternatives": "…",
+                             "business-process": "…", "data-and-control": "…"},
+                 "covers": ["#unit-1"], "note": "…"}}
+}
+```
+
+Round records are mandatory: when the analysis carries none, the builder writes one
+`refresh_reason=initial` row, and V5 fails any table whose first row is not `initial`, so
+"only one round ran" and "a round record was lost" stay distinguishable.

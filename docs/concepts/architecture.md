@@ -28,6 +28,8 @@ The canonical agent definitions under `agents-src/agents/` follow one naming rul
 
 Canonical sources are changed before anything derived from them. Skills communicate through Skill names and documented public parameters. One Skill does not reach into another Skill's private references or scripts.
 
+One Skill owns a user-facing rendering surface rather than a managed Markdown document. [`xc-change-report`](../../skills/xc-change-report/SKILL.md) owns the change report: one offline HTML file, the coverage manifest the report is proven against, and the deterministic validator. Its authoring standard stays with the shared human-readable contract in [`xc-document`](../../skills/xc-document/SKILL.md), and its body language follows the work order's fixed document language, so one standard governs every human-facing producer instead of one copy per renderer.
+
 ## Generated Outputs And Adapters
 
 `agents-src/claude-agents/`, `agents-src/opencode-agents/`, `agents-src/codex-agents/`, and `agents-src/trae-agents/` are generated target-specific agent definitions. The [agent exporter](../../agents-src/export_agents.py) validates canonical definitions and reproduces those outputs.

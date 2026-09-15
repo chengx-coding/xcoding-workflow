@@ -1,0 +1,17 @@
+{
+  "id": "diagram-2",
+  "type": "state",
+  "render_mode": "svg",
+  "title": "Report lifecycle states",
+  "summary": "A report moves from generated to validated, and either stays current or becomes stale and is refreshed.",
+  "nodes": [
+    {"id": "generated", "label": "Generated", "layer": 0},
+    {"id": "validated", "label": "Validated", "layer": 1},
+    {"id": "stale", "label": "Stale", "layer": 2}
+  ],
+  "edges": [
+    {"from": "generated", "to": "validated", "label": "checks pass"},
+    {"from": "validated", "to": "stale", "label": "code changes"},
+    {"from": "stale", "to": "generated", "label": "refresh round"}
+  ]
+}

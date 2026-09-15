@@ -2,7 +2,17 @@
 
 **Language:** **English** | [简体中文](../../zh-CN/reference/skills/implementation-and-quality.md)
 
-These supporting Skills execute approved changes and assess their evidence.
+These supporting Skills execute approved changes, explain them to human reviewers, and assess their evidence.
+
+## `xc-change-report`
+
+[Canonical contract](../../../skills/xc-change-report/SKILL.md)
+
+- **Invoke when:** a work order changed analysable code and a human must review that change without opening an IDE: after implementation and verification, and before the result document.
+- **Purpose:** turn one work order's change set into a single self-contained offline HTML report plus the coverage manifest that proves every analysable change unit is covered by an analysis, bound to the code it cites, of what changed, why it exists, the design it embodies, and its place in the larger flow.
+- **Public entry:** required `report_path`, `manifest_path`, `repo_path`, `baseline_commit`, `language`, and `strength`; validation additionally requires `stage`, and `verdicts_path` is required at the final stage; `gate_required` defaults to `false`.
+- **Typical usage:** enumerate the change set and publish the manifest, build the skeleton, write the eight required analysis fields for every unit the manifest lists (several units may share one analysis when it declares that it covers all of them), then validate at `stage=coverage` and again at `stage=final` after the accuracy review. Every round regenerates the same single report; a report that went stale after code rework is refreshed instead of failing a node, and the refresh loop is bounded.
+- **Boundaries:** it never edits code and reaches no acceptance decision about the change; the strength tier changes content thickness only, because all three tiers run every mechanical check and the accuracy review; the human gate is optional and closed by default; hash and token checks prove that an analysis is bound to the code it cites, not that it is correct, and the accuracy review that judges meaning can itself be wrong.
 
 ## `xc-delegation`
 

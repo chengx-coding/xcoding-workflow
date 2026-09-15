@@ -126,6 +126,17 @@ Preserve exact commands, identifiers, paths, logs, and machine output when liter
 
 This is an authoring and semantic-review contract. `validate_document.py` does not claim to score or mechanically prove readability.
 
+### Alignment with ISO 24495-1
+
+The six rules above are this project's concrete expression of the plain-language principles in ISO 24495-1. A document satisfies them when it is:
+
+- **Relevant** — the reader gets what they need and nothing they do not; rule 1 and rule 4 carry this.
+- **Findable** — the reader can locate the part they need without reading everything; rule 1 (lead with the conclusion) and rule 2 (context before detail) carry this.
+- **Understandable** — the reader can grasp the content on first reading; rule 3 (explain terms at first use) and rule 6 (match depth to audience) carry this.
+- **Usable** — the reader can act on it; rule 5 (preserve material facts, risks and unresolved decisions) carries this.
+
+These four principles are the shared standard for every human-facing artifact this workflow produces, including artifacts that are not managed Markdown documents such as the change report HTML. A Skill that produces a human-facing artifact states only its deltas from this section and cites it by name; it does not restate these rules, so that one standard governs every producer.
+
 ## Content Language and Audience
 
 `content_language` is an optional simplified BCP 47 tag. When omitted, validation treats it as `en` without modifying the document. Work order lifecycles must explicitly set it from their fixed `work_order.document_language` before writing a top-level work order document.

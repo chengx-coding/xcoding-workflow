@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "description": "C11 regression anchor: one exact-content rename (equal hashes, one `renamed` unit) and one rename whose content also changed (unequal hashes, so it must stay a `deleted` plus an `added` entry).",
+  "commit": {
+    "a.txt": {"text": "identical content\nsecond line\n"},
+    "b.txt": {"text": "before the move\nsecond line\n"},
+    "keep.txt": {"text": "untouched\n"}
+  },
+  "head": {
+    "a.txt": null,
+    "renamed.txt": {"text": "identical content\nsecond line\n"},
+    "b.txt": null,
+    "b-moved.txt": {"text": "after the move\nsecond line\n"},
+    "keep.txt": {"text": "untouched\n"}
+  }
+}

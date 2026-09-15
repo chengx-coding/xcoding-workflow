@@ -54,6 +54,12 @@ WORKFLOWS = (
         REPOSITORY_ROOT / "skills" / "xc-clarify" / "assets" / "clarify-template.xml",
         "open-session-record",
     ),
+    (
+        "change-report",
+        REPOSITORY_ROOT / "skills" / "xc-change-report" / "assets" / "change-report-flow.json",
+        REPOSITORY_ROOT / "skills" / "xc-change-report" / "assets" / "change-report-template.xml",
+        "prepare-manifest",
+    ),
 )
 
 

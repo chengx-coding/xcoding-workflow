@@ -1,0 +1,289 @@
+{
+  "name": "change-report",
+  "schema_version": 1,
+  "blackboard": {
+    "report.path": "",
+    "report.manifest_path": "",
+    "report.language": "en",
+    "report.baseline_commit": "",
+    "report.baseline_digest": "",
+    "report.baseline_algorithm": "",
+    "report.strength": "standard",
+    "report.strength_upgrade_reason": "",
+    "report.accuracy_open_issues": "false",
+    "report.gate_required": "false",
+    "report.gate_outcome": "not-run",
+    "report.gate_rework_required": "false",
+    "report.gate_recovery_required": "false",
+    "report.refresh_count": "0",
+    "report.refresh_reason": "initial",
+    "report.round": "1",
+    "report.run_required": "false",
+    "report.units_total": "0",
+    "report.units_covered": "0",
+    "report.excluded_total": "0",
+    "report.pre_existing_total": "0",
+    "report.hash_bound": "0",
+    "report.token_bound": "0",
+    "report.coverage": "unknown",
+    "report.self_contained": "false",
+    "report.head_current": "true"
+  },
+  "root": {
+    "template_id": "change-report",
+    "title": "Change Report",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "report-pass-loop",
+        "title": "Refresh and validate change report",
+        "type": "loop",
+        "role": "report-pass",
+        "mode": "sequence",
+        "executor": "main",
+        "loop.max_iterations": "3",
+        "loop.continue_when": "report.gate_rework_required == true",
+        "loop.break_when": "report.gate_rework_required == false",
+        "loop.on_limit": "failed",
+        "metadata": {
+          "rework_publishers": "[{\"terminates_round\":\"gate-rework\",\"node\":\"report-gate\",\"publishes\":\"true\"},{\"terminates_round\":\"review-loop-exit\",\"node\":\"validate-final\",\"publishes\":\"true\"},{\"terminates_round\":\"review-loop-exit\",\"node\":\"validate-final\",\"publishes\":\"false\"},{\"terminates_round\":\"validate-final-stale\",\"node\":\"validate-final\",\"publishes\":\"true\"},{\"terminates_round\":\"validate-final-stale\",\"node\":\"validate-final\",\"publishes\":\"false\"}]"
+        },
+        "instructions": "Own the bounded refresh pass of one work order's single change report. One iteration is one round, and the round terminates at exactly one of three places: report-gate returns a reworking outcome, report-gate-recovery-group finishes the recovery it was selected for, or the gate did not terminate the round and validate-final owns it. The loop has exactly one refresh latch, report.gate_rework_required. A round that a reworking gate decision terminates deliberately ends with that key still true, because the true is the edge back to the next pass; the pass that follows carries the reset. Every iteration regenerates the same change-report.html from the current worktree, re-runs coverage validation, re-runs the accuracy review, re-opens the optional gate, runs the recovery group when the gate demanded rework, and re-runs the final validation. Before an iteration starts, increment report.round and write report.refresh_reason; when the round was caused by code rework, also increment report.refresh_count. The pass limit is three iterations and an exhausted loop is an honest failure, never an unlimited retry.",
+        "deliverables": "A refreshed, validated change report whose round record lists each pass.",
+        "acceptance": "report.gate_rework_required has exactly one writer per round and never two. validate-final writes the value that ends the pass: true when it judges the report stale, false when it judges it fresh. report-gate adds the single write true when it demands rework, and the round that write terminates is the one round that carries no reset, because that true is the loop's continue edge back to the next pass and the gate. The gate never writes false and the recovery group never writes the key at all, so no round has two writers. The pass limit is declared and exhaustion is reported as a failure rather than silently accepted.",
+        "children": [
+          {
+            "template_id": "prepare-manifest",
+            "title": "Build change report manifest",
+            "type": "task",
+            "role": "report-manifest",
+            "executor": "tool",
+            "instructions": "Resolve this Skill package from its own location and run scripts/build_manifest.py against the real worktree and the recorded baseline, writing change-report-manifest.json to report.manifest_path inside the active workbench. Always pass --tmp-dir=<workbench>/tmp so the baseline snapshots and the C37 no-index scratch files land under the workbench tmp directory instead of the OS temp directory; the script falls back to the OS temp directory only when the flag is omitted, and omitting it violates H4/C37. Enumerate tracked and untracked paths, always pass --no-renames, keep excluded and pre-existing entries separate from analyzable units, and assign one global contiguous unit_index across files. Publish report.units_total, report.excluded_total, report.pre_existing_total, and the derived report.run_required through the runtime, and upgrade report.strength from minimal to standard when the measured units_total exceeds the built-in max_units_minimal, recording the reason in report.strength_upgrade_reason. Never edit project code and never write the manifest outside the active workbench.",
+            "inputs": "report.path, report.manifest_path, report.baseline_commit, report.baseline_digest, report.language, the current report.strength, and the active workbench tmp directory passed to the script as --tmp-dir.",
+            "deliverables": "change-report-manifest.json at report.manifest_path.",
+            "acceptance": "The manifest is generated from the real worktree and the recorded baseline, unit_index is global and contiguous, excluded_total counts excluded paths while pre_existing_total counts pre-existing hunks, no excluded path contributed a unit, and analysis granularity is decided by the script rather than by a model.",
+            "metadata": {
+              "completion": {
+                "required_fields": "[\"summary\",\"validation\"]",
+                "artifacts": {
+                  "min": "1",
+                  "max": "1",
+                  "path": "bb:report.manifest_path"
+                }
+              }
+            }
+          },
+          {
+            "template_id": "author-report",
+            "title": "Author change report",
+            "type": "task",
+            "role": "report-author",
+            "executor": "subagent",
+            "instructions": "Run scripts/build_skeleton.py to rebuild the whole change-report.html skeleton from the manifest, the Skill page template, and the Skill stylesheet, always passing --tmp-dir=<workbench>/tmp so the intermediate diff inputs stay under the workbench tmp directory. Then write the A1-A8 design explanation for every analyzable unit, reusing or rewriting the existing text by anchor. Give every unit exactly one report-code block carrying data-unit=<unit_index> whose normalized text reproduces the manifest content_sha256, and make every analysis paragraph reference at least one identifier or path token that appears in that unit's diff. Keep the page offline and self-contained, keep the section order fixed, and never edit project code.",
+            "inputs": "report.path, report.language, report.strength, report.manifest_path, the manifest itself, the Skill page template and stylesheet, work_order.document_language, and the active workbench tmp directory passed to the script as --tmp-dir.",
+            "deliverables": "change-report.html at report.path plus the node analysis artifact.",
+            "acceptance": "All nine sections exist in the fixed order, every manifest anchor has exactly one section, every unit carries A1-A8 text bound to its own code block, the declared audience and language are report.language and work_order.document_language, and no external resource is referenced.",
+            "metadata": {
+              "artifact": {
+                "audience": "user",
+                "content_language": "work_order.document_language"
+              },
+              "completion": {
+                "required_fields": "[\"summary\",\"validation\"]",
+                "artifacts": {
+                  "min": "1",
+                  "max": "1",
+                  "path": "bb:report.path"
+                }
+              }
+            }
+          },
+          {
+            "template_id": "validate-coverage",
+            "title": "Validate report coverage",
+            "type": "task",
+            "role": "report-validate",
+            "executor": "tool",
+            "instructions": "Run scripts/validate_report.py for the whole report and treat any finding as a node failure; a validation failure is never downgraded to a warning. Require exit code 0 and top-level ok=true, publish report.units_total, report.units_covered, report.excluded_total, report.pre_existing_total, report.hash_bound, report.token_bound, report.coverage, report.self_contained, report.head_current, report.strength, and report.round from the verified result, then pass only the .receipt object to the terminal completion check. The receipt is an untrusted caller self-report; recomputable validation against the real worktree is the actual proof.",
+            "inputs": "report.path, report.manifest_path, report.baseline_commit, report.baseline_digest, and the current worktree.",
+            "deliverables": "A normalized validation receipt recorded in the node result.",
+            "acceptance": "Every rule V1 through V13 passes against the real manifest, worktree, and page; staleness is the only failure routed to the refresh back-edge and every other failure fails the node.",
+            "metadata": {
+              "completion": {
+                "required_fields": "[\"summary\",\"validation\"]",
+                "artifacts": {
+                  "min": "0",
+                  "max": "0"
+                },
+                "checks": "[\"xc-change-report\"]",
+                "check": {
+                  "xc-change-report": {
+                    "subject": "bb:report.path",
+                    "facts": {
+                      "units_total": "bb:report.units_total",
+                      "units_covered": "bb:report.units_covered",
+                      "excluded_total": "bb:report.excluded_total",
+                      "pre_existing_total": "bb:report.pre_existing_total",
+                      "hash_bound": "bb:report.hash_bound",
+                      "token_bound": "bb:report.token_bound",
+                      "coverage": "bb:report.coverage",
+                      "self_contained": "bb:report.self_contained",
+                      "head_current": "bb:report.head_current",
+                      "strength": "bb:report.strength",
+                      "rounds": "bb:report.round"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "template_id": "report-review-loop",
+            "title": "Review and revise report accuracy",
+            "type": "loop",
+            "role": "report-review",
+            "mode": "sequence",
+            "executor": "main",
+            "loop.max_iterations": "3",
+            "loop.continue_when": "report.accuracy_open_issues == true",
+            "loop.break_when": "report.accuracy_open_issues == false",
+            "loop.on_limit": "failed",
+            "instructions": "Run the accuracy review unconditionally in every pass. The loop compares each unit's explanation with the real code in the worktree and revises the flagged analysis text until no unit is wrong or misleading; it is never skippable and its exhaustion is a failure, not a warning. The loop does not write report.gate_rework_required on exit: validate-final is the last node of every round and is the single reset owner, and in the round where the gate demanded recovery the recovery group already published the value. The reviewer decides whether an explanation matches the code; it does not judge whether the code satisfies the requirement, and it may itself be wrong, so this loop lowers the residual risk from unchecked to checked without removing it.",
+            "deliverables": "change-report-verdicts.json, graded findings, and the revised analysis text.",
+            "acceptance": "No unit remains wrong or misleading, the verdict file and the published boolean agree, and the review covered the real code rather than only the page.",
+            "children": [
+              {
+                "template_id": "review-report",
+                "title": "Review report accuracy",
+                "type": "task",
+                "role": "report-review",
+                "executor": "subagent",
+                "instructions": "Compare the analysis of every unit against the real worktree code, that unit's diff, and the work order goal.md, analysis.md, and solution.md when those exist. Read the repository, not only the report; reviewing the page alone would repeat the mechanical hash check. Write change-report-verdicts.json next to the report with exactly one entry per analyzable unit_index carrying unit_index, verdict, and a short reason that points at a code location, write the review.md node artifact with graded findings, and set report.accuracy_open_issues to true when any verdict is wrong or when the misleading count exceeds the built-in max_misleading, otherwise to false. Never edit code and never edit the report.",
+                "inputs": "report.path, the manifest unit ranges and content hashes, the real worktree, and the work order documents when present.",
+                "deliverables": "change-report-verdicts.json beside the report plus the review.md node artifact.",
+                "acceptance": "Every analyzable unit has exactly one verdict in accurate, misleading, or wrong; wrong and misleading entries carry a non-empty reason; the published boolean matches the file; and the findings state that the review cannot detect code that fails the requirement.",
+                "metadata": {
+                  "artifact": {
+                    "audience": "internal",
+                    "content_language": "en"
+                  },
+                  "completion": {
+                    "required_fields": "[\"summary\",\"validation\"]",
+                    "artifacts": {
+                      "min": "1",
+                      "max": "2"
+                    }
+                  }
+                }
+              },
+              {
+                "template_id": "revise-report",
+                "title": "Revise report from accuracy findings",
+                "type": "task",
+                "role": "report-revise",
+                "executor": "subagent",
+                "when": "report.accuracy_open_issues == true",
+                "when.policy": "latched",
+                "depends_on_template": "local:review-report",
+                "instructions": "Read the latest verdict file and review artifact and rewrite only the flagged analysis text of change-report.html, keeping the skeleton, the anchors, and every report-code block that the manifest content hash covers byte-stable. Do not change code, do not change the manifest, and do not weaken the coverage contract; the next review pass re-checks the rewritten text.",
+                "inputs": "report.path, change-report-verdicts.json, the review artifact, and the manifest anchors.",
+                "deliverables": "Revised change-report.html at report.path.",
+                "acceptance": "Every wrong and misleading finding is resolved in the text, the bound code blocks still reproduce their manifest content hashes, and no unrelated section was rewritten.",
+                "metadata": {
+                  "completion": {
+                    "required_fields": "[\"summary\",\"validation\"]",
+                    "artifacts": {
+                      "min": "1",
+                      "max": "1",
+                      "path": "bb:report.path"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "template_id": "report-gate",
+            "title": "Confirm change report review",
+            "type": "gate",
+            "role": "report-approval",
+            "executor": "main",
+            "when": "report.gate_required == true",
+            "when.policy": "latched",
+            "instructions": "Ask whether the explanation of the design intent matches the reader's understanding, whether any stated tradeoff is unacceptable, whether anything should have been explained and was not, and whether the change itself needs rework; accept only an answer that lands on a declared outcome. Publish report.gate_outcome and both derived values. For revision-required and rejected publish report.gate_rework_required=true and report.gate_recovery_required=true; the true selects the recovery group in this same round, is this round's only write of the key, and is what carries control to the next pass, so the reworked report reaches this gate again. For accepted and accepted-with-followup publish report.gate_recovery_required=false and do not write report.gate_rework_required at all: validate-final owns that key and writes it later in this same round, so a gate that also wrote it would give one round two writers, which is what O4 forbids. The gate re-opens in every pass, so the human always reads the refreshed report, and a skipped gate records report.gate_outcome=not-run rather than accepted.",
+            "inputs": "report.path, report.manifest_path, report.strength, report.round, and the refresh reason of the current pass.",
+            "deliverables": "A structured gate outcome and its two derived values.",
+            "acceptance": "The declared outcome set and the routed outcome set correspond value for value, no outcome is orphaned or undeclared, accepted-with-followup never enters the recovery group, a reworking outcome makes the recovery group reachable in the same round, and the gate never resets the refresh key that validate-final owns.",
+            "metadata": {
+              "completion": {
+                "required_fields": "[\"summary\",\"validation\"]"
+              },
+              "gate": {
+                "outcomes": "[\"accepted\",\"revision-required\",\"rejected\",\"accepted-with-followup\"]",
+                "decision_required": "true",
+                "outcome_key": "report.gate_outcome"
+              }
+            }
+          },
+          {
+            "template_id": "report-gate-recovery-group",
+            "title": "Recover non-accepting report decision",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main",
+            "when": "report.gate_recovery_required == true",
+            "when.policy": "latched",
+            "instructions": "Append the recovery arrangement for a non-accepting report decision, in the same round as that decision, so control returns to report-gate instead of leaving the report subtree. A revision-required outcome appends revise-report to change the explanation text only, which needs no code refresh. A rejected outcome first appends the rework of the covered code through that work order's existing implementation path and its existing verification, which this subtree never performs itself because the report group never edits code; the refresh sequence prepare-manifest, author-report, validate-coverage then runs in the next pass of report-pass-loop, whose whole body re-runs, instead of being appended a second time here. Do not append a second change-report subtree and do not reference a node that is not part of this subtree. When the appended recovery work is complete, publish report.gate_recovery_required=false so the group is not re-selected, and leave report.gate_rework_required alone: the true the gate published is the loop's continue edge, so that key has exactly the one writer this round, and resetting it here would end the refresh pass before the reworked report was judged again. The next pass starts clean, re-runs the whole refresh sequence, brings the reworked report back to the gate, and validate-final writes the value that ends the pass. This group is unreachable while the gate does not run, because no node publishes its condition key.",
+            "deliverables": "Recovery work that resolves the non-accepting report decision.",
+            "acceptance": "The appended recovery matches the recorded outcome, a rejected outcome schedules code rework through the existing implementation path rather than editing code here, the refresh sequence runs in the next pass of report-pass-loop, and the group clears only report.gate_recovery_required, leaving the refresh key that carries control back to the gate untouched so the round still has exactly one writer of it."
+          },
+          {
+            "template_id": "validate-final",
+            "title": "Validate final report",
+            "type": "task",
+            "role": "report-validate-final",
+            "executor": "tool",
+            "when": "report.gate_recovery_required == false",
+            "when.policy": "latched",
+            "instructions": "Re-run scripts/validate_report.py for the whole report after review, revision, recovery, and any user decision, and recompute the accuracy verdict check that validate-coverage cannot run because the verdict file does not exist yet at that point. This node is the refresh key's primary writer and its guard keeps it out of the round a reworking gate decision terminates, so the key has exactly one writer in every round. On a staleness failure publish report.gate_rework_required=true and return control to the next pass of report-pass-loop instead of failing the node; on a fresh report publish report.gate_rework_required=false so the key is never a sticky latch and the loop terminates through its break condition. Any non-staleness failure fails the node. Publish the receipt facts, then pass only the .receipt object to the terminal completion check.",
+            "inputs": "report.path, report.manifest_path, the accuracy verdict file, report.baseline_commit, report.baseline_digest, and the current worktree.",
+            "deliverables": "A final validation receipt recorded in the node result.",
+            "acceptance": "Staleness is routed to the refresh back-edge with the condition key published, a fresh report leaves the same key false, exactly one node writes that key per round, every non-staleness failure fails the node, and the verdict file covers every analyzable unit with no wrong verdict.",
+            "metadata": {
+              "completion": {
+                "required_fields": "[\"summary\",\"validation\"]",
+                "artifacts": {
+                  "min": "0",
+                  "max": "0"
+                },
+                "checks": "[\"xc-change-report\"]",
+                "check": {
+                  "xc-change-report": {
+                    "subject": "bb:report.path",
+                    "facts": {
+                      "units_total": "bb:report.units_total",
+                      "units_covered": "bb:report.units_covered",
+                      "excluded_total": "bb:report.excluded_total",
+                      "pre_existing_total": "bb:report.pre_existing_total",
+                      "hash_bound": "bb:report.hash_bound",
+                      "token_bound": "bb:report.token_bound",
+                      "coverage": "bb:report.coverage",
+                      "self_contained": "bb:report.self_contained",
+                      "head_current": "bb:report.head_current",
+                      "strength": "bb:report.strength",
+                      "rounds": "bb:report.round"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

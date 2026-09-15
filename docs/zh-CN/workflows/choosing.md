@@ -64,6 +64,8 @@ python skills/xc-work/scripts/classify.py [--needs-persistence no|yes|unknown] [
 
 最小变更可以只使用一个合并 implementation/focused-verification 叶子节点和一个 plan-specific finalizer，不强制创建 `goal.md`、`analysis.md`、`solution.md` 或 `result.md`。模块级、不确定、高风险、协作、跨会话或 full-audit 事实会逐步增加独立验证、持久文档、gate、review 和 recovery。Adaptive work 没有通用全局节点数上限；单个 loop 仍保持有界。
 
+每个 mutation 模式 plan 都携带 `change_report` capability，因为产出可分析变更单元的工单必须解释这些单元；只读模式永远不会获得它，即使事实未知而升级到全能力集合也是如此。报告位于实现与验证之后、任何 adaptive review 节点之前；初始强度档位由已确认的 `risk` 与 `audit` 事实决定；除非用户显式要求，其人类门禁保持关闭。
+
 名为 `context_bytes` 的工作流测量统计归一化 UTF-8 运行时协议 payload 的字节数。它不是 token 数、模型时延、执行时延、成本或质量指标。
 
 ## 选择规则
@@ -78,4 +80,4 @@ python skills/xc-work/scripts/classify.py [--needs-persistence no|yes|unknown] [
 
 ## 服务不是生命周期入口
 
-[`xc-open-work-order`](../../../skills/xc-open-work-order/SKILL.md)为调用方创建持久 workbench，但不能替代生命周期选择。分析、澄清、实现、验证、评审、文档演进和编排 Skill 同样是由所选生命周期调用的有界能力。
+[`xc-open-work-order`](../../../skills/xc-open-work-order/SKILL.md)为调用方创建持久 workbench，但不能替代生命周期选择。分析、澄清、实现、验证、变更报告、评审、文档演进和编排 Skill 同样是由所选生命周期调用的有界能力。

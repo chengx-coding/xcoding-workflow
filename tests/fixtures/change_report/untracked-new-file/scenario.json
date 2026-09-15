@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "description": "R1 regression anchor: an untracked new file plus a tracked modification. `git diff <baseline_commit>` never reports the new file; the enumeration must still produce an `added` unit for it.",
+  "commit": {
+    "tracked.py": {"text": "def run():\n    return 1\n"}
+  },
+  "head": {
+    "tracked.py": {"text": "def run():\n    return 2\n"},
+    "brand-new.txt": {"text": "created by the work order\n"}
+  }
+}
