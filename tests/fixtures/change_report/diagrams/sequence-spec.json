@@ -1,0 +1,15 @@
+{
+  "id": "diagram-3",
+  "type": "sequence",
+  "render_mode": "table",
+  "title": "Coverage validation sequence",
+  "summary": "Deterministic table carrier: message order and participants are guaranteed, layout quality is not claimed (D18).",
+  "participants": ["main session", "prepare-manifest", "author-report", "validate-coverage"],
+  "messages": [
+    {"from": "main session", "to": "prepare-manifest", "message": "build the manifest", "note": "runs build_manifest.py"},
+    {"from": "prepare-manifest", "to": "main session", "message": "units_total", "note": "publishes the blackboard keys"},
+    {"from": "main session", "to": "author-report", "message": "author the analysis", "note": "A1-A8 per unit"},
+    {"from": "author-report", "to": "validate-coverage", "message": "change-report.html", "note": "single file"},
+    {"from": "validate-coverage", "to": "main session", "message": "normalised receipt", "note": "V1-V13"}
+  ]
+}

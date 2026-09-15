@@ -38,6 +38,7 @@ CAPABILITIES = (
     "independent_review",
     "result_document",
     "resumable_recovery",
+    "change_report",
 )
 VERIFICATION_SCOPES = ("focused", "regression", "multi-environment")
 VERIFICATION_SCOPE_LADDER = ("smoke", *VERIFICATION_SCOPES, "performance")
@@ -49,10 +50,12 @@ DECOMPOSITION_GRADES = (
     "feature-farms",
 )
 REVIEW_GRADES = ("none", "self-check", "independent", "architecture-gate")
+REPORT_STRENGTH_GRADES = ("minimal", "standard", "full")
+REPORT_AUDIT_REQUIRED_GRADES = frozenset({"result", "full"})
 MODES = ("investigation", "change", "repair", "review", "maintenance")
 MUTATION_MODES = frozenset({"change", "repair", "maintenance"})
 MUTATION_ONLY_CAPABILITIES = frozenset(
-    {"split_implementation", "separate_verification"}
+    {"split_implementation", "separate_verification", "change_report"}
 )
 PACE_VALUES = ("adaptive", "fast", "thorough")
 OPTIONAL_DEPTH_FLOORS: dict[str, dict[str, object]] = {
@@ -115,6 +118,20 @@ def derive_review_grade(
     if capabilities["separate_verification"]:
         return "self-check"
     return "none"
+
+
+def derive_report_strength(facts: dict[str, str]) -> str:
+    """Map confirmed risk and audit facts to the initial report strength.
+
+    Only the confirmed `risk` and `audit` facts are read; task length, wording,
+    and subjective confidence never change the tier. The manifest measurement
+    may still upgrade the tier upward in one direction, and only upward.
+    """
+    if facts["risk"] == "high" or facts["audit"] in REPORT_AUDIT_REQUIRED_GRADES:
+        return "full"
+    if facts["risk"] == "low" and facts["audit"] == "runtime-only":
+        return "minimal"
+    return "standard"
 
 
 OPTIONS = {
@@ -313,6 +330,7 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
     elif facts["mode"] in MUTATION_MODES:
         base_scope = "smoke" if facts["verification"] == "smoke" else "focused"
         add_scope(base_scope, f"mode:{facts['mode']}")
+        enable(("change_report",), f"mode:{facts['mode']}")
 
     for name in GOVERNANCE_FACTS:
         value = facts[name]
@@ -511,6 +529,7 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         *,
         artifact_min: int = 1,
         verification_scope: str = "",
+        source_keys: Sequence[str] = (),
     ) -> None:
         item: dict[str, object] = {
             "logical_key": logical_key,
@@ -519,6 +538,8 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         }
         if verification_scope:
             item["verification_scope"] = verification_scope
+        if source_keys:
+            item["source_keys"] = list(source_keys)
         required_nodes.append(item)
 
     if capabilities["goal_document"]:
@@ -551,6 +572,12 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
                 "verification",
                 verification_scope=name,
             )
+    if capabilities["change_report"]:
+        add_required(
+            "report",
+            "report",
+            source_keys=("work_order.report_baseline",),
+        )
     for index in range(depth["review_passes"]):
         add_required(f"review-{index + 1}", "review")
     if capabilities["result_document"]:
@@ -565,6 +592,9 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
     documentation_grade = derive_documentation_grade(capabilities)
     decomposition_grade = derive_decomposition_grade(facts, units)
     review_grade = derive_review_grade(capabilities, facts)
+    report_strength = (
+        derive_report_strength(facts) if capabilities["change_report"] else ""
+    )
     receipt_body = {
         "schema_version": 1,
         "request_sha256": hashlib.sha256(facts["request"].encode("utf-8")).hexdigest(),
@@ -583,6 +613,8 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         receipt_body["decomposition_grade"] = decomposition_grade
     if review_grade != "none":
         receipt_body["review_grade"] = review_grade
+    if report_strength:
+        receipt_body["report_strength"] = report_strength
     plan_id = hashlib.sha256(
         compact_json(receipt_body, sort_keys=True).encode("utf-8")
     ).hexdigest()

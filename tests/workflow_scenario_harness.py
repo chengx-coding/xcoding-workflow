@@ -81,6 +81,7 @@ INPUT_PATHS = (
     "skills/xc-document/assets/templates/work-order-solution.md",
     "skills/xc-document/assets/templates/work-order-result.md",
     "skills/xc-document/assets/templates/node-artifact.md",
+    "skills/xc-change-report/assets/change-report-template.xml",
 )
 PROFILE_DOCUMENTS = {
     "T1-M": ("work-order-goal", "work-order-result"),

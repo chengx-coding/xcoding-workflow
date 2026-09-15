@@ -1,0 +1,18 @@
+{
+  "id": "diagram-1",
+  "type": "flow",
+  "render_mode": "svg",
+  "title": "Report generation flow",
+  "summary": "The manifest is built from the worktree, the skeleton is rendered from the manifest, the validator recomputes coverage, and the gate routes the outcome.",
+  "nodes": [
+    {"id": "manifest", "label": "Build coverage manifest", "layer": 0},
+    {"id": "skeleton", "label": "Render report skeleton", "layer": 1},
+    {"id": "validate", "label": "Validate coverage", "layer": 2},
+    {"id": "gate", "label": "Human gate", "layer": 3}
+  ],
+  "edges": [
+    {"from": "manifest", "to": "skeleton", "label": "units"},
+    {"from": "skeleton", "to": "validate", "label": "html"},
+    {"from": "validate", "to": "gate", "label": "receipt"}
+  ]
+}

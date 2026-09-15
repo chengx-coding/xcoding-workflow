@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "description": "R7 regression anchor: a non-UTF-8 file that must degrade visibly, a hardcoded token removed by the work order (which must be redacted in place), and four sensitive paths that must be excluded whole.",
+  "commit": {
+    "src/normal.py": {"text": "def total(values):\n    return sum(values)\n"},
+    "src/legacy_token.py": {"text": "API_TOKEN = \"ghp_ABCDEFGHIJKLMNOPQRSTUVWX\"\n\ndef client():\n    return API_TOKEN\n"}
+  },
+  "head": {
+    "src/normal.py": {"text": "def total(values):\n    return sum(values, 0)\n"},
+    "src/latin.py": {"file": "latin_source.py"},
+    "src/legacy_token.py": {"text": "import os\n\nAPI_TOKEN = os.environ[\"API_TOKEN\"]\n\ndef client():\n    return API_TOKEN\n"},
+    ".env": {"text": "SERVICE_PASSWORD=not-a-real-secret\n"},
+    "config/service-account.json": {"text": "{\"type\": \"service_account\", \"project_id\": \"sample\"}\n"},
+    "keys/server.pem": {"text": "placeholder for a certificate path\n"},
+    "src/embedded_key.py": {"text": "AWS_ACCESS_KEY_ID = \"AKIAIOSFODNN7EXAMPLE\"\n"}
+  }
+}

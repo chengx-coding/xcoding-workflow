@@ -94,6 +94,8 @@ references/
 
 这是职责模式，并不要求创建空文件。该包应说明运行树位置、blackboard 键及允许值、artifact 所有权、单节点 worker prompt 和 gate 行为。
 
+提供可复用子树的包把可编辑的 JSON flow spec 与由它构建的模板一起放在 `assets/` 下。[`xc-change-report`](../../../skills/xc-change-report/SKILL.md) 包是当前的一个例子：`change-report-flow.json` 是它唯一的事实源，`change-report-template.xml` 是由它构建出的模板。flow spec 始终是唯一可编辑的编排源，生成模板绝不手改。
+
 领域包不得复制 runtime 状态机、XML parser、Viewer server 或通用编排脚本。详见[模板包契约](../../../skills/xc-orchestration-author/references/template-package-contract.md)。
 
 ## 验证与 Smoke Test

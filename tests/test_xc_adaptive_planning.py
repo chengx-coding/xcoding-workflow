@@ -19,50 +19,62 @@ import plan_work_policy as policy
 
 
 MINIMAL_PLAN_SNAPSHOT = (
-    '{"schema_version":1,"ok":true,"mode":"change","pace":"fast","capabilities":'
-    '{"goal_document":false,"analysis":false,"clarification":false,"solution":false,'
-    '"approval":false,"split_implementation":false,"separate_verification":false,'
-    '"independent_review":false,"result_document":false,"resumable_recovery":false},'
-    '"implementation_units_min":1,"verification_scopes":["focused"],"depth":'
-    '{"analysis_perspectives":0,"review_passes":0,"recovery_exercises":0},'
-    '"optional_depth":{"analysis_perspectives":{"floor":0,"value":0,"trimmed":true},'
-    '"review_passes":{"floor":0,"value":0,"trimmed":true},"recovery_exercises":'
-    '{"floor":0,"value":0,"trimmed":true},"regression_scope":{"floor":["focused"],'
-    '"value":["focused"],"trimmed":true}},"required_nodes":[{"logical_key":'
-    '"implementation-1","role":"implementation","artifact_min":1,'
-    '"verification_scope":"focused"},{"logical_key":"finalize","role":"finalizer",'
-    '"artifact_min":0}],"required_provenance":{"goal_document":[],"analysis":[],'
-    '"clarification":[],"solution":[],"approval":[],"split_implementation":[],'
-    '"separate_verification":[],"independent_review":[],"result_document":[],'
-    '"resumable_recovery":[]},"facts":{"governance":{"needs_persistence":"yes",'
-    '"material_impact":"yes","difficult_rollback":"no","crosses_sessions":"no",'
-    '"multiple_actors":"no","audit_required":"no"},"bridge_policy":"none","task":'
-    '{"scope":"single-location","clarity":"exact","risk":"low","verification":'
-    '"focused","coordination":"single","duration":"single-step","audit":'
-    '"runtime-only"}},"reason_codes":["mode:change","task:verification:focused"],'
-    '"planning_status":"planned","diagnostic":null,"plan_receipt":'
-    '{"schema_version":1,"request_sha256":'
-    '"0ba415c1d84b1c062757d9d8e908cac628f88c0a2f4c91de36192d87c40a2570",'
-    '"bridge_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-    'aaaaaaaa","mode":"change","pace":"fast","capabilities":{"goal_document":'
-    'false,"analysis":false,"clarification":false,"solution":false,"approval":'
-    'false,"split_implementation":false,"separate_verification":false,'
-    '"independent_review":false,"result_document":false,"resumable_recovery":'
-    'false},"implementation_units_min":1,"verification_scopes":["focused"],'
-    '"depth":{"analysis_perspectives":0,"review_passes":0,"recovery_exercises":'
-    '0},"optional_depth":{"analysis_perspectives":{"floor":0,"value":0,'
-    '"trimmed":true},"review_passes":{"floor":0,"value":0,"trimmed":true},'
-    '"recovery_exercises":{"floor":0,"value":0,"trimmed":true},"regression_scope":'
-    '{"floor":["focused"],"value":["focused"],"trimmed":true}},"required_nodes":'
-    '[{"logical_key":"implementation-1","role":"implementation","artifact_min":1,'
-    '"verification_scope":"focused"},{"logical_key":"finalize","role":"finalizer",'
-    '"artifact_min":0}],"facts":{"governance":{"needs_persistence":"yes",'
-    '"material_impact":"yes","difficult_rollback":"no","crosses_sessions":"no",'
-    '"multiple_actors":"no","audit_required":"no"},"bridge_policy":"none","task":'
-    '{"scope":"single-location","clarity":"exact","risk":"low","verification":'
-    '"focused","coordination":"single","duration":"single-step","audit":'
-    '"runtime-only"}},"plan_id":'
-    '"0927c908cbd45d8cb2d0645c508aa9826cb2bda413bafc0cb79a6781be1e9940"}}'
+    '{"schema_version":1,"ok":true,"mode":"change","pace":"fast","c'
+    'apabilities":{"goal_document":false,"analysis":false,"clarific'
+    'ation":false,"solution":false,"approval":false,"split_implemen'
+    'tation":false,"separate_verification":false,"independent_revie'
+    'w":false,"result_document":false,"resumable_recovery":false,"c'
+    'hange_report":true},"implementation_units_min":1,"verification'
+    '_scopes":["focused"],"depth":{"analysis_perspectives":0,"revie'
+    'w_passes":0,"recovery_exercises":0},"optional_depth":{"analysi'
+    's_perspectives":{"floor":0,"value":0,"trimmed":true},"review_p'
+    'asses":{"floor":0,"value":0,"trimmed":true},"recovery_exercise'
+    's":{"floor":0,"value":0,"trimmed":true},"regression_scope":{"f'
+    'loor":["focused"],"value":["focused"],"trimmed":true}},"requir'
+    'ed_nodes":[{"logical_key":"implementation-1","role":"implement'
+    'ation","artifact_min":1,"verification_scope":"focused"},{"logi'
+    'cal_key":"report","role":"report","artifact_min":1,"source_key'
+    's":["work_order.report_baseline"]},{"logical_key":"finalize","'
+    'role":"finalizer","artifact_min":0}],"required_provenance":{"g'
+    'oal_document":[],"analysis":[],"clarification":[],"solution":['
+    '],"approval":[],"split_implementation":[],"separate_verificati'
+    'on":[],"independent_review":[],"result_document":[],"resumable'
+    '_recovery":[],"change_report":["mode:change"]},"facts":{"gover'
+    'nance":{"needs_persistence":"yes","material_impact":"yes","dif'
+    'ficult_rollback":"no","crosses_sessions":"no","multiple_actors'
+    '":"no","audit_required":"no"},"bridge_policy":"none","task":{"'
+    'scope":"single-location","clarity":"exact","risk":"low","verif'
+    'ication":"focused","coordination":"single","duration":"single-'
+    'step","audit":"runtime-only"}},"reason_codes":["mode:change","'
+    'task:verification:focused"],"planning_status":"planned","diagn'
+    'ostic":null,"plan_receipt":{"schema_version":1,"request_sha256'
+    '":"0ba415c1d84b1c062757d9d8e908cac628f88c0a2f4c91de36192d87c40'
+    'a2570","bridge_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    'aaaaaaaaaaaaaaaaaaaaaaaaaa","mode":"change","pace":"fast","cap'
+    'abilities":{"goal_document":false,"analysis":false,"clarificat'
+    'ion":false,"solution":false,"approval":false,"split_implementa'
+    'tion":false,"separate_verification":false,"independent_review"'
+    ':false,"result_document":false,"resumable_recovery":false,"cha'
+    'nge_report":true},"implementation_units_min":1,"verification_s'
+    'copes":["focused"],"depth":{"analysis_perspectives":0,"review_'
+    'passes":0,"recovery_exercises":0},"optional_depth":{"analysis_'
+    'perspectives":{"floor":0,"value":0,"trimmed":true},"review_pas'
+    'ses":{"floor":0,"value":0,"trimmed":true},"recovery_exercises"'
+    ':{"floor":0,"value":0,"trimmed":true},"regression_scope":{"flo'
+    'or":["focused"],"value":["focused"],"trimmed":true}},"required'
+    '_nodes":[{"logical_key":"implementation-1","role":"implementat'
+    'ion","artifact_min":1,"verification_scope":"focused"},{"logica'
+    'l_key":"report","role":"report","artifact_min":1,"source_keys"'
+    ':["work_order.report_baseline"]},{"logical_key":"finalize","ro'
+    'le":"finalizer","artifact_min":0}],"facts":{"governance":{"nee'
+    'ds_persistence":"yes","material_impact":"yes","difficult_rollb'
+    'ack":"no","crosses_sessions":"no","multiple_actors":"no","audi'
+    't_required":"no"},"bridge_policy":"none","task":{"scope":"sing'
+    'le-location","clarity":"exact","risk":"low","verification":"fo'
+    'cused","coordination":"single","duration":"single-step","audit'
+    '":"runtime-only"}},"report_strength":"minimal","plan_id":"08a9'
+    'ef886870c5150595256593eb0d817e7c676f1c1e7de312605db22cf43e5b"}'
+    '}'
 )
 
 
@@ -107,7 +119,14 @@ class AdaptivePlanningTests(unittest.TestCase):
         payload = policy.build_plan(self.base_facts())
         self.assertEqual(payload["implementation_units_min"], 1)
         self.assertEqual(payload["verification_scopes"], ["focused"])
-        self.assertFalse(any(payload["capabilities"].values()))
+        self.assertEqual(
+            {
+                name
+                for name, enabled in payload["capabilities"].items()
+                if enabled
+            },
+            {"change_report"},
+        )
         self.assertEqual(
             payload["depth"],
             {
@@ -314,6 +333,85 @@ class AdaptivePlanningTests(unittest.TestCase):
             ("smoke", "focused", "regression", "multi-environment", "performance"),
         )
 
+    def test_change_report_capability_is_mutation_only(self) -> None:
+        self.assertIn("change_report", policy.CAPABILITIES)
+        self.assertEqual(policy.CAPABILITIES[-1], "change_report")
+        self.assertIn("change_report", policy.MUTATION_ONLY_CAPABILITIES)
+        for mode in ("change", "repair", "maintenance"):
+            facts = self.base_facts()
+            facts["mode"] = mode
+            payload = policy.build_plan(facts)
+            self.assertTrue(payload["capabilities"]["change_report"], mode)
+            self.assertIn(
+                f"mode:{mode}",
+                payload["required_provenance"]["change_report"],
+            )
+        for mode in ("investigation", "review"):
+            facts = self.base_facts()
+            facts["mode"] = mode
+            payload = policy.build_plan(facts)
+            self.assertFalse(payload["capabilities"]["change_report"], mode)
+
+    def test_report_node_precedes_review_nodes_and_names_the_baseline_source(self) -> None:
+        facts = self.base_facts()
+        facts["risk"] = "high"
+        payload = policy.build_plan(facts)
+        keys = [item["logical_key"] for item in payload["required_nodes"]]
+        self.assertIn("report", keys)
+        self.assertLess(keys.index("report"), keys.index("review-1"))
+        self.assertLess(keys.index("report"), keys.index("finalize"))
+        report_node = next(
+            item for item in payload["required_nodes"] if item["logical_key"] == "report"
+        )
+        self.assertEqual(report_node["role"], "report")
+        self.assertEqual(report_node["artifact_min"], 1)
+        self.assertEqual(report_node["source_keys"], ["work_order.report_baseline"])
+        for item in payload["required_nodes"]:
+            if item["logical_key"] != "report":
+                self.assertNotIn("source_keys", item)
+
+    def test_read_only_plans_never_acquire_the_change_report_capability(self) -> None:
+        facts = self.base_facts()
+        facts["mode"] = "review"
+        facts["material_impact"] = "unknown"
+        payload = policy.build_plan(facts)
+        self.assertEqual(payload["planning_status"], "planned")
+        self.assertTrue(payload["capabilities"]["analysis"])
+        self.assertFalse(payload["capabilities"]["change_report"])
+        self.assertNotIn("report_strength", payload["plan_receipt"])
+        self.assertNotIn(
+            "report",
+            [item["logical_key"] for item in payload["required_nodes"]],
+        )
+
+    def test_report_strength_maps_confirmed_risk_and_audit_facts(self) -> None:
+        expectations = (
+            ({"risk": "low", "audit": "runtime-only"}, "minimal"),
+            ({"risk": "medium", "audit": "runtime-only"}, "standard"),
+            ({"risk": "low", "audit": "result"}, "full"),
+            ({"risk": "low", "audit": "full"}, "full"),
+            ({"risk": "high", "audit": "runtime-only"}, "full"),
+        )
+        for overrides, expected in expectations:
+            facts = self.base_facts()
+            facts.update(overrides)
+            if overrides["audit"] != "runtime-only":
+                facts["audit_required"] = "yes"
+            payload = policy.build_plan(facts)
+            with self.subTest(**overrides):
+                self.assertTrue(payload["capabilities"]["change_report"])
+                self.assertEqual(payload["plan_receipt"]["report_strength"], expected)
+                self.assertEqual(policy.derive_report_strength(facts), expected)
+        facts = self.base_facts()
+        facts["mode"] = "investigation"
+        self.assertFalse(policy.build_plan(facts)["capabilities"]["change_report"])
+        for mode in policy.MODES:
+            facts = self.base_facts()
+            facts["mode"] = mode
+            facts["risk"] = "high"
+            with self.subTest(mode=mode):
+                self.assertEqual(policy.derive_report_strength(facts), "full")
+
     def test_smoke_grade_combines_into_implementation_node(self) -> None:
         facts = self.base_facts()
         facts["verification"] = "smoke"
@@ -511,7 +609,10 @@ class AdaptivePlanningTests(unittest.TestCase):
             facts["verification"] = "smoke"
             facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
             receipt = policy.build_plan(facts)["plan_receipt"]
-            source_map = {"implementation-1": {"node_id": "rt_smoke_worker"}}
+            source_map = {
+                "implementation-1": {"node_id": "rt_smoke_worker"},
+                "report": {"node_id": "rt_smoke_report"},
+            }
             packet = {
                 "packet": {
                     "target": {
@@ -533,7 +634,19 @@ class AdaptivePlanningTests(unittest.TestCase):
                                     "artifacts": ["smoke-artifact.md"],
                                 }
                             ],
-                        }
+                        },
+                        {
+                            "name": "plan-report",
+                            "sources": [
+                                {
+                                    "node_id": "rt_smoke_report",
+                                    "logical_key": "report",
+                                    "role": "report",
+                                    "status": "succeeded",
+                                    "artifacts": ["change-report.html"],
+                                }
+                            ],
+                        },
                     ],
                 }
             }
@@ -553,7 +666,7 @@ class AdaptivePlanningTests(unittest.TestCase):
                 ],
             )
             self.assertEqual(code, 0)
-            self.assertEqual(payload["min_sources"], 1)
+            self.assertEqual(payload["min_sources"], 2)
 
     def test_governance_tightening_never_removes_capabilities(self) -> None:
         base = policy.build_plan(self.base_facts())
@@ -645,6 +758,7 @@ class AdaptivePlanningTests(unittest.TestCase):
         self.assertEqual(payload["verification_scopes"], [])
         self.assertFalse(payload["capabilities"]["split_implementation"])
         self.assertFalse(payload["capabilities"]["separate_verification"])
+        self.assertFalse(payload["capabilities"]["change_report"])
 
         with mock.patch.object(
             plan_work.subprocess,
@@ -809,6 +923,87 @@ class AdaptivePlanningTests(unittest.TestCase):
             )
             self.assertEqual(code, 2)
             self.assertEqual(payload["error"]["code"], "invalid_adaptive_manifest")
+
+    def test_adaptive_manifest_accepts_the_planned_report_node(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bridge = Path(temporary) / "WORKFLOW.md"
+            bridge.write_text("# Workflow\n", encoding="utf-8")
+            facts = self.base_facts()
+            facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
+            receipt = policy.build_plan(facts)["plan_receipt"]
+            sources = [
+                item
+                for item in receipt["required_nodes"]
+                if item["role"] != "finalizer"
+            ]
+            self.assertEqual(
+                [item["logical_key"] for item in sources],
+                ["implementation-1", "report"],
+            )
+            source_map: dict[str, dict[str, object]] = {}
+            packet_categories: list[dict[str, object]] = []
+            for index, item in enumerate(sources):
+                node_id = f"rt_report_{index}"
+                source_map[item["logical_key"]] = {"node_id": node_id}
+                packet_categories.append(
+                    {
+                        "name": f"plan-{item['logical_key']}",
+                        "sources": [
+                            {
+                                "node_id": node_id,
+                                "logical_key": item["logical_key"],
+                                "role": item["role"],
+                                "status": "succeeded",
+                                "artifacts": [
+                                    f"report-source-{index}-{unit}"
+                                    for unit in range(item["artifact_min"])
+                                ],
+                            }
+                        ],
+                    }
+                )
+            packet = {
+                "packet": {
+                    "target": {
+                        "logical_key": "finalize",
+                        "role": "work-order-finalize",
+                    },
+                    "blackboard": [
+                        {"key": "work_order.plan_id", "value": receipt["plan_id"]}
+                    ],
+                    "source_categories": packet_categories,
+                }
+            }
+            arguments = [
+                "--receipt-json",
+                json.dumps(receipt, separators=(",", ":")),
+                "--source-map-json",
+                json.dumps(source_map, separators=(",", ":")),
+                "--packet-json",
+                json.dumps(packet, separators=(",", ":")),
+                "--request",
+                facts["request"],
+                "--bridge",
+                str(bridge),
+            ]
+            code, payload = self.invoke(
+                SCRIPTS / "validate_adaptive_manifest.py",
+                arguments,
+            )
+            self.assertEqual(code, 0, payload)
+            self.assertEqual(payload["min_sources"], 2)
+
+            missing_map = {
+                key: value for key, value in source_map.items() if key != "report"
+            }
+            arguments[3] = json.dumps(missing_map, separators=(",", ":"))
+            code, payload = self.invoke(
+                SCRIPTS / "validate_adaptive_manifest.py",
+                arguments,
+            )
+            self.assertEqual(code, 2)
+            self.assertEqual(payload["error"]["code"], "missing_required_source")
+            self.assertEqual(payload["error"]["keys"], ["report"])
 
     def test_receipt_validator_rejects_invalid_fact_domains(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

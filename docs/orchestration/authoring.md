@@ -94,6 +94,8 @@ references/
 
 This is a responsibility pattern, not a requirement to create empty files. The package documents runtime-tree location, blackboard keys and allowed values, artifact ownership, single-node worker prompts, and gate behavior.
 
+A package that ships a reusable subtree keeps its editable JSON flow specification and the template built from it together in `assets/`. The [`xc-change-report`](../../skills/xc-change-report/SKILL.md) package is one current example: `change-report-flow.json` is its single source of truth, and `change-report-template.xml` is the template built from it. The flow specification stays the only editable orchestration source, and the generated template is never hand-edited.
+
 The package must not copy the runtime state machine, XML parser, Viewer server, or generic orchestration scripts. See the [template package contract](../../skills/xc-orchestration-author/references/template-package-contract.md).
 
 ## Validation and Smoke Tests

@@ -13,7 +13,10 @@
     "work_order.objective_source_ids": "[]",
     "work_order.result_source_ids": "[]",
     "work_order.requires_implementation": "true",
-    "work_order.requires_verification": "true"
+    "work_order.requires_verification": "true",
+    "work_order.requires_report": "false",
+    "work_order.report_skip_reason": "",
+    "work_order.report_baseline": ""
   },
   "root": {
     "template_id": "root",
@@ -145,6 +148,18 @@
             "when": "work_order.requires_verification == true"
           },
           {
+            "template_id": "report-group",
+            "title": "Produce change review report",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main",
+            "when": "work_order.requires_report == true",
+            "instructions": "Produce the change report for this work order after verification and before the result document, because only implemented and verified code has a state worth describing. The report group is mounted by the mode-derived commitment value work_order.requires_report, not by a measurement that does not exist yet. Embed the xc-change-report subtree once under this group, or run a single role=report node that carries the same contract, after publishing report.path, report.manifest_path, report.baseline_commit, report.baseline_digest, report.language, report.strength, report.gate_required, and report.gate_outcome. This group has two legal outcomes and the deliverables follow the outcome: when prepare-manifest measures one or more analyzable units, produce the report; when it measures zero analyzable units, record work_order.report_skip_reason=zero_analyzable_units and produce no report, and a user waiver records work_order.report_skip_reason=user_waived. A skipped gate records report.gate_outcome=not-run, never accepted.",
+            "deliverables": "On the produced outcome: one change-report.html, one change-report-manifest.json, and one change-report-verdicts.json under the workbench report node artifact directory. On the skipped outcome: no report file is required, and the deliverable is the recorded work_order.report_skip_reason with report.run_required=false.",
+            "acceptance": "Exactly one of the two outcomes holds. Either the report exists at report.path and is proven by report.manifest_path, or prepare-manifest measured zero analyzable units or the user waived the step, report.run_required is false, and work_order.report_skip_reason records one of the legal reasons; a produced report is never accepted without its manifest, and a skip is never accepted without its reason."
+          },
+          {
             "template_id": "result-document",
             "title": "Record work order result",
             "type": "composite",
@@ -178,9 +193,9 @@
                 "required_fields": "[\"summary\",\"validation\"]"
               }
             },
-            "instructions": "Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order.",
+            "instructions": "Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order. Consume work_order.report_skip_reason: when work_order.requires_report is true and neither a report path nor one of the two legal skip reasons is recorded, the work order must not close.",
             "deliverables": "A completed, failed, or blocked work order with durable evidence.",
-            "acceptance": "The runtime tree and workbench documents accurately describe the work order outcome."
+            "acceptance": "The runtime tree and workbench documents accurately describe the work order outcome, and a committed report obligation is either satisfied by a report path or explicitly recorded as a skip decision."
           }
         ]
       }

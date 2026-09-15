@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "description": "R2 regression anchor: the worktree was already dirty when the work order opened. Covers a purely pre-existing path, a path where the work order and the user touched overlapping lines, a path where the two edits are far apart, and an untracked file that existed before the work order opened.",
+  "commit": {
+    "shared.txt": {"text": "alpha\nbravo\ncharlie\ndelta\necho\nfoxtrot\ngolf\nhotel\nindia\njuliet\n"},
+    "user_only.txt": {"text": "one\ntwo\nthree\n"},
+    "far_apart.txt": {"file": "far_apart_baseline.txt"},
+    "work_order_only.txt": {"text": "before\n"}
+  },
+  "worktree_at_baseline": {
+    "shared.txt": {"text": "alpha\nbravo\ncharlie\nUSER-EDIT\ndelta\necho\nfoxtrot\ngolf\nhotel\nindia\njuliet\n"},
+    "user_only.txt": {"text": "one\ntwo\nUSER ONLY CHANGE\nthree\n"},
+    "far_apart.txt": {"file": "far_apart_dirty.txt"},
+    "user_scratch.txt": {"text": "user scratch file that never changes\n"}
+  },
+  "head": {
+    "shared.txt": {"text": "alpha\nbravo\ncharlie\nUSER-EDIT\ndelta\nWORK-ORDER-LINE\necho\nfoxtrot\ngolf\nhotel\nWORK-ORDER-HOTEL\nindia\njuliet\n"},
+    "far_apart.txt": {"file": "far_apart_head.txt"},
+    "work_order_only.txt": {"text": "after\nsecond line\n"},
+    "user_scratch.txt": {"text": "user scratch file that never changes\n"}
+  },
+  "expected": {
+    "units_total": 3,
+    "excluded_total": 0,
+    "pre_existing_total": 2,
+    "pre_existing_files": ["far_apart.txt", "user_only.txt"]
+  }
+}

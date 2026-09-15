@@ -110,7 +110,7 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
             )
             self.assertEqual(payload["counts"], {"pending": 2})
 
-    def test_minimal_managed_path_has_two_executable_leaves(self) -> None:
+    def test_minimal_managed_path_has_the_plan_required_leaves(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             tree, workshop = self.environment(Path(temporary))
             group = self.find_group(tree)
@@ -154,13 +154,55 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 f"metadata.completion.artifacts.path=literal:{artifact}",
             )
             worker_id = str(worker["node"]["id"])
+            report_artifact = (
+                workshop
+                / "work-orders"
+                / "adaptive"
+                / "artifacts"
+                / "change-report.html"
+            )
+            reporter = self.run_json(
+                RUNTIME,
+                "add-node",
+                "--tree",
+                str(tree),
+                "--parent",
+                group,
+                "--logical-key",
+                "report",
+                "--title",
+                "Produce change report",
+                "--type",
+                "task",
+                "--role",
+                "report",
+                "--executor",
+                "subagent",
+                "--instructions",
+                "Produce the minimal-strength change report from the recorded baseline.",
+                "--deliverables",
+                str(report_artifact),
+                "--acceptance",
+                "The report covers every analyzable change unit of this work order.",
+                "--metadata",
+                'metadata.completion.required_fields=["summary","validation"]',
+                "--metadata",
+                "metadata.completion.artifacts.min=1",
+                "--metadata",
+                "metadata.completion.artifacts.max=1",
+                "--metadata",
+                f"metadata.completion.artifacts.path=literal:{report_artifact}",
+            )
+            reporter_id = str(reporter["node"]["id"])
             self.run_json(
                 RUNTIME,
                 "set",
                 "--tree",
                 str(tree),
                 "--set",
-                f'adaptive.finalizer.sources=["{worker_id}"]',
+                f'adaptive.sources.implementation-1=["{worker_id}"]',
+                "--set",
+                f'adaptive.sources.report=["{reporter_id}"]',
                 "--set",
                 "work_order.plan_id=" + "a" * 64,
             )
@@ -188,11 +230,17 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--acceptance",
                 "Every plan-required source and check is accepted.",
                 "--metadata",
-                'metadata.control_packet.category.plan-implementation-1.selectors=["bb:adaptive.finalizer.sources"]',
+                'metadata.control_packet.category.plan-implementation-1.selectors=["bb:adaptive.sources.implementation-1"]',
                 "--metadata",
                 "metadata.control_packet.category.plan-implementation-1.min_sources=1",
                 "--metadata",
                 "metadata.control_packet.category.plan-implementation-1.artifact_min=1",
+                "--metadata",
+                'metadata.control_packet.category.plan-report.selectors=["bb:adaptive.sources.report"]',
+                "--metadata",
+                "metadata.control_packet.category.plan-report.min_sources=1",
+                "--metadata",
+                "metadata.control_packet.category.plan-report.artifact_min=1",
                 "--metadata",
                 'metadata.control_packet.blackboard_keys=["work_order.plan_id"]',
                 "--metadata",
@@ -233,6 +281,34 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--artifact",
                 str(artifact),
             )
+            self.run_json(
+                RUNTIME,
+                "start",
+                "--tree",
+                str(tree),
+                "--node",
+                reporter_id,
+                "--agent",
+                "report-author",
+            )
+            report_artifact.write_text(
+                "<!doctype html><html lang=\"en\"></html>\n",
+                encoding="utf-8",
+            )
+            self.run_json(
+                RUNTIME,
+                "complete",
+                "--tree",
+                str(tree),
+                "--node",
+                reporter_id,
+                "--summary",
+                "Produced the minimal-strength change report.",
+                "--validation",
+                "Coverage validation passed.",
+                "--artifact",
+                str(report_artifact),
+            )
             facts = {
                 "needs_persistence": "yes",
                 "material_impact": "yes",
@@ -270,7 +346,10 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
             source_map = {
                 "implementation-1": {
                     "node_id": worker_id,
-                }
+                },
+                "report": {
+                    "node_id": reporter_id,
+                },
             }
             packet = self.run_json(
                 RUNTIME,
@@ -293,12 +372,22 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--bridge",
                 str(bridge),
             )
-            self.assertEqual(manifest["source_ids"], [worker_id])
-            self.assertEqual(manifest["min_sources"], 1)
-            self.assertEqual(manifest["artifact_min"], 1)
+            self.assertEqual(manifest["source_ids"], [worker_id, reporter_id])
+            self.assertEqual(manifest["min_sources"], 2)
+            self.assertEqual(manifest["artifact_min"], 2)
             self.assertEqual(
-                packet["packet"]["source_categories"][0]["sources"][0]["node_id"],
-                worker_id,
+                [
+                    category["sources"][0]["node_id"]
+                    for category in packet["packet"]["source_categories"]
+                ],
+                [worker_id, reporter_id],
+            )
+            self.assertEqual(
+                [
+                    category["sources"][0]["logical_key"]
+                    for category in packet["packet"]["source_categories"]
+                ],
+                ["implementation-1", "report"],
             )
             self.run_json(
                 RUNTIME,
@@ -322,10 +411,10 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--validation",
                 "Required source and focused verification evidence are present.",
             )
-            self.assertEqual(completed["counts"]["succeeded"], 4)
+            self.assertEqual(completed["counts"]["succeeded"], 5)
             summary = self.run_json(RUNTIME, "summary", "--tree", str(tree))
             self.assertEqual(summary["status"], "complete")
-            self.assertEqual(summary["counts"]["succeeded"], 4)
+            self.assertEqual(summary["counts"]["succeeded"], 5)
 
     def test_sequence_group_exposes_only_the_first_planned_leaf(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

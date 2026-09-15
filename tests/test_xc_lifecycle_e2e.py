@@ -15,7 +15,21 @@ FEATURE = REPOSITORY_ROOT / "skills" / "xc-feature" / "scripts" / "manage_featur
 RENDER = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "render_document.py"
 VALIDATE = REPOSITORY_ROOT / "skills" / "xc-document" / "scripts" / "validate_document.py"
 DOCUMENT_EVOLUTION_TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-document-evolution" / "assets" / "document-evolution-template.xml"
+CHANGE_REPORT_TEMPLATE = REPOSITORY_ROOT / "skills" / "xc-change-report" / "assets" / "change-report-template.xml"
 DOCUMENT_TEMPLATES = REPOSITORY_ROOT / "skills" / "xc-document" / "assets" / "templates"
+CHANGE_REPORT_FACT_KEYS = (
+    "units_total",
+    "units_covered",
+    "excluded_total",
+    "pre_existing_total",
+    "hash_bound",
+    "token_bound",
+    "coverage",
+    "self_contained",
+    "head_current",
+    "strength",
+    "rounds",
+)
 WORK_ORDER_DOCUMENT_HEADINGS = {
     "work-order-goal": {
         "document_title": "Work Order Goal",
@@ -162,6 +176,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         read_packet: bool = False,
         gate_outcome: str = "",
         decision: str = "",
+        check_result: dict[str, object] | None = None,
     ) -> str:
         ready = self.run_json(RUNTIME, "next", "--tree", str(tree), cwd=project)["ready"]
         self.assertEqual(ready[0]["template_id"], expected_template_id, ready)
@@ -188,6 +203,13 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             args.extend(["--gate-outcome", gate_outcome])
         if decision:
             args.extend(["--decision", decision])
+        if check_result is not None:
+            args.extend(
+                [
+                    "--check-result-json",
+                    json.dumps(check_result, separators=(",", ":")),
+                ]
+            )
         self.run_json(RUNTIME, *args, cwd=project)
         return node_id
 
@@ -1026,6 +1048,251 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 recovered = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
                 implementation = self.find_one(project, tree, "implementation-group")
                 self.assertIn(implementation["id"], [item["id"] for item in recovered["awaiting_dynamic_groups"]], recovered)
+
+    def test_ordinary_work_order_mounts_report_group_before_result_document(self) -> None:
+        _, project, workshop = self.create_environment()
+        work_order = self.open_work_order(workshop, project, "20260727-1000-change-report", [])
+        workbench = Path(str(work_order["workbench_path"]))
+        tree = self.initialize_tree(
+            project,
+            REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml",
+            work_order,
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.document_language": "en",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
+                "work_order.requires_report": "true",
+            },
+        )
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        goal_id = self.complete_document(
+            project,
+            tree,
+            work_order,
+            "goal-document",
+            "work-order-goal",
+            workbench / "goal.md",
+            [],
+        )
+        report_group = self.find_one(project, tree, "report-group")
+        summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(
+            [item["template_id"] for item in summary["awaiting_dynamic_groups"]],
+            ["report-group"],
+            summary,
+        )
+        self.assert_not_startable(project, tree, "result-document")
+
+        report_dir = workbench / "artifacts" / "report"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / "change-report.html"
+        manifest_path = report_dir / "change-report-manifest.json"
+        report_path.write_text("<!doctype html><html lang=\"en\"></html>\n", encoding="utf-8")
+        manifest_path.write_text("{}\n", encoding="utf-8")
+        self.run_json(
+            RUNTIME,
+            "embed-subtree",
+            "--tree",
+            str(tree),
+            "--parent",
+            str(report_group["id"]),
+            "--template",
+            str(CHANGE_REPORT_TEMPLATE),
+            "--instance-id",
+            "report",
+            cwd=project,
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "report.path": str(report_path),
+                "report.manifest_path": str(manifest_path),
+                "report.language": "en",
+                "report.baseline_commit": "0" * 40,
+                "report.baseline_digest": "baseline-worktree-digest",
+                "report.baseline_algorithm": "sha256",
+                "report.strength": "minimal",
+                "report.gate_required": "false",
+                "report.gate_outcome": "not-run",
+                # The design's "blackboard the caller must set" list includes both derived
+                # gate keys; a sub-template's own defaults are not copied into the parent
+                # blackboard, and validate-final's guard reads the recovery key.
+                "report.gate_rework_required": "false",
+                "report.gate_recovery_required": "false",
+            },
+        )
+        self.complete_ready_task(project, tree, "prepare-manifest", manifest_path)
+        self.set_values(
+            project,
+            tree,
+            {
+                "report.units_total": "1",
+                "report.units_covered": "1",
+                "report.excluded_total": "0",
+                "report.pre_existing_total": "0",
+                "report.run_required": "true",
+                "report.coverage": "complete",
+                "report.self_contained": "true",
+                "report.head_current": "true",
+                "report.hash_bound": "1",
+                "report.token_bound": "1",
+                "report.round": "1",
+            },
+        )
+        self.complete_ready_task(project, tree, "author-report", report_path)
+        receipt = {
+            "schema_version": 1,
+            "check": "xc-change-report",
+            "ok": True,
+            "subject": str(report_path),
+            "facts": {
+                "units_total": "1",
+                "units_covered": "1",
+                "excluded_total": "0",
+                "pre_existing_total": "0",
+                "hash_bound": "1",
+                "token_bound": "1",
+                "coverage": "complete",
+                "self_contained": "true",
+                "head_current": "true",
+                "strength": "minimal",
+                "rounds": "1",
+            },
+        }
+        self.assertEqual(sorted(receipt["facts"]), sorted(CHANGE_REPORT_FACT_KEYS))
+        self.complete_ready_task(
+            project,
+            tree,
+            "validate-coverage",
+            check_result=receipt,
+        )
+        review_artifact = report_dir / "review.md"
+        review_artifact.write_text("# Review\n\nEvery unit matches the code.\n", encoding="utf-8")
+        verdicts_path = report_dir / "change-report-verdicts.json"
+        verdicts_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "verdicts": [{"unit_index": 1, "verdict": "accurate", "reason": ""}],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        review_id = self.complete_ready_task(
+            project,
+            tree,
+            "review-report",
+            artifact=review_artifact,
+        )
+        self.assertEqual(
+            self.find_one(project, tree, "revise-report")["status"],
+            "skipped",
+        )
+        self.assertEqual(
+            self.find_one(project, tree, "report-gate")["status"],
+            "skipped",
+        )
+        self.complete_ready_task(
+            project,
+            tree,
+            "validate-final",
+            check_result=receipt,
+        )
+        self.set_values(project, tree, {"report.self_contained": "true"})
+        pass_loop = self.find_one(project, tree, "report-pass-loop")
+        self.assertEqual(pass_loop["status"], "succeeded")
+        self.assertEqual(
+            pass_loop["attributes"]["loop.iteration"],
+            "1",
+        )
+        # report-pass-loop declares loop.break_when="report.gate_rework_required == false"
+        # and the runtime evaluates break_when before continue_when, so the accepted round
+        # terminates the loop through the break path rather than the natural one. The status
+        # and the iteration count above are what the design's bound actually promises.
+        self.assertEqual(pass_loop["attributes"]["loop.terminal_reason"], "break")
+        self.assertEqual(
+            self.find_one(project, tree, "validate-final", "report")["status"],
+            "succeeded",
+        )
+
+        after_report = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(
+            [item["template_id"] for item in after_report["awaiting_dynamic_groups"]],
+            ["result-document"],
+            after_report,
+        )
+        result_id = self.complete_document(
+            project,
+            tree,
+            work_order,
+            "result-document",
+            "work-order-result",
+            workbench / "result.md",
+            [],
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.objective_source_ids": json.dumps([goal_id], separators=(",", ":")),
+                "work_order.result_source_ids": json.dumps(
+                    [result_id, review_id],
+                    separators=(",", ":"),
+                ),
+            },
+        )
+        self.complete_ready_task(project, tree, "finalize-work-order", read_packet=True)
+        self.assert_complete(project, tree)
+
+    def test_ordinary_work_order_without_report_commitment_skips_report_group(self) -> None:
+        _, project, workshop = self.create_environment()
+        work_order = self.open_work_order(workshop, project, "20260727-1000-no-report", [])
+        workbench = Path(str(work_order["workbench_path"]))
+        tree = self.initialize_tree(
+            project,
+            REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml",
+            work_order,
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.document_language": "en",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
+                "work_order.requires_report": "false",
+                "work_order.report_skip_reason": "read_only_mode",
+            },
+        )
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(
+            project,
+            tree,
+            work_order,
+            "goal-document",
+            "work-order-goal",
+            workbench / "goal.md",
+            [],
+        )
+        summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(
+            [item["template_id"] for item in summary["awaiting_dynamic_groups"]],
+            ["result-document"],
+            summary,
+        )
+        self.assertEqual(self.find_one(project, tree, "report-group")["status"], "skipped")
 
     def test_ordinary_work_order_reconciles_multiple_features_sequentially(self) -> None:
         _, project, workshop = self.create_environment()

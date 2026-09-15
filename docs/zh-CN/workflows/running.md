@@ -13,8 +13,10 @@
 5. **澄清人类决策。** 当证据无法回答重要决策时，[`xc-clarify`](../../../skills/xc-clarify/SKILL.md)在方案选择前通过主会话 gate 提出有界问题。它不能代替调查。
 6. **选择并批准方案。** `solution.md` 记录选定变更、边界、风险、兼容性影响和验证策略。重要决策和未解决风险必须经过显式用户 gate。
 7. **执行有界实现节点。** 每个 [`xc-implementation`](../../../skills/xc-implementation/SKILL.md) worker 只接收一个已批准范围，只修改归其所有的文件，记录证据，并通过运行时报告结果。
-8. **验证与评审。** [`xc-verification`](../../../skills/xc-verification/SKILL.md)运行项目定义的检查并记录覆盖缺口。需要独立质量评估时，[`xc-review`](../../../skills/xc-review/SKILL.md)评估不可变输入并产出可追踪 finding。失败证据会返回所属生命周期处理，而不是静默降低验收标准。
-9. **形成结果并关闭。** `result.md` 在 work order 最终完成前汇总已交付行为、验证、未解决风险和相关 artifact。
+8. **验证。** [`xc-verification`](../../../skills/xc-verification/SKILL.md)运行项目定义的检查并记录覆盖缺口。失败证据会返回所属生命周期处理，而不是静默降低验收标准。
+9. **解释变更。** [`xc-change-report`](../../../skills/xc-change-report/SKILL.md)把工单的变更集合产出为一个离线自包含 HTML 报告，以及校验该报告所依据的覆盖清单。每个可分析变更单元都有分析与所引用代码绑定地覆盖，说明改了什么、为什么存在、体现了什么设计、处于更大流程的哪一环。它在实现与验证之后、结果文档之前运行；需要独立评审时，它也在该评审之前运行，因为报告是评审者的输入。代码返工会使报告过期，此时刷新同一个报告，而不是把节点判为失败。只读模式不产出报告；实测的可分析变更单元数为零时，记录为跳过决策。报告的人类门禁可选且默认关闭。
+10. **按需评审。** 需要独立质量评估时，[`xc-review`](../../../skills/xc-review/SKILL.md)评估不可变输入并产出可追踪 finding。若评审要求代码返工，则刷新报告，而不是留下过期报告。
+11. **形成结果并关闭。** `result.md` 在 work order 最终完成前汇总已交付行为、验证、未解决风险和相关 artifact，并在报告小节记录报告路径与清单路径；报告未产出时，记录对应的跳过决策。
 
 顶层 work order 文档是持久记录，不是程序计数器。动态顺序、就绪状态、循环、重试、blocker 和进度都留在运行时树中。
 
@@ -22,7 +24,7 @@
 
 `xc-work operation=adaptive-run` 需要显式选择；现有 `run` 行为保持不变。Adaptive template 初始只包含 root 和开放的 sequence `work-group`。调用方先验证 plan receipt，添加全部初始 required leaf 和 plan-specific finalizer，再关闭 group 并开始执行。
 
-最小变更使用一个合并 implementation/focused-verification worker 和 finalizer，共两个可执行叶子节点。只有持久目标、证据综合、实质决策、结果留存或 full audit 需要时，才分别增加顶层文档。更复杂事实按稳定顺序添加 capability：goal、analysis 或 diagnosis、clarification、solution、approval、implementation unit、verification scope、独立 review、result 和 finalization。
+最小变更使用一个合并 implementation/focused-verification worker 和 finalizer，共两个可执行叶子节点。只有持久目标、证据综合、实质决策、结果留存或 full audit 需要时，才分别增加顶层文档。更复杂事实按稳定顺序添加 capability：goal、analysis 或 diagnosis、clarification、solution、approval、implementation unit、verification scope、change report、独立 review、result 和 finalization。
 
 Worker 发现范围扩大或其他前提时，应在继续修改前 block。主会话可以 reopen group，在被阻塞的直接子节点前插入 re-plan 或 recovery，发布新 plan，再 unblock 原节点继续执行或记录 no-op/rollback 证据。大型任务可以持续增加经过复审的子树，没有全局节点数上限；每个 loop 仍显式有界。
 
@@ -33,6 +35,8 @@ Worker 发现范围扩大或其他前提时，应在继续修改前 block。主�
 写作者先说明目的、结论或读者需要采取的行动，再在读者获得上下文后展开技术细节。必要术语在第一次出现时简短解释。删除重复内容和无助于理解的过程叙述，但保留关键事实、约束、证据、风险、兼容性影响和未决事项。
 
 调用方在嵌入文档演进子树前，通过 `document.authoring_requirements` 传入简短的明确要求。较长要求保存在输入文档或 artifact 中。用户明确要求优先于默认写作风格，但不能覆盖真实性、安全、受管结构、来源记录或必要证据。
+
+变更报告是以自包含 HTML 交付的面向用户 artifact，不是受管 Markdown 文档。它的正文遵循同一套 [`xc-document`](../../../skills/xc-document/SKILL.md) 人类可读默认规则，只声明 HTML 特有的结构，因此所有面向人类的产出都由同一套撰写标准约束。
 
 命令、标识符、路径、日志和机器输出在需要精确引用时保持原样；其周围的解释和摘要仍应易读。内部技术 artifact 可以根据预期受众保留较高的专业密度。
 

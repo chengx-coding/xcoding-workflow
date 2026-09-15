@@ -11,6 +11,7 @@ xcoding-workflow helps coding agents carry work from an initial request to a tes
 - Small, low-risk tasks can be completed directly.
 - Work that needs a plan, review, recovery, or a durable record runs as a **managed work order**. A work order keeps the goal, decisions, progress, and evidence together.
 - An explicitly adaptive managed work order can start with one combined work leaf and one finalizer, then add documents, analysis, gates, verification, review, and recovery as confirmed facts require.
+- After implementation and verification, a work order that changed analysable code produces a **change report**: one offline HTML file that explains each change, why it exists, the design and trade-offs behind it, and where it sits in the larger flow, together with a mechanical proof that no analysable change unit was left unexplained.
 - The `.xcoding` directory is the project's workflow workspace. It is kept in a separate Git worktree, which is a separate working directory for workflow history, so those records do not mix with source-code history.
 - Long-lived product features are managed only when you explicitly create or adopt them. Ordinary maintenance does not create a feature automatically.
 

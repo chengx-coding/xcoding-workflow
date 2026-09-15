@@ -63,6 +63,7 @@ class HumanReadableDocumentContractTests(unittest.TestCase):
     def test_every_user_facing_artifact_producer_references_the_public_contract(self) -> None:
         producers = (
             "xc-analysis",
+            "xc-change-report",
             "xc-diagnosis",
             "xc-implementation",
             "xc-review",
