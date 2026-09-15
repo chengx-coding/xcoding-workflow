@@ -3,7 +3,7 @@
 <orchestration schema_version="1" name="work-order" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="92e4d8c7d3b516f2941f924b36697159de967c55d7105dd66a8c31515f5f26f2" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="16a2deb6652f5525e94a9a86ab57b14b27c287f4a9b4dce2e697a788e0fe74e5" />
   </meta>
   <blackboard>
     <var key="work_order.has_features">false</var>
@@ -18,6 +18,9 @@
     <var key="work_order.result_source_ids">[]</var>
     <var key="work_order.requires_implementation">true</var>
     <var key="work_order.requires_verification">true</var>
+    <var key="work_order.requires_report">false</var>
+    <var key="work_order.report_skip_reason" />
+    <var key="work_order.report_baseline" />
   </blackboard>
   <node executor="main" mode="sequence" role="root" template_id="root" title="Work Order" type="composite">
     <children>
@@ -41,11 +44,16 @@
         <children>
           <node executor="main" mode="sequence" role="dynamic-group" template_id="implementation-group" title="Implement approved change" type="composite" when="work_order.requires_implementation == true" />
           <node executor="main" mode="sequence" role="dynamic-group" template_id="verification-group" title="Verify work order outcome" type="composite" when="work_order.requires_verification == true" />
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="report-group" title="Produce change review report" type="composite" when="work_order.requires_report == true">
+            <instructions>Produce the change report for this work order after verification and before the result document, because only implemented and verified code has a state worth describing. The report group is mounted by the mode-derived commitment value work_order.requires_report, not by a measurement that does not exist yet. Embed the xc-change-report subtree once under this group, or run a single role=report node that carries the same contract, after publishing report.path, report.manifest_path, report.baseline_commit, report.baseline_digest, report.language, report.strength, report.gate_required, and report.gate_outcome. This group has two legal outcomes and the deliverables follow the outcome: when prepare-manifest measures one or more analyzable units, produce the report; when it measures zero analyzable units, record work_order.report_skip_reason=zero_analyzable_units and produce no report, and a user waiver records work_order.report_skip_reason=user_waived. A skipped gate records report.gate_outcome=not-run, never accepted.</instructions>
+            <deliverables>On the produced outcome: one change-report.html, one change-report-manifest.json, and one change-report-verdicts.json under the workbench report node artifact directory. On the skipped outcome: no report file is required, and the deliverable is the recorded work_order.report_skip_reason with report.run_required=false.</deliverables>
+            <acceptance>Exactly one of the two outcomes holds. Either the report exists at report.path and is proven by report.manifest_path, or prepare-manifest measured zero analyzable units or the user waived the step, report.run_required is false, and work_order.report_skip_reason records one of the legal reasons; a produced report is never accepted without its manifest, and a skip is never accepted without its reason.</acceptance>
+          </node>
           <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record work order result" type="composite" />
           <node executor="main" role="work-order-finalize" template_id="finalize-work-order" title="Finalize ordinary work order" type="task" metadata.control_packet.category.supporting-records.selectors="[&quot;bb:work_order.result_source_ids&quot;]" metadata.control_packet.category.supporting-records.min_sources="1" metadata.control_packet.category.supporting-records.artifact_min="1" metadata.control_packet.category.work-order-objective.selectors="[&quot;bb:work_order.objective_source_ids&quot;]" metadata.control_packet.category.work-order-objective.min_sources="1" metadata.control_packet.category.work-order-objective.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;work_order.document_language&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]">
-            <instructions>Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order.</instructions>
+            <instructions>Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order. Consume work_order.report_skip_reason: when work_order.requires_report is true and neither a report path nor one of the two legal skip reasons is recorded, the work order must not close.</instructions>
             <deliverables>A completed, failed, or blocked work order with durable evidence.</deliverables>
-            <acceptance>The runtime tree and workbench documents accurately describe the work order outcome.</acceptance>
+            <acceptance>The runtime tree and workbench documents accurately describe the work order outcome, and a committed report obligation is either satisfied by a report path or explicitly recorded as a skip decision.</acceptance>
           </node>
         </children>
       </node>
