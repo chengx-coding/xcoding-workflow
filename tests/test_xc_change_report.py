@@ -308,6 +308,11 @@ def flow_spec(
     outer_continue: str = "report.gate_rework_required == true",
     inner_max: str = "3",
     inner_continue: str = "report.accuracy_open_issues == true",
+    # G-33: a bounded quality loop that cannot converge escalates. Both loops carry the
+    # escalation terminal state, so the fixture defaults to it and a caller can flip exactly
+    # one loop to prove V12 checks each declaration rather than one of them.
+    outer_on_limit: str = "blocked",
+    inner_on_limit: str = "blocked",
 ) -> dict[str, Any]:
     declared = declared if declared is not None else list(bm.REPORT_GATE_OUTCOMES)
     routes = routes if routes is not None else {
@@ -347,7 +352,7 @@ def flow_spec(
                     "executor": "main",
                     "loop.max_iterations": outer_max,
                     "loop.continue_when": outer_continue,
-                    "loop.on_limit": "failed",
+                    "loop.on_limit": outer_on_limit,
                     "metadata": {"rework_publishers": json.dumps(publishers)},
                     "children": [
                         {"template_id": "prepare-manifest", "type": "task", "role": "report-manifest", "executor": "tool", "instructions": "run build_manifest.py", "deliverables": "change-report-manifest.json", "acceptance": "manifest written"},
@@ -361,7 +366,7 @@ def flow_spec(
                             "executor": "main",
                             "loop.max_iterations": inner_max,
                             "loop.continue_when": inner_continue,
-                            "loop.on_limit": "failed",
+                            "loop.on_limit": inner_on_limit,
                             "children": [
                                 {"template_id": "review-report", "type": "task", "role": "report-accuracy", "executor": "subagent", "instructions": "compare prose with code", "deliverables": "change-report-verdicts.json", "acceptance": "every unit judged"},
                                 {"template_id": "revise-report", "type": "task", "role": "report-revise", "executor": "subagent", "when": "report.accuracy_open_issues == true", "when.policy": "latched", "instructions": "revise the analysis text", "deliverables": "change-report.html", "acceptance": "issues closed"},
@@ -1319,6 +1324,47 @@ class NegativeCaseTests(ReportCase):
             flow_spec(), self.case_dir("n20-positive") / "flow.json"
         )
         payload = self.validate(flow=accepted_with_followup)
+        self.assertTrue(payload["ok"], payload["errors"])
+
+    def test_negative_20b_both_loops_must_escalate_instead_of_failing(self) -> None:
+        """G-33: an exhausted quality loop escalates; it must never kill the work order.
+
+        `retry-failed` requires a failed executable leaf and rejects a loop, so a quality loop
+        that terminates `failed` is unrecoverable and takes its whole work order with it. Both
+        loops are asserted independently, because a regression that flips only one of them is
+        exactly the shape the previous value shipped in.
+        """
+        shipped = json.loads(
+            (SKILL_ROOT / "assets" / "change-report-flow.json").read_text(encoding="utf-8")
+        )
+        by_template: dict[str, dict[str, Any]] = {}
+
+        def walk(node: Any) -> None:
+            if isinstance(node, dict):
+                if "template_id" in node:
+                    by_template[str(node["template_id"])] = node
+                for child in node.get("children", []) or []:
+                    walk(child)
+
+        walk(shipped["root"])
+        for template_id in ("report-pass-loop", "report-review-loop"):
+            with self.subTest(loop=template_id):
+                self.assertEqual(
+                    str(by_template[template_id]["loop.on_limit"]),
+                    "blocked",
+                    f"{template_id} must escalate an exhausted loop instead of failing it",
+                )
+
+        for loop in ("outer", "inner"):
+            with self.subTest(rejected=f"{loop} on_limit=failed"):
+                spec = flow_spec(**{f"{loop}_on_limit": "failed"})
+                path = write_flow_spec(spec, self.case_dir(f"n20b-{loop}") / "flow.json")
+                payload = self.validate(flow=path)
+                self.assertFalse(payload["ok"], loop)
+                self.assertIn("V12", error_ids(payload), loop)
+
+        blocked = write_flow_spec(flow_spec(), self.case_dir("n20b-positive") / "flow.json")
+        payload = self.validate(flow=blocked)
         self.assertTrue(payload["ok"], payload["errors"])
 
     def test_negative_21_secret_and_encoding_rules_fail_v13(self) -> None:

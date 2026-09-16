@@ -1563,12 +1563,17 @@ def _check_loop(checker: Checker, node: dict[str, Any], template_id: str, contin
             f"{template_id} must declare loop.max_iterations=3, found "
             f"{node.get('loop.max_iterations')!r}",
         )
-    # The design prose writes `on_limit=fail`; the runtime vocabulary is `failed`.
-    if str(node.get("loop.on_limit", "")).strip() != "failed":
+    # A bounded quality loop that cannot converge escalates; it must never kill the run.
+    # `retry-failed` requires a failed executable leaf and rejects a loop, so a loop that
+    # terminates `failed` is unrecoverable through the runtime and takes its whole work order
+    # with it. `blocked` is the escalation terminal state the repository's other bounded
+    # quality loops already declare.
+    if str(node.get("loop.on_limit", "")).strip() != "blocked":
         checker.fail(
             "V12",
-            f"{template_id} must declare loop.on_limit=failed (the runtime value for the "
-            f"design's on_limit=fail), found {node.get('loop.on_limit')!r}",
+            f"{template_id} must declare loop.on_limit=blocked (the escalation terminal "
+            f"state for a quality loop that cannot converge), found "
+            f"{node.get('loop.on_limit')!r}",
         )
     actual = str(node.get("loop.continue_when", "")).strip()
     if actual != continue_when:

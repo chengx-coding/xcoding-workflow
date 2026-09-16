@@ -1788,13 +1788,17 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         self.complete_ready_task(project, tree, "finalize-work-order", read_packet=True)
         self.assert_complete(project, tree)
 
-    def test_exhausted_refresh_pass_fails_the_stage(self) -> None:
-        """G-33: the third refresh pass exhausts the declared bound and fails the stage.
+    def test_exhausted_refresh_pass_blocks_the_stage(self) -> None:
+        """G-33: the third refresh pass exhausts the declared bound and blocks the stage.
 
         The bound is declared three times — the protocol clause, the specification's
         `loop.max_iterations` and the generated template — and this drive pins its runtime
-        consequence: the loop terminates with the `limit` reason and the failure propagates
-        to the work order instead of closing it.
+        consequence: the loop terminates with the `limit` reason and the terminal state the
+        specification declares. That state is `blocked`, not `failed`, because the runtime
+        offers no recovery for an engine-generated loop failure (`retry-failed` requires a
+        failed executable leaf and rejects a loop): a `failed` loop made its whole work order
+        un-completable, so exhaustion escalates to a stage a human can still resolve while the
+        work order stays open.
         """
         _, project, workshop = self.create_environment()
         work_order = self.open_work_order(workshop, project, "20260727-1000-report-refresh-limit", [])
@@ -1853,9 +1857,9 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             self.complete_report_gate(project, tree, "revision-required", rework=True)
 
         loop = self.find_one(project, tree, "report-pass-loop", "report")
-        self.assertEqual(loop["status"], "failed")
+        self.assertEqual(loop["status"], "blocked")
         self.assertEqual(loop["attributes"]["loop.terminal_reason"], "limit")
-        self.assertEqual(loop["attributes"]["loop.terminal_status"], "failed")
+        self.assertEqual(loop["attributes"]["loop.terminal_status"], "blocked")
         self.assertEqual(loop["attributes"]["loop.terminal_iteration"], "3")
         # The exhausted pass never runs validate-final: the recovery key the gate wrote is still
         # true, so the final validation's own guard excludes it from the third pass.
@@ -1864,7 +1868,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         self.assertEqual(exhausted["attributes"]["skip_reason"], "when")
 
         summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
-        self.assertEqual(summary["status"], "failed")
+        self.assertEqual(summary["status"], "blocked")
         self.assertEqual(summary["ready"], [])
         self.assert_not_startable(project, tree, "result-document")
 

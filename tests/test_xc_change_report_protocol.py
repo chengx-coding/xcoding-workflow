@@ -361,6 +361,17 @@ def v12_declared_loop_bound(source: str) -> str:
     return match.group(1)
 
 
+def v12_declared_on_limit(source: str) -> str:
+    """Read the literal V12 compares the spec's loop terminal state against."""
+    position = source.find("loop.on_limit")
+    if position < 0:
+        raise AssertionError("validate_report.py no longer mentions loop.on_limit")
+    match = re.search(r'"([a-z]+)"', source[position : position + 400])
+    if match is None:
+        raise AssertionError("cannot find V12's declared loop.on_limit literal")
+    return match.group(1)
+
+
 class BlackboardInventoryTests(unittest.TestCase):
     """G-25: the Skill page's blackboard block must be the specification's partition."""
 
@@ -764,7 +775,7 @@ class PassBoundTests(unittest.TestCase):
             if node.get("template_id") == "report-pass-loop"
         )
         self.assertEqual(str(outer["loop.max_iterations"]), "3")
-        self.assertEqual(str(outer["loop.on_limit"]), "failed")
+        self.assertEqual(str(outer["loop.on_limit"]), "blocked")
 
         template_bounds = [
             element.get("loop.max_iterations")
@@ -777,13 +788,73 @@ class PassBoundTests(unittest.TestCase):
 
         clause = protocol.split("**C19a**", 1)[1].split("**C20**", 1)[0]
         self.assertRegex(clause, r"max_iterations=3")
-        self.assertIn("on_limit=failed", clause)
+        self.assertIn("on_limit=blocked", clause)
 
         self.assertEqual(
             {str(outer["loop.max_iterations"]), *template_bounds, validator_literal},
             {"3"},
             "the protocol's declared bound, the spec, the generated template and V12 must agree",
         )
+
+    def test_both_quality_loops_escalate_instead_of_failing(self) -> None:
+        """G-33: exhaustion must leave the stage recoverable, at every place that decides it.
+
+        The terminal state is declared in four artefacts - the specification, the template
+        built from it, V12's own expectation, and the protocol clauses - and `retry-failed`
+        requires a failed executable leaf, so a loop that terminates `failed` makes its whole
+        work order un-completable. The previous value shipped with no test covering what
+        exhaustion actually did, so each declaration is asserted here rather than inferred from
+        the others.
+        """
+        spec = json.loads(read(FLOW_SPEC))
+        template = ElementTree.fromstring(read(TEMPLATE))
+        validator_source = read(SCRIPTS / "validate_report.py")
+
+        # The specification: exactly two loops, both escalating.
+        self.assertEqual(
+            {
+                str(node["template_id"]): str(node["loop.on_limit"])
+                for node in spec_nodes(spec["root"])
+                if node.get("type") == "loop"
+            },
+            {"report-pass-loop": "blocked", "report-review-loop": "blocked"},
+        )
+
+        # The generated template, in the same order both loops appear in it.
+        self.assertEqual(
+            [
+                element.get("loop.on_limit")
+                for element in template.iter()
+                if element.get("loop.on_limit")
+            ],
+            ["blocked", "blocked"],
+        )
+
+        # V12, the only mechanical referee of the shipped specification.
+        self.assertEqual(v12_declared_on_limit(validator_source), "blocked")
+
+        # The protocol clauses that state the rule: C19a.4, O1 and O5.
+        protocol = read(PROTOCOL)
+        for opening, closing in (
+            ("**C19a**", "**C20**"),
+            ("- **O1**", "- **O1a**"),
+            ("- **O5**", "- **O6**"),
+        ):
+            with self.subTest(clause=opening):
+                clause = protocol.split(opening, 1)[1].split(closing, 1)[0]
+                self.assertIn("on_limit=blocked", clause)
+
+        # The retired value may survive only as the recorded incident that retired it, never as
+        # a live rule: every paragraph that still names `on_limit=failed` must also state that
+        # the terminal state *was* `failed`, which is what makes the sentence history.
+        for paragraph in protocol.split("\n\n"):
+            if "on_limit=failed" in paragraph:
+                self.assertIn(
+                    "was `failed`",
+                    paragraph,
+                    "the protocol may name `on_limit=failed` only where it records the incident "
+                    "that retired it, not as the rule the package still follows",
+                )
 
 
 class StrengthMatrixTests(unittest.TestCase):

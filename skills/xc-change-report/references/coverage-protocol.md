@@ -438,7 +438,7 @@ coverage time.
   undeclared route); where it routes through the two derived booleans instead, both keys must
   be published; the rework group is driven by a single boolean gate key and never by the
   outcome string, so `accepted-with-followup` cannot enter it; both loops declare
-  `max_iterations=3` and `on_limit=failed` with their exact continue conditions and a main
+  `max_iterations=3` and `on_limit=blocked` with their exact continue conditions and a main
   session owner; and where the spec declares its latch publishers, every terminating path
   publishes the rework key exactly once and resets it exactly once.
 - **V13 Redaction and degradation are visible**: a path matching a C34 credential pattern must
@@ -553,8 +553,8 @@ a claim that the values are calibrated.
 | `PLACEHOLDER_TOKENS` | `9 tokens (todo, tbd, fixme, n/a, xxx, placeholder, lorem ipsum, 待补充, 待定)` | `build_manifest.py` | A13: a field made of, or containing, one of these standalone tokens fails | retained at the design value; the list covers the placeholder vocabulary observed in this repository, and the two Chinese entries keep the rule valid in a non-English document language |
 | `SYMBOL_ONLY_RE` | `^[^\w]+$` | `build_manifest.py` | A13: a field with no word content fails | retained at the design value; it is the third floor of the same threshold |
 | `VERDICTS` | `accurate, misleading, wrong` | `build_manifest.py` | V14's verdict vocabulary and the review worker's grade set | retained at the design value; three grades are the smallest set that separates "right" from "wrong" and "wrong in a way that misleads" |
-| `report-pass-loop.loop.max_iterations` | `3` | `assets/change-report-flow.json` | C19a.4: the refresh pass bound, with `loop.on_limit = failed` | retained at the design value; no round-count distribution has been measured, and exhaustion fails the work order instead of looping |
-| `report-review-loop.loop.max_iterations` | `3` | `assets/change-report-flow.json` | O5: the accuracy review bound, with `loop.on_limit = failed` | retained at the design value for the same reason |
+| `report-pass-loop.loop.max_iterations` | `3` | `assets/change-report-flow.json` | C19a.4: the refresh pass bound, with `loop.on_limit = blocked` | retained at the design value; no round-count distribution has been measured, and exhaustion blocks the stage instead of looping. The terminal state was `failed` until a real work order was made un-completable by it: see C19a.4 |
+| `report-review-loop.loop.max_iterations` | `3` | `assets/change-report-flow.json` | O5: the accuracy review bound, with `loop.on_limit = blocked` | retained at the design value for the same reason; this is the loop whose exhaustion produced that incident |
 | `V12.loop_bound_literal` | `3` | `validate_report.py` | V12's independent expectation of both loop bounds | retained deliberately: the validator's copy is what makes a silent divergence between the spec, the generated template and the check impossible, so it is not derived from the artefact it validates |
 | `MAX_CHECK_MESSAGE_CHARS` | `400` | `validate_report.py` | the diagnostic cap on any one check message (V11's repair hint included) | retained at the design value; it is a diagnostic bound and gates no acceptance, and 400 characters keep the check id, the unit number and the reason inside the surviving head |
 
@@ -599,7 +599,8 @@ explicitly excluded.
 2. **Validation failure**: the node fails, and is never downgraded to a warning. The one
    exception is staleness, which is an edge back to the refresh entry point at `validate-final`
    (C19a.6); the edge itself is
-   bounded by `max_iterations` and `on_limit`, and exhaustion is still a node failure.
+   bounded by `max_iterations` and `on_limit`, and exhaustion blocks the loop instead of
+   failing it (C19a.4).
 3. **Wrong analysis content**: hash and tokens both match and the explanation is false. The
    accuracy review worker carries this first, with the optional human gate as a second layer.
    The gate is closed by default, so on the default path only the worker carries it, and a
@@ -622,10 +623,19 @@ explicitly excluded.
      review_driven_repair}`) also increment `report.refresh_count`; write this round's
      `report.refresh_reason`. `report.gate_rework_required` is reset by `validate-final` on its
      success path, never by the recovery group and never by hand;
-  4. the outer loop declares `max_iterations=3` and `on_limit=failed`. Exhaustion fails the
-     work order - the runtime vocabulary for the loop's terminal state is `failed`, and the
+  4. the outer loop declares `max_iterations=3` and `on_limit=blocked`. Exhaustion blocks the
+     stage - the runtime vocabulary for the loop's terminal state is `blocked`, and the
      reported reason is that three refresh passes did not pass validation - rather than
-     retrying forever or quietly passing;
+     retrying forever or quietly passing. The terminal state was `failed` until a real work
+     order was made un-completable by it: that work order's accuracy review loop exhausted
+     this same bound, the failure propagated through the subtree root and the report group as
+     a declared `on_limit=failed` requires, and it blocked the result document and
+     finalization, which the runtime offers no recovery for because `retry-failed` requires an
+     executable leaf and never accepts a loop. A bounded quality loop that cannot converge is
+     the case a human gate exists for, so both of this package's quality loops escalate with
+     `blocked` - the repository's vocabulary for escalating rather than killing a run, and the
+     value every other bounded quality loop already declares (`xc-document-evolution`'s
+     `review-loop`);
   5. a rework-driven refresh carries its cause:
      `report.refresh_reason in {rework_rejected, rework_revision_required, stale_head,
      review_driven_repair}`, written into the round records;
@@ -741,8 +751,10 @@ hand-write the XML.
 
 - **O1** The refresh edge is the outer `report-pass-loop` (loop, main session,
   `role=report-pass`), continuing while `report.gate_rework_required == true`, with
-  `max_iterations=3` and `on_limit=failed` (the runtime vocabulary for the design's
-  `on_limit=fail`). The refresh latch's publishers are **exactly** the rows the shipped
+  `max_iterations=3` and `on_limit=blocked`, the escalation terminal state a bounded quality
+  loop uses when it cannot converge; the value was `failed` (the design's `on_limit=fail`)
+  until an exhausted loop in a real work order made that whole work order un-completable.
+  The refresh latch's publishers are **exactly** the rows the shipped
   specification declares in `metadata.rework_publishers`, and this table is their normative
   statement; a fifth terminating path, or a node that publishes the key without appearing here,
   is a contract violation:
@@ -796,12 +808,13 @@ hand-write the XML.
   recovery group and never by hand.
 - **O5** The inner `report-review-loop` (review, then revise while
   `report.accuracy_open_issues == true`) sits inside the outer loop body, so every refresh
-  re-reviews the rewritten text. Both loops declare `max_iterations=3` and `on_limit=failed`.
+  re-reviews the rewritten text. Both loops declare `max_iterations=3` and `on_limit=blocked`,
+  so neither exhaustion is fatal: it escalates to a blocked stage that a human resolves.
 - **O6** The gate sits inside the loop body, so it reopens on every round and the human always
   reads the refreshed report.
 - **O7** Staleness is not a node failure: `validate-final` publishes the rework key and returns
-  control to the next outer round. Its success path publishes the reset. Only loop exhaustion
-  or a non-staleness validation failure fails the node.
+  control to the next outer round. Its success path publishes the reset. Only a non-staleness
+  validation failure fails the node; loop exhaustion blocks the loop rather than failing it.
 - **O8** No configuration may skip `validate-coverage`, the review loop or `validate-final`.
   The gate may be closed; validation and the accuracy review may not. That distinction is the
   entire reason this stage can be trusted.
