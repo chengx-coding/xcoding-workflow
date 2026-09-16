@@ -19,11 +19,7 @@ The instantiated milestone subtree contains exactly:
 
 ## Report Coverage
 
-`assets/jit-milestone-template.xml` is a **subtree, not a work-order root**, and it declares no report stage:
-
-- A milestone-only work order initialises `work-order-template.xml` through `xc-work`. That root owns the work order's report stage, so the **enclosing work-order root's report covers the milestone subtree's change set**; no report node is added to `jit-milestone-template.xml` or to `jit-milestone-flow.json`.
-- `jit-milestone-flow.json` is therefore **not an initialisation path** for any shipped workflow: it is the runtime shape of a subtree that lives under a work-order root, and `milestone-finalizer` consumes only `milestone.accepted` because the report commitment belongs to the root that hosts it. `tests/test_xc_jit_milestone.py` is the one exception in this repository: it points `init` at `jit-milestone-template.xml` directly, under `<workbench>/work-orders/jit-milestone/runtime`, to exercise the subtree's own shape without an `embed-subtree` step. That harness declares no report stage, drives no report commitment, and is a test fixture rather than an offered way to open a work order.
-- A milestone subtree is never embedded under a root without a report stage. That combination would seal a milestone change set with nothing able to refuse an unexplained diff, and no template in this repository declares it.
+`assets/jit-milestone-template.xml` is a **subtree, not a work-order root**, and it declares no report stage. A milestone-only work order initialises `work-order-template.xml` through `xc-work`; that root owns the report stage, so the enclosing root's report covers the milestone subtree's change set and `milestone-finalizer` consumes only `milestone.accepted`. `jit-milestone-flow.json` is consequently not an initialisation path for any shipped workflow. `tests/test_xc_jit_milestone.py` points `init` at the subtree template directly to exercise its shape without an `embed-subtree` step; that harness is a test fixture, not an offered way to open a work order.
 
 ## Lifecycle
 

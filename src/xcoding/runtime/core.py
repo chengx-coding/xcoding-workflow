@@ -30,6 +30,14 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tupl
 ALLOWED_WORKSHOP_TOPOLOGIES = {"independent-link", "independent-nested", "same-repo", "no-git"}
 WORKSHOP_TOPOLOGY_DEFAULT = "independent-link"
 
+# Whether a work order produces a change report, when nothing more specific says otherwise.
+# The tier is only a default: an explicit user instruction wins, and a project bridge may tighten
+# it. `code-change-only` is the shipped value because it reproduces the existing mode-derived
+# behaviour exactly -- mutation modes commit to a report, read-only modes do not -- so adding this
+# section changes nothing for a project that does not set it.
+ALLOWED_REPORT_DEFAULTS = {"never", "code-change-only", "always"}
+REPORT_DEFAULT = "code-change-only"
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     "schema_version": 1,
     "git": {
@@ -53,6 +61,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "workshop": {
         "topology": WORKSHOP_TOPOLOGY_DEFAULT,
     },
+    "report": {
+        "default": REPORT_DEFAULT,
+    },
 }
 
 TEMPLATE_UPDATED_AT = "1970-01-01T00:00:00+00:00"
@@ -75,6 +86,11 @@ VALID_STATUSES = {"pending", "ready", "running", "succeeded", "failed", "blocked
 ARCHIVED_STATUS = "archived"
 ARCHIVED_SUBTREES_TAG = "archived_subtrees"
 ARCHIVED_ENTRY_TAG = "archive"
+ARCHIVE_RECOVERY_WARNING = (
+    "RECOVERY ARCHIVE: this subtree was archived while carrying an engine-derived terminal "
+    "status that no other supported operation can clear. The work order continued past a state "
+    "that would otherwise have ended it. Review the recorded reason and the archived record."
+)
 ARCHIVED_STUB_IDENTITY_KEYS = (
     "template_id",
     "origin_template_id",
@@ -416,6 +432,18 @@ def validate_config(config: Dict[str, Any], source: str) -> None:
             raise ConfigError(
                 "workshop.topology must be one of {}".format(
                     ", ".join(sorted(ALLOWED_WORKSHOP_TOPOLOGIES))
+                ),
+                {"source": source},
+            )
+    report = config.get("report")
+    if report is not None:
+        if not isinstance(report, dict):
+            raise ConfigError("report must be an object", {"source": source})
+        tier = report.get("default", REPORT_DEFAULT)
+        if tier not in ALLOWED_REPORT_DEFAULTS:
+            raise ConfigError(
+                "report.default must be one of {}".format(
+                    ", ".join(sorted(ALLOWED_REPORT_DEFAULTS))
                 ),
                 {"source": source},
             )
@@ -1854,6 +1882,37 @@ def normalize_value(value: str) -> str:
     return value.strip().strip('"').strip("'").lower()
 
 
+def when_expression_key(expression: str) -> str:
+    """Return the single blackboard key a `when` expression reads, or an empty string.
+
+    The expression grammar has exactly one key per expression, so this is total for every form
+    `eval_when` accepts. It exists so the scheduler can tell an unwritten key apart from a key
+    whose value is genuinely false.
+    """
+    expr = expression.strip()
+    if not expr:
+        return ""
+    for operator in ("==", "!="):
+        if operator in expr:
+            return expr.split(operator, 1)[0].strip()
+    if expr.startswith("!"):
+        return expr[1:].strip()
+    return expr
+
+
+def when_key_is_unwritten(node: ET.Element, bb: Dict[str, str]) -> bool:
+    """Report whether the node's `when` expression reads a key nobody has published.
+
+    An unwritten key is absent, not empty: every guard over it resolves false, so the node is
+    skipped and the tree still seals successfully. That is a legitimate outcome when the caller
+    meant to leave the branch out, and a silent defect when the caller simply forgot to publish
+    the key. The runtime cannot tell the two apart, so it records which one happened instead of
+    guessing.
+    """
+    key = when_expression_key(node.get("when", ""))
+    return bool(key) and key not in bb
+
+
 def eval_when(expression: str, bb: Dict[str, str]) -> bool:
     expr = expression.strip()
     if not expr:
@@ -2100,11 +2159,16 @@ def normalize_conditions(root: ET.Element) -> bool:
             node.set("status", "skipped")
             node.set("skip_reason", "when")
             node.set("skipped_at", utc_now())
+            if when_key_is_unwritten(node, bb):
+                node.set("skip_unwritten_key", when_expression_key(node.get("when", "")))
+            else:
+                node.attrib.pop("skip_unwritten_key", None)
             changed = True
         elif should_run and was_conditionally_skipped and when_policy(node) == "reactive":
             node.set("status", "pending")
             node.attrib.pop("skip_reason", None)
             node.attrib.pop("skipped_at", None)
+            node.attrib.pop("skip_unwritten_key", None)
             changed = True
     return changed
 
@@ -3987,6 +4051,23 @@ def active_subtree_leaf_violations(root: ET.Element, node: ET.Element) -> List[D
     return violations
 
 
+def engine_derived_terminal_status(node: ET.Element) -> str:
+    """Return the engine-derived terminal status of a composite or loop, or an empty string.
+
+    A composite or loop never carries a directly written status: `stabilize` derives it, and
+    `require_executable_leaf` denies every leaf transition to such a node. When that derived
+    status is `failed` or `blocked`, the node cannot be addressed by `retry-failed`, `unblock`,
+    `fail`, `block`, `complete`, or `start`, and its successors are held by `ancestor_failed`
+    or `ancestor_blocked`. If the cause is a recoverable leaf, recovering that leaf re-derives
+    the ancestor; a loop terminated by its own `loop.on_limit` decision has no such leaf, so
+    this is the one state with no other supported exit.
+    """
+    if node_type(node) not in {"composite", "loop"}:
+        return ""
+    status = node.get("status", "pending")
+    return status if status in {"failed", "blocked"} else ""
+
+
 def archive_subtree(root: ET.Element, node_id: str, reason: str) -> ET.Element:
     """Replace a terminal subtree with an archived stub plus a registry record."""
     normalized_reason = reason.strip()
@@ -4008,9 +4089,11 @@ def archive_subtree(root: ET.Element, node_id: str, reason: str) -> ET.Element:
         )
     status = node.get("status", "pending")
     closed_group = is_dynamic_group(node) and dynamic_group_state(node) == "closed"
-    if status != "succeeded" and not closed_group:
+    recovered_status = engine_derived_terminal_status(node)
+    if status != "succeeded" and not closed_group and not recovered_status:
         raise ArchiveStatusRefusedError(
-            "archive-subtree requires a succeeded subtree or a closed dynamic group",
+            "archive-subtree requires a succeeded subtree, a closed dynamic group, "
+            "or a failed or blocked composite or loop",
             {"node_id": node_id, "status": status, "dynamic.state": dynamic_group_state(node)},
         )
     violations = active_subtree_leaf_violations(root, node)
@@ -4066,16 +4149,16 @@ def archive_subtree(root: ET.Element, node_id: str, reason: str) -> ET.Element:
     revision = str(runtime_revision(root))
     record_xml = ET.tostring(node, encoding="unicode")
     registry = ensure_direct(root, ARCHIVED_SUBTREES_TAG)
-    archive = ET.SubElement(
-        registry,
-        ARCHIVED_ENTRY_TAG,
-        {
-            "id": node_id,
-            "archived_at": archived_at,
-            "reason": normalized_reason,
-            "revision": revision,
-        },
-    )
+    archive_attributes = {
+        "id": node_id,
+        "archived_at": archived_at,
+        "reason": normalized_reason,
+        "revision": revision,
+    }
+    if recovered_status:
+        archive_attributes["recovered_status"] = recovered_status
+        archive_attributes["warning"] = ARCHIVE_RECOVERY_WARNING
+    archive = ET.SubElement(registry, ARCHIVED_ENTRY_TAG, archive_attributes)
     archive.text = record_xml
     stub_attributes = {
         "id": node_id,
@@ -4085,6 +4168,9 @@ def archive_subtree(root: ET.Element, node_id: str, reason: str) -> ET.Element:
         "archived_revision": revision,
         "archived.record_id": node_id,
     }
+    if recovered_status:
+        stub_attributes["archived_recovered_status"] = recovered_status
+        stub_attributes["archived_warning"] = ARCHIVE_RECOVERY_WARNING
     for key in ARCHIVED_STUB_IDENTITY_KEYS:
         value = node.get(key)
         if value:
@@ -4108,6 +4194,14 @@ def validate_archived_stub(node: ET.Element) -> List[str]:
         errors.append(f"{node_id}: archived stub missing archived_reason")
     if node.get("archived.record_id") != node_id:
         errors.append(f"{node_id}: archived stub record pointer must equal the node id")
+    recovered = node.get("archived_recovered_status")
+    if recovered is not None:
+        if recovered not in {"failed", "blocked"}:
+            errors.append(f"{node_id}: archived stub has an invalid archived_recovered_status")
+        if node.get("archived_warning") != ARCHIVE_RECOVERY_WARNING:
+            errors.append(f"{node_id}: recovery archive stub must carry the recovery warning")
+    elif node.get("archived_warning") is not None:
+        errors.append(f"{node_id}: archived stub carries a warning without a recovered status")
     if children(node):
         errors.append(f"{node_id}: archived stub must not have children")
     if find_direct(node, "result") is not None:
@@ -4157,6 +4251,21 @@ def validate_archived_registry(root: ET.Element) -> List[str]:
                 errors.append(f"archived registry entry {archive_id} missing reason")
             if not archive.get("revision"):
                 errors.append(f"archived registry entry {archive_id} missing revision")
+            entry_recovered = archive.get("recovered_status")
+            if entry_recovered is not None:
+                if entry_recovered not in {"failed", "blocked"}:
+                    errors.append(
+                        f"archived registry entry {archive_id} has an invalid recovered_status"
+                    )
+                if archive.get("warning") != ARCHIVE_RECOVERY_WARNING:
+                    errors.append(
+                        f"archived registry entry {archive_id} missing the recovery warning"
+                    )
+            elif archive.get("warning") is not None:
+                errors.append(
+                    f"archived registry entry {archive_id} carries a warning "
+                    "without a recovered status"
+                )
             if list(archive):
                 errors.append(f"archived registry entry {archive_id} must store the record as serialized text")
             raw = (archive.text or "").strip()

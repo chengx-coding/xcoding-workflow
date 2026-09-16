@@ -7,15 +7,15 @@
 ## 生命周期
 
 1. **加载项目策略。** 在选择命令或作出项目专属假设前，读取项目指引、workshop 桥接和已声明的知识指引。
-2. **打开并初始化 work order。** 创建持久 workbench，初始化受管树，并在写入第一份顶层文档前固定 work order 文档语言。使用开启器返回的 `tmp_path` 存放临时文件与过程文件；既有 workbench 没有该目录时创建 `<workbench>/tmp/`。随后在工作树仍处于打开状态时采集基线，因为报告之后要依据它来证明，而打开状态无法再被重新生成：运行 [`xc-change-report`](../../../skills/xc-change-report/SKILL.md) 包中的 `skills/xc-change-report/scripts/capture_baseline.py` 采集形态。它把每个已跟踪路径镜像到 `<workbench>/tmp/baseline-worktree/`，把每个未跟踪路径镜像到 `<workbench>/tmp/baseline-untracked/`——这两个目录都可以用 `--baseline-worktree-dir` 与 `--baseline-untracked-dir` 指定——并把两条快照路径与工作树 digest 记录到 `<workbench>/tmp/baseline-open-state.json`。之后的 `--verify-existing` 运行会从已记录的工作树快照重新计算该 digest，把已记录的计数与 git 及这两个已记录快照重新核对，任一处不匹配都会关闭失败，因此打开时发布的 digest 永远不会被改写。
+2. **打开并初始化 work order。** 创建持久 workbench，初始化受管树，并在写入第一份顶层文档前固定 work order 文档语言。使用开启器返回的 `tmp_path` 存放临时文件与过程文件；既有 workbench 没有该目录时创建 `<workbench>/tmp/`。若该工单会产出变更报告，就在此处、工作树仍处于打开状态时采集基线：打开状态之后无法再恢复。采集命令与快照路径见 [`xc-change-report`](../../../skills/xc-change-report/SKILL.md)。
 3. **记录目标。** `goal.md` 定义请求结果、边界、约束和验收方向。
 4. **建立证据。** 需要事实、影响、备选方案、诊断或 feature 协调时，[`xc-analysis`](../../../skills/xc-analysis/SKILL.md)把不同视角的证据记录到节点 artifact，并将接受的事实综合到 `analysis.md`。
 5. **澄清人类决策。** 当证据无法回答重要决策时，[`xc-clarify`](../../../skills/xc-clarify/SKILL.md)在方案选择前通过主会话 gate 提出有界问题。它不能代替调查。
 6. **选择并批准方案。** `solution.md` 记录选定变更、边界、风险、兼容性影响和验证策略。重要决策和未解决风险必须经过显式用户 gate。
 7. **执行有界实现节点。** 每个 [`xc-implementation`](../../../skills/xc-implementation/SKILL.md) worker 只接收一个已批准范围，只修改归其所有的文件，记录证据，并通过运行时报告结果。
 8. **验证。** [`xc-verification`](../../../skills/xc-verification/SKILL.md)运行项目定义的检查并记录覆盖缺口。失败证据会返回所属生命周期处理，而不是静默降低验收标准。
-9. **解释变更。** [`xc-change-report`](../../../skills/xc-change-report/SKILL.md)把工单的变更集合产出为一个离线自包含 HTML 报告，以及校验该报告所依据的覆盖清单。每个可分析变更单元都有分析与所引用代码绑定地覆盖，说明改了什么、为什么存在、体现了什么设计、处于更大流程的哪一环。报告是挂载它的那些生命周期中的一个阶段，本完整生命周期正是其中之一：在这里报告 group 是结果文档之前的最后一个 group，挂载在验证 group 之后，而本生命周期不挂载任何顶层评审节点；因此桥接或已批准方案要求的评审是实现路径内部的额外工作，发生在报告之前，而不是夹在报告与结果文档之间。代码返工会使报告过期，此时刷新同一个报告，而不是把节点判为失败。只读模式不产出报告；实测的可分析变更单元数为零时，记录为跳过决策。报告的人类门禁可选且默认关闭。
-10. **按需评审。** 需要独立质量评估时，[`xc-review`](../../../skills/xc-review/SKILL.md)评估不可变输入并产出可追踪 finding。在完整生命周期上，这类评审是实现路径内部的额外工作，因此发生在报告之前，绝不会夹在报告与结果文档之间；在 adaptive 路径上，主会话把报告放在 review 叶子之前，使评审者读到报告。若评审要求代码返工，则刷新报告，而不是留下过期报告。
+9. **解释变更。** [`xc-change-report`](../../../skills/xc-change-report/SKILL.md)把工单的变更集合产出为一个离线自包含 HTML 报告，以及校验该报告所依据的覆盖清单。每个可分析变更单元都有分析与所引用代码绑定地覆盖，说明改了什么、为什么存在、体现了什么设计、处于更大流程的哪一环。在本生命周期中，报告 group 是结果文档之前的最后一个 group，挂载在验证 group 之后。代码返工会使报告过期，此时刷新同一个报告，而不是把节点判为失败。只读模式不产出报告；实测的可分析变更单元数为零时，记录为跳过决策。报告的人类门禁可选且默认关闭。
+10. **按需评审。** 需要独立质量评估时，[`xc-review`](../../../skills/xc-review/SKILL.md)评估不可变输入并产出可追踪 finding。若评审要求代码返工，则刷新报告，而不是留下过期报告。
 11. **形成结果并关闭。** `result.md` 在 work order 最终完成前汇总已交付行为、验证、未解决风险和相关 artifact，并在报告小节记录报告路径与清单路径；报告未产出时，记录对应的跳过决策。
 
 顶层 work order 文档是持久记录，不是程序计数器。动态顺序、就绪状态、循环、重试、blocker 和进度都留在运行时树中。

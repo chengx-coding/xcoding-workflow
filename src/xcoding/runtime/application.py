@@ -428,12 +428,25 @@ def cmd_add_node(args: argparse.Namespace) -> Dict[str, Any]:
             args.before,
         )
         core.stabilize(tree.getroot())
+        payload: Dict[str, Any] = {"node": core.snapshot_node(tree.getroot(), node)}
+        blocker = core.node_readiness_blocker(tree.getroot(), node)
+        if blocker and str(blocker.get("reason", "")).startswith("ancestor_"):
+            payload["warning"] = {
+                "code": "node_not_currently_schedulable",
+                "message": (
+                    "the node was created, but an ancestor is in a terminal state, so it "
+                    "cannot be scheduled until that ancestor is recovered"
+                ),
+                "reason": blocker.get("reason", ""),
+                "blocker_node_id": blocker.get("blocker_node_id", ""),
+                "blocker_status": blocker.get("blocker_status", ""),
+            }
         return write_runtime(
             tree,
             path,
             config,
             "add-node",
-            {"node": core.snapshot_node(tree.getroot(), node)},
+            payload,
             commit_on_write=False,
         )
 
@@ -461,16 +474,24 @@ def cmd_embed_subtree(args: argparse.Namespace) -> Dict[str, Any]:
 def cmd_archive_subtree(args: argparse.Namespace) -> Dict[str, Any]:
     with runtime_mutation(args, "archive-subtree") as (path, tree, config):
         stub = core.archive_subtree(tree.getroot(), args.subtree, args.reason)
+        payload: Dict[str, Any] = {
+            "node": core.snapshot_node(tree.getroot(), stub),
+            "archived_subtrees": core.archived_subtree_count(tree.getroot()),
+            "counts": core.status_counts(tree.getroot()),
+        }
+        recovered = stub.get("archived_recovered_status")
+        if recovered:
+            payload["recovery"] = {
+                "recovered_status": recovered,
+                "warning": core.ARCHIVE_RECOVERY_WARNING,
+                "reason": stub.get("archived_reason", ""),
+            }
         return write_runtime(
             tree,
             path,
             config,
             "archive-subtree",
-            {
-                "node": core.snapshot_node(tree.getroot(), stub),
-                "archived_subtrees": core.archived_subtree_count(tree.getroot()),
-                "counts": core.status_counts(tree.getroot()),
-            },
+            payload,
             commit_on_write=False,
         )
 

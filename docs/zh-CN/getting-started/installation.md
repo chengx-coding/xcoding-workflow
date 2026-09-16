@@ -68,9 +68,9 @@ Workshop 仓库拓扑在 workshop-setup 步骤中选定（默认：独立工作�
 
 该开发安装器只替换上一份 install manifest 拥有的、或规范源集合即将安装的 `xc-*` 包。manifest 不拥有、且规范源也不提供的 `xc-*` 目录在普通安装后会保留下来并被报告为 preserved；`--force` 才会替换它，而该选项只属于这条开发路径。它会把要替换的包删除后重新安装，因此不会把这些包的字节与上一份 manifest 比较；关闭失败的漂移规则属于 `xcoding setup`，见下文受管升级与状态一节。
 
-## 报告包的就绪检查
+## 就绪检查
 
-当项目 setup 记录所指的某个 Skill 根目录没有报告阶段所挂载的已安装 `xc-change-report` 包，或该包缺少 `assets/change-report-template.xml` 时，`xcoding doctor --target-root <project> --json` 会让其 `skill-packages` 检查失败并以非零码退出——退出码 4，错误码 `readiness-failed`。setup 记录指明了宿主时，检查只针对这些宿主，因此某个已记录宿主的 Skill 根目录为空或不完整同样会失败。没有 setup 记录时，检查针对已经装有 `xc-*` 包的 Skill 根目录，因此装了 XC 包却没有报告包的项目同样会失败。只有既没有 setup 记录、也完全没有安装任何 XC 包的项目不同：该检查通过，并由单独的 `skill-packages-absent` 警告记录未确认到任何包，因为不存在可以被判定为不完整的已安装 Skill 根目录。对受影响的宿主运行 `xcoding setup` 以恢复已记录的包；不要手工把文件复制进受管 Skill 根目录。
+当项目 setup 记录所指的某个 Skill 根目录缺少本应装有的包，或该包缺少其 assets 时，`xcoding doctor --target-root <project> --json` 会让其 `skill-packages` 检查失败，退出码 4，错误码 `readiness-failed`。既没有 setup 记录、也完全没有安装任何 XC 包的项目则通过检查，并由 `skill-packages-absent` 警告记录，因为不存在可以被判定为不完整的已安装 Skill 根目录。对受影响的宿主运行 `xcoding setup` 以恢复包；不要手工把文件复制进受管 Skill 根目录。
 
 ## 准备 Skill 内部 Worker
 

@@ -35,10 +35,11 @@ WORK_ORDER_SPEC = REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-orde
 COMMITMENT_KEY = "work_order.requires_report"
 REPORT_GROUP = "report-group"
 
-# The preparation-step paragraph is the contract's own statement of the commitment: the mode
-# derivation, the baseline, the strength tier, and the default that decides what happens when
-# the write never happens.
-PARAGRAPH_ANCHOR = "In the same preparation step, write the mode-derived commitment"
+# The preparation-step paragraph is the contract's own statement of the commitment: how the
+# commitment is resolved, the baseline, the strength tier, and the default that decides what
+# happens when the write never happens. The anchor matches the sentence's stable opening, which
+# survived the change from a mode-derived commitment to a policy-resolved one.
+PARAGRAPH_ANCHOR = "In the same preparation step, write the commitment"
 
 # The refuted claim, in the two spellings the page used: the default value itself, and the
 # explanation that made an unwritten field read as "no report needed".
@@ -99,7 +100,7 @@ class ReportCommitmentContractTests(unittest.TestCase):
         """Decisive: the paragraph must say what makes the commitment, not only its default."""
         paragraph = commitment_paragraph(page_text())
         self.assertIn(
-            f"write the mode-derived commitment `{COMMITMENT_KEY}`",
+            f"write the commitment `{COMMITMENT_KEY}`",
             paragraph,
             "the preparation step's own write is the commitment; the paragraph must keep "
             "naming it",

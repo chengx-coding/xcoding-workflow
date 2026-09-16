@@ -997,5 +997,314 @@ class ArchiveSubtreeCliTests(unittest.TestCase):
             )
 
 
+class TerminalSubtreeRecoveryTests(ArchiveSubtreeCliTests):
+    """Recovery from an engine-derived terminal composite or loop.
+
+    These tests assert that the work order can *continue*, not that a constant holds. A
+    composite or loop never carries a written status, so no leaf transition can address it; when
+    its derived status is `failed` or `blocked` and no recoverable leaf caused it, archiving the
+    subtree is the only supported exit. Each case therefore ends by scheduling the successor that
+    was previously held by `ancestor_failed` or `ancestor_blocked`.
+    """
+
+    def write_loop_template(self, path: Path, config: dict[str, object], on_limit: str) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": "loop-recovery"})
+        blackboard = ET.SubElement(root, "blackboard")
+        ET.SubElement(blackboard, "var", {"key": "again"}).text = "true"
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": "Loop Recovery",
+                "type": "composite",
+                "role": "root",
+                "mode": "sequence",
+                "executor": "main",
+            },
+        )
+        children = ET.SubElement(workflow, "children")
+        spin = ET.SubElement(
+            children,
+            "node",
+            {
+                "template_id": "spin",
+                "title": "Spin",
+                "type": "loop",
+                "role": "quality-loop",
+                "mode": "sequence",
+                "executor": "main",
+                "loop.max_iterations": "1",
+                "loop.continue_when": "again == true",
+                "loop.break_when": "again == false",
+                "loop.on_limit": on_limit,
+            },
+        )
+        spin_children = ET.SubElement(spin, "children")
+        ET.SubElement(
+            spin_children,
+            "node",
+            {
+                "template_id": "body",
+                "title": "Body",
+                "type": "task",
+                "role": "worker",
+                "executor": "main",
+            },
+        )
+        ET.SubElement(
+            children,
+            "node",
+            {
+                "template_id": "finish",
+                "title": "Finish",
+                "type": "task",
+                "role": "finish",
+                "executor": "main",
+            },
+        )
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
+    def create_loop_runtime(self, project: Path, work_order_id: str, on_limit: str) -> Path:
+        context = project / ".xcoding"
+        context.mkdir(parents=True)
+        (context / "xc-orchestration-runtime.json").write_text(
+            json.dumps({"git": {"auto_commit": False}}) + "\n",
+            encoding="utf-8",
+        )
+        config = core.load_config(context)
+        template = project / "template.xml"
+        self.write_loop_template(template, config, on_limit)
+        initialized = self.run_cli(
+            "init",
+            "--template",
+            str(template),
+            "--runtime-path",
+            str(context / "work-orders" / work_order_id / "runtime"),
+            "--work-order-id",
+            work_order_id,
+            cwd=project,
+        )
+        return Path(str(initialized["tree_path"]))
+
+    def status_of(self, project: Path, tree_path: Path, node_id: str) -> str:
+        return str(
+            self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"][
+                "status"
+            ]
+        )
+
+    def assert_recovers(self, project: Path, tree_path: Path, node_id: str, successor_id: str) -> None:
+        terminal_status = self.status_of(project, tree_path, node_id)
+        self.assertIn(terminal_status, {"failed", "blocked"})
+
+        held = self.run_cli_error(
+            "start",
+            "--tree",
+            str(tree_path),
+            "--node",
+            successor_id,
+            "--agent",
+            "tester",
+            cwd=project,
+        )
+        self.assertEqual(held["error"]["code"], "node_not_ready")
+        # The successor is held either because the terminal subtree is its ancestor, or because
+        # it is an earlier sibling in the same sequence. Both are the same deadlock, reported
+        # from the two positions the successor can occupy.
+        self.assertIn(
+            held["error"]["details"]["reason"],
+            {f"ancestor_{terminal_status}", "sequence_predecessor_incomplete"},
+        )
+
+        archived = self.run_cli(
+            "archive-subtree",
+            "--tree",
+            str(tree_path),
+            "--subtree",
+            node_id,
+            "--reason",
+            "Exhausted stage; archiving so the work order can continue.",
+            cwd=project,
+        )
+        recovery = archived["recovery"]
+        self.assertEqual(recovery["recovered_status"], terminal_status)
+        self.assertEqual(recovery["warning"], core.ARCHIVE_RECOVERY_WARNING)
+        self.assertIn("Exhausted stage", str(recovery["reason"]))
+
+        attributes = archived["node"]["attributes"]
+        self.assertEqual(attributes["archived_recovered_status"], terminal_status)
+        self.assertEqual(attributes["archived_warning"], core.ARCHIVE_RECOVERY_WARNING)
+
+        parsed = core.parse_xml(tree_path)
+        entry = core.archived_registry(parsed.getroot()).findall(core.ARCHIVED_ENTRY_TAG)[0]
+        self.assertEqual(entry.get("recovered_status"), terminal_status)
+        self.assertEqual(entry.get("warning"), core.ARCHIVE_RECOVERY_WARNING)
+
+        self.assertEqual(self.integrity_status(project, tree_path), "valid")
+        self.run_cli("validate", "--tree", str(tree_path), cwd=project)
+
+        self.run_cli(
+            "start",
+            "--tree",
+            str(tree_path),
+            "--node",
+            successor_id,
+            "--agent",
+            "tester",
+            cwd=project,
+        )
+        self.assertEqual(self.status_of(project, tree_path, successor_id), "running")
+
+    def exhaust_loop(self, project: Path, tree_path: Path) -> None:
+        body_id = str(self.node_by_template(project, tree_path, "body")["id"])
+        self.run_cli("start", "--tree", str(tree_path), "--node", body_id, "--agent", "tester", cwd=project)
+        self.run_cli(
+            "complete",
+            "--tree",
+            str(tree_path),
+            "--node",
+            body_id,
+            "--summary",
+            "one iteration",
+            "--validation",
+            "ok",
+            cwd=project,
+        )
+
+    def test_exhausted_failed_loop_recovers_and_releases_its_successor(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            tree_path = self.create_loop_runtime(project, "loop-failed", "failed")
+            self.exhaust_loop(project, tree_path)
+            self.assert_recovers(
+                project,
+                tree_path,
+                str(self.node_by_template(project, tree_path, "spin")["id"]),
+                str(self.node_by_template(project, tree_path, "finish")["id"]),
+            )
+
+    def test_exhausted_blocked_loop_recovers_and_releases_its_successor(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            tree_path = self.create_loop_runtime(project, "loop-blocked", "blocked")
+            self.exhaust_loop(project, tree_path)
+            self.assert_recovers(
+                project,
+                tree_path,
+                str(self.node_by_template(project, tree_path, "spin")["id"]),
+                str(self.node_by_template(project, tree_path, "finish")["id"]),
+            )
+
+    def test_failed_composite_recovers_and_releases_its_successor(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            _, tree_path = self.create_runtime(project, "composite-failed", auto_commit=False)
+            prepare_id = str(self.node_by_template(project, tree_path, "prepare")["id"])
+            self.run_cli(
+                "start", "--tree", str(tree_path), "--node", prepare_id, "--agent", "tester", cwd=project
+            )
+            self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                prepare_id,
+                "--reason",
+                "induced failure",
+                cwd=project,
+            )
+            # The shared template puts an intentionally empty dynamic group between the failed
+            # phase and the successor. Close it so the only thing still holding the successor is
+            # the terminal composite this test is about.
+            self.run_cli(
+                "close-group",
+                "--tree",
+                str(tree_path),
+                "--group",
+                str(self.node_by_template(project, tree_path, "archive-group")["id"]),
+                cwd=project,
+            )
+            self.assert_recovers(
+                project,
+                tree_path,
+                str(self.node_by_template(project, tree_path, "phase-a")["id"]),
+                str(self.node_by_template(project, tree_path, "finish")["id"]),
+            )
+
+    def test_recovery_widening_preserves_every_other_refusal(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            tree_path = self.create_loop_runtime(project, "preserved", "failed")
+            spin_id = str(self.node_by_template(project, tree_path, "spin")["id"])
+            body_id = str(self.node_by_template(project, tree_path, "body")["id"])
+            root_id = str(self.node_by_template(project, tree_path, "root")["id"])
+
+            pending = self.run_cli_error(
+                "archive-subtree", "--tree", str(tree_path), "--subtree", spin_id,
+                "--reason", "cleanup", cwd=project,
+            )
+            self.assertEqual(pending["error"]["code"], "archive_status_refused")
+
+            self.run_cli(
+                "start", "--tree", str(tree_path), "--node", body_id, "--agent", "tester", cwd=project
+            )
+            running = self.run_cli_error(
+                "archive-subtree", "--tree", str(tree_path), "--subtree", spin_id,
+                "--reason", "cleanup", cwd=project,
+            )
+            # A loop with a running body is itself `running`, which is not a terminal status, so
+            # the widened guard rejects it before the running-leaf check is ever reached. The
+            # running-leaf refusal itself stays covered by the closed-dynamic-group test above.
+            self.assertEqual(running["error"]["code"], "archive_status_refused")
+            self.assertEqual(running["error"]["details"]["status"], "running")
+
+            self.run_cli(
+                "complete", "--tree", str(tree_path), "--node", body_id,
+                "--summary", "one iteration", "--validation", "ok", cwd=project,
+            )
+            self.assertEqual(self.status_of(project, tree_path, spin_id), "failed")
+
+            no_reason = self.run_cli_error(
+                "archive-subtree", "--tree", str(tree_path), "--subtree", spin_id,
+                "--reason", "   ", cwd=project,
+            )
+            self.assertEqual(no_reason["error"]["code"], "archive_reason_required")
+
+            refused_root = self.run_cli_error(
+                "archive-subtree", "--tree", str(tree_path), "--subtree", root_id,
+                "--reason", "cleanup", cwd=project,
+            )
+            self.assertEqual(refused_root["error"]["code"], "archive_root_refused")
+
+    def test_ordinary_archive_records_no_recovery_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            _, tree_path = self.create_runtime(project, "ordinary", auto_commit=False)
+            self.complete_first_ready(project, tree_path)
+            phase_a_id = str(self.node_by_template(project, tree_path, "phase-a")["id"])
+
+            archived = self.run_cli(
+                "archive-subtree",
+                "--tree",
+                str(tree_path),
+                "--subtree",
+                phase_a_id,
+                "--reason",
+                "Ordinary cleanup of a succeeded phase.",
+                cwd=project,
+            )
+            self.assertNotIn("recovery", archived)
+            attributes = archived["node"]["attributes"]
+            self.assertNotIn("archived_recovered_status", attributes)
+            self.assertNotIn("archived_warning", attributes)
+
+            parsed = core.parse_xml(tree_path)
+            entry = core.archived_registry(parsed.getroot()).findall(core.ARCHIVED_ENTRY_TAG)[0]
+            self.assertIsNone(entry.get("recovered_status"))
+            self.assertIsNone(entry.get("warning"))
+
+
 if __name__ == "__main__":
     unittest.main()

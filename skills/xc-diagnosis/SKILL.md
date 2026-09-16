@@ -34,15 +34,7 @@ Diagnosis node artifacts default to internal English. A caller may explicitly re
 
 ## Instrumentation
 
-Temporary diagnostic source changes require explicit caller authorization, a declared artifact describing the exact diff, focused evidence collection, and removal before node completion. If safe removal cannot be established because concurrent changes occurred, block the node and escalate to the main-session user gate.
-
-### Report exemption for the transient mutation
-
-That temporary mutation is **recorded as an exemption from the work order's change report**; the removal obligation is what replaces the report obligation.
-
-- **Reason.** The mutation is evidence gathering, not a deliverable. The node must remove it before it completes, so by the time a report could be produced the change no longer exists and there is nothing left to report; a report of a change the same lifecycle requires to be gone would describe a state this contract forbids.
-- **Criterion.** The exemption holds only while every one of these holds: the caller authorized the mutation explicitly; a declared artifact describes the exact diff; the mutation stays confined to the diagnosis node; and the node verifies removal before it completes. An unremoved or unverifiable mutation is never exempt - it blocks the node instead, so "the mutation could not be removed" is not a state in which this exemption can be claimed.
-- **Residual risk.** A mutation that survives unverified removal: if the removal check itself is wrong, or a concurrent writer reintroduces the bytes, the surviving change reaches the enclosing work order's change set explained by nothing. The controlling check already exists outside this Skill - `xc-review` reports a workspace change the reviewed scope created outside the workbench as a required finding, and treats the recorded exception as non-blocking only when removal is verified - and whether a review node runs after this one is the caller's decision, not something this Skill can enforce.
+Temporary diagnostic source changes require explicit caller authorization, a declared artifact describing the exact diff, focused evidence collection, and removal before node completion. If safe removal cannot be established because concurrent changes occurred, block the node and escalate to the main-session user gate. Because the mutation must be gone before the node completes, it is not part of any change set the enclosing work order reports; the removal obligation is what covers it.
 
 ## Constraints
 

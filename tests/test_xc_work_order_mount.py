@@ -122,19 +122,28 @@ class WorkOrderMountTests(unittest.TestCase):
             "with their declared defaults and no other report.* key",
         )
 
-    def test_prepare_states_the_mode_derived_commitment_write(self) -> None:
-        """G-16: the node that owns the commitment states the write, not only Skill prose."""
+    def test_prepare_states_the_commitment_write(self) -> None:
+        """G-16: the node that owns the commitment states the write, not only Skill prose.
+
+        The commitment is resolved through the report policy rather than from the mode alone, so
+        the node must name the resolution order and the legal skip reasons. What it must not do
+        is leave the write implicit.
+        """
         node = nodes_by_template(load_spec())[PREPARE_NODE]
         instructions = str(node["instructions"])
         acceptance = str(node["acceptance"])
 
-        self.assertIn(f"{COMMITMENT_KEY}=true", instructions)
-        self.assertIn(f"{SKIP_REASON_KEY}=read_only_mode", instructions)
+        self.assertIn(f"Write the report commitment {COMMITMENT_KEY}", instructions)
+        self.assertIn("report policy", instructions)
+        self.assertIn("explicit user instruction first", instructions)
+        self.assertIn("report.default in the workshop configuration", instructions)
         self.assertIn(BASELINE_KEY, instructions)
         self.assertIn("missing commitment fails this node", instructions)
 
-        self.assertIn(f"{COMMITMENT_KEY} carries the mode's value", acceptance)
-        self.assertIn(f"{SKIP_REASON_KEY}=read_only_mode", acceptance)
+        self.assertIn(f"{COMMITMENT_KEY} carries the value", acceptance)
+        self.assertIn(f"{SKIP_REASON_KEY}", acceptance)
+        self.assertIn("read_only_mode", acceptance)
+        self.assertIn("policy_default", acceptance)
         self.assertIn(f"{BASELINE_KEY} records the baseline commit", acceptance)
         self.assertIn("missing commitment fails this node", acceptance)
 

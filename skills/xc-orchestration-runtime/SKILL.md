@@ -104,6 +104,58 @@ reevaluate, while latched nodes retain their stored instance result. Conditions
 never overwrite a failed node by themselves. Engine-generated composite and
 loop failures are not eligible.
 
+`archive-subtree --subtree <node> --reason <reason>` is the recovery operation
+for the terminal state `retry-failed` cannot reach. A composite or loop never
+carries a written status: the engine derives it, so no leaf transition
+addresses such a node. When that derived status came from a failed or blocked
+leaf, recovering the leaf re-derives the ancestor and no other operation is
+needed. When it came from the engine itself — a loop that reached
+`loop.max_iterations` and applied its `loop.on_limit` decision — no leaf can be
+recovered, and without this operation the subtree, its ancestors, and every
+successor stay terminal for the life of the work order.
+
+`archive-subtree` therefore accepts a `failed` or `blocked` composite or loop
+in addition to a succeeded subtree and a closed dynamic group, retiring it from
+scheduling so the successors can run. Every other refusal is unchanged: the
+root node, a subtree with running leaves, a subtree that is an ancestor of
+ready leaves, a subtree that is a live dependency target, a subtree containing
+an archived stub, a `pending` subtree, and an empty reason are all still
+rejected.
+
+Recovering this way is an audited bypass, not a silent one. The reason stays
+required, and the archive record and the stub additionally carry the recovered
+status and a fixed warning stating that the work order continued past a state
+that would otherwise have ended it. The command result repeats them under
+`recovery`. An ordinary archive of a succeeded subtree records neither, so a
+recovery archive is always distinguishable from routine cleanup in review.
+
+## Distinguishing a Task Blocker From a Tool Defect
+
+When a work order stops making progress, establish which of the two it is
+before spending further attempts on it:
+
+- **A task blocker** is missing information, an unavailable dependency, an
+  unresolved human decision, or work that genuinely cannot proceed. Handle it
+  through the owning workflow: a gate, recovery work, or an explicit blocked
+  node with its reason.
+- **A tool defect** is the runtime or a workflow contract refusing an operation
+  that the task itself permits. The signature is a refusal that names no
+  reachable next action, or a state from which every documented operation is
+  rejected.
+
+For a tool defect, record how the tool obstructed the work in the node result
+or artifact, then use the supported bypass — `retry-failed` for a leaf,
+`archive-subtree` for an engine-derived terminal composite or loop,
+`reopen-group` for a closed group, `reopen` for a sealed tree — with a reason
+that states what was bypassed and why. If no bypass applies, close the work
+order as failed or leave it open with the obstruction recorded; an
+unclosable work order with a written explanation is a better outcome than
+silent abandonment or a fabricated success.
+
+Keep this diagnosis proportionate. It is a short check before further retries,
+not a separate investigation phase, and it never justifies bypassing a refusal
+that does name a reachable next action.
+
 For `when.policy=latched`, the first condition result reached after dependency,
 ancestor, and sequence blockers clear is stored on that runtime node. Loop
 iteration reset clears descendant latches for the next iteration. A loop's
@@ -164,6 +216,28 @@ read-only and exposes no broker mutation endpoint.
 Every write response returns a monotonic `revision`. Callers MAY pass it back as `--expected-revision <value>` on a later write; a mismatch returns `state_conflict`. The runtime serializes writes for one local tree even when callers omit that option.
 
 `next` and `summary` return `awaiting_dynamic_groups` when a reachable, empty dynamic group is open. The main session must append work or call `close-group`; a closed group rejects further additions. Do not treat an empty `ready` list with awaiting groups as an unclassified deadlock.
+
+## Recorded Fail-Open Outcomes
+
+Two outcomes are permitted and used to leave no record. The runtime still permits
+both; it now records which one happened so an unintended case is visible in review.
+
+- **A guard over an unwritten key.** A blackboard key that was never written is
+  absent, not empty, so every guard over it resolves false and the node is
+  skipped while the tree still seals successfully. That is correct when the
+  caller meant to leave the branch out and a silent defect when the caller
+  forgot to publish the key, and the runtime cannot tell the two apart. A node
+  skipped by a guard whose key is unwritten therefore carries
+  `skip_unwritten_key` naming that key, alongside the ordinary
+  `skip_reason=when`. A guard over a published false value carries no such
+  attribute, and publishing the key later clears it.
+- **`add-node` under a terminal ancestor.** The append still succeeds, because
+  creating recovery work before clearing the ancestor is a legitimate order of
+  operations. The result now carries a `warning` of
+  `node_not_currently_schedulable` naming the blocking ancestor and its status,
+  so the caller learns immediately rather than at the later `start`.
+
+Neither record changes what is permitted, and neither is an error.
 
 ## Persistence and Workshop Commits
 

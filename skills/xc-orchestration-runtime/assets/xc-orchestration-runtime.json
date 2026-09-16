@@ -20,5 +20,8 @@
   },
   "workshop": {
     "topology": "independent-link"
+  },
+  "report": {
+    "default": "code-change-only"
   }
 }

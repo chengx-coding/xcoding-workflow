@@ -375,11 +375,11 @@ class JitMilestoneTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("## Report Coverage", protocol)
         self.assertIn("subtree, not a work-order root", protocol)
-        self.assertIn("enclosing work-order root's report covers", protocol)
+        self.assertIn("report covers the milestone subtree's change set", protocol)
         self.assertIn("not an initialisation path", protocol)
         self.assertIn("## Report Coverage", farms)
         self.assertIn("The enclosing root's report covers the farm's whole change set", farms)
-        self.assertIn("declares no report node at all", farms)
+        self.assertIn("no report per subtree", farms)
 
     def test_revision_required_keeps_tree_open_for_recovery(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
