@@ -24,9 +24,14 @@ by the author and bound to the code by recomputation.
 
 - In the full lifecycle the report group sits between the verification group and the result
   document: only after the code is implemented and verified does the report describe a state
-  that still exists.
-- Where an independent review or a bridge-declared review step exists, the report is produced
-  before that review, because the report is the reviewer's input.
+  that still exists. It is the **last group before the result document**, and that lifecycle
+  mounts no top-level review node; a review a bridge or an approved solution requires is extra
+  work inside the implementation path, so it happens before the report and never between the
+  report and the result document.
+- On the adaptive path the order is main-session policy, and there the report node is placed
+  before an independent review leaf, so the reviewer reads the report. `references/coverage-protocol.md`
+  **O9** is the one normative ordering statement for both paths; where this page and O9 could be
+  read differently, O9 decides.
 - When a review or a gate causes code rework, the report is refreshed by re-running the same
   group; no second report file and no new node type is created.
 - Staleness is a refresh edge, not a node failure. Every other validation failure is a node
@@ -77,11 +82,16 @@ implementation path, and the rework segment must be followed by the refresh sequ
   - Allowed values: `minimal`, `standard`, `full`.
   - Scope: content thickness only. All three levels run every mechanical check and the
     accuracy review.
-- `gate_required` - `boolean`; default `false`
-  - Scope: opens the optional human gate. It is not a property of the strength level.
+- `gate_required` - `boolean`; the tree declares `false`, and the caller publishes the value
+  - Scope: opens the optional human gate. It is not a property of the strength level. The
+    declared `false` is a starting value on a tree that declares the key, never a fallback for a
+    caller that omits it: an unwritten key is absent, the gate's guard resolves false, and the
+    gate is skipped.
 - `stage` - `enum`; required for validation
   - Allowed values: `coverage`, `final`.
-  - Scope: `coverage` runs V1-V13; `final` additionally recomputes V14.
+  - Scope: `coverage` runs V1-V13, V15 and V16; `final` runs the same set and additionally
+    recomputes V14, the accuracy verdicts, because the verdict file does not exist yet at
+    coverage time.
 
 ## Commands
 
@@ -89,8 +99,13 @@ Run each script from the Skill package; scripts resolve their own package locati
 take a script path from the caller.
 
 ```text
+python scripts/capture_baseline.py --repo R --workbench W --work-order-id I
+       [--baseline-worktree-dir T] [--baseline-untracked-dir U] [--format json|keys]
+python scripts/capture_baseline.py --verify-existing --repo R --workbench W --work-order-id I
+       [--baseline-worktree-dir T] [--baseline-untracked-dir U] [--format json|keys]
+
 python scripts/build_manifest.py --repo R --work-order-id W --baseline-commit C
-       [--baseline-digest D] [--baseline-worktree-dir T] [--baseline-untracked-dir U]
+       [--baseline-digest D] --baseline-worktree-dir T --baseline-untracked-dir U
        [--strength minimal|standard|full] [--generated-at TS] --tmp-dir <workbench>/tmp
        --out change-report-manifest.json
 
@@ -107,14 +122,51 @@ python scripts/highlight_code.py --language python --file src/app.py
 python scripts/render_diagram.py --spec diagram.json --out diagram.html
 ```
 
+`capture_baseline.py` runs **once**, when the work order opens and before the first mutating
+leaf. Its capture form mirrors every tracked path into `--baseline-worktree-dir` (default
+`<workbench>/tmp/baseline-worktree`), mirrors the paths that were untracked at open into
+`--baseline-untracked-dir` (default `<workbench>/tmp/baseline-untracked`), and writes the
+open-state record `<workbench>/tmp/baseline-open-state.json`; `--format keys` prints the
+publishable blackboard lines. The record carries three facts no later step can recover, and each
+exists because a defect could not be named without it: `untracked_paths`, the names that were
+untracked at open, so a path that was untracked at open and has since left the worktree can still
+be named by `untracked_snapshot_path_lost:`; `index_modes`, the index mode of every path at open,
+which is the only evidence that separates a mode-only change made before the open from one made
+after it; and `degradations`, the names of the tracked and untracked paths the capture could not
+open, which are skipped and named rather than blocking the work order at open. That is an
+addition to the record's schema, not a replacement of it: the thirteen core fields remain the
+required set, the three open-state facts stay optional, and a record that carries only the core
+set still loads and still verifies. Its `--verify-existing` form re-materialises nothing: it
+recomputes
+the C4 digest from the two recorded directories, compares it with the record's `expected_digest`
+selected by `--work-order-id`, and fails closed when they differ, when the record is missing
+(`baseline_record_missing`) or when the record does not carry that work order id
+(`baseline_record_unselected`). Both directory parameters are the two snapshot parameters this
+package declares, and they are what C4b and C4a fix.
+
 `--tmp-dir` is the workbench `tmp/` directory and H4/C37 require it: the baseline snapshots,
 the C37 `O`/`B`/`H` no-index scratch files and the skeleton's intermediate diff inputs must all
-land there, never in the OS temp directory. Both scripts accept it and both fall back to the OS
-temp directory only when the caller omits it; a caller that omits it violates H4/C37.
+land there, never in the OS temp directory. `build_manifest.py` and `build_skeleton.py` accept
+it and fall back to the OS temp directory only when the caller omits it; a caller that omits it
+violates H4/C37. The snapshots carry their own two parameters instead, and their default
+locations are the workbench paths C4a/C4b fix: `build_manifest.py` resolves both of them from
+the two snapshot paths this work order's open-state record holds when either flag is omitted,
+so a caller that names the workbench is never left without the `B` side of the alignment.
+That default is a repair, not a licence to omit the flags: a run with neither flag nor a usable
+record reads the worktree snapshot as `absent`, degrades every path's provenance and charges the
+entire change set to `pre_existing`, which no validation stage detects. Name both directories
+whenever the caller knows them.
 
 Exit code 0 with `ok=true` means the run succeeded; any validation failure exits 1 and lists
 one entry per failed check. The validator prints a normalised receipt; the caller passes
 **only** the `.receipt` sub-object to `--check-result-json`.
+
+**The publish is two steps, and every report node with a completion check follows it.** The
+runtime resolves a node's declared completion facts before it applies the blackboard writes
+carried by the same mutation, so a node that publishes its facts and completes in one call fails
+its own check with a set of `check_fact_mismatch` violations. Publish the facts first, in a
+mutation that carries no terminal check, and pass only the receipt on the completing mutation.
+C25a states the sequence normatively.
 
 Every value inside `receipt.facts` is a **string** (`"7"`, `"true"`), because the runtime
 compares a declared completion-check fact against the blackboard as exact text. Emitting a
@@ -127,10 +179,12 @@ same string values.
 The three reference documents are normative:
 - `references/change-report-contract.md` - H1-H41 (page structure, anchors, class names,
   offline self-containment, language) and A1-A15 (per-unit analysis content), plus the
-  A13 threshold constants and the strength matrix.
-- `references/coverage-protocol.md` - C1-C38 (manifest format, the six-step enumeration
-  algorithm, baseline recording, exclusion rules, staleness and refresh, sensitive and
-  non-decodable content) plus the V1-V14 failure table and the normalisation rule.
+  A13 threshold constants, the strength matrix and the strength constants' calibration record.
+- `references/coverage-protocol.md` - C1-C39 (manifest format, the six-step enumeration
+  algorithm, baseline recording and the C4b snapshot contract, exclusion rules, staleness and
+  refresh, sensitive and non-decodable content, the lifecycle coverage disposition, the
+  calibration record of the acceptance-gating constants) plus the O1-O9 orchestration contract,
+  the V1-V16 failure table and the normalisation rule.
 - `references/diagram-spec.md` - D1-D18 (diagram grammar, the two render modes, trigger
   conditions, geometry constants).
 
@@ -145,20 +199,72 @@ information section.
 
 ## Blackboard
 
-The caller publishes these keys before the group runs; the nodes publish the rest.
+The report group's blackboard is a **partition**: the caller seeds one half before the group
+runs, the nodes publish the other half. The two halves below are disjoint and their union is
+exactly the 26 keys `assets/change-report-flow.json` declares.
+
+**The declaration is not a safety net.** Embedding a subtree copies **no** child template
+defaults: only node structure is composed, and the parent runtime blackboard stays the shared
+control plane. A caller key that is declared but never written is therefore **absent** from the
+mounted blackboard - it is not the empty string, it is not the declared value, and no guard, loop
+condition or completion-fact selector resolves it. Two measured consequences follow, and both are
+silent-where-it-matters:
+
+- **An omitted gate key skips the human gate.** With `report.gate_required` unwritten, the
+  `report.gate_required == true` guard resolves false and `report-gate` is skipped, so the report
+  is never shown to a human and the subtree still seals complete. `report.gate_required` is the
+  key gate-required work orders must publish.
+- **Unpublished selectors and paths fail far from the cause.** An unwritten completion-fact source
+  makes the node fail `completion_requirements_failed` with `check_subject_source_missing` or
+  `check_fact_source_missing` instead of naming the key the caller owed, and an unwritten or empty
+  `report.path` reaches the validator as an empty path, so it reports a generic file error rather
+  than the unpublished key. `assets/change-report-flow.json` declaring a value means the
+  **subtree** declares it, never that the caller may rely on it.
+
+Publish every key below with the value this work order actually uses, before the group's first
+node runs.
+
+**Caller half - the thirteen keys the caller publishes before the group runs, with the initial
+value each one carries on a tree that declares it:**
 
 ```text
-report.path / report.manifest_path
-report.baseline_commit / report.baseline_digest
-report.language / report.strength
-report.gate_required / report.gate_outcome
+report.path=""                 report.manifest_path=""
+report.baseline_commit=""      report.baseline_digest=""
+report.language="en"           report.strength="standard"
+report.gate_required="false"   report.gate_outcome="not-run"
+report.gate_rework_required="false"   report.gate_recovery_required="false"
+report.round="1"               report.refresh_count="0"    report.refresh_reason="initial"
+```
+
+Seven of them are read by the engine itself before any writer inside the subtree runs: the three
+guard and loop keys (`report.gate_required`, `report.gate_recovery_required`,
+`report.gate_rework_required`) and the four completion-fact sources a selector resolves
+(`report.path`, `report.manifest_path`, `report.strength`, `report.round`). The other six are
+read by the subtree's own worker instructions and by no guard, loop condition or selector:
+`report.baseline_commit`, `report.baseline_digest`, `report.language`, `report.gate_outcome`,
+`report.refresh_count`, `report.refresh_reason`. The caller's obligation is the criterion, not
+the guard: seed every key the engine or a node inside the subtree reads before a writer
+publishes it. `report.round` is one of the thirteen, not a fourteenth key, and its convention is
+protocol O4: publish the 1-based index of the pass being entered, before `prepare-manifest`
+runs, so nothing pre-increments it.
+
+**Node half - the other thirteen keys, published from inside the group:**
+
+```text
+report.baseline_algorithm
+report.strength_upgrade_reason
 report.accuracy_open_issues
-report.gate_rework_required / report.gate_recovery_required
-report.round / report.refresh_count / report.refresh_reason
+report.run_required
 report.units_total / report.units_covered / report.excluded_total / report.pre_existing_total
-report.run_required / report.hash_bound / report.token_bound
+report.hash_bound / report.token_bound
 report.coverage / report.self_contained / report.head_current
 ```
+
+The caller does not seed these. `report.baseline_algorithm` is declaration-only in the caller's
+own output: the capture tool's `--format keys` prints it, and no node reads it. The manifest step
+publishes the unit and exclusion counters and derives `report.run_required`; the coverage and
+final validations publish the binding counters and the receipt facts; the accuracy review owns
+`report.accuracy_open_issues`; the manifest step owns `report.strength_upgrade_reason`.
 
 `report.strength` may only be raised by the manifest step when the measured unit count
 exceeds the minimal-level ceiling. It is never lowered.

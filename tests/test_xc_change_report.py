@@ -35,6 +35,7 @@ for entry in (str(SCRIPTS), str(SOURCE_ROOT)):
 
 import build_manifest as bm  # noqa: E402
 import build_skeleton as bs  # noqa: E402
+import capture_baseline as cb  # noqa: E402
 import highlight_code as hc  # noqa: E402
 import render_diagram as rd  # noqa: E402
 import validate_report as vr  # noqa: E402
@@ -81,13 +82,34 @@ def _git(repo: Path, *args: str) -> str:
     return proc.stdout.decode("utf-8", "replace")
 
 
-def materialise(fixture: str, root: Path) -> dict[str, Any]:
-    """Create a real git working tree from a fixture scenario."""
+def materialise(fixture: str, root: Path, line_endings: str = "\n") -> dict[str, Any]:
+    """Create a real git working tree plus the two baseline snapshots of a fixture scenario.
+
+    The returned harness carries the baseline's own C4 digest, computed from the materialised
+    worktree snapshot with the package's capture construction, so a manifest built from the
+    harness proves the same baseline identity a real capture publishes instead of a literal.
+
+    `line_endings` writes every text payload with `\\r\\n` instead of `\\n`, which is how a
+    repository with `core.autocrlf=false` on a Windows checkout stores CRLF content. Binary
+    fixture files (`base64`/`file` specs) are never rewritten.
+    """
     fixture_dir = FIXTURES / fixture
     scenario = json.loads((fixture_dir / "scenario.json").read_text(encoding="utf-8"))
-    commit_state = scenario.get("commit", {})
+
+    def endings(spec: Any) -> Any:
+        if line_endings == "\n" or not isinstance(spec, dict) or "text" not in spec:
+            return spec
+        if spec.get("encoding", "utf-8") != "utf-8":
+            return spec
+        converted = dict(spec)
+        converted["text"] = re.sub(r"(?<!\r)\n", line_endings, spec["text"])
+        return converted
+
+    commit_state = {path: endings(spec) for path, spec in scenario.get("commit", {}).items()}
     baseline_state = _merge(commit_state, scenario.get("worktree_at_baseline", {}))
+    baseline_state = {path: endings(spec) for path, spec in baseline_state.items()}
     head_state = _merge(baseline_state, scenario.get("head", {}))
+    head_state = {path: endings(spec) for path, spec in head_state.items()}
 
     repo = root / "repo"
     repo.mkdir(parents=True)
@@ -121,14 +143,20 @@ def materialise(fixture: str, root: Path) -> dict[str, Any]:
     baseline_untracked = root / "tmp" / "baseline-untracked"
     baseline_worktree.mkdir(parents=True)
     baseline_untracked.mkdir(parents=True)
+    # C4a/C4b: the worktree snapshot mirrors the path set the baseline commit tracks and
+    # nothing else. A path that was untracked when the work order opened belongs to the
+    # untracked snapshot; leaving it in the worktree snapshot makes the whole snapshot read
+    # `incomplete` and degrades every path's provenance.
+    tracked_at_baseline = [
+        path for path, spec in commit_state.items() if _content_bytes(spec, fixture_dir) is not None
+    ]
+    tracked_set = set(tracked_at_baseline)
     for item in sorted(repo.rglob("*")):
         if item.is_file() and ".git" not in item.parts:
             relative = item.relative_to(repo)
-            (baseline_worktree / relative).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(item, baseline_worktree / relative)
-            if relative.as_posix() not in commit_state:
-                (baseline_untracked / relative).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(item, baseline_untracked / relative)
+            target = baseline_worktree if relative.as_posix() in tracked_set else baseline_untracked
+            (target / relative).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, target / relative)
 
     write_state(head_state)
     return {
@@ -136,6 +164,9 @@ def materialise(fixture: str, root: Path) -> dict[str, Any]:
         "commit": commit,
         "baseline_worktree": baseline_worktree,
         "baseline_untracked": baseline_untracked,
+        "baseline_digest": cb.digest_from_snapshot(
+            baseline_worktree, sorted(tracked_at_baseline, key=bm.sort_key)
+        ),
         "scenario": scenario,
         "root": root,
     }
@@ -146,7 +177,7 @@ def build_manifest_for(harness: dict[str, Any], strength: str = "standard", tmp_
         repo_path=harness["repo"],
         work_order_id=WORK_ORDER_ID,
         baseline_commit=harness["commit"],
-        baseline_digest="fixture-baseline-digest",
+        baseline_digest=harness["baseline_digest"],
         baseline_algorithm=bm.DIGEST_ALGORITHM,
         baseline_worktree_dir=harness["baseline_worktree"],
         baseline_untracked_dir=harness["baseline_untracked"],
@@ -462,11 +493,15 @@ class ReportCase(unittest.TestCase):
         accuracy: str | None = None,
         flow: Path | None = None,
         golden: Path | None = None,
+        repo: Path | None = None,
     ) -> dict[str, Any]:
         payload, _ = vr.validate(
             report_path=report or self.report_path,
             manifest_path=manifest or self.manifest_path,
-            repo=self.harness["repo"],
+            # V15 recomputes the baseline digest from the snapshot and V16 re-enumerates the
+            # baseline commit, so the repository a manifest is validated against must be the
+            # repository it was built from.
+            repo=repo or self.harness["repo"],
             work_order_id=WORK_ORDER_ID,
             stage=stage,
             verdicts_path=verdicts if verdicts is not None else self.verdicts_path,
@@ -1661,6 +1696,139 @@ class NegativeCaseTests(ReportCase):
         self.assertTrue(any("provenance=pre_existing" in message for message in messages), messages)
 
 
+# --------------------------------------------------------------------------------------
+# Line-ending regression: a CRLF worktree must bind exactly like an LF worktree
+# --------------------------------------------------------------------------------------
+
+
+class CrlfWorktreeTests(unittest.TestCase):
+    """A worktree that stores its files with CRLF must not break the V10 hash binding.
+
+    Measured defect this class pins: the skeleton writes the repository's own bytes into the
+    page, so a CRLF code line puts a CR before the row span closes. The builder hashed the bare
+    line (`content_sha256` over `line\\n`), but `validate_report.validate` read the page with
+    universal-newline translation, which turned that `line\\r\\n` into `line\\n` inside the span
+    and left `normalize_code_text` with one extra newline per code line. The recomputed hash
+    could then never equal the manifest's, so every unit of every CRLF worktree failed V10 while
+    the skeleton's own self-check passed inside the same run. Identical repositories with LF
+    endings passed, and rebuilds were byte-identical, so it was not a build problem.
+    """
+
+    fixture = "sample-diff"
+
+    def setUp(self) -> None:
+        self._root = Path(tempfile.mkdtemp(prefix="xc-report-crlf-"))
+        self.addCleanup(shutil.rmtree, self._root, ignore_errors=True)
+
+    def render(self, label: str) -> tuple[Path, Path, Path]:
+        """Materialise `label`'s worktree, build the manifest and the page, return the paths."""
+        root = self._root / label
+        harness = materialise(self.fixture, root / "fixture", line_endings="\r\n")
+        manifest = build_manifest_for(harness, tmp_dir=root / "tmp")
+        manifest_path = write_manifest(manifest, root / "change-report-manifest.json")
+        analysis = make_analysis(manifest, harness["repo"])
+        report_path = root / "change-report.html"
+        render_report(manifest, manifest_path, harness["repo"], analysis, report_path)
+        return harness["repo"], manifest_path, report_path
+
+    def test_crlf_worktree_binds_every_unit_at_the_coverage_stage(self) -> None:
+        repo, manifest_path, report_path = self.render("crlf")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+        # Guard the fixture itself. If the page held no CR before a row span closes, the page
+        # would not describe a CRLF worktree and the rest of this test would prove nothing.
+        page_bytes = report_path.read_bytes()
+        self.assertIn(b"\r</span>", page_bytes, "the page must carry the CRLF worktree's own bytes")
+
+        payload = vr.validate(
+            report_path=report_path,
+            manifest_path=manifest_path,
+            repo=repo,
+            work_order_id=WORK_ORDER_ID,
+            stage="coverage",
+            verdicts_path=None,
+            accuracy_open_issues=None,
+            flow_spec_path=None,
+            golden_dir=None,
+        )[0]
+        self.assertTrue(payload["ok"], payload["errors"])
+        facts = payload["facts"]
+        self.assertGreater(facts["units_total"], 0)
+        self.assertEqual(facts["hash_bound"], facts["units_total"])
+        self.assertEqual(facts["coverage"], "complete")
+
+    def test_crlf_and_lf_worktrees_hash_the_same_logical_content(self) -> None:
+        """The canonical unit text belongs to the repository, not to its line endings."""
+        crlf = build_manifest_for(materialise(self.fixture, self._root / "c" / "fixture", "\r\n"))
+        lf = build_manifest_for(materialise(self.fixture, self._root / "l" / "fixture", "\n"))
+        crlf_hashes = {
+            (entry["path"], hunk["unit_index"]): hunk["content_sha256"]
+            for entry in crlf["files"]
+            for hunk in entry["hunks"]
+            if not hunk["excluded"]
+        }
+        lf_hashes = {
+            (entry["path"], hunk["unit_index"]): hunk["content_sha256"]
+            for entry in lf["files"]
+            for hunk in entry["hunks"]
+            if not hunk["excluded"]
+        }
+        self.assertEqual(sorted(crlf_hashes), sorted(lf_hashes))
+        self.assertEqual(crlf_hashes, lf_hashes)
+
+    def test_the_crlf_page_is_validated_through_the_cli_entry_point(self) -> None:
+        """The same run through `validate_report.py --stage coverage`, with its exit code."""
+        repo, manifest_path, report_path = self.render("cli")
+        json_out = self._root / "cli" / "validate-coverage.json"
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "validate_report.py"),
+                "--report",
+                str(report_path),
+                "--manifest",
+                str(manifest_path),
+                "--repo",
+                str(repo),
+                "--work-order-id",
+                WORK_ORDER_ID,
+                "--stage",
+                "coverage",
+                "--json-out",
+                str(json_out),
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        payload = json.loads(json_out.read_text(encoding="utf-8"))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertTrue(payload["ok"], payload["errors"])
+        self.assertEqual(payload["facts"]["hash_bound"], payload["facts"]["units_total"])
+
+    def test_an_altered_crlf_code_block_still_fails_v10(self) -> None:
+        """The binding must stay meaningful: normalisation must not become a free pass."""
+        repo, manifest_path, report_path = self.render("altered")
+        page = report_path.read_bytes().decode("utf-8")
+        anchor = '<span class="tok-number">3</span>'
+        self.assertIn(anchor, page, "the fixture must render the number the tamper replaces")
+        tampered_path = self._root / "altered" / "change-report-tampered.html"
+        tampered_path.write_bytes(page.replace(anchor, '<span class="tok-number">4</span>', 1).encode("utf-8"))
+        payload = vr.validate(
+            report_path=tampered_path,
+            manifest_path=manifest_path,
+            repo=repo,
+            work_order_id=WORK_ORDER_ID,
+            stage="coverage",
+            verdicts_path=None,
+            accuracy_open_issues=None,
+            flow_spec_path=None,
+            golden_dir=None,
+        )[0]
+        self.assertFalse(payload["ok"])
+        self.assertIn("V10", [item["id"] for item in payload["errors"]])
+
+
 class ScratchPlacementTests(ReportCase):
     """H4/C37: intermediate files land under the workbench tmp directory, not the OS temp dir."""
 
@@ -1699,7 +1867,7 @@ class ScratchPlacementTests(ReportCase):
                 f"{name} landed in the OS temp directory instead of --tmp-dir",
             )
 
-        payload = self.validate(report=report, manifest=manifest_path)
+        payload = self.validate(report=report, manifest=manifest_path, repo=harness["repo"])
         self.assertTrue(payload["ok"], payload["errors"])
 
     def test_both_scripts_accept_the_tmp_dir_flag(self) -> None:
@@ -1805,6 +1973,325 @@ class SkillPackageTests(unittest.TestCase):
         payload = json.loads(result.stdout)
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["units_total"], 2)
+
+
+# --------------------------------------------------------------------------------------
+# F2: the page writer on a path that is not valid UTF-8
+# --------------------------------------------------------------------------------------
+
+
+class PageEncodingTests(unittest.TestCase):
+    """The page writer must render a surrogate-escaped path instead of raising.
+
+    A wave-one change made path handling lossless: `build_manifest.decode_path` returns a path
+    that is not valid UTF-8 as a lone surrogate per raw byte, and the manifest writer survives
+    that because it is pinned to `ensure_ascii=True`. The page is a UTF-8 document, and an
+    unencodable character has no UTF-8 encoding, so `page.encode("utf-8")` raised
+    `UnicodeEncodeError` and the whole report failed to build. The page renders each such
+    character as the escape the manifest already uses for the same byte.
+    """
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp(prefix="xc-report-page-encoding-"))
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+        self.repo = self.root / "repo"
+        self.repo.mkdir(parents=True)
+        _git(self.repo, "init", "-q")
+        _git(self.repo, "symbolic-ref", "HEAD", "refs/heads/main")
+        _git(self.repo, "config", "user.email", "fixture@example.invalid")
+        _git(self.repo, "config", "user.name", "fixture")
+        _git(self.repo, "config", "core.autocrlf", "false")
+        (self.repo / "src").mkdir()
+        (self.repo / "src" / "app.py").write_bytes(b"value = 1\n")
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-q", "-m", "baseline")
+        self.commit = _git(self.repo, "rev-parse", "HEAD").strip()
+
+        (self.repo / "src" / "app.py").write_bytes(b"value = 2\n")
+        # The path whose name is rewritten below, so that the page renders it as a name without
+        # rendering a code block for it.
+        (self.repo / "payload.bin").write_bytes(b"\x00\x01\x02binary\n")
+
+        self.snapshot = self.root / "baseline-worktree"
+        (self.snapshot / "src").mkdir(parents=True)
+        shutil.copy2(self.repo / "src" / "app.py", self.snapshot / "src" / "app.py")
+        self.untracked = self.root / "baseline-untracked"
+        self.untracked.mkdir()
+
+        self.manifest = bm.build_manifest(
+            repo_path=self.repo,
+            work_order_id=WORK_ORDER_ID,
+            baseline_commit=self.commit,
+            baseline_digest=bm.digest_from_hashes(
+                [("src/app.py", bm.sha256_hex((self.snapshot / "src" / "app.py").read_bytes()))]
+            ),
+            baseline_algorithm=bm.DIGEST_ALGORITHM,
+            baseline_worktree_dir=self.snapshot,
+            baseline_untracked_dir=self.untracked,
+            tmp_dir=self.root / "tmp",
+            captured_at="2026-09-15T17:45:00Z",
+            generated_at="2026-09-15T18:00:00Z",
+            strength="standard",
+        )
+
+    def render(self, name: str) -> tuple[int, Path]:
+        """Run the real writer over the current manifest and return its exit code and output."""
+        manifest_path = self.root / f"{name}-manifest.json"
+        # The manifest writer's own pinning (`ensure_ascii=True`), which is what makes a
+        # surrogate-escaped path serialisable at all: `ensure_ascii=False` cannot encode it.
+        manifest_path.write_bytes(
+            (json.dumps(self.manifest, ensure_ascii=True, indent=2) + "\n").encode("utf-8")
+        )
+        out = self.root / f"{name}-change-report.html"
+        code = bs.main(
+            [
+                "--repo",
+                str(self.repo),
+                "--manifest",
+                str(manifest_path),
+                "--out",
+                str(out),
+                "--generated-at",
+                "2026-09-15T18:00:00Z",
+                "--tmp-dir",
+                str(self.root / "tmp"),
+            ]
+        )
+        return code, out
+
+    def test_page_writer_renders_a_path_that_is_not_valid_utf8(self) -> None:
+        entries = {entry["path"]: entry for entry in self.manifest["files"]}
+        self.assertEqual(
+            sorted(entries),
+            ["payload.bin", "src/app.py"],
+            "the fixture must enumerate the excluded path the page renders by name",
+        )
+        self.assertEqual(entries["payload.bin"]["exclude_reason"], "binary")
+
+        # Control: with an ordinary path the page writes and names the path literally, so the
+        # escape below is not a blanket rewriting of every page.
+        code, ordinary_out = self.render("ordinary")
+        self.assertEqual(code, 0)
+        ordinary_page = ordinary_out.read_bytes().decode("utf-8")
+        self.assertIn("<code>payload.bin</code>", ordinary_page)
+        self.assertNotIn("\\udcff", ordinary_page)
+
+        # The measured shape: byte 0xFF has no UTF-8 decoding, so the enumeration hands the page
+        # writer `payload\udcff.bin`. The character has no UTF-8 encoding at all.
+        raw = b"payload\xff.bin"
+        escaped = bm.decode_path(raw)
+        self.assertEqual(escaped.encode("utf-8", "surrogateescape"), raw)
+        with self.assertRaises(UnicodeEncodeError):
+            escaped.encode("utf-8")
+        entries["payload.bin"]["path"] = escaped
+
+        code, escaped_out = self.render("escaped")
+        self.assertEqual(code, 0, "the page writer must not raise on an unencodable path")
+        page_bytes = escaped_out.read_bytes()
+        # The deliverable is a UTF-8 document, so the rendering has to be encodable, not merely
+        # written: the validator reads it back with a strict UTF-8 decode.
+        page = page_bytes.decode("utf-8")
+        # ... and it spells the byte the way the manifest does, so the two artefacts name the
+        # same path.
+        self.assertIn("<code>payload\\udcff.bin</code>", page)
+        manifest_bytes = (self.root / "escaped-manifest.json").read_bytes()
+        self.assertTrue(manifest_bytes.isascii())
+        self.assertIn(b"payload\\udcff.bin", manifest_bytes)
+
+    def test_page_text_leaves_an_encodable_page_alone(self) -> None:
+        """The writer's rendering is a pass-through for every character that can be encoded."""
+        page = "<html><body>caf\u00e9 \u4e2d\u6587 &amp; plain ascii</body></html>"
+        self.assertEqual(bs.page_text(page), page)
+
+    def test_manifest_writer_keeps_its_ascii_pinning(self) -> None:
+        """The fix belongs to the page side: the manifest stays an ASCII-only document.
+
+        The manifest is the lossless record of the change set and survives a path that is not
+        valid UTF-8 only because its writer is pinned to `ensure_ascii=True`. Escaping the
+        character in the page must not be paid for by weakening that writer, so this reads a
+        manifest the writer really produced for a repository whose path is not ASCII.
+        """
+        repo = self.root / "non-ascii"
+        repo.mkdir(parents=True)
+        _git(repo, "init", "-q")
+        _git(repo, "config", "user.email", "fixture@example.invalid")
+        _git(repo, "config", "user.name", "fixture")
+        _git(repo, "config", "core.autocrlf", "false")
+        name = "caf\u00e9.txt"
+        (repo / name).write_bytes("h\u00e9llo\n".encode("utf-8"))
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "baseline")
+        commit = _git(repo, "rev-parse", "HEAD").strip()
+        (repo / name).write_bytes("goodbye\n".encode("utf-8"))
+
+        snapshot = self.root / "non-ascii-baseline-worktree"
+        snapshot.mkdir()
+        (snapshot / name).write_bytes("h\u00e9llo\n".encode("utf-8"))
+        untracked = self.root / "non-ascii-baseline-untracked"
+        untracked.mkdir()
+
+        out = self.root / "non-ascii-manifest.json"
+        code = bm.main(
+            [
+                "--repo",
+                str(repo),
+                "--work-order-id",
+                WORK_ORDER_ID,
+                "--baseline-commit",
+                commit,
+                "--baseline-worktree-dir",
+                str(snapshot),
+                "--baseline-untracked-dir",
+                str(untracked),
+                "--tmp-dir",
+                str(self.root / "tmp"),
+                "--out",
+                str(out),
+            ]
+        )
+        self.assertEqual(code, 0)
+        manifest_bytes = out.read_bytes()
+        self.assertTrue(
+            manifest_bytes.isascii(),
+            "the manifest writer must stay pinned to ensure_ascii=True",
+        )
+        # The non-ASCII name survives as its escape, which is the spelling the page uses too.
+        self.assertIn(b"caf\\u00e9.txt", manifest_bytes)
+
+
+class LiteralBraceGuardTests(unittest.TestCase):
+    """A change set that quotes a literal brace pair must still render (G-43).
+
+    `build_report`'s residual-placeholder check used to run over the assembled page, so any
+    unit whose quoted source contains `{{` or `}}` -- a Python f-string, a JSON object
+    literal, a JavaScript block -- aborted the whole report with `template placeholders
+    remain after substitution`, even though the braces are quoted content and no template
+    placeholder is unresolved. The check now reads the template, and the second half of this
+    case proves it still rejects a template token the declared placeholder set cannot cover.
+    """
+
+    HEAD_SOURCE = (
+        'name = "world"\n'
+        'print(f"hello {{name}}")\n'
+        'payload = {"outer": {"inner": 1}}\n'
+        'snippet = "function () { return {{ ok: true }}; }"\n'
+    )
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp(prefix="xc-report-literal-braces-"))
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+        self.repo = self.root / "repo"
+        self.repo.mkdir(parents=True)
+        _git(self.repo, "init", "-q")
+        _git(self.repo, "symbolic-ref", "HEAD", "refs/heads/main")
+        _git(self.repo, "config", "user.email", "fixture@example.invalid")
+        _git(self.repo, "config", "user.name", "fixture")
+        _git(self.repo, "config", "core.autocrlf", "false")
+        source = self.repo / "src" / "app.py"
+        source.parent.mkdir()
+        source.write_bytes(b'name = "world"\nprint("hello")\n')
+        _git(self.repo, "add", "-A")
+        _git(self.repo, "commit", "-q", "-m", "baseline")
+        self.commit = _git(self.repo, "rev-parse", "HEAD").strip()
+
+        source.write_bytes(self.HEAD_SOURCE.encode("utf-8"))
+
+        self.snapshot = self.root / "baseline-worktree"
+        (self.snapshot / "src").mkdir(parents=True)
+        (self.snapshot / "src" / "app.py").write_bytes(b'name = "world"\nprint("hello")\n')
+        self.untracked = self.root / "baseline-untracked"
+        self.untracked.mkdir()
+
+        self.manifest = bm.build_manifest(
+            repo_path=self.repo,
+            work_order_id=WORK_ORDER_ID,
+            baseline_commit=self.commit,
+            baseline_digest=bm.digest_from_hashes(
+                [("src/app.py", bm.sha256_hex((self.snapshot / "src" / "app.py").read_bytes()))]
+            ),
+            baseline_algorithm=bm.DIGEST_ALGORITHM,
+            baseline_worktree_dir=self.snapshot,
+            baseline_untracked_dir=self.untracked,
+            tmp_dir=self.root / "tmp",
+            captured_at="2026-09-15T17:45:00Z",
+            generated_at="2026-09-15T18:00:00Z",
+            strength="standard",
+        )
+        self.manifest_path = write_manifest(
+            self.manifest, self.root / "change-report-manifest.json"
+        )
+        self.analysis = make_analysis(self.manifest, self.repo)
+        self.template = (SKILL_ROOT / "assets" / "change-report-template.html").read_text(
+            encoding="utf-8"
+        )
+
+    # -- helpers -----------------------------------------------------------------
+    def render(self, template_path: Path | None = None) -> tuple[int, Path]:
+        out = self.root / "change-report.html"
+        argv = [
+            "--repo",
+            str(self.repo),
+            "--manifest",
+            str(self.manifest_path),
+            "--out",
+            str(out),
+            "--generated-at",
+            "2026-09-15T18:00:00Z",
+            "--tmp-dir",
+            str(self.root / "tmp"),
+        ]
+        if template_path is not None:
+            argv += ["--template", str(template_path)]
+        return bs.main(argv), out
+
+    def test_the_quoted_lines_reach_the_page_and_render(self) -> None:
+        code, out = self.render()
+        self.assertEqual(code, 0, "quoted literal braces must not stop the report from building")
+        page = out.read_bytes().decode("utf-8")
+        braces = page.count("{{") + page.count("}}")
+        self.assertGreater(braces, 0, "the fixture must really quote a literal brace pair")
+        # Every brace pair the page carries is quoted source inside a `report-code` block;
+        # none of them is a surviving `{{NAME}}` template token.
+        blocks = re.findall(r'<pre class="report-code"[^>]*>.*?</pre>', page, re.S)
+        self.assertEqual(
+            sum(block.count("{{") + block.count("}}") for block in blocks),
+            braces,
+            "the only brace pairs in the page are the quoted ones",
+        )
+        self.assertEqual(re.findall(r"\{\{[A-Z][A-Z0-9_]*\}\}", page), [])
+
+    def test_an_undeclared_template_token_still_fails(self) -> None:
+        broken = self.template.replace("{{UNITS}}", "{{UNITS}}<p>{{UNITS_TTILE}}</p>")
+        path = self.root / "undeclared-template.html"
+        path.write_text(broken, encoding="utf-8")
+        with self.assertRaises(bs.SkeletonError) as caught:
+            bs.build_report(
+                repo=self.repo,
+                manifest=self.manifest,
+                analysis=self.analysis,
+                template_text=broken,
+                css_text=(SKILL_ROOT / "assets" / "change-report.css").read_text(encoding="utf-8"),
+                generated_at="2026-09-15T18:00:00Z",
+                manifest_bytes=self.manifest_path.read_bytes(),
+            )
+        self.assertIn("UNITS_TTILE", str(caught.exception))
+        code, _ = self.render(path)
+        self.assertEqual(code, 1, "the writer must fail rather than ship an unresolved token")
+
+    def test_the_residual_check_reads_the_template_not_the_page(self) -> None:
+        self.assertEqual(bs.template_residue(self.template), [])
+        self.assertEqual(bs.template_residue("{{UNITS}} and {{NOT_DECLARED}}"), ["{{NOT_DECLARED}}"])
+        # A declared name only resolves in its exact spelling; anything else survives the
+        # substitution loop and is reported instead of being silently shipped.
+        self.assertEqual(bs.template_residue("{{ units }}"), ["{{ units }}"])
+        self.assertEqual(
+            bs.template_residue("<p>a {{ b</p>"), ["unbalanced '{{' or '}}' outside a placeholder token"]
+        )
+        # Content carried in by a replacement is not the template's business: the guard is a
+        # template check, so a value that quotes braces does not make it fail.
+        self.assertEqual(bs.template_residue("{{UNITS}}"), [])
 
 
 if __name__ == "__main__":

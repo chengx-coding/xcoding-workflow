@@ -17,6 +17,14 @@ The instantiated milestone subtree contains exactly:
 - Before the first milestone leaf starts, all initial leaves AND the plan-specific finalizer with evidence thresholds MUST exist. The static finalizer exists from `init`; its thresholds live in `milestone.evidence_sources` (compact JSON array of terminal leaf IDs) plus the declared `min_sources` and `artifact_min`. Publish `milestone.evidence_sources` with `set` before starting the first leaf. The finalizer's control packet is an advisory evidence projection: it reports unresolved until the threshold is met, and completion does not reject it. The main session MUST verify the packet resolves before completing the finalizer; this discipline, with the finalizer starting only after `milestone.accepted == approved`, keeps a minimal tree from sealing before its evidence threshold is established.
 - Evidence gaps and acceptance conditions trigger reviewed dynamic subtrees or recovery work; they are never silently skipped.
 
+## Report Coverage
+
+`assets/jit-milestone-template.xml` is a **subtree, not a work-order root**, and it declares no report stage:
+
+- A milestone-only work order initialises `work-order-template.xml` through `xc-work`. That root owns the work order's report stage, so the **enclosing work-order root's report covers the milestone subtree's change set**; no report node is added to `jit-milestone-template.xml` or to `jit-milestone-flow.json`.
+- `jit-milestone-flow.json` is therefore **not an initialisation path** for any shipped workflow: it is the runtime shape of a subtree that lives under a work-order root, and `milestone-finalizer` consumes only `milestone.accepted` because the report commitment belongs to the root that hosts it. `tests/test_xc_jit_milestone.py` is the one exception in this repository: it points `init` at `jit-milestone-template.xml` directly, under `<workbench>/work-orders/jit-milestone/runtime`, to exercise the subtree's own shape without an `embed-subtree` step. That harness declares no report stage, drives no report commitment, and is a test fixture rather than an offered way to open a work order.
+- A milestone subtree is never embedded under a root without a report stage. That combination would seal a milestone change set with nothing able to refuse an unexplained diff, and no template in this repository declares it.
+
 ## Lifecycle
 
 1. When a milestone starts, append its planned leaves to `milestone-work-group` with `add-node`. Publish the leaf source IDs to `milestone.evidence_sources` before the first leaf starts.

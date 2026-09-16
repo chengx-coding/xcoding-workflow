@@ -3,7 +3,7 @@
 <orchestration schema_version="1" name="new-feature" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="6797bd6635bc8037a3de6a0c2eef63a8811030241ebb3a55f5588d5c2ff8bc74" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="7f599eafe5e09739ab6e04c1c0464c599ec14f2b5316e667a7a97eccfda66e4b" />
   </meta>
   <blackboard>
     <var key="feature.id" />
@@ -15,13 +15,29 @@
     <var key="work_order.requires_clarification">false</var>
     <var key="work_order.requires_implementation">true</var>
     <var key="work_order.requires_verification">true</var>
+    <var key="work_order.requires_report">true</var>
+    <var key="work_order.report_skip_reason" />
+    <var key="work_order.report_baseline" />
+    <var key="report.path" />
+    <var key="report.manifest_path" />
+    <var key="report.baseline_commit" />
+    <var key="report.baseline_digest" />
+    <var key="report.language">en</var>
+    <var key="report.strength">standard</var>
+    <var key="report.gate_required">false</var>
+    <var key="report.gate_outcome">not-run</var>
+    <var key="report.gate_rework_required">false</var>
+    <var key="report.gate_recovery_required">false</var>
+    <var key="report.round">1</var>
+    <var key="report.refresh_count">0</var>
+    <var key="report.refresh_reason">initial</var>
   </blackboard>
   <node executor="main" mode="sequence" role="root" template_id="root" title="New Feature" type="composite">
     <children>
       <node executor="main" role="feature-prepare" template_id="prepare-feature" title="Prepare new feature" type="task">
-        <instructions>Read the project bridge, open the work order through xc-open-work-order, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, select an explicit feature ID, and create its empty directory through xc-feature.</instructions>
+        <instructions>Read the project bridge, open the work order through xc-open-work-order, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, select an explicit feature ID, and create its empty directory through xc-feature. Write the mode-derived report commitment in this same preparation step: work_order.requires_report=true for change, repair, and maintenance; false plus work_order.report_skip_reason=read_only_mode for investigation and review; and true when the mode cannot be confirmed, because an unknown mode is never interpreted as no report needed. Record work_order.report_baseline once, as the baseline commit, the worktree digest and the digest algorithm, and record work_order.report_skip_reason whenever the report is deliberately skipped. All three are preparation-phase records, never retrospective notes, and a missing commitment fails this node.</instructions>
         <deliverables>An authoritative workbench and empty managed feature directory.</deliverables>
-        <acceptance>The workshop Git worktree is independent, the feature ID is explicit, work_order.document_language is set before any document write, and no baseline document exists outside document evolution.</acceptance>
+        <acceptance>The workshop Git worktree is independent, the feature ID is explicit, work_order.document_language is set before any document write, no baseline document exists outside document evolution, and the mode-derived report commitment is written rather than assumed: work_order.requires_report carries the mode's value, a read-only mode records work_order.report_skip_reason=read_only_mode, work_order.report_baseline records the baseline commit, the worktree digest and the digest algorithm, and a missing commitment fails this node.</acceptance>
       </node>
       <node executor="main" mode="sequence" role="dynamic-group" template_id="goal-document" title="Define work order goal" type="composite" />
       <node executor="main" mode="sequence" role="dynamic-group" template_id="analysis-group" title="Analyze feature evidence" type="composite" />
@@ -40,11 +56,16 @@
         <children>
           <node executor="main" mode="sequence" role="dynamic-group" template_id="implementation-group" title="Implement feature" type="composite" when="work_order.requires_implementation == true" />
           <node executor="main" mode="sequence" role="dynamic-group" template_id="verification-group" title="Verify feature" type="composite" when="work_order.requires_verification == true" />
+          <node executor="main" mode="sequence" role="dynamic-group" template_id="report-group" title="Produce change review report" type="composite" when="work_order.requires_report == true">
+            <instructions>Produce the change report for this work order after verification and before the result document, because only implemented and verified code has a state worth describing. The report group is mounted by the mode-derived commitment value work_order.requires_report, not by a measurement that does not exist yet. Embed the xc-change-report subtree once under this group, or run a single role=report node that carries the same contract. Resolve the subtree's template path from the record xcoding setup wrote for this project rather than from a documentation table: the committed setup record at .agents/.xcoding-setup/manifest.json holds the resolved absolute path of the installed xc-change-report package, and change-report-template.xml is read from it, with the host-to-Skill-root table as the fallback for a project that has no such record. Before the group's first node runs, publish all thirteen caller-seeded keys with the values this work order actually uses, never merely accepting their declared defaults: report.path, report.manifest_path, report.baseline_commit, report.baseline_digest, report.language, report.strength, report.gate_required, report.gate_outcome, report.gate_rework_required, report.gate_recovery_required, report.round, report.refresh_count, and report.refresh_reason. report.round is the 1-based index of the pass being entered, so the caller publishes 1 for the first pass and nothing pre-increments it. This group has two legal outcomes and the deliverables follow the outcome: when prepare-manifest measures one or more analyzable units, produce the report; when it measures zero analyzable units, record work_order.report_skip_reason=zero_analyzable_units and produce no report, and a user waiver records work_order.report_skip_reason=user_waived. A skipped gate records report.gate_outcome=not-run, never accepted.</instructions>
+            <deliverables>On the produced outcome: one change-report.html, one change-report-manifest.json, and one change-report-verdicts.json under the workbench report node artifact directory. On the skipped outcome: no report file is required, and the deliverable is the recorded work_order.report_skip_reason with report.run_required=false.</deliverables>
+            <acceptance>Exactly one of the two outcomes holds. Either the report exists at report.path and is proven by report.manifest_path, or prepare-manifest measured zero analyzable units or the user waived the step, report.run_required is false, and work_order.report_skip_reason records one of the legal reasons; a produced report is never accepted without its manifest, and a skip is never accepted without its reason. The caller publishes all thirteen caller-seeded report.* keys with the values this work order uses before the group's first node runs, and the subtree's template is resolved from the installed package path the setup record holds, so the guards and completion-fact selectors the subtree evaluates resolve against those thirteen declarations or against a key one of the subtree's own nodes writes before that expression reads it.</acceptance>
+          </node>
           <node executor="main" mode="sequence" role="dynamic-group" template_id="result-document" title="Record feature result" type="composite" />
           <node executor="main" role="feature-finalize" template_id="finalize-feature" title="Finalize new feature work order" type="task">
-            <instructions>Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the work order.</instructions>
+            <instructions>Confirm the result, feature baseline provenance, declared artifacts, and validation evidence, then close the work order. Consume work_order.report_skip_reason: when work_order.requires_report is true and neither a report path nor one of the two legal skip reasons is recorded, the work order must not close.</instructions>
             <deliverables>A completed, failed, or blocked work order with durable result evidence.</deliverables>
-            <acceptance>The runtime tree and declared workbench artifacts accurately represent the outcome.</acceptance>
+            <acceptance>The runtime tree and declared workbench artifacts accurately represent the outcome, and a committed report obligation is either satisfied by a report path or explicitly recorded as a skip decision.</acceptance>
           </node>
         </children>
       </node>

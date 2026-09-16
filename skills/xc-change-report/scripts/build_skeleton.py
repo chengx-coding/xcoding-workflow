@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -112,9 +113,59 @@ PLACEHOLDERS = (
     "FOOTER_NOTE",
 )
 
+# The declared placeholder set, as a lookup for the residual check below (G-43). The template
+# is the only place a placeholder may live; every `{{NAME}}` it carries must be one of these.
+PLACEHOLDER_SET = frozenset(PLACEHOLDERS)
+# A placeholder-shaped token. The inner text is matched loosely (not as `[A-Z_]+`) so that a
+# mistyped or differently-cased declared name is still recognised as a token instead of being
+# mistaken for literal content.
+TEMPLATE_TOKEN_RE = re.compile(r"\{\{([^{}]*)\}\}")
+
 
 class SkeletonError(RuntimeError):
     pass
+
+
+def template_residue(template_text: str) -> list[str]:
+    """Placeholder-shaped tokens in the *template* that substitution cannot resolve (G-43).
+
+    The residual check runs over the template, never over the assembled page. A change set
+    may quote source that contains a literal brace pair -- a Python f-string, a JSON literal,
+    a JavaScript or CSS block -- and the builder copies that source into the page verbatim;
+    those braces are quoted content, not an unresolved placeholder, so scanning the page
+    rejected whole change sets that have nothing wrong with them.
+
+    A token the declared `PLACEHOLDERS` set does not cover is treated as residue: substitution
+    replaces exactly the declared names, so such a token survives into the page and is a
+    genuine unresolved placeholder. A stray `{{` or `}}` that is not part of a token is
+    residue for the same reason.
+    """
+    residue: list[str] = []
+    for match in TEMPLATE_TOKEN_RE.finditer(template_text):
+        if match.group(1).strip() not in PLACEHOLDER_SET:
+            residue.append(match.group(0))
+    remainder = TEMPLATE_TOKEN_RE.sub("", template_text)
+    if "{{" in remainder or "}}" in remainder:
+        residue.append("unbalanced '{{' or '}}' outside a placeholder token")
+    return residue
+
+
+# A git path that is not valid UTF-8 decodes to lone surrogates `U+DC80`-`U+DCFF` -- one per
+# raw byte, which is what `build_manifest.decode_path` produces so that the path stays
+# lossless. Such a character has no UTF-8 encoding at all, so a page that carried it could
+# neither be written nor read back as UTF-8. Each one is rendered as the escape the manifest
+# already uses for the same bytes (its writer is pinned to `ensure_ascii=True`), so the two
+# artefacts spell an unencodable path identically.
+_SURROGATE_RENDERING = {code: f"\\u{code:04x}" for code in range(0xDC80, 0xDD00)}
+
+
+def page_text(page: str) -> str:
+    """Make the assembled page encodable as UTF-8, changing nothing else (F2).
+
+    Every character that has a UTF-8 encoding is passed through untouched; only a lone
+    surrogate, which cannot be encoded, is replaced by its ASCII escape.
+    """
+    return page.translate(_SURROGATE_RENDERING)
 
 
 def escape(value: Any) -> str:
@@ -666,8 +717,14 @@ def build_report(
     page = template_text
     for key in PLACEHOLDERS:
         page = page.replace("{{" + key + "}}", replacements.get(key, ""))
-    if "{{" in page or "}}" in page:
-        raise SkeletonError("template placeholders remain after substitution")
+    # G-43: the guard belongs to the template. What the replacements carried into the page is
+    # content -- quoted source may legitimately contain a literal brace pair -- while a
+    # placeholder-shaped token the declared set does not cover is a genuine defect.
+    residue = template_residue(template_text)
+    if residue:
+        raise SkeletonError(
+            "template placeholders remain after substitution: " + ", ".join(sorted(set(residue)))
+        )
     return page
 
 
@@ -749,13 +806,17 @@ def main(argv: list[str] | None = None) -> int:
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_bytes(page.encode("utf-8"))
+    # F2: a surrogate-escaped path reaches this writer intact, and an unencodable character
+    # must not turn a renderable page into a crash; `page_text` renders it the way the
+    # ASCII-pinned manifest spells the same bytes.
+    payload = page_text(page).encode("utf-8")
+    out_path.write_bytes(payload)
     print(
         json.dumps(
             {
                 "ok": True,
                 "report": str(out_path.resolve()),
-                "bytes": len(page.encode("utf-8")),
+                "bytes": len(payload),
                 "units": manifest["units_total"],
                 "strength": manifest["strength"]["selected"],
             },

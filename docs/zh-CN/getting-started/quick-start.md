@@ -136,7 +136,7 @@ feature_ids: []
 
 ### 全新的 managed feature
 
-当请求行为需要新的显式 feature 和已批准 feature 基线时，使用 [`xc-new-feature`](../../../skills/xc-new-feature/SKILL.md)。
+当请求行为需要新的显式 feature 和已批准 feature 基线时，使用 [`xc-new-feature`](../../../skills/xc-new-feature/SKILL.md)。与普通受管工作一样，这个生命周期也挂载变更报告阶段：feature 实现并验证之后、feature 的结果文档之前，由报告解释该 feature 的变更集合。
 
 ```text
 Invoke xc-new-feature with:

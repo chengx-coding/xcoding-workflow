@@ -236,20 +236,45 @@ The level is fixed by confirmed facts, never by task length or wording, and is w
 
 | Level | Facts | Mandatory | Optional | Human gate |
 |---|---|---|---|---|
-| `minimal` | `mode in {change, repair, maintenance}`, `risk=low`, `audit=none`, measured `units_total <= MAX_UNITS_MINIMAL = 5` | coverage manifest, change map, one A1-A8 section per unit, verbatim code blocks, V1-V13, offline check, accuracy review | diagrams, related code, glossary | closed by default; opened only on explicit user request |
+| `minimal` | `mode in {change, repair, maintenance}`, `risk=low`, `audit=runtime-only`, measured `units_total <= MAX_UNITS_MINIMAL = 5` | coverage manifest, change map, one A1-A8 section per unit, verbatim code blocks, V1-V13 plus V15-V16, offline check, accuracy review | diagrams, related code, glossary | closed by default; opened only on explicit user request |
 | `standard` | every other confirmed fact set | all of `minimal`, plus the diagrams required by D1-D6 and related-code references (A11) | glossary | closed by default; opened only on explicit user request |
-| `full` | `risk=high`, or `audit=required`, or explicit user request | all of `standard`, plus the glossary and per-unit alternative comparison | none | closed by default; opened only on explicit user request |
+| `full` | `risk=high`, or `audit in {result, full}`, or explicit user request | all of `standard`, plus the glossary and per-unit alternative comparison | none | closed by default; opened only on explicit user request |
+
+The `audit` values in this matrix are members of the shipped planning domain
+`{runtime-only, result, full, unknown}` (`skills/xc-work/scripts/plan_work_policy.py`), which is
+the vocabulary a caller actually supplies. `minimal` selects the lightest audit value,
+`runtime-only`; `full` is selected by the two heavier ones, `result` and `full`; `unknown` is
+never a reason to lower a tier, because an unknown fact must fail closed to the thicker level.
 
 Three rules constrain the level:
 
-- The level changes content thickness only. All three levels run V1-V13 **and** the accuracy
-  review. `minimal` omits no analysable unit, relaxes no A1-A8 threshold and skips no hash
-  recomputation or token binding. What `minimal` saves is presentation, not proof.
+- The level changes content thickness only. All three levels run V1-V13, V15 and V16 **and** the
+  accuracy review (V14 at the final stage). `minimal` omits no analysable unit, relaxes no A1-A8
+  threshold and skips no hash recomputation or token binding. What `minimal` saves is
+  presentation, not proof.
 - The gate is not a property of the level. All three levels default to closed; only an
   explicit user request opens it. A `full` report has more content, not more checkpoints.
 - The measured unit count can raise the level and never lower it: when `prepare-manifest`
   measures more units than `MAX_UNITS_MINIMAL` while `minimal` was selected, it publishes
   `standard` and records `report.strength_upgrade_reason`.
+
+### Calibration record of the strength constants
+
+The constants that decide and police the tier are mirrored here from the calibration record in
+`references/coverage-protocol.md`, because a tier change moves both references. Each value is a
+design-stage choice, not a measurement: the repository holds no report corpus, no error budget
+and no distribution of `units_total` over real changes, so neither value can be calibrated today.
+
+| Constant | Declared value | Declared in | What it gates | Retention reason |
+| --- | --- | --- | --- | --- |
+| `STRENGTHS` | `minimal, standard, full` | `build_manifest.py` | the accepted strength vocabulary, the values `report.strength` may take, and the three rows of the matrix above | retained at the design value; three tiers are the smallest set that separates a one-location change from a cross-cutting one, and this tuple is the live enforcement point, so no second copy of the vocabulary is kept anywhere |
+| `MAX_UNITS_MINIMAL` | `5` | `build_manifest.py` | the `minimal` tier's unit ceiling and the measured `minimal -> standard` upgrade | retained at the design value; the fuller reason and the calibration procedure are in `references/coverage-protocol.md` |
+
+Any future change to these two values, to the matrix above, or to the unit-window constants
+behind them must change this table, the corresponding entry in `references/coverage-protocol.md`
+and the boundary test that pins the value **in one change**, so the value, its recorded reason
+and its test never drift apart. Inventing a number, or presenting an estimate as a calibrated
+result, is excluded.
 
 ## Analysis text input
 

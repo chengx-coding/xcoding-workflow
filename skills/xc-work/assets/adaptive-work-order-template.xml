@@ -3,13 +3,19 @@
 <orchestration schema_version="1" name="adaptive-work-order" artifact_kind="template" managed_by_skill="xc-orchestration-author" read_policy="author-skill-only" updated_at="1970-01-01T00:00:00+00:00">
   <meta>
     <access_policy required_skill="xc-orchestration-author" read_policy="author-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS TEMPLATE THROUGH THE xc-orchestration-author SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
-    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="1ebadc40dcece24c4cfb4771a7f7a097c13d7fb689506c8583a88505e6c153ba" />
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="b8d634fd0c14e514ab0a5418a3ddd8a083a2f3c6744ad1853adbe7c39ffc179e" />
   </meta>
   <blackboard>
     <var key="work_order.document_language">en</var>
     <var key="work_order.plan_id" />
     <var key="work_order.plan_receipt">{}</var>
     <var key="work_order.required_source_ids">[]</var>
+    <var key="work_order.requires_report">true</var>
+    <var key="work_order.report_skip_reason" />
+    <var key="work_order.report_baseline" />
+    <var key="report.path" />
+    <var key="report.strength">standard</var>
+    <var key="report.round">1</var>
     <var key="work_order_id" />
     <var key="today" />
   </blackboard>

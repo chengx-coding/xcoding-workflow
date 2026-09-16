@@ -9,7 +9,7 @@ Choose the lifecycle from the state of the project and the intended outcome. Do 
 | Situation | Entry point | Result |
 | --- | --- | --- |
 | The project is adopting XC, or required workshop bridge documents are missing | [`xc-workshop-setup`](../../skills/xc-workshop-setup/SKILL.md) | Creates the managed project workflow and knowledge guidance through a setup work order; it does not create a business feature |
-| The requested behavior needs a new, explicitly managed feature identity | [`xc-new-feature`](../../skills/xc-new-feature/SKILL.md) | Creates the feature directory, approves feature baselines, then implements and verifies the feature |
+| The requested behavior needs a new, explicitly managed feature identity | [`xc-new-feature`](../../skills/xc-new-feature/SKILL.md) | Creates the feature directory, approves feature baselines, then implements, verifies, and reports the feature |
 | Existing behavior is not managed yet but needs durable baselines for future evolution | [`xc-feature-adoption`](../../skills/xc-feature-adoption/SKILL.md) | Derives and approves baselines from current code and test evidence without changing product behavior |
 | Facts or impact must be established, but no product change is requested | [`xc-work`](../../skills/xc-work/SKILL.md) with `mode=investigation` | Produces evidence and a result; solution, implementation, and verification can be omitted |
 | Existing code, configuration, or behavior must change | `xc-work` with `mode=change` | Selects the needed analysis, solution, implementation, and verification stages |
@@ -64,7 +64,7 @@ The read-only `operation=plan` uses the six governance facts plus bridge policy,
 
 A minimal mutation can use one combined implementation/focused-verification leaf and one plan-specific finalizer, with no mandatory `goal.md`, `analysis.md`, `solution.md`, or `result.md`. Module, uncertain, high-risk, collaborative, cross-session, or full-audit facts progressively add separate verification, durable documents, gates, review, and recovery. Adaptive work has no generic global node ceiling; individual loops remain bounded.
 
-Every mutation-mode plan carries the `change_report` capability, because a work order that produces analysable change units must explain them; read-only modes never acquire it, even when unknown facts escalate to the full capability set. The report follows implementation and verification and precedes any adaptive review node, its initial strength tier follows the confirmed `risk` and `audit` facts, and its human gate stays closed unless the user explicitly asks for it.
+Every mutation-mode plan carries the `change_report` capability, because a work order that produces analysable change units must explain them; read-only modes never acquire it, even when unknown facts escalate to the full capability set. The report is a stage of the lifecycles that mount it, and the ordinary full lifecycle, an adaptive managed work order, and a new managed feature are the lifecycles that mount it today. On the adaptive path the report follows implementation and verification and precedes any adaptive review node, and that order is main-session policy there; its initial strength tier follows the confirmed `risk` and `audit` facts, and its human gate stays closed unless the user explicitly asks for it.
 
 Workflow measurements named `context_bytes` count normalized UTF-8 runtime protocol payload bytes. They are not token counts, model latency, execution latency, cost, or quality measurements.
 

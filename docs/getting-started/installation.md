@@ -60,6 +60,18 @@ Setup never infers the project from the current directory, detects hosts automat
 
 The workshop repository topology is chosen during the workshop-setup step (default: independent workspace `independent-link`), not by `xcoding setup`.
 
+## Skill installation paths
+
+`xcoding setup` is the supported installation path for consumers. It installs the selected hosts' XC Skills and subagent definitions from the verified wheel and owns them through the transaction, manifest, recovery, and rollback rules described below.
+
+The source-tree installer [`install_skills.py`](../../install_skills.py) is a **development path** for this checkout only. It requires an explicit `--target-skills`, copies the canonical packages from the checkout it lives in, and is not part of the release contract. Use it to refresh a development target from this source tree, not to install a supported consumer project.
+
+That development installer replaces only the `xc-*` packages the previous install manifest owns, or that the canonical source set is about to install. An `xc-*` directory the manifest does not own and the canonical source does not provide survives a plain install and is reported as preserved; `--force` replaces it instead, and that flag belongs to the development path only. It deletes and reinstalls every package it replaces, so it does not compare their bytes with the previous manifest; the fail-closed drift rule belongs to `xcoding setup`, described under managed upgrades and state below.
+
+## Readiness check for the report package
+
+`xcoding doctor --target-root <project> --json` fails its `skill-packages` check and exits non-zero - exit code 4 with error code `readiness-failed` - when a Skill root the project's setup record names does not hold the installed `xc-change-report` package that the report stage mounts, or holds that package without its `assets/change-report-template.xml`. A project whose setup record names hosts is probed on exactly those hosts, so a recorded host with an empty or incomplete Skill root fails as well. A project with no setup record is probed on the Skill roots that already hold an `xc-*` package, so one that holds XC packages without the report package fails too. Only a project with no setup record and no installed XC package at all is different: that check passes, and the separate `skill-packages-absent` warning records that nothing was confirmed, because there is no installed Skill root to be incomplete. Run `xcoding setup` for the affected host to restore the recorded package; do not hand-copy files into a managed Skill root.
+
 ## Prepare a Skill-local worker
 
 An owning `xc-*` Skill may define a private profile at `assets/workers/<profile-id>/profile.json` and delegate it through the installed `xc-delegated-agent`. The public [`xc-delegation` contract](../../skills/xc-delegation/SKILL.md) defines the profile, policy, overlay, adapter, and envelope inputs. The supported command surface is:
@@ -90,7 +102,7 @@ Ordinary setup performs first installation and managed upgrade through one stage
 
 Project-local transaction state is under `.agents/.xcoding-setup/`:
 
-- `manifest.json` records the successful generation, desired host set, Bundle identity, managed paths, hashes, and shared owners.
+- `manifest.json` records the successful generation, desired host set, Bundle identity, managed paths, hashes, and shared owners. It also records `report_package.name`, `report_package.template_file`, and `report_package.paths.<host>` holding the resolved absolute path of the installed `xc-change-report` package for that host; the report stage's mount instruction resolves its subtree template from that record, with the host-to-Skill-root table as the fallback for a project that has no such record.
 - `journal.json` records an in-progress transaction and is present only when recovery may be required.
 - `staging/` and generation backups hold package-owned transaction data needed for safe completion or rollback.
 

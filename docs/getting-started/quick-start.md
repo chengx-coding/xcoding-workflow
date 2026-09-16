@@ -136,7 +136,7 @@ Select `investigation`, `change`, `repair`, `review`, or `maintenance` as the mo
 
 ### A genuinely new managed feature
 
-Use [`xc-new-feature`](../../skills/xc-new-feature/SKILL.md) when the requested behavior needs a new explicit feature and approved feature baselines.
+Use [`xc-new-feature`](../../skills/xc-new-feature/SKILL.md) when the requested behavior needs a new explicit feature and approved feature baselines. Like ordinary managed work, this lifecycle mounts the change report stage: after the feature is implemented and verified it explains the feature's change set, before the feature's result document.
 
 ```text
 Invoke xc-new-feature with:

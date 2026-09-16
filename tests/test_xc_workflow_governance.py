@@ -61,7 +61,7 @@ EXPECTED_ROUTES = {
 }
 STRUCTURAL_METRICS = {
     "T1-M": {
-        "runtime_calls": 35,
+        "runtime_calls": 38,
         "explicit_transitions": 16,
         "delegations": 6,
         "subagent_delegations": 2,
@@ -74,7 +74,7 @@ STRUCTURAL_METRICS = {
         "terminal_operations": 8,
     },
     "T2": {
-        "runtime_calls": 47,
+        "runtime_calls": 49,
         "explicit_transitions": 22,
         "delegations": 9,
         "subagent_delegations": 3,
@@ -87,7 +87,7 @@ STRUCTURAL_METRICS = {
         "terminal_operations": 11,
     },
     "T3": {
-        "runtime_calls": 74,
+        "runtime_calls": 76,
         "explicit_transitions": 34,
         "delegations": 14,
         "subagent_delegations": 6,
@@ -100,7 +100,7 @@ STRUCTURAL_METRICS = {
         "terminal_operations": 17,
     },
     "T4": {
-        "runtime_calls": 89,
+        "runtime_calls": 91,
         "explicit_transitions": 40,
         "delegations": 17,
         "subagent_delegations": 9,
@@ -287,6 +287,88 @@ class WorkflowGovernanceFixtureTests(unittest.TestCase):
         for cleanup in cleanups:
             self.assertEqual(cleanup["project_undeclared_paths"], [])
             self.assertEqual(cleanup["workshop_undeclared_paths"], [])
+
+    def test_report_template_is_not_a_recording_input_and_no_scenario_uses_it(self) -> None:
+        """G-36: the report template hashed into the recording was a pure invalidation
+        surface, because no scenario embeds it. Its coverage lives in the byte-identity
+        template rebuild and in the lifecycle e2e embed, not in a recording input."""
+        template = "skills/xc-change-report/assets/change-report-template.xml"
+        self.assertNotIn(template, harness.recording_input_paths())
+        self.assertNotIn(template, harness.input_hashes())
+        self.assertNotIn(template, self.manifest["input_hashes"])
+        self.assertFalse(
+            [
+                relative
+                for relative in harness.recording_input_paths()
+                if "change-report" in relative
+            ],
+            "no change-report asset is a recording input",
+        )
+        scenario_text = SCENARIOS.read_text(encoding="utf-8")
+        self.assertNotIn("change-report-template", scenario_text)
+        harness_source = Path(harness.__file__).read_text(encoding="utf-8")
+        self.assertNotIn(
+            "change-report",
+            harness_source,
+            "the harness neither hashes nor drives the report package",
+        )
+        for document_kind, group in harness.DOCUMENT_GROUPS.items():
+            with self.subTest(document_kind=document_kind):
+                self.assertNotIn("report", group)
+
+    def test_report_commitment_default_is_exercised_and_the_opt_out_is_recorded(self) -> None:
+        """The flipped `work_order.requires_report` default selects the report group, so
+        every profile must settle that group explicitly: one profile exercises the default
+        and records the selection, the others record a legal opt-out and the skip it
+        produces. A recording that only opted out would be evidence of nothing."""
+        self.assertEqual(harness.PROFILE_EXERCISING_REPORT_DEFAULT, "T1-M")
+        self.assertIn(harness.PROFILE_EXERCISING_REPORT_DEFAULT, harness.PROFILE_DOCUMENTS)
+        self.assertEqual(
+            harness.REPORT_OPT_OUT,
+            {
+                "work_order.requires_report": "false",
+                "work_order.report_skip_reason": "user_waived",
+            },
+        )
+        self.assertEqual(harness.report_commitment("T1-M"), {})
+
+        for scenario_id in harness.PROFILE_DOCUMENTS:
+            blackboard = harness.profile_blackboard(scenario_id)
+            with self.subTest(scenario=scenario_id, surface="declared-blackboard"):
+                if scenario_id == harness.PROFILE_EXERCISING_REPORT_DEFAULT:
+                    self.assertNotIn("work_order.requires_report", blackboard)
+                    self.assertNotIn("work_order.report_skip_reason", blackboard)
+                else:
+                    self.assertEqual(
+                        {
+                            key: blackboard[key]
+                            for key in harness.REPORT_OPT_OUT
+                        },
+                        harness.REPORT_OPT_OUT,
+                    )
+
+        profiles = self.manifest["measurements"]["profiles"]
+        for scenario_id in harness.PROFILE_DOCUMENTS:
+            for configuration in ("auto_commit_false", "auto_commit_true"):
+                record = profiles[scenario_id][configuration]["report_group"]
+                with self.subTest(scenario=scenario_id, configuration=configuration):
+                    if scenario_id == harness.PROFILE_EXERCISING_REPORT_DEFAULT:
+                        self.assertEqual(record["commitment_published"], "absent")
+                        self.assertTrue(record["selected_before_result_document"])
+                        self.assertEqual(record["status_before_result_document"], "pending")
+                    else:
+                        self.assertEqual(record["commitment_published"], "false")
+                        self.assertFalse(record["selected_before_result_document"])
+                        self.assertEqual(record["status_before_result_document"], "skipped")
+
+        for scenario_id in ("T0", "T1"):
+            for configuration in ("auto_commit_false", "auto_commit_true"):
+                with self.subTest(scenario=scenario_id, configuration=configuration):
+                    self.assertNotIn(
+                        "report_group",
+                        profiles[scenario_id][configuration],
+                        "a direct-route profile creates no work order and settles no group",
+                    )
 
     def test_normalization_is_deterministic_and_replaces_volatile_values(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

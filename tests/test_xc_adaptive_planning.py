@@ -34,7 +34,8 @@ MINIMAL_PLAN_SNAPSHOT = (
     'ed_nodes":[{"logical_key":"implementation-1","role":"implement'
     'ation","artifact_min":1,"verification_scope":"focused"},{"logi'
     'cal_key":"report","role":"report","artifact_min":1,"source_key'
-    's":["work_order.report_baseline"]},{"logical_key":"finalize","'
+    's":["work_order.report_baseline"],"required_artifact_name":"change-r'
+    'eport.html"},{"logical_key":"finalize","'
     'role":"finalizer","artifact_min":0}],"required_provenance":{"g'
     'oal_document":[],"analysis":[],"clarification":[],"solution":['
     '],"approval":[],"split_implementation":[],"separate_verificati'
@@ -65,16 +66,33 @@ MINIMAL_PLAN_SNAPSHOT = (
     '_nodes":[{"logical_key":"implementation-1","role":"implementat'
     'ion","artifact_min":1,"verification_scope":"focused"},{"logica'
     'l_key":"report","role":"report","artifact_min":1,"source_keys"'
-    ':["work_order.report_baseline"]},{"logical_key":"finalize","ro'
+    ':["work_order.report_baseline"],"required_artifact_name":"change'
+    '-report.html"},{"logical_key":"finalize","ro'
     'le":"finalizer","artifact_min":0}],"facts":{"governance":{"nee'
     'ds_persistence":"yes","material_impact":"yes","difficult_rollb'
     'ack":"no","crosses_sessions":"no","multiple_actors":"no","audi'
     't_required":"no"},"bridge_policy":"none","task":{"scope":"sing'
     'le-location","clarity":"exact","risk":"low","verification":"fo'
     'cused","coordination":"single","duration":"single-step","audit'
-    '":"runtime-only"}},"report_strength":"minimal","plan_id":"08a9'
-    'ef886870c5150595256593eb0d817e7c676f1c1e7de312605db22cf43e5b"}'
+    '":"runtime-only"}},"report_strength":"minimal","plan_id":"007c'
+    '494d41af983c8ed750b040a39539594885c2592840898f37b6da11dbbd4f'
+    '"}'
     '}'
+)
+
+
+# The two declarations G-18 and G-37 made enforceable, spelled exactly as the
+# solution decision freezes them: the report node names the artifact it must be
+# given, and declares the blackboard key its consumer has to publish.
+REPORT_ARTIFACT_NAME = "change-report.html"
+BASELINE_KEY = "work_order.report_baseline"
+# A syntactically well-formed `commit:digest:algorithm` baseline value. The
+# validator's contract is non-emptiness, so the test supplies a value that is
+# unmistakably a fixture rather than an implied real capture.
+BASELINE_VALUE = (
+    "ac583c3646122ae35159c64c8c7143def4f17885:"
+    "cf190d29e21631fade7e12783febbe6614c02d37bf2c98b5b0f8fac31289f7aa:"
+    "sha256(path-nul-contenthash-lf/v1)"
 )
 
 
@@ -366,9 +384,11 @@ class AdaptivePlanningTests(unittest.TestCase):
         self.assertEqual(report_node["role"], "report")
         self.assertEqual(report_node["artifact_min"], 1)
         self.assertEqual(report_node["source_keys"], ["work_order.report_baseline"])
+        self.assertEqual(report_node["required_artifact_name"], REPORT_ARTIFACT_NAME)
         for item in payload["required_nodes"]:
             if item["logical_key"] != "report":
                 self.assertNotIn("source_keys", item)
+                self.assertNotIn("required_artifact_name", item)
 
     def test_read_only_plans_never_acquire_the_change_report_capability(self) -> None:
         facts = self.base_facts()
@@ -601,7 +621,17 @@ class AdaptivePlanningTests(unittest.TestCase):
         self.assertEqual(payload["documentation_grade"], "full-user")
         self.assertTrue(payload["capabilities"]["independent_review"])
 
-    def test_smoke_manifest_binding_is_tolerated(self) -> None:
+    def test_smoke_manifest_binds_the_planned_sources_and_requires_the_baseline_key(self) -> None:
+        """Corrected expectation: the smoke path binds its two sources **and** publishes the
+        report node's declared source key.
+
+        The previous name — `test_smoke_manifest_binding_is_tolerated` — and its packet, whose
+        blackboard carried only `work_order.plan_id`, encoded the tolerance G-37 removed: the
+        validator accepted a plan-required report node whose declared `source_keys` entry was
+        never published, so a manifest could pass with no baseline value at all. The positive
+        half publishes the key; the negative half removes it again and asserts the refusal
+        naming the key, so the test pins the new behaviour rather than the removed tolerance.
+        """
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
@@ -620,7 +650,8 @@ class AdaptivePlanningTests(unittest.TestCase):
                         "role": "work-order-finalize",
                     },
                     "blackboard": [
-                        {"key": "work_order.plan_id", "value": receipt["plan_id"]}
+                        {"key": "work_order.plan_id", "value": receipt["plan_id"]},
+                        {"key": BASELINE_KEY, "value": BASELINE_VALUE},
                     ],
                     "source_categories": [
                         {
@@ -643,30 +674,46 @@ class AdaptivePlanningTests(unittest.TestCase):
                                     "logical_key": "report",
                                     "role": "report",
                                     "status": "succeeded",
-                                    "artifacts": ["change-report.html"],
+                                    "artifacts": [REPORT_ARTIFACT_NAME],
                                 }
                             ],
                         },
                     ],
                 }
             }
+            arguments = [
+                "--receipt-json",
+                json.dumps(receipt, separators=(",", ":")),
+                "--source-map-json",
+                json.dumps(source_map, separators=(",", ":")),
+                "--packet-json",
+                json.dumps(packet, separators=(",", ":")),
+                "--request",
+                facts["request"],
+                "--bridge",
+                str(bridge),
+            ]
             code, payload = self.invoke(
                 SCRIPTS / "validate_adaptive_manifest.py",
-                [
-                    "--receipt-json",
-                    json.dumps(receipt, separators=(",", ":")),
-                    "--source-map-json",
-                    json.dumps(source_map, separators=(",", ":")),
-                    "--packet-json",
-                    json.dumps(packet, separators=(",", ":")),
-                    "--request",
-                    facts["request"],
-                    "--bridge",
-                    str(bridge),
-                ],
+                arguments,
             )
-            self.assertEqual(code, 0)
+            self.assertEqual(code, 0, payload)
             self.assertEqual(payload["min_sources"], 2)
+
+            # The removed tolerance: the same smoke packet without the declared key is refused,
+            # and the refusal names the key the caller failed to publish.
+            unpublished = json.loads(json.dumps(packet))
+            unpublished["packet"]["blackboard"] = [
+                {"key": "work_order.plan_id", "value": receipt["plan_id"]}
+            ]
+            arguments[5] = json.dumps(unpublished, separators=(",", ":"))
+            code, payload = self.invoke(
+                SCRIPTS / "validate_adaptive_manifest.py",
+                arguments,
+            )
+            self.assertEqual(code, 2, payload)
+            self.assertEqual(payload["error"]["code"], "missing_required_source_key")
+            self.assertEqual(payload["error"]["keys"], [BASELINE_KEY])
 
     def test_governance_tightening_never_removes_capabilities(self) -> None:
         base = policy.build_plan(self.base_facts())
@@ -841,6 +888,15 @@ class AdaptivePlanningTests(unittest.TestCase):
             self.assertEqual(payload["error"]["code"], "plan_policy_mismatch")
 
     def test_adaptive_manifest_requires_every_planned_source(self) -> None:
+        """Corrected fixture: the report slot delivers the artifact the plan names.
+
+        The fixture previously gave every required node a generic `artifact-N-0` name and
+        published only `work_order.plan_id`, so it asserted acceptance of a manifest in which
+        the report's declared `source_keys` entry was never published — the tolerance G-37
+        removed — and in which the report slot's artifact did not match the
+        `required_artifact_name` G-18 added. Both halves of the fixture now satisfy the plan's
+        own declaration, and every negative assertion is unchanged.
+        """
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
@@ -848,6 +904,12 @@ class AdaptivePlanningTests(unittest.TestCase):
             facts["scope"] = "module"
             facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
             receipt = policy.build_plan(facts)["plan_receipt"]
+            report_node = next(
+                item
+                for item in receipt["required_nodes"]
+                if item["logical_key"] == "report"
+            )
+            self.assertEqual(report_node["required_artifact_name"], REPORT_ARTIFACT_NAME)
             source_map: dict[str, dict[str, object]] = {}
             packet_categories: list[dict[str, object]] = []
             for index, item in enumerate(receipt["required_nodes"]):
@@ -867,7 +929,10 @@ class AdaptivePlanningTests(unittest.TestCase):
                                 "role": item["role"],
                                 "status": "succeeded",
                                 "artifacts": [
-                                    f"artifact-{index}-{item_index}"
+                                    item.get(
+                                        "required_artifact_name",
+                                        f"artifact-{index}-{item_index}",
+                                    )
                                     for item_index in range(item["artifact_min"])
                                 ],
                             }
@@ -881,7 +946,8 @@ class AdaptivePlanningTests(unittest.TestCase):
                         "role": "work-order-finalize",
                     },
                     "blackboard": [
-                        {"key": "work_order.plan_id", "value": receipt["plan_id"]}
+                        {"key": "work_order.plan_id", "value": receipt["plan_id"]},
+                        {"key": BASELINE_KEY, "value": BASELINE_VALUE},
                     ],
                     "source_categories": packet_categories,
                 }
@@ -925,6 +991,15 @@ class AdaptivePlanningTests(unittest.TestCase):
             self.assertEqual(payload["error"]["code"], "invalid_adaptive_manifest")
 
     def test_adaptive_manifest_accepts_the_planned_report_node(self) -> None:
+        """Corrected fixture: the report node's slot carries the named artifact and the
+        published baseline.
+
+        The report sources were previously named `report-source-N-0` — an artifact name the
+        plan's `report` entry does not declare — and the packet published only
+        `work_order.plan_id`, so acceptance was asserted for a manifest that satisfied neither
+        G-18's artifact identity nor G-37's published-key requirement. The missing-source
+        negative half is unchanged.
+        """
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
@@ -939,6 +1014,14 @@ class AdaptivePlanningTests(unittest.TestCase):
             self.assertEqual(
                 [item["logical_key"] for item in sources],
                 ["implementation-1", "report"],
+            )
+            self.assertEqual(
+                next(
+                    item["required_artifact_name"]
+                    for item in sources
+                    if item["logical_key"] == "report"
+                ),
+                REPORT_ARTIFACT_NAME,
             )
             source_map: dict[str, dict[str, object]] = {}
             packet_categories: list[dict[str, object]] = []
@@ -955,7 +1038,10 @@ class AdaptivePlanningTests(unittest.TestCase):
                                 "role": item["role"],
                                 "status": "succeeded",
                                 "artifacts": [
-                                    f"report-source-{index}-{unit}"
+                                    item.get(
+                                        "required_artifact_name",
+                                        f"report-source-{index}-{unit}",
+                                    )
                                     for unit in range(item["artifact_min"])
                                 ],
                             }
@@ -969,7 +1055,8 @@ class AdaptivePlanningTests(unittest.TestCase):
                         "role": "work-order-finalize",
                     },
                     "blackboard": [
-                        {"key": "work_order.plan_id", "value": receipt["plan_id"]}
+                        {"key": "work_order.plan_id", "value": receipt["plan_id"]},
+                        {"key": BASELINE_KEY, "value": BASELINE_VALUE},
                     ],
                     "source_categories": packet_categories,
                 }
@@ -1004,6 +1091,191 @@ class AdaptivePlanningTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertEqual(payload["error"]["code"], "missing_required_source")
             self.assertEqual(payload["error"]["keys"], ["report"])
+
+    def report_slot_manifest(
+        self,
+        receipt: dict[str, object],
+        *,
+        baseline: str | None,
+        report_artifacts: list[str],
+    ) -> tuple[dict[str, dict[str, str]], dict[str, object]]:
+        """The minimal plan's two-source finalizer manifest.
+
+        `baseline is None` omits the declared key from the blackboard entirely; any other
+        value (including `""` and whitespace) is published as-is.
+        """
+        blackboard = [{"key": "work_order.plan_id", "value": receipt["plan_id"]}]
+        if baseline is not None:
+            blackboard.append({"key": BASELINE_KEY, "value": baseline})
+        source_map = {
+            "implementation-1": {"node_id": "rt_impl"},
+            "report": {"node_id": "rt_report"},
+        }
+        packet = {
+            "packet": {
+                "target": {"logical_key": "finalize", "role": "work-order-finalize"},
+                "blackboard": blackboard,
+                "source_categories": [
+                    {
+                        "name": "plan-implementation-1",
+                        "sources": [
+                            {
+                                "node_id": "rt_impl",
+                                "logical_key": "implementation-1",
+                                "role": "implementation",
+                                "status": "succeeded",
+                                "artifacts": ["implementation.md"],
+                            }
+                        ],
+                    },
+                    {
+                        "name": "plan-report",
+                        "sources": [
+                            {
+                                "node_id": "rt_report",
+                                "logical_key": "report",
+                                "role": "report",
+                                "status": "succeeded",
+                                "artifacts": list(report_artifacts),
+                            }
+                        ],
+                    },
+                ],
+            }
+        }
+        return source_map, packet
+
+    def validate_manifest(
+        self,
+        bridge: Path,
+        facts: dict[str, str],
+        receipt: dict[str, object],
+        source_map: dict[str, object],
+        packet: dict[str, object],
+    ) -> tuple[int, dict[str, object]]:
+        return self.invoke(
+            SCRIPTS / "validate_adaptive_manifest.py",
+            [
+                "--receipt-json",
+                json.dumps(receipt, separators=(",", ":")),
+                "--source-map-json",
+                json.dumps(source_map, separators=(",", ":")),
+                "--packet-json",
+                json.dumps(packet, separators=(",", ":")),
+                "--request",
+                facts["request"],
+                "--bridge",
+                str(bridge),
+            ],
+        )
+
+    def test_report_slot_must_deliver_the_artifact_the_plan_names(self) -> None:
+        """G-18 negative test: the report slot's artifact identity, not its count.
+
+        Against the pre-change validator every packet below exited 0, because the only artifact
+        check was `len(artifacts) < artifact_min`. The decoys are chosen so that a substring,
+        prefix or suffix implementation cannot pass: each one shares characters with
+        `change-report.html` while having a different basename. The positive half covers both
+        path separators, because the runtime projects artifact paths as recorded strings.
+        """
+        with tempfile.TemporaryDirectory() as temporary:
+            bridge = Path(temporary) / "WORKFLOW.md"
+            bridge.write_text("# Workflow\n", encoding="utf-8")
+            facts = self.base_facts()
+            facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
+            receipt = policy.build_plan(facts)["plan_receipt"]
+            report_node = next(
+                item
+                for item in receipt["required_nodes"]
+                if item["logical_key"] == "report"
+            )
+            self.assertEqual(report_node["required_artifact_name"], REPORT_ARTIFACT_NAME)
+            source_map, _ = self.report_slot_manifest(
+                receipt, baseline=BASELINE_VALUE, report_artifacts=[REPORT_ARTIFACT_NAME]
+            )
+            for delivered in (
+                "notes.txt",
+                "change-report.html.bak",
+                "xchange-report.html",
+                "change-report.htm",
+                "C:\\wb\\artifacts\\rt_report\\notes.txt",
+                "/wb/artifacts/rt_report/change-report.html.bak",
+            ):
+                with self.subTest(delivered=delivered):
+                    _, packet = self.report_slot_manifest(
+                        receipt, baseline=BASELINE_VALUE, report_artifacts=[delivered]
+                    )
+                    code, payload = self.validate_manifest(
+                        bridge, facts, receipt, source_map, packet
+                    )
+                    self.assertEqual(code, 2, (delivered, payload))
+                    self.assertEqual(payload["error"]["code"], "report_artifact_mismatch")
+                    self.assertEqual(payload["error"]["keys"], ["report"])
+            for delivered in (
+                REPORT_ARTIFACT_NAME,
+                "C:\\wb\\artifacts\\rt_report\\" + REPORT_ARTIFACT_NAME,
+                "/wb/artifacts/rt_report/" + REPORT_ARTIFACT_NAME,
+            ):
+                with self.subTest(delivered=delivered):
+                    _, packet = self.report_slot_manifest(
+                        receipt, baseline=BASELINE_VALUE, report_artifacts=[delivered]
+                    )
+                    code, payload = self.validate_manifest(
+                        bridge, facts, receipt, source_map, packet
+                    )
+                    self.assertEqual(code, 0, (delivered, payload))
+                    self.assertTrue(payload["ok"])
+
+    def test_unpublished_baseline_key_is_refused(self) -> None:
+        """G-37 negative test: the report node's declared source key must be non-blank.
+
+        Against the pre-change validator every packet below exited 0 — the validator never read
+        `source_keys` — so a report slot could validate clean while proving no baseline at all.
+        The blank and tab cases are included because a truthiness test would accept them; the
+        check is `.strip()`-based, and the refusal names the key the caller failed to publish.
+        """
+        with tempfile.TemporaryDirectory() as temporary:
+            bridge = Path(temporary) / "WORKFLOW.md"
+            bridge.write_text("# Workflow\n", encoding="utf-8")
+            facts = self.base_facts()
+            facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
+            receipt = policy.build_plan(facts)["plan_receipt"]
+            report_node = next(
+                item
+                for item in receipt["required_nodes"]
+                if item["logical_key"] == "report"
+            )
+            self.assertEqual(report_node["source_keys"], [BASELINE_KEY])
+            source_map, _ = self.report_slot_manifest(
+                receipt, baseline=BASELINE_VALUE, report_artifacts=[REPORT_ARTIFACT_NAME]
+            )
+            for label, baseline in (
+                ("absent", None),
+                ("empty", ""),
+                ("blank", "   "),
+                ("tab", "\t"),
+            ):
+                with self.subTest(baseline=label):
+                    _, packet = self.report_slot_manifest(
+                        receipt,
+                        baseline=baseline,
+                        report_artifacts=[REPORT_ARTIFACT_NAME],
+                    )
+                    code, payload = self.validate_manifest(
+                        bridge, facts, receipt, source_map, packet
+                    )
+                    self.assertEqual(code, 2, (label, payload))
+                    self.assertEqual(payload["error"]["code"], "missing_required_source_key")
+                    self.assertEqual(payload["error"]["keys"], [BASELINE_KEY])
+            _, packet = self.report_slot_manifest(
+                receipt, baseline=BASELINE_VALUE, report_artifacts=[REPORT_ARTIFACT_NAME]
+            )
+            code, payload = self.validate_manifest(
+                bridge, facts, receipt, source_map, packet
+            )
+            self.assertEqual(code, 0, payload)
+            self.assertTrue(payload["ok"])
+            self.assertEqual(payload["min_sources"], 2)
 
     def test_receipt_validator_rejects_invalid_fact_domains(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

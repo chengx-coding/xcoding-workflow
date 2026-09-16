@@ -329,6 +329,58 @@ class JitMilestoneTests(unittest.TestCase):
             protocol,
         )
 
+    def test_milestone_subtree_declares_no_report_stage_because_the_root_owns_it(self) -> None:
+        """G-11: the milestone subtree carries no report stage, and the record says why.
+
+        A milestone-only work order initialises `work-order-template.xml` through `xc-work`, so
+        the enclosing work-order root owns the report stage and covers the milestone subtree's
+        change set. The subtree therefore declares no report node — and this is a *recorded*
+        decision, not an omission: before this work order nothing in either reference file said
+        which of the two shapes the milestone had. If either asset ever grows a report stage,
+        this test fails rather than letting the coverage claim drift.
+        """
+        spec = json.loads(SPEC.read_text(encoding="utf-8"))
+        template = TEMPLATE.read_text(encoding="utf-8")
+        for asset_name, text in (
+            ("jit-milestone-flow.json", json.dumps(spec)),
+            ("jit-milestone-template.xml", template),
+        ):
+            with self.subTest(asset=asset_name):
+                self.assertEqual(
+                    text.lower().count("report"),
+                    0,
+                    f"{asset_name} must declare no report stage: the hosting work-order root "
+                    "owns it",
+                )
+        declared_roles: list[str] = []
+
+        def walk(node: dict[str, object]) -> None:
+            declared_roles.append(str(node.get("role", "")))
+            for child in node.get("children") or []:
+                walk(child)
+
+        walk(spec["root"])
+        self.assertNotIn("report", declared_roles)
+        self.assertEqual(
+            sorted(spec["blackboard"]),
+            ["milestone.accepted", "milestone.demo_sources", "milestone.evidence_sources"],
+            "the subtree's blackboard stays the milestone's own control values",
+        )
+
+        protocol = (
+            ROOT / "skills" / "xc-work" / "references" / "jit-milestone-protocol.md"
+        ).read_text(encoding="utf-8")
+        farms = (
+            ROOT / "skills" / "xc-work" / "references" / "feature-farms.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("## Report Coverage", protocol)
+        self.assertIn("subtree, not a work-order root", protocol)
+        self.assertIn("enclosing work-order root's report covers", protocol)
+        self.assertIn("not an initialisation path", protocol)
+        self.assertIn("## Report Coverage", farms)
+        self.assertIn("The enclosing root's report covers the farm's whole change set", farms)
+        self.assertIn("declares no report node at all", farms)
+
     def test_revision_required_keeps_tree_open_for_recovery(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             tree, workshop = self.environment(Path(temporary))

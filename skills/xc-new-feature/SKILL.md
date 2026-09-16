@@ -32,13 +32,14 @@ description: "Starts and governs a complete managed workflow for developing a ne
 1. Read `AGENTS.md`, `.xcoding/WORKFLOW.md`, and `.xcoding/KNOWLEDGE.md`.
 2. Call `xc-open-work-order` with the feature request topic and the selected `feature_id`.
 3. Call `xc-feature init`, then initialize `assets/new-feature-template.xml` in the returned runtime path. Determine, validate through `xc-document`, and set `work_order.document_language` before any document write.
-4. Complete `prepare-feature` with the feature directory as a declared artifact.
+4. Complete `prepare-feature` with the feature directory as a declared artifact. Write the mode-derived report commitment in this same preparation step: `work_order.requires_report=true` for change, repair, and maintenance; `false` plus `work_order.report_skip_reason=read_only_mode` for investigation and review; and `true` when the mode cannot be confirmed, because an unknown mode is never interpreted as "no report needed". Record `work_order.report_baseline` once — baseline commit, worktree digest, and digest algorithm — and record `work_order.report_skip_reason` whenever the report is deliberately skipped. All three are preparation-phase records, never retrospective notes, and a missing commitment fails the node.
 5. Use `find` to locate each dynamic group and embed `xc-document-evolution` for `goal.md`, work order `solution.md`, and each feature baseline document. Set `document.content_language` from `work_order.document_language` only for top-level work order documents; use the project bridge for feature-baseline language.
 6. Schedule evidence and synthesis nodes using `xc-analysis`; write the accepted work order analysis when needed.
 7. When evidence leaves a material human-owned decision unresolved, or the user explicitly asks to clarify or stress-test the feature, set `work_order.requires_clarification=true` and embed `xc-clarify` under `clarification-group` before selecting the work order solution.
 8. Review the work order solution and feature `contract.md`, `solution.md`, and `verification.md` through document-evolution loops. Publish their four terminal writer IDs as a compact JSON array in `feature.baseline_source_ids`, read the `approve-feature-baseline` control packet, and complete the gate with `--gate-outcome approved|rejected|revision-required` plus a non-empty decision. The default `feature.baseline_gate_outcome=approved` applies only when the optional gate is skipped. Every non-approved value opens `baseline-recovery-group`; add revision and a successor approval gate there, and publish `approved` through that gate before continuing.
 9. Add bounded implementation nodes under `implementation-group` only after `approved-baseline-continuation` is selected, using the complete `xc-implementation` dynamic metadata contract, then add verification nodes under `verification-group` using `xc-verification`. Publish each leaf's actual terminal source IDs through its node-specific blackboard key before reading its packet.
-10. Create `result.md` through document evolution and complete `finalize-feature`.
+10. When `report-group` is selected, produce the change report after verification and before `result.md`: embed the `xc-change-report` subtree once under `report-group`, or run a single `role=report` node that carries the same contract, and resolve the subtree's template from the installed package path the committed setup record at `.agents/.xcoding-setup/manifest.json` holds. Publish all thirteen caller-seeded `report.*` keys with the values this feature work order actually uses before the group's first node runs, never merely accepting their declared defaults.
+11. Create `result.md` through document evolution and complete `finalize-feature`.
 
 Use runtime-returned paths and node IDs only. Dynamic document, analysis, implementation, review, and verification nodes must declare their artifacts and complete through the runtime public interface.
 Control-packet source arrays contain only terminal leaf IDs and are written through the runtime; group IDs and guessed references are invalid. If one of the four baseline documents is not yet represented by a terminal writer artifact, keep the approval gate waiting rather than lowering its source or artifact threshold.
@@ -47,6 +48,12 @@ When a reachable dynamic group is empty, `next` reports it in
 `awaiting_dynamic_groups`. The main session appends the planned work or closes
 the group explicitly; it must not classify that control state as an unexplained
 deadlock.
+
+## Change Report
+
+A feature work order produces analyzable change units, so it also produces a change report. `report-group` sits between `verification-group` and `result-document`, gated on the mode-derived commitment `work_order.requires_report`, whose declared default is `true`: an unwritten commitment selects the stage instead of silently skipping it, and the same thirteen caller-seeded `report.*` keys are declared on this tree as on the work-order tree so an embedded report subtree's guards and completion-fact selectors resolve against those declarations, and against a key one of the subtree's own nodes writes before the expression that reads it.
+
+The stage has two legal outcomes. When the manifest measures one or more analyzable units, produce `change-report.html` with its `change-report-manifest.json` and `change-report-verdicts.json`. When it measures zero analyzable units, record `work_order.report_skip_reason=zero_analyzable_units` and produce no report; a user waiver records `work_order.report_skip_reason=user_waived`. A report is never accepted without its manifest, a skip is never accepted without its reason, and `finalize-feature` does not close a work order whose committed report obligation was neither satisfied nor explicitly skipped.
 
 ## Baseline Requirements
 

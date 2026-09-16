@@ -17,6 +17,11 @@ from typing import Any
 
 
 MANIFEST_SCHEMA_VERSION = 1
+# The xc-* directories a caller deliberately keeps in the target without owning them.
+# They are not canonical packages, so they hold no `files` records; declaring them is
+# what lets `--check` describe the tree that actually exists instead of reporting them
+# as unexpected packages a caller cannot ever satisfy.
+MANIFEST_UNOWNED_FIELD = "unowned_packages"
 INSTALLER_VERSION = "1"
 NOISE_DIRECTORY_NAMES = {"__pycache__"}
 NOISE_FILE_SUFFIXES = {".pyc", ".pyo"}
@@ -248,8 +253,27 @@ def load_manifest(path: Path, target_root: Path) -> dict[str, Any]:
         raise InstallerError("invalid_manifest", "manifest expected packages are invalid", {"manifest": str(path)})
     if packages != sorted(set(packages)):
         raise InstallerError("invalid_manifest", "manifest expected packages must be sorted and unique", {"manifest": str(path)})
+    unowned = data.get(MANIFEST_UNOWNED_FIELD, [])
+    if not isinstance(unowned, list) or any(
+        not isinstance(package, str) or not package.startswith("xc-") for package in unowned
+    ):
+        raise InstallerError("invalid_manifest", "manifest unowned packages are invalid", {"manifest": str(path)})
+    if unowned != sorted(set(unowned)):
+        raise InstallerError("invalid_manifest", "manifest unowned packages must be sorted and unique", {"manifest": str(path)})
+    if set(unowned) & set(packages):
+        raise InstallerError(
+            "invalid_manifest",
+            "manifest unowned packages overlap the expected package set",
+            {"manifest": str(path)},
+        )
     source_file_map(data)
     return data
+
+
+def manifest_unowned_packages(manifest: dict[str, Any]) -> list[str]:
+    """The declared unowned xc-* directories, which `--check` tolerates in the target."""
+    raw = manifest.get(MANIFEST_UNOWNED_FIELD, []) or []
+    return [str(package) for package in raw]
 
 
 def target_drift(target_skills: Path, manifest: dict[str, Any]) -> list[dict[str, str]]:
@@ -258,9 +282,10 @@ def target_drift(target_skills: Path, manifest: dict[str, Any]) -> list[dict[str
     problems: list[dict[str, str]] = []
     actual_packages = set(target_package_names(target_skills))
     expected_package_set = set(expected_packages)
+    tolerated_package_set = set(manifest_unowned_packages(manifest))
     for package in sorted(expected_package_set - actual_packages):
         problems.append({"kind": "missing_package", "path": package})
-    for package in sorted(actual_packages - expected_package_set):
+    for package in sorted(actual_packages - expected_package_set - tolerated_package_set):
         problems.append({"kind": "unexpected_package", "path": package})
 
     actual_files = inventory_files(target_skills, sorted(actual_packages.intersection(expected_package_set)))
@@ -304,7 +329,7 @@ def write_manifest(path: Path, manifest: dict[str, Any]) -> None:
     os.replace(temporary, path)
 
 
-def install(source_root: Path, target_root: Path, source_skills: Path, target_skills: Path, manifest_path_value: Path, revision_override: str) -> dict[str, Any]:
+def install(source_root: Path, target_root: Path, source_skills: Path, target_skills: Path, manifest_path_value: Path, revision_override: str, unowned_packages: list[str] | None = None) -> dict[str, Any]:
     snapshot = source_snapshot(source_root, source_skills, revision_override)
     existing_manifest: dict[str, Any] | None = None
     existing_manifest_bytes: bytes | None = None
@@ -321,9 +346,19 @@ def install(source_root: Path, target_root: Path, source_skills: Path, target_sk
             {"packages": target_package_names(target_skills)},
         )
 
+    declared_unowned = sorted(
+        set(manifest_unowned_packages(existing_manifest or {})) | set(unowned_packages or [])
+    )
+    if set(declared_unowned) & set(snapshot["expected_packages"]):
+        raise InstallerError(
+            "invalid_manifest",
+            "unowned packages overlap the expected package set",
+            {"packages": sorted(set(declared_unowned) & set(snapshot["expected_packages"]))},
+        )
     manifest = {
         **snapshot,
         "target_root": str(target_root),
+        MANIFEST_UNOWNED_FIELD: declared_unowned,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
     source_packages = list(snapshot["expected_packages"])
@@ -378,6 +413,7 @@ def install(source_root: Path, target_root: Path, source_skills: Path, target_sk
         "operation": "install",
         "manifest": str(manifest_path_value),
         "packages": source_packages,
+        "unowned_packages": declared_unowned,
         "removed_stale_packages": sorted(set(previous_packages) - set(source_packages)),
         "source_revision": snapshot["source_revision"],
         "source_worktree_state": snapshot["source_worktree_state"],
@@ -408,6 +444,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest", required=True)
     parser.add_argument("--source-revision", default="", help="Explicit source revision for non-Git or isolated test sources.")
     parser.add_argument("--check", action="store_true", help="Verify source, manifest, and target state without writing.")
+    parser.add_argument(
+        "--unowned-package",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help=(
+            "An xc-* package directory the caller deliberately keeps in the target without "
+            "owning it. Repeat for each one. It is recorded in the manifest as intentionally "
+            "unowned, so --check reports the tree that actually exists."
+        ),
+    )
     args = parser.parse_args(argv)
     try:
         source_root, target_root, source_skills, target_skills = source_and_target_roots(args.source_root, args.target_root)
@@ -431,6 +478,7 @@ def main(argv: list[str] | None = None) -> int:
                 target_skills,
                 selected_manifest,
                 args.source_revision,
+                list(args.unowned_package),
             )
         )
         return 0

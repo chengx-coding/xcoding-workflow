@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate a change report against its coverage manifest: checks V1-V14.
+"""Validate a change report against its coverage manifest: checks V1-V16.
 
 The validator is the execution body of the coverage proof. It recomputes what it can
 (hash binding, token binding, head freshness, offline self-containment, redaction and
@@ -29,6 +29,7 @@ from build_manifest import (  # noqa: E402
     CODE_BLOCK_CLASS,
     CODE_CONTEXT_CLASS,
     CODE_EXCLUSION_CLASSES,
+    DIGEST_ALGORITHM,
     EXCLUSION_CATEGORIES,
     FIELD_NAMES,
     GATE_OUTCOME_KEY,
@@ -42,6 +43,7 @@ from build_manifest import (  # noqa: E402
     MAX_SVG_CANVAS_WIDTH,
     PLACEHOLDER_TOKENS,
     RECOVERY_KEY,
+    RECORDED_PATH_REASONS,
     REPORT_GATE_OUTCOMES,
     REWORK_KEY,
     SCHEMA_VERSION,
@@ -52,14 +54,23 @@ from build_manifest import (  # noqa: E402
     DIAGRAM_TYPES,
     ENUMERATION_VERSION,
     SYMBOL_ONLY_RE,
+    ManifestError,
     decode_content,
+    digest_from_hashes,
     head_digest,
     normalize_code_text,
     read_bytes,
+    recorded_paths,
+    run_git,
     sensitive_path_hit,
     sha256_hex,
+    snapshot_bytes,
     snapshot_dir,
+    snapshot_paths,
+    sort_key,
     split_lines,
+    tracked_paths,
+    tree_entries,
     unit_canonical_lines,
     unit_lines,
 )
@@ -133,6 +144,28 @@ INTEGER_ATTR_RE = re.compile(r"^(?:-?\d+)$")
 DECIMAL_RE = re.compile(r"-?\d+\.\d+")
 PLACEHOLDER_LEFT_RE = re.compile(r"\{\{[A-Z_]+\}\}")
 CJK_RE = re.compile(r"[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]")
+
+# The cross-unit interface vocabulary frozen by the solution decision and stated normatively by
+# `coverage-protocol.md` C4a/C4b. The strings are the interface; they are repeated here as the
+# validator's own declaration of what it accepts, so that the validator does not depend on the
+# builder's internal symbol names.
+WORKTREE_SNAPSHOT_STATES = {
+    "absent": "baseline_worktree_snapshot_missing",
+    "empty": "baseline_worktree_snapshot_empty",
+    "incomplete": "baseline_worktree_snapshot_incomplete",
+    "complete": "",
+}
+UNTRACKED_SNAPSHOT_UNAVAILABLE = "baseline_untracked_snapshot_missing"
+
+# The baseline snapshot's "not recomputable" note (C4a). It is a note, not a failure: a degraded
+# capture is legal, and a validator that refused it would leave a work order with no repair route.
+BASELINE_NOT_RECOMPUTABLE = "baseline_worktree_snapshot_unavailable"
+
+# A single unit can carry a degenerate payload, and V11's failure text lists that unit's tokens.
+# The list is therefore unbounded in the diff's own size; this is the declared message cap, and
+# the marker keeps the truncation visible instead of hiding it.
+MAX_CHECK_MESSAGE_CHARS = 400
+TRUNCATION_MARKER = " ...[truncated: message capped at {limit} characters]"
 
 
 class ValidationError(RuntimeError):
@@ -300,16 +333,100 @@ class Checker:
         self.errors: list[dict[str, str]] = []
 
     def fail(self, check: str, message: str) -> None:
-        self.errors.append({"id": check, "message": message})
+        # The cap is applied here, at the one point every check message passes through, because
+        # the contract states it for every message and a per-check site would be a rule a later
+        # check can forget. A message inside the cap is returned unchanged.
+        self.errors.append({"id": check, "message": bounded_message(message)})
 
     @property
     def ok(self) -> bool:
         return not self.errors
 
 
+def bounded_message(text: str, limit: int = MAX_CHECK_MESSAGE_CHARS) -> str:
+    """Bound one check message, keeping its head (G-41).
+
+    A check whose message enumerates evidence taken from the diff is unbounded in the size of
+    that diff: a 240 001-character single-line unit produced a 120 144-character V11 message
+    that flooded stdout and `--json-out`. The head of the message carries the check id, the unit
+    number and the reason, so truncating the tail keeps the diagnostic usable and states that
+    something was removed.
+    """
+    if len(text) <= limit:
+        return text
+    marker = TRUNCATION_MARKER.format(limit=limit)
+    return text[: max(0, limit - len(marker))] + marker
+
+
 # --------------------------------------------------------------------------------------
-# V1-V14
+# V1-V16
 # --------------------------------------------------------------------------------------
+
+
+def _check_declared_snapshot(
+    checker: Checker,
+    label: str,
+    snapshot: dict[str, Any],
+    degradations: set[str],
+    states: dict[str, str] | None,
+    unavailable_degradation: str,
+) -> None:
+    """The A3-2 consistency tier for one declared baseline snapshot directory.
+
+    `states` maps a declared snapshot state to the degradation string that state owes, and is
+    `None` for a snapshot whose contract has no state field. An unavailable snapshot is legal —
+    a failed capture degrades instead of jamming a work order — but only when the manifest says
+    which degradation applies. An available snapshot must exist and must hold captured paths.
+    """
+    available = snapshot.get("available")
+    if not isinstance(available, bool):
+        checker.fail("V1", f"baseline.{label}.available must be a boolean")
+        return
+    expected_degradation = ""
+    if states is not None:
+        state = str(snapshot.get("state", "")).strip()
+        if state not in states:
+            checker.fail(
+                "V1",
+                f"baseline.{label}.state must be one of {sorted(states)}, found "
+                f"{snapshot.get('state')!r}",
+            )
+            return
+        if available != (state == "complete"):
+            checker.fail(
+                "V1",
+                f"baseline.{label}.available is {available} while its state is {state!r}; only a "
+                "complete snapshot is available",
+            )
+        expected_degradation = states[state]
+    if not available:
+        # A snapshot whose contract carries no state owes its single "missing" string.
+        expected_degradation = expected_degradation or unavailable_degradation
+    if expected_degradation and expected_degradation not in degradations:
+        checker.fail(
+            "V1",
+            f"baseline.{label} is not available, so the manifest must record the degradation "
+            f"{expected_degradation!r}",
+        )
+    if not available:
+        return
+    directory = Path(str(snapshot.get("path", "") or ""))
+    if not directory.is_dir():
+        checker.fail(
+            "V1",
+            f"baseline.{label}.available is true but its directory does not exist: {directory}",
+        )
+        return
+    # The content requirement belongs to the worktree snapshot, which owes the tracked path set of
+    # the baseline commit: that is exactly the state a zero-file capture must not be able to
+    # claim. The untracked snapshot owes the untracked path set at open, which is legitimately
+    # empty on a clean tree, so existence is its whole contract.
+    if states is not None and not snapshot_paths(directory):
+        checker.fail(
+            "V1",
+            f"baseline.{label}.available is true but its directory holds no captured path: "
+            f"{directory}",
+        )
 
 
 def check_v1(checker: Checker, manifest: dict[str, Any], work_order_id: str) -> dict[str, int]:
@@ -334,6 +451,44 @@ def check_v1(checker: Checker, manifest: dict[str, Any], work_order_id: str) -> 
             checker.fail("V1", f"baseline.{field} is required")
     if not isinstance(baseline.get("untracked_snapshot"), dict):
         checker.fail("V1", "baseline.untracked_snapshot must be an object")
+    # A3-1, the content tier. Key presence is not identity: a manifest whose baseline identity is
+    # empty or whose algorithm is a corrupted spelling of the C4 id used to validate at every
+    # stage, so the coverage proof rested on an unproven provenance claim.
+    for field in ("worktree_digest", "algorithm", "captured_at"):
+        if not str(baseline.get(field, "")).strip():
+            checker.fail("V1", f"baseline.{field} must be present and non-empty")
+    declared_algorithm = str(baseline.get("algorithm", "")).strip()
+    if declared_algorithm and declared_algorithm != DIGEST_ALGORITHM:
+        checker.fail(
+            "V1",
+            f"baseline.algorithm must be {DIGEST_ALGORITHM!r}, found {declared_algorithm!r}",
+        )
+    if "worktree_snapshot" not in baseline:
+        checker.fail("V1", "baseline.worktree_snapshot is required")
+    elif not isinstance(baseline.get("worktree_snapshot"), dict):
+        checker.fail("V1", "baseline.worktree_snapshot must be an object")
+    # A3-2, the consistency tier. `available` and `degradations` are two statements about the same
+    # fact, so they must agree; and a snapshot that claims to be available must really hold the
+    # captured paths rather than merely exist as a directory.
+    degradations = {str(item) for item in manifest.get("degradations", []) or []}
+    if isinstance(baseline.get("worktree_snapshot"), dict):
+        _check_declared_snapshot(
+            checker,
+            "worktree_snapshot",
+            baseline["worktree_snapshot"],
+            degradations,
+            states=WORKTREE_SNAPSHOT_STATES,
+            unavailable_degradation="",
+        )
+    if isinstance(baseline.get("untracked_snapshot"), dict):
+        _check_declared_snapshot(
+            checker,
+            "untracked_snapshot",
+            baseline["untracked_snapshot"],
+            degradations,
+            states=None,
+            unavailable_degradation=UNTRACKED_SNAPSHOT_UNAVAILABLE,
+        )
     head = manifest.get("head")
     if not isinstance(head, dict):
         checker.fail("V1", "head must be an object")
@@ -644,8 +799,18 @@ def check_v5(checker: Checker, index: HtmlIndex, manifest: dict[str, Any], manif
             if category not in EXCLUSION_CATEGORIES:
                 checker.fail("V5", f"exclusion row {category!r} does not name a valid category")
 
-    if PLACEHOLDER_LEFT_RE.search(index.document):
-        checker.fail("V5", "the report still contains an unsubstituted template placeholder")
+    # The rule is scoped to the page's own text, not to the source the page quotes: a
+    # placeholder-shaped literal inside a code block is content the change set supplied
+    # verbatim, exactly as it is for V7's URL rule, and the builder's residual guard draws the
+    # same line from the other side by reading the template instead of the page. Naming the
+    # surviving tokens keeps the diagnostic actionable; `Checker.fail` bounds the message.
+    placeholders = unsubstituted_placeholders(index)
+    if placeholders:
+        checker.fail(
+            "V5",
+            "the report still contains an unsubstituted template placeholder: "
+            + ", ".join(placeholders[:5]),
+        )
 
     for name in ("xc-work-order-id", "xc-generated-at", "xc-manifest-sha256", "xc-report-strength"):
         found = [
@@ -810,6 +975,30 @@ def exclusion_intervals(index: HtmlIndex) -> list[tuple[int, int]]:
                     break
         intervals.append((start, min(end, len(index.document))))
     return intervals
+
+
+def unsubstituted_placeholders(index: HtmlIndex) -> list[str]:
+    """Placeholder-shaped tokens in the page's own text, outside the source it quotes (G-43).
+
+    The V5 rule used to search the whole document for `{{NAME}}`, so a change set that quoted a
+    placeholder-shaped literal in its source -- a message template, an f-string, a JSON sample --
+    was rejected as carrying an unsubstituted placeholder even though the literal is content the
+    change set supplied, not template residue. The builder's residual guard now draws the same
+    line from the other side: it reads the template and never the assembled page, because a
+    replacement value is not the template's business.
+
+    The boundary is the one V7 already draws for URL text: an interval an exclusion-class element
+    really owns (H37a). An element the author never closed owns only up to its first structural
+    boundary, so an unclosed code block cannot exempt the rest of the page and the narrowed rule
+    stays fail-closed.
+    """
+    exclusions = exclusion_intervals(index)
+    found: list[str] = []
+    for match in PLACEHOLDER_LEFT_RE.finditer(index.document):
+        if any(start <= match.start() < end for start, end in exclusions):
+            continue
+        found.append(match.group(0))
+    return found
 
 
 def check_v7(checker: Checker, index: HtmlIndex) -> None:
@@ -1791,7 +1980,10 @@ def check_v14(
             "V14", "verdicts do not cover every analyzable unit; missing: "
             + ", ".join(str(item) for item in missing),
         )
-    if wrong != MAX_WRONG:
+    # MAX_WRONG is a maximum, not an exact value: the equality here rejected a run with fewer
+    # wrong verdicts than the ceiling, and disagreed with `recomputed_open` two lines below,
+    # which already used `>`. The two must state the same rule (G-31).
+    if wrong > MAX_WRONG:
         checker.fail("V14", f"wrong verdicts: {wrong}, threshold max_wrong={MAX_WRONG}")
     if misleading > MAX_MISLEADING:
         checker.fail(
@@ -1819,6 +2011,257 @@ def check_v14(
 
 
 # --------------------------------------------------------------------------------------
+# V15-V16: the baseline identity and the enumeration, recomputed from the repository
+# --------------------------------------------------------------------------------------
+
+
+def check_v15(checker: Checker, manifest: dict[str, Any], repo: Path) -> dict[str, Any]:
+    """A3-3 (G-03): recompute C4's baseline digest from the recorded worktree snapshot.
+
+    V1 can prove the baseline identity is well-formed and that the manifest tells one consistent
+    story about the snapshot; only a recomputation proves the digest is the digest of those
+    bytes. The construction is the package's own: `sha256(path-nul-contenthash-lf/v1)` over the
+    tracked path list of `baseline.commit`, hashing each path's recorded snapshot bytes. A
+    snapshot that is not available is the C4a "not recomputable" case: it is reported as a note
+    and left to the recorded degradation, because a failed capture must degrade rather than jam
+    the work order.
+    """
+    baseline = manifest.get("baseline")
+    if not isinstance(baseline, dict):
+        return {"status": "not_applicable", "reason": "baseline_is_not_an_object"}
+    snapshot = baseline.get("worktree_snapshot")
+    if not isinstance(snapshot, dict):
+        return {"status": "not_applicable", "reason": "baseline_worktree_snapshot_is_not_an_object"}
+    if snapshot.get("available") is not True:
+        return {
+            "status": "not_recomputable",
+            "reason": BASELINE_NOT_RECOMPUTABLE,
+            "state": str(snapshot.get("state", "")),
+            "degradation": WORKTREE_SNAPSHOT_STATES.get(str(snapshot.get("state", "")).strip(), ""),
+        }
+    directory = Path(str(snapshot.get("path", "") or ""))
+    if not directory.is_dir():
+        checker.fail(
+            "V15",
+            f"baseline.worktree_snapshot.available is true but its directory does not exist: "
+            f"{directory}",
+        )
+        return {"status": "failed"}
+    commit = str(baseline.get("commit", ""))
+    declared = str(baseline.get("worktree_digest", ""))
+    try:
+        tracked = sorted(tracked_paths(repo, commit), key=sort_key)
+    except ManifestError as exc:
+        checker.fail("V15", f"the baseline commit cannot be enumerated: {exc}")
+        return {"status": "failed"}
+
+    pairs: list[tuple[str, str]] = []
+    missing: list[str] = []
+    for path in tracked:
+        payload = snapshot_bytes(directory, path)
+        if payload is None:
+            missing.append(path)
+            continue
+        pairs.append((path, sha256_hex(payload)))
+    if missing:
+        shown = ", ".join(missing[:5])
+        checker.fail(
+            "V15",
+            f"the baseline worktree snapshot is incomplete: {len(missing)} of "
+            f"{len(tracked)} tracked paths have no captured file under {directory} "
+            f"({shown})",
+        )
+    extra = sorted(set(snapshot_paths(directory)) - set(tracked), key=sort_key)
+    if extra:
+        checker.fail(
+            "V15",
+            f"the baseline worktree snapshot holds {len(extra)} path(s) that are not tracked "
+            f"at {commit}: {', '.join(extra[:5])}",
+        )
+    recomputed = digest_from_hashes(pairs)
+    if not missing and not extra and recomputed != declared:
+        checker.fail(
+            "V15",
+            f"the baseline worktree digest is not reproducible from {directory}: "
+            f"baseline.worktree_digest is {declared!r}, the snapshot recomputes to "
+            f"{recomputed!r}",
+        )
+    return {
+        "status": "checked",
+        "recomputed_digest": recomputed,
+        "tracked_paths": len(tracked),
+        "captured_paths": len(pairs),
+    }
+
+
+def check_v16(checker: Checker, manifest: dict[str, Any], repo: Path) -> dict[str, Any]:
+    """A12-1 (G-30): recompute the enumeration from git, independently of the manifest.
+
+    V5 compares the report's exclusion table with the manifest's own counters, so both sides can
+    be wrong together. This check takes the sources that are not the manifest -- the
+    baseline-commit diff, the index and the untracked path set -- and fails when a path a source
+    reports as *changed* is absent from `files[]`. The relation is scoped to what is genuinely
+    comparable: every path changed O->H, plus every index entry whose mode is neither `100644`
+    nor `100755` (a gitlink or a symlink, which a byte diff of the worktree cannot see), plus
+    every currently untracked path that is not already the open state's own content.
+
+    All three scopes are scopes of *change*: C7's `files[]` is the change set, so a
+    non-standard-mode index entry is only comparable when the baseline commit does not already
+    record the path at that same mode and object, and an untracked path is only comparable when
+    the recorded untracked snapshot does not hold those same bytes -- a file that was untracked
+    when the work order opened and never changed is not a change and owes no row. A link or
+    gitlink the baseline commit already holds and the work order never touches is not a change
+    either, and demanding a `files[]` row for it reported a complete manifest as incomplete
+    (measured: a repository whose baseline commit carries an untouched mode-`120000` entry,
+    `git status --porcelain` empty).
+
+    The third source exists because the first two are both index/commit relations: without it a
+    path that reaches the enumeration as an untracked file could leave `files[]` with no row,
+    no exclusion and no degradation, and the run still reported `coverage=complete` (the
+    measured F1 shape). Such a path may leave `files[]` only when the manifest records it under
+    one of the recorded-path reasons, which names it; a path that is named by a note about some
+    other path is still a silent drop and still fails.
+    """
+    baseline = manifest.get("baseline")
+    commit = str(baseline.get("commit", "")) if isinstance(baseline, dict) else ""
+    if not commit:
+        return {"status": "not_applicable", "reason": "baseline_commit_is_not_recorded"}
+    diff_command = f"git diff --no-renames --name-status -z {commit} --"
+    index_command = "git ls-files -s"
+    untracked_command = "git ls-files --others --exclude-standard -z"
+    sources: dict[str, set[str]] = {}
+    try:
+        diff_payload = run_git(repo, ["diff", "--no-renames", "--name-status", "-z", commit, "--"])
+    except ManifestError as exc:
+        checker.fail("V16", f"the baseline-commit diff cannot be recomputed: {exc}")
+        return {"status": "failed"}
+    fields = diff_payload.split(b"\x00")
+    position = 0
+    diff_paths = 0
+    while position + 1 < len(fields):
+        status = fields[position].decode("utf-8", "surrogateescape")
+        path = fields[position + 1].decode("utf-8", "surrogateescape")
+        position += 2
+        if status and path:
+            diff_paths += 1
+            sources.setdefault(path, set()).add(diff_command)
+    try:
+        index_payload = run_git(repo, ["ls-files", "-s", "-z"])
+    except ManifestError as exc:
+        checker.fail("V16", f"the index cannot be enumerated: {exc}")
+        return {"status": "failed"}
+    try:
+        # The baseline commit's own modes and objects: the reference the index entry's shape is
+        # measured against. C15's `mode_change` is exactly this comparison, and a link is the
+        # same question asked of its object id, so an entry whose mode *and* object the baseline
+        # already records is not a change in either direction.
+        baseline_entries = tree_entries(repo, commit)
+    except ManifestError as exc:
+        checker.fail("V16", f"the baseline tree cannot be enumerated: {exc}")
+        return {"status": "failed"}
+    index_paths = 0
+    unchanged_index_entries = 0
+    for record in index_payload.split(b"\x00"):
+        if not record:
+            continue
+        meta, separator, raw_path = record.partition(b"\t")
+        if not separator:
+            continue
+        mode = meta.split(b" ", 1)[0]
+        path = raw_path.decode("utf-8", "surrogateescape")
+        if not path or mode in (b"100644", b"100755"):
+            continue
+        recorded = baseline_entries.get(path, {})
+        if (
+            recorded
+            and str(recorded.get("mode", "")) == mode.decode("ascii", "replace")
+            and str(recorded.get("sha", "")) == meta.split(b" ")[1].decode("ascii", "replace")
+        ):
+            unchanged_index_entries += 1
+            continue
+        index_paths += 1
+        sources.setdefault(path, set()).add(index_command)
+
+    declared: set[str] = set()
+    for entry in manifest.get("files", []) or []:
+        if not isinstance(entry, dict):
+            continue
+        declared.add(str(entry.get("path", "")))
+        # C11 pairs an exact-content deletion and addition into one `renamed` entry, and
+        # `--no-renames` is forced on the manifest's own diff, so the deletion side of a rename
+        # reaches this check as a bare `D` record while the enumeration represents it in this
+        # field. Counting it is what keeps the relation comparable; a genuinely dropped path is
+        # in neither place.
+        renamed_from = entry.get("renamed_from")
+        if renamed_from:
+            declared.add(str(renamed_from))
+
+    try:
+        untracked_payload = run_git(repo, ["ls-files", "--others", "--exclude-standard", "-z"])
+    except ManifestError as exc:
+        checker.fail("V16", f"the untracked path set cannot be enumerated: {exc}")
+        return {"status": "failed"}
+    untracked_found = [
+        path
+        for path in (
+            item.decode("utf-8", "surrogateescape")
+            for item in untracked_payload.split(b"\x00")
+            if item
+        )
+        if path
+    ]
+    recorded = recorded_paths(
+        RECORDED_PATH_REASONS, [str(item) for item in manifest.get("degradations", []) or []]
+    )
+    snapshot = str(baseline.get("untracked_snapshot", {}).get("path", "") or "") if isinstance(
+        baseline, dict
+    ) and isinstance(baseline.get("untracked_snapshot"), dict) else ""
+    untracked_snapshot = Path(snapshot) if snapshot else None
+    untracked_paths = 0
+    recorded_unreadable: list[str] = []
+    unchanged_untracked = 0
+    for path in sorted(set(untracked_found), key=sort_key):
+        if path in declared:
+            untracked_paths += 1
+            continue
+        if path in recorded:
+            untracked_paths += 1
+            recorded_unreadable.append(path)
+            continue
+        # The open state's own content: unchanged bytes between the C4a snapshot and the
+        # worktree mean the path was already there when the work order opened and is not a
+        # change, so it owes no row -- exactly as the enumeration decided it.
+        snapshot_payload = snapshot_bytes(untracked_snapshot, path)
+        if snapshot_payload is not None and snapshot_payload == read_bytes(repo / Path(path)):
+            unchanged_untracked += 1
+            continue
+        untracked_paths += 1
+        sources.setdefault(path, set()).add(untracked_command)
+
+    missing = sorted((path for path in sources if path not in declared), key=sort_key)
+    for path in missing:
+        checker.fail(
+            "V16",
+            f"the enumeration is incomplete: path {path!r} is reported by "
+            f"{' and '.join(sorted(sources[path]))} but is absent from files[] and named by no "
+            "recorded-path degradation",
+        )
+    return {
+        "status": "checked",
+        "diff_paths": diff_paths,
+        "index_modes": index_paths,
+        # Non-standard-mode index entries the baseline commit already records byte for byte.
+        # They are counted, not silently skipped, so a receipt shows how many entries the
+        # change scope left out.
+        "unchanged_index_modes": unchanged_index_entries,
+        "untracked_paths": untracked_paths,
+        "recorded_unreadable": sorted(recorded_unreadable, key=sort_key),
+        "unchanged_untracked": unchanged_untracked,
+        "missing": missing[:20],
+    }
+
+
+# --------------------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------------------
 
@@ -1835,7 +2278,12 @@ def validate(
     golden_dir: Path | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     checker = Checker()
-    document = report_path.read_text(encoding="utf-8")
+    # H26a step 7 keeps "every other space and newline", so the text sliced out of a code block
+    # has to be the page's own bytes: a universal-newline read would rewrite every CRLF in the
+    # document, turning the CR that ends a code line of a CRLF worktree into the LF that
+    # separates the row spans and doubling that line in the recomputation.
+    with report_path.open("r", encoding="utf-8", newline="") as handle:
+        document = handle.read()
     manifest_bytes = manifest_path.read_bytes()
     manifest = json.loads(manifest_bytes.decode("utf-8"))
     index = HtmlIndex(document)
@@ -1846,6 +2294,8 @@ def validate(
     index.close_open()
 
     counts = check_v1(checker, manifest, work_order_id)
+    baseline_proof = check_v15(checker, manifest, repo)
+    enumeration_proof = check_v16(checker, manifest, repo)
     covered, total = check_v2_v3(checker, index, manifest)
     check_v4(checker, index, manifest)
     info = check_v5(checker, index, manifest, manifest_bytes)
@@ -1896,7 +2346,13 @@ def validate(
         "next_action": "refresh" if not head_current else "none",
         "errors": checker.errors,
         "facts": facts,
-        "details": {"gate": gate, "accuracy": accuracy, "diagrams": diagram_stats},
+        "details": {
+            "gate": gate,
+            "accuracy": accuracy,
+            "diagrams": diagram_stats,
+            "baseline": baseline_proof,
+            "enumeration": enumeration_proof,
+        },
         "receipt": receipt,
     }
     return payload, receipt

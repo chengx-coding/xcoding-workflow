@@ -44,6 +44,16 @@ The caller embeds document-evolution subtrees under `analysis-document` and, whe
 - If no decision is available, block `conflict-gate`; blocked is not a successful gate outcome.
 - Before baseline modification, re-check provenance and warn the user when another work order has changed the baseline. The workflow does not implement locks or leases.
 
+### Where a baseline write lands
+
+A baseline update writes inside the workshop, and the enclosing work order's change report sees it only under one topology:
+
+- Under `independent-link` and `independent-nested` the project repository ignores `.xcoding/`, so the write stays outside the change set the enclosing report enumerates.
+- Under `same-repo` the baseline is a tracked product path, so the write becomes an analysable change unit that the enclosing work order's report must explain like any other change, including when the reconciliation concluded that no product behavior changed.
+- Under `no-git` there is no enumeration to contribute to.
+
+The topology was fixed by `xc-workshop-setup` before this work order opened; this Skill does not choose it and does not change it. It states the consequence because a reconciliation that writes a baseline under `same-repo` enlarges the enclosing report's change set.
+
 ## Constraints
 
 - Do not treat either code or documents as universally authoritative.

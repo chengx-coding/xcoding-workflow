@@ -79,7 +79,8 @@ MAX_WRONG = 0
 MAX_MISLEADING = 0
 VERDICTS = ("accurate", "misleading", "wrong")
 
-# Exclusion categories (C15) -- a closed enumeration.
+# Exclusion categories (C15) -- a closed enumeration. Adding a category requires changing
+# `references/coverage-protocol.md` first; an implementation never invents a value.
 EXCLUSION_CATEGORIES = (
     "generated",
     "lockfile",
@@ -88,8 +89,76 @@ EXCLUSION_CATEGORIES = (
     "minified",
     "sensitive",
     "encoding_unsupported",
+    "mode_change",
+    "submodule",
+    "adapter_install",
     "pre_existing_change",
 )
+
+# The host-adapter and installed-Skill roots no lifecycle node owns (C13/C15/C17). `xcoding
+# setup --project-root --host` and the workflow-evolution installer write into these, so a
+# report states the write as a declared exclusion instead of dropping it.
+ADAPTER_INSTALL_PATTERNS = (
+    ".claude/*",
+    "*/.claude/*",
+    ".codex/*",
+    "*/.codex/*",
+    ".opencode/*",
+    "*/.opencode/*",
+    ".trae/*",
+    "*/.trae/*",
+    ".agents/*",
+    "*/.agents/*",
+)
+
+# Index modes whose content is not the worktree file's bytes (C14a, C15).
+GITLINK_MODE = "160000"
+SYMLINK_MODE = "120000"
+
+# The worktree snapshot's four states and the degradation string each unavailable state owes
+# (C4b). `available` is true only for `complete`; the strings are the frozen interface.
+WORKTREE_SNAPSHOT_DEGRADATIONS = {
+    "absent": "baseline_worktree_snapshot_missing",
+    "empty": "baseline_worktree_snapshot_empty",
+    "incomplete": "baseline_worktree_snapshot_incomplete",
+    "complete": "",
+}
+UNTRACKED_SNAPSHOT_DEGRADATION = "baseline_untracked_snapshot_missing"
+
+# Per-path degradations: `<reason>:<path>`, the same form the C37 provenance notes use. A
+# path that leaves the change set without a row is only ever allowed to leave it under one
+# of these, because a degradation that names no path is indistinguishable from silence --
+# and silence is the defect these notes exist to prevent.
+PATH_UNREADABLE = "path_unreadable"
+UNTRACKED_SNAPSHOT_PATH_LOST = "untracked_snapshot_path_lost"
+MODE_PROVENANCE_UNKNOWN = "mode_provenance_unknown"
+TRACKED_PATH_UNREADABLE = "tracked_path_unreadable"
+UNTRACKED_PATH_UNREADABLE = "untracked_path_unreadable"
+BASELINE_RECORD_UNREADABLE = "baseline_record_unreadable"
+BASELINE_RECORD_UNSELECTED = "baseline_record_unselected"
+# The per-path reasons the validator accepts as "the manifest recorded this path even
+# though it could not enumerate it" (V16's third source).
+RECORDED_PATH_REASONS = (PATH_UNREADABLE, UNTRACKED_SNAPSHOT_PATH_LOST)
+
+OPEN_STATE_RECORD_NAME = "baseline-open-state.json"
+
+
+def path_note(reason: str, path: str) -> str:
+    """`<reason>:<path>` -- the package's per-path degradation form."""
+    return f"{reason}:{path}"
+
+
+def recorded_paths(reasons: Iterable[str], degradations: Iterable[str]) -> set[str]:
+    """Every path the manifest records under one of `reasons`, parsed back from the notes."""
+    markers = tuple(reason + ":" for reason in reasons)
+    found: set[str] = set()
+    for item in degradations:
+        text = str(item)
+        for marker in markers:
+            if text.startswith(marker):
+                found.add(text[len(marker):])
+    return found
+
 
 CHANGE_KINDS = ("added", "modified", "deleted", "renamed")
 ANALYZED_AS = ("work_order", "pre_existing", "mixed")
@@ -229,8 +298,16 @@ def sha256_hex(payload: bytes) -> str:
 
 
 def canonical_text(lines: Iterable[str]) -> str:
-    """Canonical unit text: one trailing newline per kept line (H26a)."""
-    return "".join(line + "\n" for line in lines)
+    """Canonical unit text: one trailing newline per kept line (H26a).
+
+    A line's own line terminator is not part of the line, so a trailing CR is dropped and the
+    line ends with the canonical LF. A worktree that stores its files with CRLF therefore
+    hashes to the same `content_sha256` as the LF worktree holding the same logical text.
+    Without this the hash depended on the repository's line ending while the report page
+    always renders one LF per code line, so the validator could never recompute the hash of a
+    CRLF worktree (V10 failed every unit).
+    """
+    return "".join(line.rstrip("\r") + "\n" for line in lines)
 
 
 def content_sha256(lines: Iterable[str]) -> str:
@@ -269,8 +346,25 @@ def format_range(path: str, line_range: dict[str, Any]) -> str:
     return f"{path}:{int(line_range['start'])}-{int(line_range['end'])}"
 
 
+def decode_path(payload: bytes) -> str:
+    """Decode a git path payload byte-exactly (C29 step 6, G-05).
+
+    `surrogateescape` is the only decoding that round-trips: a path that is not valid UTF-8
+    comes back as a string whose `sort_key` is the original bytes, so two distinct raw paths
+    stay two distinct entries instead of collapsing onto one replacement character.
+    """
+    return payload.decode("utf-8", "surrogateescape")
+
+
 def sort_key(path: str) -> bytes:
-    return path.encode("utf-8", "replace")
+    """The path's own bytes, which is the ordering rule C29 step 6 fixes (G-06).
+
+    Sorting decoded `str` is a different order: it ranks a lone surrogate above every valid
+    code point, so `b"a\\xc3"` and `b"a\\xc3\\xa9"` swap. Every ordering in this module --
+    the digest records, the unit index, the rename pairing and the snapshot path list -- goes
+    through this one function.
+    """
+    return path.encode("utf-8", "surrogateescape")
 
 
 def split_lines(text: str) -> list[str]:
@@ -324,14 +418,32 @@ def redaction_marker(line: str) -> str:
     return REDACTION_MARKER.format(hash=sha256_hex(line.encode("utf-8"))[:12])
 
 
-def file_exclusion_reason(path: str, payload: bytes | None, text: str, encoding_unsupported: bool) -> str:
-    """Deterministic file-level exclusion classification (C14, C15, C17, C34, C36)."""
+def file_exclusion_reason(
+    path: str,
+    payload: bytes | None,
+    text: str,
+    encoding_unsupported: bool,
+    shape_reason: str = "",
+) -> str:
+    """Deterministic file-level exclusion classification (C14, C15, C17, C34, C36).
+
+    The classification order is the contract's: binary, sensitive, the two index-mode
+    categories, adapter-install roots, generated, lockfile, vendor, minified and the
+    encoding-degraded fallback. `shape_reason` carries the index-mode verdict
+    (`mode_change`/`submodule`) that the caller read from `git ls-files -s`, because a shape
+    is not a property of the bytes.
+    """
     if payload is None:
-        return ""
+        # A gitlink has no content at all; its shape is the whole statement.
+        return shape_reason
     if looks_binary(payload):
         return "binary"
     if sensitive_path_hit(path) or sensitive_content_hits(text):
         return "sensitive"
+    if shape_reason:
+        return shape_reason
+    if match_any_pattern(path, ADAPTER_INSTALL_PATTERNS):
+        return "adapter_install"
     if match_any_pattern(path, GENERATED_PATTERNS):
         return "generated"
     if os.path.basename(path).lower() in LOCKFILE_NAMES:
@@ -498,7 +610,7 @@ def require_commit(repo: Path, commit: str) -> None:
 
 def tracked_paths(repo: Path, commit: str) -> set[str]:
     payload = run_git(repo, ["ls-tree", "-r", "--name-only", "-z", commit])
-    return {item.decode("utf-8", "replace") for item in payload.split(b"\x00") if item}
+    return {decode_path(item) for item in payload.split(b"\x00") if item}
 
 
 def name_status(repo: Path, commit: str) -> dict[str, str]:
@@ -508,7 +620,7 @@ def name_status(repo: Path, commit: str) -> dict[str, str]:
     index = 0
     while index + 1 < len(fields):
         raw_status = fields[index].decode("utf-8", "replace")
-        path = fields[index + 1].decode("utf-8", "replace")
+        path = decode_path(fields[index + 1])
         index += 2
         if not raw_status or not path:
             continue
@@ -519,9 +631,68 @@ def name_status(repo: Path, commit: str) -> dict[str, str]:
 
 def untracked_paths(repo: Path) -> list[str]:
     payload = run_git(repo, ["ls-files", "--others", "--exclude-standard", "-z"])
-    return sorted(
-        (item.decode("utf-8", "replace") for item in payload.split(b"\x00") if item), key=sort_key
+    return sorted((decode_path(item) for item in payload.split(b"\x00") if item), key=sort_key)
+
+
+def index_entries(repo: Path) -> dict[str, dict[str, str]]:
+    """`path -> {mode, sha}` for the index, from `git ls-files -s -z` (C17).
+
+    The index is the only source of a path's mode, and mode is what decides the two shape
+    categories: a `160000` gitlink and a mode-only change are invisible to a byte diff of the
+    worktree, so they are read here rather than inferred from content.
+    """
+    payload = run_git(repo, ["ls-files", "-s", "-z"])
+    entries: dict[str, dict[str, str]] = {}
+    for record in payload.split(b"\x00"):
+        if not record:
+            continue
+        meta, separator, raw_path = record.partition(b"\t")
+        if not separator or not raw_path:
+            continue
+        fields = meta.split(b" ")
+        if len(fields) < 2:
+            continue
+        entries[decode_path(raw_path)] = {
+            "mode": fields[0].decode("ascii", "replace"),
+            "sha": fields[1].decode("ascii", "replace"),
+        }
+    return entries
+
+
+def tree_entries(repo: Path, commit: str) -> dict[str, dict[str, str]]:
+    """`path -> {mode, sha, type}` for a commit's tree, from `git ls-tree -r -z`.
+
+    The baseline commit's mode is what a mode-only change is measured against.
+    """
+    payload = run_git(repo, ["ls-tree", "-r", "-z", commit])
+    entries: dict[str, dict[str, str]] = {}
+    for record in payload.split(b"\x00"):
+        if not record:
+            continue
+        meta, separator, raw_path = record.partition(b"\t")
+        if not separator or not raw_path:
+            continue
+        fields = meta.split(b" ")
+        if len(fields) < 3:
+            continue
+        entries[decode_path(raw_path)] = {
+            "mode": fields[0].decode("ascii", "replace"),
+            "type": fields[1].decode("ascii", "replace"),
+            "sha": fields[2].decode("ascii", "replace"),
+        }
+    return entries
+
+
+def blob_bytes(repo: Path, object_id: str) -> bytes | None:
+    """Read a blob from the object database, never through the worktree path (C14a)."""
+    if not object_id:
+        return None
+    proc = subprocess.run(
+        _git_command(["cat-file", "blob", object_id]), cwd=str(repo), capture_output=True
     )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout
 
 
 def git_show_bytes(repo: Path, commit: str, path: str) -> bytes | None:
@@ -552,6 +723,69 @@ def snapshot_dir(manifest: dict[str, Any]) -> Path | None:
     return Path(raw) if raw else None
 
 
+def read_open_state_record(
+    holder: Path | None, work_order_id: str
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Read this work order's open-state record, with the reason when it cannot be used.
+
+    `holder` is the record file itself, or the workbench tmp directory that contains it.
+    The record carries the three facts no later step can recover -- the untracked path
+    names, the index modes at open and the capture's own skips -- so a record that is
+    present but unusable is a degradation that names it, never a silent fallback.
+    """
+    if holder is None:
+        return None, []
+    path = holder if holder.is_file() else holder / OPEN_STATE_RECORD_NAME
+    if not path.is_file():
+        return None, []
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return None, [path_note(BASELINE_RECORD_UNREADABLE, str(path)) + f" ({exc})"]
+    if not isinstance(record, dict):
+        return None, [path_note(BASELINE_RECORD_UNREADABLE, str(path))]
+    selected = str(record.get("work_order_id", "") or "")
+    if selected != work_order_id:
+        return None, [path_note(BASELINE_RECORD_UNSELECTED, str(path))]
+    return record, []
+
+
+def record_untracked_paths(record: dict[str, Any] | None) -> list[str]:
+    """The names that were untracked at open, as the capture recorded them (C4a)."""
+    raw = (record or {}).get("untracked_paths", []) or []
+    return [str(item) for item in raw if str(item)]
+
+
+def record_index_modes(record: dict[str, Any] | None) -> dict[str, str]:
+    """The index mode of every path at open, as the capture recorded it."""
+    raw = (record or {}).get("index_modes", {}) or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {str(key): str(value) for key, value in raw.items()}
+
+
+def record_degradations(record: dict[str, Any] | None) -> list[str]:
+    """The skips the capture itself recorded, which the manifest republishes."""
+    raw = (record or {}).get("degradations", []) or []
+    return [str(item) for item in raw if str(item)]
+
+
+def record_snapshot_dirs(record: dict[str, Any] | None) -> tuple[Path | None, Path | None]:
+    """The two snapshot directories the capture recorded, in record order (C4a/C4b).
+
+    The record is the durable statement of where the opening worktree was mirrored, and it
+    is the only thing that can answer that question for a caller that passes neither
+    directory flag. Without them the worktree snapshot reads `absent`, every path's
+    provenance alignment fails for want of the `B` side, and the whole change set is charged
+    to `pre_existing` -- a materially wrong attribution that no validation stage detects, so
+    the omission is resolved here rather than published.
+    """
+    source = record or {}
+    worktree = str(source.get("worktree_snapshot", "") or "")
+    untracked = str(source.get("untracked_snapshot", "") or "")
+    return (Path(worktree) if worktree else None, Path(untracked) if untracked else None)
+
+
 def snapshot_paths(directory: Path | None) -> list[str]:
     """Every relative path captured in a baseline snapshot directory (C4a)."""
     if directory is None or not directory.is_dir():
@@ -560,6 +794,24 @@ def snapshot_paths(directory: Path | None) -> list[str]:
         (item.relative_to(directory).as_posix() for item in directory.rglob("*") if item.is_file()),
         key=sort_key,
     )
+
+
+def worktree_snapshot_state(directory: Path | None, tracked: set[str]) -> str:
+    """The worktree snapshot's C4b state: availability is decided by content (G-02).
+
+    A directory test answers "is there a directory", not "is the baseline recomputable". The
+    state is `complete` only when the captured path set equals the tracked path set of the
+    baseline commit -- which is also the set C4's digest is defined over -- so a present but
+    empty or partial capture is a recorded degradation instead of a silent success.
+    """
+    if directory is None or not directory.is_dir():
+        return "absent"
+    captured = set(snapshot_paths(directory))
+    if not captured:
+        return "empty"
+    if captured == tracked:
+        return "complete"
+    return "incomplete"
 
 
 def split_hunks(payload: str) -> list[dict[str, Any]]:
@@ -787,6 +1039,19 @@ def choose_presentation(hunk: dict[str, Any]) -> str:
     return "snippet"
 
 
+def head_content_bytes(repo: Path, entry: dict[str, Any]) -> bytes | None:
+    """The head side's bytes, from the object database when the path is a link (C14a).
+
+    A `120000` entry's content is the link target text and never the bytes behind the link,
+    so a path whose entry carries an index blob is read from that blob; every other path is
+    read from the worktree as before.
+    """
+    object_id = str(entry.get("head_blob", "") or "")
+    if object_id:
+        return blob_bytes(repo, object_id)
+    return read_bytes(repo / Path(entry["path"]))
+
+
 def unit_lines(
     repo: Path,
     commit: str,
@@ -797,7 +1062,7 @@ def unit_lines(
     """Canonical text lines for a unit (shared by build_manifest and build_skeleton)."""
     line_range = hunk["new_range"] if hunk["content_side"] == "new" else hunk["old_range"]
     if hunk["content_side"] == "new":
-        payload = read_bytes(repo / Path(entry["path"])) or b""
+        payload = head_content_bytes(repo, entry) or b""
     elif entry.get("baseline_source") == "untracked_snapshot":
         payload = snapshot_bytes(untracked_snapshot, entry["path"]) or b""
     else:
@@ -855,7 +1120,7 @@ def rendered_old_lines(
 def digest_from_hashes(pairs: list[tuple[str, str]]) -> str:
     payload = bytearray()
     for path, digest in sorted(pairs, key=lambda item: sort_key(item[0])):
-        payload.extend(path.encode("utf-8", "replace"))
+        payload.extend(sort_key(path))
         payload.extend(b"\x00")
         payload.extend(digest.encode("ascii"))
         payload.extend(b"\n")
@@ -884,6 +1149,11 @@ def build_file_entry(
     baseline_source: str,
     worktree_snapshot_available: bool,
     notes: list[str],
+    shape_reason: str = "",
+    head_blob: str = "",
+    mode_origin: str = "",
+    mode_head: str = "",
+    mode_open: str = "",
 ) -> dict[str, Any]:
     """Build one `files[]` entry.
 
@@ -892,6 +1162,16 @@ def build_file_entry(
     The change kind and the hunks are taken from the O -> H diff, exactly as the
     enumeration algorithm prescribes; provenance then splits that diff into the
     pre-existing side (O -> B) and the work-order side (B -> H) (C37).
+
+    `shape_reason` is the index-mode verdict (`mode_change`/`submodule`) the caller read from
+    the index, and `head_blob` is the object the head content must be read from when the path
+    is a link whose content is not the worktree file's bytes (C14a).
+
+    `mode_origin`, `mode_head` and `mode_open` are the three modes a shape change is measured
+    on: the baseline commit's mode (O), the index mode now (H) and the index mode recorded
+    when the work order opened (B). No content hash can carry them, and without B the author
+    of a mode-only change cannot be decided -- the bytes are identical on all three sides --
+    so a shape row states all three and C37's alignment is applied to the mode itself.
     """
     head_payload = head_bytes if head_bytes is not None else b""
     origin_payload = commit_bytes if commit_bytes is not None else baseline_bytes
@@ -906,6 +1186,7 @@ def build_file_entry(
         classification_payload if classification_payload is not None else None,
         classification_text,
         classification_bad,
+        shape_reason=shape_reason,
     )
 
     entry: dict[str, Any] = {
@@ -925,9 +1206,24 @@ def build_file_entry(
         "baseline_source": baseline_source,
         "provenance_degraded": not worktree_snapshot_available,
         "sensitive_path_pattern": sensitive_path_hit(path),
+        "head_blob": head_blob,
+        "mode_origin": mode_origin,
+        "mode_head": mode_head,
+        "mode_open": mode_open,
         "hunks": [],
     }
     if exclusion:
+        if shape_reason == "mode_change":
+            # C37 applied to the mode: a flip the baseline side already shows (B == H) is not
+            # this work order's, a flip the baseline side does not yet show (B == O) is, and
+            # an open state that cannot say is recorded as unknown rather than charged to the
+            # author on no evidence.
+            if mode_open and mode_open == mode_head:
+                entry["analyzed_as"] = "pre_existing"
+            elif mode_open and mode_open == mode_origin:
+                entry["analyzed_as"] = "work_order"
+            else:
+                notes.append(path_note(MODE_PROVENANCE_UNKNOWN, path))
         return entry
 
     baseline_text, _ = decode_content(baseline_bytes or b"")
@@ -978,7 +1274,9 @@ def build_file_entry(
             }
         )
     else:
-        if baseline_source == "commit":
+        # A link's content is the link target text, which the worktree diff cannot see, so its
+        # hunks come from the two recorded blobs instead of from `git diff <commit> -- <path>`.
+        if baseline_source == "commit" and not head_blob:
             raw_hunks = diff_tracked_path(repo, commit, path)
         else:
             raw_hunks = diff_no_index(baseline_bytes or b"", head_bytes or b"", 3, tmp)
@@ -1062,22 +1360,47 @@ def build_manifest(
     captured_at: str,
     generated_at: str,
     strength: str,
+    baseline_record: Path | None = None,
 ) -> dict[str, Any]:
     repo = resolve_repo(repo_path)
     require_commit(repo, baseline_commit)
 
-    degradations: list[str] = []
-    worktree_available = bool(baseline_worktree_dir and baseline_worktree_dir.is_dir())
-    untracked_available = bool(baseline_untracked_dir and baseline_untracked_dir.is_dir())
-    if not worktree_available:
-        degradations.append("baseline_worktree_snapshot_missing")
-    if not untracked_available:
-        degradations.append("baseline_untracked_snapshot_missing")
-
     committed = tracked_paths(repo, baseline_commit)
+    commit_modes = tree_entries(repo, baseline_commit)
     tracked_changes = name_status(repo, baseline_commit)
     untracked = untracked_paths(repo)
+    index = index_entries(repo)
     export_ignored = export_ignore_patterns(repo)
+
+    # The open state the capture recorded (C5): the untracked names, the index modes at open
+    # and the capture's own skips. Every one of them is a fact no later read can reproduce,
+    # so each is consumed here rather than approximated.
+    record, record_notes = read_open_state_record(
+        baseline_record if baseline_record is not None else tmp_dir, work_order_id
+    )
+    opened_untracked = record_untracked_paths(record)
+    opened_modes = record_index_modes(record)
+    opened_degradations = record_degradations(record)
+    # The two directories are required in practice and the record already names them, so a
+    # caller that passes neither gets the recorded ones instead of a silently unaligned
+    # baseline. An explicit argument always wins: it is how a caller points a rebuild at a
+    # snapshot the record does not know about.
+    recorded_worktree_dir, recorded_untracked_dir = record_snapshot_dirs(record)
+    if baseline_worktree_dir is None:
+        baseline_worktree_dir = recorded_worktree_dir
+    if baseline_untracked_dir is None:
+        baseline_untracked_dir = recorded_untracked_dir
+
+    # C4b: availability is decided by content, not by a directory test, so a present but
+    # empty or partial capture degrades instead of passing as a healthy baseline.
+    snapshot_state = worktree_snapshot_state(baseline_worktree_dir, committed)
+    worktree_available = snapshot_state == "complete"
+    untracked_available = bool(baseline_untracked_dir and baseline_untracked_dir.is_dir())
+    degradations: list[str] = list(record_notes)
+    if not worktree_available:
+        degradations.append(WORKTREE_SNAPSHOT_DEGRADATIONS[snapshot_state])
+    if not untracked_available:
+        degradations.append(UNTRACKED_SNAPSHOT_DEGRADATION)
 
     if tmp_dir is not None:
         # H4/C37: the caller names the workbench tmp directory, and a workbench that has none
@@ -1092,53 +1415,146 @@ def build_manifest(
         candidates = set(tracked_changes) | set(untracked) | set(
             snapshot_paths(baseline_untracked_dir)
         )
+        # C4a: a path that was untracked at open is a candidate even when the snapshot
+        # directory that held its content is gone, or a deleted one would leave the change
+        # set without a row and without a name.
+        candidates.update(opened_untracked)
+        # C15: a `160000` gitlink is invisible to a byte diff of the worktree and its worktree
+        # path is a directory, so the index entry is what makes it a candidate -- whether the
+        # checkout exists or not -- and the baseline tree is what makes a removed one visible.
+        candidates.update(
+            path for path, entry in index.items() if str(entry.get("mode", "")) == GITLINK_MODE
+        )
+        candidates.update(
+            path
+            for path, entry in commit_modes.items()
+            if str(entry.get("mode", "")) == GITLINK_MODE and path not in index
+        )
+        opened_untracked_set = set(opened_untracked)
+
         for path in sorted(candidates, key=sort_key):
             in_commit = path in committed
-            head_bytes = read_bytes(repo / Path(path))
+            index_entry = index.get(path, {})
+            commit_entry = commit_modes.get(path, {})
+            index_mode = str(index_entry.get("mode", ""))
+            index_sha = str(index_entry.get("sha", ""))
+            commit_mode = str(commit_entry.get("mode", ""))
+            commit_sha = str(commit_entry.get("sha", ""))
+            mode_open = opened_modes.get(path, "")
+            head_blob = ""
+            if index_mode == GITLINK_MODE:
+                # A gitlink's recorded content is a commit id, not analysable text, and the
+                # worktree path is a directory rather than bytes.
+                head_bytes: bytes | None = None
+            elif index_mode == SYMLINK_MODE:
+                # C14a: the content is the link target text, read from the index blob. It is
+                # never read through the path, because that follows the link.
+                head_blob = str(index_entry.get("sha", ""))
+                head_bytes = blob_bytes(repo, head_blob)
+            else:
+                head_bytes = read_bytes(repo / Path(path))
             commit_bytes: bytes | None = None
             baseline_bytes: bytes | None = None
             if in_commit:
                 commit_bytes = git_show_bytes(repo, baseline_commit, path)
                 baseline_source = "commit"
-                if worktree_available:
-                    baseline_bytes = snapshot_bytes(baseline_worktree_dir, path)
-                if baseline_bytes is None:
-                    # No usable opening snapshot: fall back to the commit content and
-                    # record the degradation instead of guessing a dirty worktree.
-                    baseline_bytes = commit_bytes
+                # No usable opening snapshot for this path means B is unknown, and the C37
+                # three-point alignment is impossible: it fails closed as pre-existing with
+                # the reason recorded, instead of being charged to the work order.
+                baseline_bytes = snapshot_bytes(baseline_worktree_dir, path)
             else:
                 baseline_source = "untracked_snapshot"
                 baseline_bytes = (
                     snapshot_bytes(baseline_untracked_dir, path) if untracked_available else None
                 )
                 baseline_bytes = baseline_bytes if untracked_available else None
+            if in_commit and commit_mode == SYMLINK_MODE and not commit_bytes:
+                commit_bytes = blob_bytes(repo, str(commit_entry.get("sha", "")))
 
             # Change kind and hunks come from the baseline-commit -> head diff (C29);
             # provenance then separates the pre-existing side (C37).
             origin_side = commit_bytes if in_commit else baseline_bytes
-            if origin_side is None and head_bytes is None:
+            shape_reason = ""
+            gitlink_head = index_mode == GITLINK_MODE
+            gitlink_origin = commit_mode == GITLINK_MODE
+            if gitlink_head and gitlink_origin and index_sha == commit_sha:
+                # C15: an unchanged pointer is not a change. A clone that never checked the
+                # submodule out makes git report the missing directory as a deletion, which is
+                # a fact about the worktree and not about the baseline.
                 continue
-            if origin_side == head_bytes:
-                continue
-            change_kind = (
-                "added" if origin_side is None else "deleted" if head_bytes is None else "modified"
-            )
-            entries.append(
-                build_file_entry(
-                    repo,
-                    baseline_commit,
-                    baseline_untracked_dir,
-                    tmp,
-                    path,
-                    change_kind,
-                    commit_bytes,
-                    baseline_bytes if in_commit else origin_side,
-                    head_bytes,
-                    baseline_source,
-                    worktree_available,
-                    notes,
+            if gitlink_head or gitlink_origin:
+                # The shape is the change: an added, a moved or a removed gitlink is recorded
+                # whether or not its worktree path exists.
+                shape_reason = "submodule"
+            elif (
+                in_commit
+                and index_mode
+                and commit_mode
+                and index_mode != commit_mode
+                and origin_side == head_bytes
+            ):
+                # C15: the index mode changed while the bytes did not. The equal-bytes
+                # shortcut must not drop it, because the change is the shape.
+                shape_reason = "mode_change"
+            if not shape_reason:
+                if origin_side is None and head_bytes is None:
+                    # Neither side holds a readable path. The two measured shapes are a path
+                    # git spells with a replacement character and cannot open, and a path that
+                    # was untracked at open whose snapshot directory is gone. Both are
+                    # recorded by name: an unreadable path that leaves the change set without
+                    # a row and without a note is invisible to the whole proof.
+                    if path in opened_untracked_set:
+                        notes.append(path_note(UNTRACKED_SNAPSHOT_PATH_LOST, path))
+                    else:
+                        notes.append(path_note(PATH_UNREADABLE, path))
+                    continue
+                if origin_side == head_bytes:
+                    continue
+            if shape_reason == "submodule":
+                # Presence decides the kind for a shape whose content is never readable: the
+                # gitlink is in the baseline tree, in the index, in both, or in one of them.
+                # A worktree diff cannot see a gitlink at all, so git's own status is not
+                # better evidence here and is not consulted.
+                if gitlink_origin and gitlink_head:
+                    change_kind = "modified"
+                elif gitlink_head:
+                    change_kind = "added"
+                else:
+                    change_kind = "deleted"
+            else:
+                change_kind = (
+                    "added" if origin_side is None else "deleted" if head_bytes is None else "modified"
                 )
+                if shape_reason and tracked_changes.get(path):
+                    # A mode-only change has equal bytes on both sides, so git's own status for
+                    # the path is what states the kind.
+                    change_kind = tracked_changes[path]
+            entry = build_file_entry(
+                repo,
+                baseline_commit,
+                baseline_untracked_dir,
+                tmp,
+                path,
+                change_kind,
+                commit_bytes,
+                baseline_bytes if in_commit else origin_side,
+                head_bytes,
+                baseline_source,
+                worktree_available,
+                notes,
+                shape_reason=shape_reason,
+                head_blob=head_blob,
+                mode_origin=commit_mode,
+                mode_head=index_mode,
+                mode_open=mode_open,
             )
+            if shape_reason == "submodule":
+                # Presence is structural for a gitlink; its content is a commit id and never
+                # the bytes of a file, so the two presence flags follow the two index/tree
+                # entries rather than the two byte reads.
+                entry["baseline_present"] = gitlink_origin
+                entry["head_present"] = gitlink_head
+            entries.append(entry)
             seen.add(path)
 
         # Exact-content rename pairing (C11).
@@ -1215,10 +1631,20 @@ def build_manifest(
         pre_existing_total = sum(
             1 for e in entries for h in e["hunks"] if h["provenance"] == "pre_existing"
         )
+        # C37.4: the overlapped region is charged to the work order by the fixed conservative
+        # rule, so it is counted rather than excluded -- the counter is where a reader sees the
+        # size of the region the rule attributes to this work order.
+        overlapped_pre_existing_total = sum(
+            1
+            for e in entries
+            for h in e["hunks"]
+            if h["provenance"] == "work_order" and h["overlaps_pre_existing"]
+        )
         pre_existing_files = [e["path"] for e in entries if e["analyzed_as"] != "work_order"]
 
-        if not worktree_available:
-            degradations.append("provenance_attribution_uses_baseline_commit_content")
+        # No aggregate marker is added here: an unavailable snapshot already records its own
+        # C4b state string above, and every path whose B side was unavailable records the
+        # per-path `provenance_unaligned_baseline_content_unavailable` note.
         head_hash = digest_from_hashes([(e["path"], e["source_sha256"]) for e in entries])
 
         selected_strength = strength
@@ -1277,6 +1703,7 @@ def build_manifest(
                 "captured_at": captured_at,
                 "worktree_snapshot": {
                     "path": str(baseline_worktree_dir) if baseline_worktree_dir else "",
+                    "state": snapshot_state,
                     "available": worktree_available,
                     "algorithm": DIGEST_ALGORITHM,
                 },
@@ -1302,9 +1729,13 @@ def build_manifest(
             "units_total": units_total,
             "excluded_total": excluded_total,
             "pre_existing_total": pre_existing_total,
+            "overlapped_pre_existing_total": overlapped_pre_existing_total,
             "pre_existing_files": pre_existing_files,
             "redacted_units": redacted_units,
-            "degradations": sorted(set(degradations + notes)),
+            # The capture's own skips travel with the manifest: a tracked path the capture
+            # could not mirror is why the snapshot state degrades, and the report's
+            # degradation list is where a reader sees which path it was.
+            "degradations": sorted(set(degradations + notes + opened_degradations)),
         }
     return manifest
 
@@ -1328,9 +1759,32 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline-commit", required=True)
     parser.add_argument("--baseline-digest", default="")
     parser.add_argument("--baseline-algorithm", default=DIGEST_ALGORITHM)
-    parser.add_argument("--baseline-worktree-dir", default="")
-    parser.add_argument("--baseline-untracked-dir", default="")
+    parser.add_argument(
+        "--baseline-worktree-dir",
+        default="",
+        help=(
+            "The opening worktree snapshot. Defaults to the path this work order's open-state "
+            "record holds, so a caller that omits it still gets an aligned baseline instead of "
+            "a change set charged to pre_existing."
+        ),
+    )
+    parser.add_argument(
+        "--baseline-untracked-dir",
+        default="",
+        help=(
+            "The opening untracked-file snapshot. Defaults to the path this work order's "
+            "open-state record holds."
+        ),
+    )
     parser.add_argument("--tmp-dir", default="")
+    parser.add_argument(
+        "--baseline-record",
+        default="",
+        help=(
+            "This work order's open-state record; defaults to "
+            "<tmp-dir>/baseline-open-state.json, which is where the capture tool writes it."
+        ),
+    )
     parser.add_argument("--captured-at", default="")
     parser.add_argument("--generated-at", default="")
     parser.add_argument("--strength", default="standard", choices=list(STRENGTHS))
@@ -1350,6 +1804,7 @@ def main(argv: list[str] | None = None) -> int:
             captured_at=args.captured_at,
             generated_at=args.generated_at,
             strength=args.strength,
+            baseline_record=Path(args.baseline_record) if args.baseline_record else None,
         )
     except (ManifestError, OSError) as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False, indent=2))
@@ -1357,7 +1812,10 @@ def main(argv: list[str] | None = None) -> int:
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_bytes((json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+    # `ensure_ascii=True` is what makes a path that is not valid UTF-8 serialisable: the
+    # surrogate-escaped decoding of such a path has no UTF-8 encoding, so an ASCII-only
+    # document with `\\udcXX` escapes is the form that survives the round trip (G-05).
+    out_path.write_bytes((json.dumps(manifest, ensure_ascii=True, indent=2) + "\n").encode("utf-8"))
     print(
         json.dumps(
             {
@@ -1366,13 +1824,15 @@ def main(argv: list[str] | None = None) -> int:
                 "units_total": manifest["units_total"],
                 "excluded_total": manifest["excluded_total"],
                 "pre_existing_total": manifest["pre_existing_total"],
+                "overlapped_pre_existing_total": manifest["overlapped_pre_existing_total"],
                 "run_required": manifest["run_required"],
                 "head_digest": manifest["head"]["digest"],
                 "strength": manifest["strength"]["selected"],
                 "strength_upgrade_reason": manifest["strength"]["upgrade_reason"],
+                "worktree_snapshot_state": manifest["baseline"]["worktree_snapshot"]["state"],
                 "degradations": manifest["degradations"],
             },
-            ensure_ascii=False,
+            ensure_ascii=True,
             indent=2,
         )
     )

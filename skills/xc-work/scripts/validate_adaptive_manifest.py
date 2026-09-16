@@ -28,6 +28,15 @@ def fail(code: str, keys: list[str] | None = None) -> int:
     return 2
 
 
+def artifact_basename(path: str) -> str:
+    """Return the final path component, for either path separator.
+
+    The runtime projects artifact paths as the recorded strings, so a Windows
+    path and a POSIX path must yield the same basename on every platform.
+    """
+    return path.replace("\\", "/").rsplit("/", 1)[-1]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--receipt-json", required=True)
@@ -81,6 +90,15 @@ def main() -> int:
     ]
     if selected_plan_ids != [receipt["plan_id"]]:
         return fail("stale_plan_id")
+    blackboard_values: dict[str, str] = {}
+    for entry in blackboard:
+        if (
+            not isinstance(entry, dict)
+            or not isinstance(entry.get("key"), str)
+            or not isinstance(entry.get("value"), str)
+        ):
+            return fail("invalid_adaptive_manifest")
+        blackboard_values[entry["key"]] = entry["value"]
     packet_categories: dict[str, list[dict[str, object]]] = {}
     for category in categories:
         if not isinstance(category, dict) or not isinstance(category.get("sources"), list):
@@ -110,6 +128,14 @@ def main() -> int:
             or not isinstance(artifact_min, int)
             or artifact_min < 0
         ):
+            return fail("invalid_adaptive_manifest")
+        source_keys = item.get("source_keys", [])
+        if not isinstance(source_keys, list) or not all(
+            isinstance(name, str) and name for name in source_keys
+        ):
+            return fail("invalid_adaptive_manifest")
+        required_artifact_name = item.get("required_artifact_name", "")
+        if not isinstance(required_artifact_name, str):
             return fail("invalid_adaptive_manifest")
         if role != "finalizer":
             required.append(item)
@@ -175,6 +201,16 @@ def main() -> int:
             )
         ):
             return fail("invalid_verification_binding", [key])
+        for source_key in item.get("source_keys", []):
+            if not blackboard_values.get(source_key, "").strip():
+                return fail("missing_required_source_key", [source_key])
+        expected_artifact_name = item.get("required_artifact_name", "")
+        if expected_artifact_name and not any(
+            artifact_basename(artifact) == expected_artifact_name
+            for artifact in artifacts
+            if isinstance(artifact, str)
+        ):
+            return fail("report_artifact_mismatch", [key])
         source_ids.append(node_id)
         artifact_min += int(item["artifact_min"])
     if len(source_ids) != len(set(source_ids)):

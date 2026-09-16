@@ -30,6 +30,15 @@ CHANGE_REPORT_FACT_KEYS = (
     "strength",
     "rounds",
 )
+# The report commitment is mode-derived and `work_order.requires_report` now defaults to true:
+# a work order that has not written the commitment is selected for the report stage instead of
+# being silently exempted. A lifecycle whose scope carries no change report therefore records
+# the opt-out explicitly, with one of the legal skip reasons, rather than relying on an absent
+# key. The three legal reasons are `read_only_mode`, `zero_analyzable_units` and `user_waived`.
+REPORT_WAIVER = {
+    "work_order.requires_report": "false",
+    "work_order.report_skip_reason": "user_waived",
+}
 WORK_ORDER_DOCUMENT_HEADINGS = {
     "work-order-goal": {
         "document_title": "Work Order Goal",
@@ -177,6 +186,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         gate_outcome: str = "",
         decision: str = "",
         check_result: dict[str, object] | None = None,
+        set_values: dict[str, str] | None = None,
     ) -> str:
         ready = self.run_json(RUNTIME, "next", "--tree", str(tree), cwd=project)["ready"]
         self.assertEqual(ready[0]["template_id"], expected_template_id, ready)
@@ -197,6 +207,11 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             "--validation",
             "test workflow step",
         ]
+        # A node whose contract says it publishes keys does so in its own completion mutation,
+        # before the containers are recomputed: a later `set` would be evaluated after the
+        # guarded nodes of the same pass had already latched their conditions.
+        for key, value in (set_values or {}).items():
+            args.extend(["--set", f"{key}={value}"])
         if artifact:
             args.extend(["--artifact", str(artifact)])
         if gate_outcome:
@@ -490,6 +505,175 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         )
         return provenance_id, inspection_id
 
+    # -- the mounted change-report stage ------------------------------------------
+
+    def report_artifacts(self, workbench: Path) -> tuple[Path, Path]:
+        """The report page and its manifest, at the two paths the caller publishes."""
+        report_dir = workbench / "artifacts" / "report"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / "change-report.html"
+        manifest_path = report_dir / "change-report-manifest.json"
+        report_path.write_text("<!doctype html><html lang=\"en\"></html>\n", encoding="utf-8")
+        manifest_path.write_text("{}\n", encoding="utf-8")
+        return report_path, manifest_path
+
+    def mount_report_subtree(self, project: Path, tree: Path, instance_id: str = "report") -> dict[str, object]:
+        """Embed the `xc-change-report` subtree under the selected `report-group`."""
+        group = self.find_one(project, tree, "report-group")
+        self.run_json(
+            RUNTIME,
+            "embed-subtree",
+            "--tree",
+            str(tree),
+            "--parent",
+            str(group["id"]),
+            "--template",
+            str(CHANGE_REPORT_TEMPLATE),
+            "--instance-id",
+            instance_id,
+            cwd=project,
+        )
+        return group
+
+    def report_receipt(self, report_path: Path, rounds: str = "1", strength: str = "minimal") -> dict[str, object]:
+        """The validator's normalised receipt: every fact is the exact text the blackboard holds."""
+        receipt: dict[str, object] = {
+            "schema_version": 1,
+            "check": "xc-change-report",
+            "ok": True,
+            "subject": str(report_path),
+            "facts": {
+                "units_total": "1",
+                "units_covered": "1",
+                "excluded_total": "0",
+                "pre_existing_total": "0",
+                "hash_bound": "1",
+                "token_bound": "1",
+                "coverage": "complete",
+                "self_contained": "true",
+                "head_current": "true",
+                "strength": strength,
+                "rounds": rounds,
+            },
+        }
+        self.assertEqual(sorted(receipt["facts"]), sorted(CHANGE_REPORT_FACT_KEYS))
+        return receipt
+
+    def author_report_pass(
+        self,
+        project: Path,
+        tree: Path,
+        report_path: Path,
+        manifest_path: Path,
+        pass_index: int | None = None,
+        strength: str = "minimal",
+    ) -> str:
+        """Drive one pass's authoring half and return the review node's id.
+
+        `pass_index` is the pass being entered. The published convention makes the caller
+        publish it before `prepare-manifest` runs, so it is written before the first node of
+        the pass; a caller that does not publish it keeps the declared default `"1"`, which
+        is the first pass's own index rather than any kind of pre-increment.
+        """
+        rounds = "1" if pass_index is None else str(pass_index)
+        if pass_index is not None:
+            self.set_values(project, tree, {"report.round": rounds})
+        self.complete_ready_task(project, tree, "prepare-manifest", manifest_path)
+        # The manifest step owns the measured coverage facts; the receipt below must repeat
+        # them as the exact text the blackboard holds.
+        self.set_values(
+            project,
+            tree,
+            {
+                "report.units_total": "1",
+                "report.units_covered": "1",
+                "report.excluded_total": "0",
+                "report.pre_existing_total": "0",
+                "report.run_required": "true",
+                "report.coverage": "complete",
+                "report.self_contained": "true",
+                "report.head_current": "true",
+                "report.hash_bound": "1",
+                "report.token_bound": "1",
+            },
+        )
+        self.complete_ready_task(project, tree, "author-report", report_path)
+        self.complete_ready_task(
+            project,
+            tree,
+            "validate-coverage",
+            check_result=self.report_receipt(report_path, rounds=rounds, strength=strength),
+        )
+        review_artifact = report_path.parent / "review.md"
+        review_artifact.write_text("# Review\n\nEvery unit matches the code.\n", encoding="utf-8")
+        (report_path.parent / "change-report-verdicts.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "verdicts": [{"unit_index": 1, "verdict": "accurate", "reason": ""}],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return self.complete_ready_task(project, tree, "review-report", artifact=review_artifact)
+
+    def complete_report_gate(
+        self,
+        project: Path,
+        tree: Path,
+        outcome: str,
+        rework: bool,
+    ) -> str:
+        """Answer the report gate, publishing the two derived keys in the gate's own mutation.
+
+        `report-gate` is the sole writer of `report.gate_recovery_required`; the refresh key
+        it writes carries control to the next pass. Publishing both in the same mutation is
+        what keeps a reworking round from letting `validate-final` run behind the gate's back.
+        """
+        return self.complete_ready_task(
+            project,
+            tree,
+            "report-gate",
+            gate_outcome=outcome,
+            decision=f"Record {outcome} for the report.",
+            set_values={
+                "report.gate_rework_required": "true" if rework else "false",
+                "report.gate_recovery_required": "true" if rework else "false",
+            },
+        )
+
+    def resolve_report_recovery(
+        self,
+        project: Path,
+        tree: Path,
+        instance_id: str = "report",
+    ) -> dict[str, object]:
+        """Resolve the report gate's recovery group the way its shipped contract states.
+
+        A recovery group's completion is where its publications happen, and the group's own
+        instruction text is what tells a session which keys those are. The shipped text forbids
+        the reset (`report-gate` is the recovery key's only writer), so a session that obeys it
+        publishes nothing and the key the gate wrote survives the round. The pre-change text
+        instructed the group to publish `report.gate_recovery_required=false` on completion, and
+        a session obeying *that* text makes `validate-final` eligible in the round the gate has
+        just terminated — which is the pass-closing behaviour G-27 removes. Reading the branch
+        from the shipped text is what keeps this drive faithful to the contract under test.
+        """
+        group = self.find_one(project, tree, "report-gate-recovery-group", instance_id)
+        if "publish report.gate_recovery_required=false" in str(group["instructions"]):
+            self.set_values(project, tree, {"report.gate_recovery_required": "false"})
+        self.run_json(
+            RUNTIME,
+            "close-group",
+            "--tree",
+            str(tree),
+            "--group",
+            str(group["id"]),
+            cwd=project,
+        )
+        return group
+
     def test_new_feature_work_order_creates_baselines_and_closes(self) -> None:
         _, project, workshop = self.create_environment()
         feature_id = "payment-refund"
@@ -505,6 +689,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 "work_order.document_language": "zh-CN",
                 "work_order.requires_implementation": "false",
                 "work_order.requires_verification": "false",
+                **REPORT_WAIVER,
             },
         )
         self.complete_ready_task(project, tree, "prepare-feature", feature_dir)
@@ -720,6 +905,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 "work_order.solution_gate_required": "false",
                 "work_order.requires_implementation": "false",
                 "work_order.requires_verification": "false",
+                **REPORT_WAIVER,
             },
         )
         self.complete_ready_task(project, tree, "prepare-work-order")
@@ -748,6 +934,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 "work_order.solution_gate_required": "true",
                 "work_order.requires_implementation": "true",
                 "work_order.requires_verification": "true",
+                **REPORT_WAIVER,
             },
         )
         self.complete_ready_task(project, tree, "prepare-work-order")
@@ -1081,7 +1268,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             workbench / "goal.md",
             [],
         )
-        report_group = self.find_one(project, tree, "report-group")
+        self.find_one(project, tree, "report-group")
         summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
         self.assertEqual(
             [item["template_id"] for item in summary["awaiting_dynamic_groups"]],
@@ -1090,25 +1277,8 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         )
         self.assert_not_startable(project, tree, "result-document")
 
-        report_dir = workbench / "artifacts" / "report"
-        report_dir.mkdir(parents=True, exist_ok=True)
-        report_path = report_dir / "change-report.html"
-        manifest_path = report_dir / "change-report-manifest.json"
-        report_path.write_text("<!doctype html><html lang=\"en\"></html>\n", encoding="utf-8")
-        manifest_path.write_text("{}\n", encoding="utf-8")
-        self.run_json(
-            RUNTIME,
-            "embed-subtree",
-            "--tree",
-            str(tree),
-            "--parent",
-            str(report_group["id"]),
-            "--template",
-            str(CHANGE_REPORT_TEMPLATE),
-            "--instance-id",
-            "report",
-            cwd=project,
-        )
+        report_path, manifest_path = self.report_artifacts(workbench)
+        self.mount_report_subtree(project, tree)
         self.set_values(
             project,
             tree,
@@ -1120,79 +1290,17 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 "report.baseline_digest": "baseline-worktree-digest",
                 "report.baseline_algorithm": "sha256",
                 "report.strength": "minimal",
+                # The caller publishes every caller-seeded report key before the group's first
+                # node runs. The two derived gate keys are part of the mount's declared
+                # thirteen, so this case leaves them at their declared defaults; G-24's case
+                # (`..._publishing_only_the_named_keys_...`) is the one that proves the
+                # declared defaults alone are enough.
                 "report.gate_required": "false",
                 "report.gate_outcome": "not-run",
-                # The design's "blackboard the caller must set" list includes both derived
-                # gate keys; a sub-template's own defaults are not copied into the parent
-                # blackboard, and validate-final's guard reads the recovery key.
-                "report.gate_rework_required": "false",
-                "report.gate_recovery_required": "false",
-            },
-        )
-        self.complete_ready_task(project, tree, "prepare-manifest", manifest_path)
-        self.set_values(
-            project,
-            tree,
-            {
-                "report.units_total": "1",
-                "report.units_covered": "1",
-                "report.excluded_total": "0",
-                "report.pre_existing_total": "0",
-                "report.run_required": "true",
-                "report.coverage": "complete",
-                "report.self_contained": "true",
-                "report.head_current": "true",
-                "report.hash_bound": "1",
-                "report.token_bound": "1",
                 "report.round": "1",
             },
         )
-        self.complete_ready_task(project, tree, "author-report", report_path)
-        receipt = {
-            "schema_version": 1,
-            "check": "xc-change-report",
-            "ok": True,
-            "subject": str(report_path),
-            "facts": {
-                "units_total": "1",
-                "units_covered": "1",
-                "excluded_total": "0",
-                "pre_existing_total": "0",
-                "hash_bound": "1",
-                "token_bound": "1",
-                "coverage": "complete",
-                "self_contained": "true",
-                "head_current": "true",
-                "strength": "minimal",
-                "rounds": "1",
-            },
-        }
-        self.assertEqual(sorted(receipt["facts"]), sorted(CHANGE_REPORT_FACT_KEYS))
-        self.complete_ready_task(
-            project,
-            tree,
-            "validate-coverage",
-            check_result=receipt,
-        )
-        review_artifact = report_dir / "review.md"
-        review_artifact.write_text("# Review\n\nEvery unit matches the code.\n", encoding="utf-8")
-        verdicts_path = report_dir / "change-report-verdicts.json"
-        verdicts_path.write_text(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "verdicts": [{"unit_index": 1, "verdict": "accurate", "reason": ""}],
-                }
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        review_id = self.complete_ready_task(
-            project,
-            tree,
-            "review-report",
-            artifact=review_artifact,
-        )
+        review_id = self.author_report_pass(project, tree, report_path, manifest_path)
         self.assertEqual(
             self.find_one(project, tree, "revise-report")["status"],
             "skipped",
@@ -1205,7 +1313,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
             project,
             tree,
             "validate-final",
-            check_result=receipt,
+            check_result=self.report_receipt(report_path),
         )
         self.set_values(project, tree, {"report.self_contained": "true"})
         pass_loop = self.find_one(project, tree, "report-pass-loop")
@@ -1294,6 +1402,472 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
         )
         self.assertEqual(self.find_one(project, tree, "report-group")["status"], "skipped")
 
+    def test_report_group_is_selected_without_a_preexisting_commitment(self) -> None:
+        """G-16: an unwritten commitment selects the report stage instead of exempting it."""
+        _, project, workshop = self.create_environment()
+        work_order = self.open_work_order(workshop, project, "20260727-1000-unwritten-commitment", [])
+        workbench = Path(str(work_order["workbench_path"]))
+        tree = self.initialize_tree(
+            project,
+            REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml",
+            work_order,
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.document_language": "en",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
+                # work_order.requires_report is deliberately never written: the declared default
+                # means "not yet written", so the fail-closed direction is selection, not
+                # exemption. A silent skip is what the old `"false"` default produced.
+            },
+        )
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(
+            project,
+            tree,
+            work_order,
+            "goal-document",
+            "work-order-goal",
+            workbench / "goal.md",
+            [],
+        )
+
+        summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(
+            [item["template_id"] for item in summary["awaiting_dynamic_groups"]],
+            ["report-group"],
+            summary,
+        )
+        self.assertNotEqual(self.find_one(project, tree, "report-group")["status"], "succeeded")
+        self.assert_not_startable(project, tree, "result-document")
+
+        # The commitment is written by the preparation step itself, and the shipped mount text
+        # is what obliges it: the guard is only fail-closed because this node publishes the key.
+        prepare = self.find_one(project, tree, "prepare-work-order")
+        for field in ("instructions", "acceptance"):
+            text = str(prepare[field])
+            self.assertIn("work_order.requires_report", text, field)
+            self.assertIn("work_order.report_skip_reason", text, field)
+        self.assertIn("work_order.report_baseline", str(prepare["instructions"]))
+        self.assertIn("a missing commitment fails this node", str(prepare["acceptance"]))
+
+    def test_empty_report_group_close_is_recorded_rather_than_machine_refused(self) -> None:
+        """G-16, narrowed: the flip closes fail-closed *selection*, not a fail-closed close.
+
+        `close_dynamic_group` performs no emptiness or completion check, and
+        `finalize-work-order`'s only machine-checked completion fields are `summary` and
+        `validation`; the report-skip obligation is contract prose. This case pins the
+        reachable path instead of claiming the property away.
+        """
+        _, project, workshop = self.create_environment()
+        work_order = self.open_work_order(workshop, project, "20260727-1000-empty-report-group", [])
+        workbench = Path(str(work_order["workbench_path"]))
+        tree = self.initialize_tree(
+            project,
+            REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml",
+            work_order,
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.document_language": "en",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
+                # The commitment stays unwritten, so the report group is selected and the
+                # session then closes it without producing a report and without a skip reason.
+            },
+        )
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(
+            project,
+            tree,
+            work_order,
+            "goal-document",
+            "work-order-goal",
+            workbench / "goal.md",
+            [],
+        )
+        group = self.find_one(project, tree, "report-group")
+        selected = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(
+            [item["id"] for item in selected["awaiting_dynamic_groups"]],
+            [group["id"]],
+            selected,
+        )
+        self.run_json(
+            RUNTIME,
+            "close-group",
+            "--tree",
+            str(tree),
+            "--group",
+            str(group["id"]),
+            cwd=project,
+        )
+
+        self.complete_document(
+            project,
+            tree,
+            work_order,
+            "result-document",
+            "work-order-result",
+            workbench / "result.md",
+            [],
+        )
+        self.complete_ready_task(project, tree, "finalize-work-order")
+        self.assert_complete(project, tree)
+
+        closed = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(closed["blackboard"]["report.path"], "")
+        self.assertEqual(closed["blackboard"]["work_order.report_skip_reason"], "")
+        self.assertEqual(self.find_one(project, tree, "report-group")["status"], "succeeded")
+
+    def test_mount_publishing_only_the_named_keys_still_runs_validate_final(self) -> None:
+        """G-24: the eight keys the old mount text named are enough, because the mount now
+        declares all thirteen caller-seeded keys and the remaining five keep their defaults."""
+        _, project, workshop = self.create_environment()
+        work_order = self.open_work_order(workshop, project, "20260727-1000-named-keys", [])
+        workbench = Path(str(work_order["workbench_path"]))
+        tree = self.initialize_tree(
+            project,
+            REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml",
+            work_order,
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.document_language": "en",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
+                "work_order.requires_report": "true",
+            },
+        )
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(
+            project,
+            tree,
+            work_order,
+            "goal-document",
+            "work-order-goal",
+            workbench / "goal.md",
+            [],
+        )
+        report_path, manifest_path = self.report_artifacts(workbench)
+        self.mount_report_subtree(project, tree)
+        self.set_values(
+            project,
+            tree,
+            {
+                # Exactly the eight keys the pre-change mount instruction named. The other five
+                # caller-seeded keys are not published here at all: `report.gate_rework_required`
+                # and `report.gate_recovery_required` keep the declared `"false"` that lets
+                # validate-final run, and `report.round` keeps the declared `"1"` that is the
+                # first pass's own index.
+                "report.path": str(report_path),
+                "report.manifest_path": str(manifest_path),
+                "report.baseline_commit": "0" * 40,
+                "report.baseline_digest": "baseline-worktree-digest",
+                "report.language": "en",
+                "report.strength": "minimal",
+                "report.gate_required": "false",
+                "report.gate_outcome": "not-run",
+            },
+        )
+        self.author_report_pass(project, tree, report_path, manifest_path)
+        self.complete_ready_task(
+            project,
+            tree,
+            "validate-final",
+            check_result=self.report_receipt(report_path),
+        )
+        self.assertEqual(
+            self.find_one(project, tree, "validate-final", "report")["status"],
+            "succeeded",
+        )
+        self.assertEqual(
+            self.find_one(project, tree, "report-pass-loop", "report")["attributes"]["loop.iteration"],
+            "1",
+        )
+
+    def test_loop_completes_without_hand_setting_the_round(self) -> None:
+        """G-29: the pass index is the caller's published convention and nothing increments it.
+
+        The pass is driven without writing `report.round` at all, so the value the coverage
+        receipt is checked against is the declared default — the first pass's own index.
+        """
+        _, project, workshop = self.create_environment()
+        work_order = self.open_work_order(workshop, project, "20260727-1000-round-convention", [])
+        workbench = Path(str(work_order["workbench_path"]))
+        tree = self.initialize_tree(
+            project,
+            REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml",
+            work_order,
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.document_language": "en",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
+                "work_order.requires_report": "true",
+            },
+        )
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(
+            project,
+            tree,
+            work_order,
+            "goal-document",
+            "work-order-goal",
+            workbench / "goal.md",
+            [],
+        )
+        report_path, manifest_path = self.report_artifacts(workbench)
+        self.mount_report_subtree(project, tree)
+        self.set_values(
+            project,
+            tree,
+            {
+                "report.path": str(report_path),
+                "report.manifest_path": str(manifest_path),
+                "report.language": "en",
+                "report.baseline_commit": "0" * 40,
+                "report.baseline_digest": "baseline-worktree-digest",
+                "report.strength": "minimal",
+                "report.gate_required": "false",
+                "report.gate_outcome": "not-run",
+            },
+        )
+        self.author_report_pass(project, tree, report_path, manifest_path)
+        self.complete_ready_task(
+            project,
+            tree,
+            "validate-final",
+            check_result=self.report_receipt(report_path),
+        )
+        loop = self.find_one(project, tree, "report-pass-loop", "report")
+        self.assertEqual(loop["status"], "succeeded")
+        self.assertEqual(loop["attributes"]["loop.iteration"], "1")
+        self.assertEqual(loop["attributes"]["loop.terminal_reason"], "break")
+        summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(summary["blackboard"]["report.round"], "1")
+
+    def test_revision_required_reopens_the_gate_in_the_next_pass(self) -> None:
+        """G-27: the gate is the recovery key's only writer, so a reworking round cannot be
+        closed behind its back and pass 2 re-schedules the gate."""
+        _, project, workshop = self.create_environment()
+        work_order = self.open_work_order(workshop, project, "20260727-1000-report-revision", [])
+        workbench = Path(str(work_order["workbench_path"]))
+        tree = self.initialize_tree(
+            project,
+            REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml",
+            work_order,
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.document_language": "en",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
+                "work_order.requires_report": "true",
+            },
+        )
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        goal_id = self.complete_document(
+            project,
+            tree,
+            work_order,
+            "goal-document",
+            "work-order-goal",
+            workbench / "goal.md",
+            [],
+        )
+        report_path, manifest_path = self.report_artifacts(workbench)
+        self.mount_report_subtree(project, tree)
+        self.set_values(
+            project,
+            tree,
+            {
+                "report.path": str(report_path),
+                "report.manifest_path": str(manifest_path),
+                "report.language": "en",
+                "report.baseline_commit": "0" * 40,
+                "report.baseline_digest": "baseline-worktree-digest",
+                "report.baseline_algorithm": "sha256",
+                "report.strength": "minimal",
+                "report.gate_required": "true",
+                "report.gate_outcome": "not-run",
+            },
+        )
+
+        self.author_report_pass(project, tree, report_path, manifest_path, pass_index=1)
+        self.complete_report_gate(project, tree, "revision-required", rework=True)
+
+        # The round the gate terminated keeps `validate-final` out: the recovery key is true and
+        # the only writer that could clear it is the gate, which does not run again until the
+        # next pass. A locked node is `pending`, not `skipped` — the guard is never reached while
+        # its sequence predecessor is unresolved — so "does not run in that round" is observed
+        # as "cannot start", not as a status label.
+        self.assert_not_startable(project, tree, "validate-final", "report")
+
+        recovery = self.find_one(project, tree, "report-gate-recovery-group", "report")
+        awaiting = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertIn(recovery["id"], [item["id"] for item in awaiting["awaiting_dynamic_groups"]], awaiting)
+        self.resolve_report_recovery(project, tree)
+        resolved = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(resolved["blackboard"]["report.gate_recovery_required"], "true")
+        continued = self.find_one(project, tree, "report-pass-loop", "report")
+        self.assertEqual(continued["attributes"]["loop.iteration"], "2")
+        self.assertEqual(continued["status"], "running")
+
+        # Pass 2 publishes its own index and re-answers the gate; only this pass accepts.
+        review_id = self.author_report_pass(project, tree, report_path, manifest_path, pass_index=2)
+        self.complete_report_gate(project, tree, "accepted", rework=False)
+        accepting = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(accepting["awaiting_dynamic_groups"], [], accepting)
+        self.assertEqual(
+            [item["template_id"] for item in accepting["ready"]],
+            ["validate-final"],
+            accepting,
+        )
+        self.complete_ready_task(
+            project,
+            tree,
+            "validate-final",
+            check_result=self.report_receipt(report_path, rounds="2"),
+        )
+        accepted = self.find_one(project, tree, "report-pass-loop", "report")
+        self.assertEqual(accepted["status"], "succeeded")
+        self.assertEqual(accepted["attributes"]["loop.iteration"], "2")
+        self.assertEqual(accepted["attributes"]["loop.terminal_reason"], "break")
+
+        after_report = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(
+            [item["template_id"] for item in after_report["awaiting_dynamic_groups"]],
+            ["result-document"],
+            after_report,
+        )
+        result_id = self.complete_document(
+            project,
+            tree,
+            work_order,
+            "result-document",
+            "work-order-result",
+            workbench / "result.md",
+            [],
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.objective_source_ids": json.dumps([goal_id], separators=(",", ":")),
+                "work_order.result_source_ids": json.dumps([result_id, review_id], separators=(",", ":")),
+            },
+        )
+        self.complete_ready_task(project, tree, "finalize-work-order", read_packet=True)
+        self.assert_complete(project, tree)
+
+    def test_exhausted_refresh_pass_fails_the_stage(self) -> None:
+        """G-33: the third refresh pass exhausts the declared bound and fails the stage.
+
+        The bound is declared three times — the protocol clause, the specification's
+        `loop.max_iterations` and the generated template — and this drive pins its runtime
+        consequence: the loop terminates with the `limit` reason and the failure propagates
+        to the work order instead of closing it.
+        """
+        _, project, workshop = self.create_environment()
+        work_order = self.open_work_order(workshop, project, "20260727-1000-report-refresh-limit", [])
+        workbench = Path(str(work_order["workbench_path"]))
+        tree = self.initialize_tree(
+            project,
+            REPOSITORY_ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml",
+            work_order,
+        )
+        self.set_values(
+            project,
+            tree,
+            {
+                "work_order.document_language": "en",
+                "work_order.requires_analysis": "false",
+                "work_order.requires_solution": "false",
+                "work_order.solution_gate_required": "false",
+                "work_order.requires_implementation": "false",
+                "work_order.requires_verification": "false",
+                "work_order.requires_report": "true",
+            },
+        )
+        self.complete_ready_task(project, tree, "prepare-work-order")
+        self.complete_document(
+            project,
+            tree,
+            work_order,
+            "goal-document",
+            "work-order-goal",
+            workbench / "goal.md",
+            [],
+        )
+        report_path, manifest_path = self.report_artifacts(workbench)
+        self.mount_report_subtree(project, tree)
+        self.set_values(
+            project,
+            tree,
+            {
+                "report.path": str(report_path),
+                "report.manifest_path": str(manifest_path),
+                "report.language": "en",
+                "report.baseline_commit": "0" * 40,
+                "report.baseline_digest": "baseline-worktree-digest",
+                "report.baseline_algorithm": "sha256",
+                "report.strength": "minimal",
+                "report.gate_required": "true",
+                "report.gate_outcome": "not-run",
+            },
+        )
+
+        self.author_report_pass(project, tree, report_path, manifest_path, pass_index=1)
+        self.complete_report_gate(project, tree, "revision-required", rework=True)
+        self.resolve_report_recovery(project, tree)
+        for pass_index in (2, 3):
+            self.author_report_pass(project, tree, report_path, manifest_path, pass_index=pass_index)
+            self.complete_report_gate(project, tree, "revision-required", rework=True)
+
+        loop = self.find_one(project, tree, "report-pass-loop", "report")
+        self.assertEqual(loop["status"], "failed")
+        self.assertEqual(loop["attributes"]["loop.terminal_reason"], "limit")
+        self.assertEqual(loop["attributes"]["loop.terminal_status"], "failed")
+        self.assertEqual(loop["attributes"]["loop.terminal_iteration"], "3")
+        # The exhausted pass never runs validate-final: the recovery key the gate wrote is still
+        # true, so the final validation's own guard excludes it from the third pass.
+        exhausted = self.find_one(project, tree, "validate-final", "report")
+        self.assertEqual(exhausted["status"], "skipped")
+        self.assertEqual(exhausted["attributes"]["skip_reason"], "when")
+
+        summary = self.run_json(RUNTIME, "summary", "--tree", str(tree), cwd=project)
+        self.assertEqual(summary["status"], "failed")
+        self.assertEqual(summary["ready"], [])
+        self.assert_not_startable(project, tree, "result-document")
+
     def test_ordinary_work_order_reconciles_multiple_features_sequentially(self) -> None:
         _, project, workshop = self.create_environment()
         feature_ids = ["payment-refund", "ledger-report"]
@@ -1313,6 +1887,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 "work_order.solution_gate_required": "false",
                 "work_order.requires_implementation": "false",
                 "work_order.requires_verification": "false",
+                **REPORT_WAIVER,
             },
         )
         self.complete_ready_task(project, tree, "prepare-work-order")
@@ -1407,6 +1982,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 "work_order.solution_gate_required": "false",
                 "work_order.requires_implementation": "false",
                 "work_order.requires_verification": "false",
+                **REPORT_WAIVER,
             },
         )
         self.complete_ready_task(project, tree, "prepare-work-order")
@@ -1491,6 +2067,7 @@ class XcLifecycleEndToEndTests(unittest.TestCase):
                 "work_order.solution_gate_required": "false",
                 "work_order.requires_implementation": "false",
                 "work_order.requires_verification": "false",
+                **REPORT_WAIVER,
             },
         )
         self.complete_ready_task(project, tree, "prepare-work-order")

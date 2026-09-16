@@ -81,8 +81,42 @@ INPUT_PATHS = (
     "skills/xc-document/assets/templates/work-order-solution.md",
     "skills/xc-document/assets/templates/work-order-result.md",
     "skills/xc-document/assets/templates/node-artifact.md",
-    "skills/xc-change-report/assets/change-report-template.xml",
 )
+REPORT_GROUP_TEMPLATE_ID = "report-group"
+REPORT_COMMITMENT_KEY = "work_order.requires_report"
+REPORT_SKIP_REASON_KEY = "work_order.report_skip_reason"
+REPORT_OPT_OUT = {
+    REPORT_COMMITMENT_KEY: "false",
+    REPORT_SKIP_REASON_KEY: "user_waived",
+}
+# The one profile that publishes no report commitment, so the template's own
+# `work_order.requires_report` default decides whether the report group is selected.
+# Without it the recording would be evidence that the new default was never exercised.
+PROFILE_EXERCISING_REPORT_DEFAULT = "T1-M"
+
+
+def recording_input_paths() -> tuple[str, ...]:
+    """The exact relative path set hashed into `input_hashes`.
+
+    Exposed so that a test can assert the recorded input surface instead of restating it.
+    """
+    return tuple(INPUT_PATHS)
+
+
+def report_commitment(scenario_id: str) -> dict[str, str]:
+    """The report-commitment entries the profile publishes before `prepare-work-order`.
+
+    `PROFILE_EXERCISING_REPORT_DEFAULT` deliberately publishes none: the work-order
+    template defaults `work_order.requires_report` to `true`, so leaving the key absent
+    selects the report group and the recording carries positive evidence of that
+    selection. Every other profile records the explicit, legal opt-out instead, because
+    their scenarios describe non-`change` work that owes no report.
+    """
+    if scenario_id == PROFILE_EXERCISING_REPORT_DEFAULT:
+        return {}
+    return dict(REPORT_OPT_OUT)
+
+
 PROFILE_DOCUMENTS = {
     "T1-M": ("work-order-goal", "work-order-result"),
     "T2": ("work-order-goal", "work-order-analysis", "work-order-result"),
@@ -933,6 +967,64 @@ def profile_blackboard(scenario_id: str) -> dict[str, str]:
         "work_order.solution_gate_required": str(solution).lower(),
         "work_order.requires_implementation": str(implementation).lower(),
         "work_order.requires_verification": str(implementation).lower(),
+        **report_commitment(scenario_id),
+    }
+
+
+def observe_report_group(
+    transcript: "RuntimeTranscript",
+    tree: Path,
+    scenario_id: str,
+) -> dict[str, object]:
+    """Observe and settle the report group once the sequence reaches the report stage.
+
+    The observation belongs here, not directly after `prepare-work-order`: at that moment
+    `report-group` is still locked behind its ancestors, so the runtime reports it as a
+    locked `pending` node in both the default-selected and the opted-out tree, and the
+    observation would discriminate nothing. Once the sequence has settled every earlier
+    group, the runtime's own node projection and awaiting-group list do discriminate the
+    two recorded outcomes. The status comes from the node projection and the selection from
+    the awaiting-group list, so the recorded values are observations rather than a
+    restatement of the guard the caller published.
+
+    `PROFILE_EXERCISING_REPORT_DEFAULT` publishes no commitment, so the template default
+    must select the group; it then publishes the same waiver the other profiles publish and
+    closes the group it selected, so the profile still reaches `complete`. Every other
+    profile published the explicit opt-out, so the guard must have skipped the group.
+    """
+    node = find_one(transcript, tree, REPORT_GROUP_TEMPLATE_ID)
+    waiting = transcript.invoke("next", "--tree", str(tree))
+    awaiting = waiting.get("awaiting_dynamic_groups")
+    selected = isinstance(awaiting, list) and any(
+        isinstance(item, dict) and item.get("id") == node.get("id") for item in awaiting
+    )
+    status = str(node.get("status", ""))
+    exercises_default = scenario_id == PROFILE_EXERCISING_REPORT_DEFAULT
+    if exercises_default:
+        if not selected:
+            raise HarnessError(
+                f"{scenario_id} published no report commitment, so the template default "
+                f"must select {REPORT_GROUP_TEMPLATE_ID}, but the runtime reports "
+                f"status={status!r} and no awaiting entry"
+            )
+        set_values(transcript, tree, dict(REPORT_OPT_OUT))
+        transcript.invoke(
+            "close-group",
+            "--tree",
+            str(tree),
+            "--group",
+            str(node.get("id", "")),
+        )
+    elif selected or status != "skipped":
+        raise HarnessError(
+            f"{scenario_id} published the explicit report opt-out {REPORT_OPT_OUT}, but "
+            f"the runtime reports {REPORT_GROUP_TEMPLATE_ID} as status={status!r} with "
+            f"selected={selected}"
+        )
+    return {
+        "commitment_published": "absent" if exercises_default else "false",
+        "status_before_result_document": status,
+        "selected_before_result_document": selected,
     }
 
 
@@ -1005,6 +1097,11 @@ def collect_profile(
                         worker_kind="verification",
                         count=verification_count,
                     )
+                observed_report_group = observe_report_group(
+                    transcript,
+                    tree,
+                    scenario_id,
+                )
                 document_sources[document_kind] = complete_document(
                     transcript,
                     tree,
@@ -1072,6 +1169,7 @@ def collect_profile(
         return {
             "metrics": metrics,
             "cleanup": cleanup,
+            "report_group": observed_report_group,
         }
     finally:
         temporary.cleanup()

@@ -41,6 +41,23 @@ The topology is the single source of truth for how the fixed `.xcoding` path rel
 - `same-repo`: `.xcoding` is a plain directory versioned directly in the product repository. No `.gitignore` entry is written; the workshop state follows the product history and requires an explicit `git.auto_commit` declaration in the runtime config.
 - `no-git`: `.xcoding` is a plain untracked directory with no Git repository behind it. No `.gitignore` entry is written.
 
+### Topology and the change report
+
+The ignore entry is written for the two independent topologies only, and that difference decides what a later change report has to explain.
+
+- Under `independent-link` and `independent-nested` the product repository ignores `.xcoding/`, so the runtime tree and the node artifacts stay out of the change set a work order enumerates; no report ever has to mention the workshop.
+- Under `same-repo` and `no-git` the runtime tree and the node artifacts are untracked product paths, so the enumeration does contain them, including `runtime/orchestration.xml`, which every Skill in this repository forbids an agent to read. This is a **stated boundary with a residual risk, not a handled case**: the enumeration is a function of repository, baseline and head alone, and this Skill adds no workshop exclusion. A project that runs a mutation work order must ignore `.xcoding/`, or accept that its workshop is part of its own change set; the `no-git` topology may run read-only modes only.
+- Under `same-repo` the feature baselines that `xc-feature-reconciliation` writes are tracked paths, so they become analysable units the enclosing work order's report must explain like any other change. Under the two independent topologies the same writes are ignored and stay outside the enumeration, and under `no-git` there is no enumeration to contribute to. The choice made at step 0.1 therefore fixes what a later report has to explain, which is why the trade-offs are stated while the user is choosing and not discovered when the report runs.
+
+### Bootstrap write exemption (step 0.4)
+
+Step 0.4 appends `<project_root>/.gitignore` through `scripts/ensure_gitignore.py`, and in a fresh consumer project that write happens before `xc-open-work-order` runs at step 1. It is **recorded as an exemption from the report** rather than mounted:
+
+- **Reason.** No work order, runtime tree, workbench or artifact exists when the bytes land, so nothing could carry a report for them. Moving the write into a template is circular: the runtime tree such a node would run in lives under the very path the entry exists to untrack.
+- **Criterion.** The exemption covers exactly this write, and only while all of it holds: it runs before that project's first work order and is idempotent afterwards; it appends the single root-anchored `/.xcoding/` line and never rewrites or duplicates an existing user line; and it writes nothing at all for `same-repo` and `no-git`, reporting `not-applicable` there, or `skipped-conflict` when the entry is already negated. It needs no exclusion category: it is an ordinary tracked file change that a later work order enumerates normally.
+- **Residual risk.** Until some work order enumerates it, the first write this workflow makes to a tracked project file is unguarded and unreported, so a fresh consumer project can carry a modified `.gitignore` into its product history with no report having explained it. The exposure is bounded to that one bootstrap line, and on the two independent topologies the entry it writes is what keeps the workshop out of every later change set.
+- **Not the same as the installer writes.** `xcoding setup --project-root --host` and the `xc-workflow-evolution` installer also write under the project root with no work order in existence, and no report can be produced for them either. They are not exempt: their roots are declared exclusions (the `adapter_install` category of the report contract's exclusion and classification tables), so a later report states the write instead of listing it as an unexplained unit.
+
 ### Creation command sequences
 
 Use the block for the current platform. Run a sequence only when the target `.xcoding` path does not already exist; if it already exists, inspect where it resolves and preserve that workshop instead of replacing it.

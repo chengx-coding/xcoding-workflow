@@ -44,6 +44,13 @@ HOST_TARGETS: Mapping[str, tuple[PurePosixPath, PurePosixPath]] = {
 }
 HOST_ORDER = tuple(HOST_TARGETS)
 
+# The report package the full lifecycle mounts. Its installed location is the only authority
+# for the subtree template path, so setup records it in the setup record instead of leaving
+# the path discoverable from a host-to-Skill-root documentation table.
+REPORT_PACKAGE = "xc-change-report"
+REPORT_PACKAGE_MARKER = "SKILL.md"
+REPORT_TEMPLATE_RELATIVE = PurePosixPath("assets/change-report-template.xml")
+
 
 class SetupTransactionError(RuntimeError):
     """Stable setup failure with machine-readable details."""
@@ -1159,6 +1166,26 @@ def _manifest_files(value: dict[str, Any]) -> dict[str, dict[str, Any]]:
         or hosts != [host for host in HOST_ORDER if host in set(hosts)]
     ):
         raise SetupTransactionError("manifest_invalid", "setup manifest schema is unsupported")
+    report_package = value.get("report_package")
+    if report_package is not None:
+        recorded_paths = (
+            report_package.get("paths") if isinstance(report_package, dict) else None
+        )
+        if (
+            not isinstance(report_package, dict)
+            or report_package.get("name") != REPORT_PACKAGE
+            or report_package.get("template_file")
+            != REPORT_TEMPLATE_RELATIVE.as_posix()
+            or not isinstance(recorded_paths, dict)
+            or any(
+                host not in hosts or not isinstance(path, str) or not path
+                for host, path in recorded_paths.items()
+            )
+        ):
+            raise SetupTransactionError(
+                "manifest_invalid",
+                "setup manifest report package record is invalid",
+            )
     raw = value.get("files")
     if not isinstance(raw, list):
         raise SetupTransactionError("manifest_invalid", "setup manifest files must be a list")
@@ -1422,6 +1449,7 @@ def _preflight(
         "source_generation": None if manifest is None else manifest.get("generation"),
         "bundle_manifest_sha256": inspection.manifest_sha256,
         "delegation_adapters": delegation_adapters,
+        "report_package": _report_package_value(root, hosts, desired),
         "operations": operations,
         "writes_performed": False,
     }
@@ -1897,7 +1925,36 @@ def _delete_managed(
         os.fsync(parent)
 
 
+def _report_package_value(
+    root: Path,
+    hosts: tuple[str, ...],
+    desired: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Record where each selected host's installed report package lives.
+
+    The report mount resolves its subtree template from this record, so it stores the
+    resolved absolute package directory per host — the value `_desired_files` already
+    computes per resource root — together with the template path inside that package. A host
+    whose package is not part of the installed Bundle stays absent from `paths` rather than
+    recorded as a path that does not exist.
+    """
+    paths: dict[str, str] = {}
+    for host in hosts:
+        skill_root = HOST_TARGETS[host][1]
+        package_relative = skill_root / REPORT_PACKAGE
+        marker = (package_relative / REPORT_PACKAGE_MARKER).as_posix()
+        if marker not in desired:
+            continue
+        paths[host] = str(root.joinpath(*package_relative.parts))
+    return {
+        "name": REPORT_PACKAGE,
+        "template_file": REPORT_TEMPLATE_RELATIVE.as_posix(),
+        "paths": paths,
+    }
+
+
 def _manifest_value(
+    root: Path,
     hosts: tuple[str, ...],
     desired: dict[str, dict[str, Any]],
     *,
@@ -1913,6 +1970,7 @@ def _manifest_value(
         "generation": generation,
         "previous_generation": previous_generation,
         "hosts": list(hosts),
+        "report_package": _report_package_value(root, hosts, desired),
         "files": [
             {
                 "path": path,
@@ -2396,6 +2454,7 @@ def _apply_transaction(
     manifest_relative = STATE_RELATIVE / "manifest.json"
     old_manifest, managed = _load_manifest(paths)
     target_manifest = _manifest_value(
+        root,
         hosts,
         desired,
         generation=generation,

@@ -14,9 +14,22 @@
     "work_order.result_source_ids": "[]",
     "work_order.requires_implementation": "true",
     "work_order.requires_verification": "true",
-    "work_order.requires_report": "false",
+    "work_order.requires_report": "true",
     "work_order.report_skip_reason": "",
-    "work_order.report_baseline": ""
+    "work_order.report_baseline": "",
+    "report.path": "",
+    "report.manifest_path": "",
+    "report.baseline_commit": "",
+    "report.baseline_digest": "",
+    "report.language": "en",
+    "report.strength": "standard",
+    "report.gate_required": "false",
+    "report.gate_outcome": "not-run",
+    "report.gate_rework_required": "false",
+    "report.gate_recovery_required": "false",
+    "report.round": "1",
+    "report.refresh_count": "0",
+    "report.refresh_reason": "initial"
   },
   "root": {
     "template_id": "root",
@@ -32,9 +45,9 @@
         "type": "task",
         "role": "work-order-prepare",
         "executor": "main",
-        "instructions": "Read the project bridge, open the work order through xc-open-work-order, validate requested feature IDs without creating features, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, and record the requested scope.",
+        "instructions": "Read the project bridge, open the work order through xc-open-work-order, validate requested feature IDs without creating features, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, and record the requested scope. Write the mode-derived report commitment in this same preparation step: work_order.requires_report=true for change, repair, and maintenance; false plus work_order.report_skip_reason=read_only_mode for investigation and review; and true when the mode cannot be confirmed, because an unknown mode is never interpreted as no report needed. Record work_order.report_baseline once, as the baseline commit, the worktree digest and the digest algorithm, and record work_order.report_skip_reason whenever the report is deliberately skipped. All three are preparation-phase records, never retrospective notes, and a missing commitment fails this node.",
         "deliverables": "An authoritative workbench and explicit feature associations.",
-        "acceptance": "The workbench is independent, feature associations are explicit, work_order.document_language is set before any document write, and no unmanaged feature directory was created."
+        "acceptance": "The workbench is independent, feature associations are explicit, work_order.document_language is set before any document write, no unmanaged feature directory was created, and the mode-derived report commitment is written rather than assumed: work_order.requires_report carries the mode's value, a read-only mode records work_order.report_skip_reason=read_only_mode, work_order.report_baseline records the baseline commit, the worktree digest and the digest algorithm, and a missing commitment fails this node."
       },
       {
         "template_id": "goal-document",
@@ -155,9 +168,9 @@
             "mode": "sequence",
             "executor": "main",
             "when": "work_order.requires_report == true",
-            "instructions": "Produce the change report for this work order after verification and before the result document, because only implemented and verified code has a state worth describing. The report group is mounted by the mode-derived commitment value work_order.requires_report, not by a measurement that does not exist yet. Embed the xc-change-report subtree once under this group, or run a single role=report node that carries the same contract, after publishing report.path, report.manifest_path, report.baseline_commit, report.baseline_digest, report.language, report.strength, report.gate_required, and report.gate_outcome. This group has two legal outcomes and the deliverables follow the outcome: when prepare-manifest measures one or more analyzable units, produce the report; when it measures zero analyzable units, record work_order.report_skip_reason=zero_analyzable_units and produce no report, and a user waiver records work_order.report_skip_reason=user_waived. A skipped gate records report.gate_outcome=not-run, never accepted.",
+            "instructions": "Produce the change report for this work order after verification and before the result document, because only implemented and verified code has a state worth describing. The report group is mounted by the mode-derived commitment value work_order.requires_report, not by a measurement that does not exist yet. Embed the xc-change-report subtree once under this group, or run a single role=report node that carries the same contract. Resolve the subtree's template path from the record xcoding setup wrote for this project rather than from a documentation table: the committed setup record at .agents/.xcoding-setup/manifest.json holds the resolved absolute path of the installed xc-change-report package, and change-report-template.xml is read from it, with the host-to-Skill-root table as the fallback for a project that has no such record. Before the group's first node runs, publish all thirteen caller-seeded keys with the values this work order actually uses, never merely accepting their declared defaults: report.path, report.manifest_path, report.baseline_commit, report.baseline_digest, report.language, report.strength, report.gate_required, report.gate_outcome, report.gate_rework_required, report.gate_recovery_required, report.round, report.refresh_count, and report.refresh_reason. report.round is the 1-based index of the pass being entered, so the caller publishes 1 for the first pass and nothing pre-increments it. This group has two legal outcomes and the deliverables follow the outcome: when prepare-manifest measures one or more analyzable units, produce the report; when it measures zero analyzable units, record work_order.report_skip_reason=zero_analyzable_units and produce no report, and a user waiver records work_order.report_skip_reason=user_waived. A skipped gate records report.gate_outcome=not-run, never accepted.",
             "deliverables": "On the produced outcome: one change-report.html, one change-report-manifest.json, and one change-report-verdicts.json under the workbench report node artifact directory. On the skipped outcome: no report file is required, and the deliverable is the recorded work_order.report_skip_reason with report.run_required=false.",
-            "acceptance": "Exactly one of the two outcomes holds. Either the report exists at report.path and is proven by report.manifest_path, or prepare-manifest measured zero analyzable units or the user waived the step, report.run_required is false, and work_order.report_skip_reason records one of the legal reasons; a produced report is never accepted without its manifest, and a skip is never accepted without its reason."
+            "acceptance": "Exactly one of the two outcomes holds. Either the report exists at report.path and is proven by report.manifest_path, or prepare-manifest measured zero analyzable units or the user waived the step, report.run_required is false, and work_order.report_skip_reason records one of the legal reasons; a produced report is never accepted without its manifest, and a skip is never accepted without its reason. The caller publishes all thirteen caller-seeded report.* keys with the values this work order uses before the group's first node runs, and the subtree's template is resolved from the installed package path the setup record holds, so the guards and completion-fact selectors the subtree evaluates resolve against those thirteen declarations or against a key one of the subtree's own nodes writes before that expression reads it."
           },
           {
             "template_id": "result-document",

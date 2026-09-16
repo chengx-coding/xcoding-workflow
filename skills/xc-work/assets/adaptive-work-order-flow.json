@@ -6,6 +6,12 @@
     "work_order.plan_id": "",
     "work_order.plan_receipt": "{}",
     "work_order.required_source_ids": "[]",
+    "work_order.requires_report": "true",
+    "work_order.report_skip_reason": "",
+    "work_order.report_baseline": "",
+    "report.path": "",
+    "report.strength": "standard",
+    "report.round": "1",
     "work_order_id": "",
     "today": ""
   },
