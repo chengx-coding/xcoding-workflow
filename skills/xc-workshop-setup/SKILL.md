@@ -43,9 +43,9 @@ The topology is the single source of truth for how the fixed `.xcoding` path rel
 
 ### Topology and the change report
 
-The ignore entry decides whether the workshop is part of the product's own change set, and therefore what a later change report has to explain. Under `independent-link` and `independent-nested` the product repository ignores `.xcoding/`, so the runtime tree, the node artifacts, and any feature baselines stay outside the enumeration. Under `same-repo` and `no-git` they are untracked or tracked product paths and the enumeration does contain them, including `runtime/orchestration.xml`, which every Skill in this repository forbids an agent to read. This Skill adds no workshop exclusion, so a project that runs a mutation work order must ignore `.xcoding/` or accept that its workshop is part of its own change set; the `no-git` topology may run read-only modes only. The trade-off is stated here rather than discovered later because step 0.1 is where the choice is made.
+The ignore entry decides whether the workshop is part of the product's own change set, and therefore what a later change report has to explain. Under `independent-link` and `independent-nested` the product repository ignores `.xcoding/`, so the runtime tree, the node artifacts, and any feature baselines stay outside the enumeration. Under `same-repo` and `no-git` they are untracked or tracked product paths and the enumeration does contain them, including `runtime/orchestration.xml`, which every Skill in this repository forbids an agent to read. This Skill adds no workshop exclusion, so a project that runs a mutation work order must ignore `.xcoding/` or accept that its workshop is part of its own change set; the `no-git` topology may run read-only modes only. The trade-off is stated here rather than discovered later because the topology is chosen before the workshop exists.
 
-The step 0.4 `.gitignore` append happens before the project's first work order exists, so no report can cover it. The write is a single idempotent root-anchored `/.xcoding/` line, it never rewrites an existing user line, and it writes nothing for `same-repo` or `no-git`. A later work order enumerates the resulting file normally.
+The `.gitignore` append that precedes the setup work order happens before the project's first work order exists, so no report can cover it. The write is a single idempotent root-anchored `/.xcoding/` line, it never rewrites an existing user line, and it writes nothing for `same-repo` or `no-git`. A later work order enumerates the resulting file normally.
 
 ### Creation command sequences
 
@@ -122,17 +122,17 @@ For the two independent topologies, confirm that Git reports two different top-l
 
 ## Main Work Order
 
-0. Establish the workshop topology before opening the setup work order:
+1. Establish the workshop topology before opening the setup work order:
    1. Determine the topology. If `workshop_topology` is supplied, use that pinned value without asking. Otherwise ask the user once, presenting `independent-link` as the recommended default and stating each topology's trade-offs (independent repositories keep workshop state out of product history; `same-repo` and `no-git` leave workshop state inside or beside the product tree). If a supplied value is not one of the four allowed values, fail closed: report it and do not proceed.
    2. Create the workshop per the chosen topology using the matching command sequence above for the current platform.
    3. Write or refresh `.xcoding/xc-orchestration-runtime.json` with `workshop.topology` set to the chosen value. If the file is missing, seed it from the runtime asset defaults `skills/xc-orchestration-runtime/assets/xc-orchestration-runtime.json` (as a content source, not a template to hand-edit) and then set the topology. When the file is present, merge the topology key and preserve all existing keys. The seeded asset also carries `report.default`, the workshop's change-report default; leave it at the asset value unless the user asks for a different one, because that value reproduces the existing mode-derived behaviour. `xc-work` owns how the tier is resolved and overridden.
    4. Append the product `.gitignore` entry for `independent-link` and `independent-nested` only by running `scripts/ensure_gitignore.py` from this Skill package with `--project-root <project_root>` and `--topology <topology>`. The script is idempotent and appends a root-anchored `/.xcoding/` entry; it never duplicates or rewrites existing user lines and reports `skipped-conflict` when the entry is already negated. For `same-repo` and `no-git`, it reports `not-applicable` and writes nothing.
-1. Call `xc-open-work-order` with topic `workshop-setup`.
-2. Initialize `assets/workshop-setup-template.xml` in the returned `runtime_path`.
-3. Complete `prepare-workshop`, which confirms the recorded `workshop.topology` and its runtime-config entry; then embed `xc-document-evolution` under `workflow-document`.
-4. Set document blackboard values for `WORKFLOW.md`, render its template, complete validation, and complete the embedded subtree.
-5. Set document blackboard values for `KNOWLEDGE.md`, embed a second document-evolution instance under `knowledge-document`, render its template, complete validation, and complete the embedded subtree.
-6. Complete `finalize-workshop` with both documents as artifacts.
+2. Call `xc-open-work-order` with topic `workshop-setup`.
+3. Initialize `assets/workshop-setup-template.xml` in the returned `runtime_path`.
+4. Complete `prepare-workshop`, which confirms the recorded `workshop.topology` and its runtime-config entry; then embed `xc-document-evolution` under `workflow-document`.
+5. Set document blackboard values for `WORKFLOW.md`, render its template, complete validation, and complete the embedded subtree.
+6. Set document blackboard values for `KNOWLEDGE.md`, embed a second document-evolution instance under `knowledge-document`, render its template, complete validation, and complete the embedded subtree.
+7. Complete `finalize-workshop` with both documents as artifacts.
 
 When the runtime reports an empty reachable dynamic group, append the planned
 document subtree or close the group through the public runtime command before
