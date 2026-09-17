@@ -2400,7 +2400,9 @@ def main(argv: list[str] | None = None) -> int:
         payload = {"ok": False, "errors": [{"id": "V0", "message": str(exc)}], "receipt": {"ok": False}}
     if args.json_out:
         Path(args.json_out).write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+            newline="\n",
         )
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0 if payload.get("ok") else 1

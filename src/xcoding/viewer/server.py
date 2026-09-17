@@ -502,7 +502,9 @@ def emit_console_event(event: str, details: Dict[str, Any]) -> None:
 
 def publish_readiness(path: Path, payload: Dict[str, Any]) -> None:
     temporary = path.with_suffix(f"{path.suffix}.tmp")
-    temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    temporary.write_text(
+        json.dumps(payload, ensure_ascii=False), encoding="utf-8", newline=""
+    )
     os.replace(temporary, path)
 
 

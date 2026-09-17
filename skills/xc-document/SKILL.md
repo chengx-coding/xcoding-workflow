@@ -145,6 +145,29 @@ These four principles are the shared standard for every human-facing artifact th
 
 Artifact writers read `metadata.artifact.audience` and `metadata.artifact.content_language` from their supplied runtime node. The defaults are `internal` and `en`. A user artifact uses `work_order.document_language` only when the node explicitly declares that selector, and writes the resolved language tag into its frontmatter. Preserve code, paths, identifiers, commands, and raw output while localizing surrounding prose.
 
+## Line Endings in Authored Files
+
+Any repository text file an agent writes is stored as UTF-8 with LF line endings, and a local
+edit does not rewrite unchanged lines. This applies to every authored repository text file, not
+only to the managed document kinds above: source files, tests, configuration, templates, and
+generated text all share the rule.
+
+The usual way to break it is not to intend CRLF but to inherit it. On a host whose native line
+terminator is CRLF, newline translation applies to every text write that does not pin its own
+newline, so a three-line edit to an LF-stored file silently becomes a whole-file rewrite: the
+reviewer sees every line as changed, and `git diff --check` reports one trailing-whitespace hit
+per line. Nothing errors, so the damage is only visible in the diff.
+
+Pin the newline explicitly, or write bytes. Which mechanism does that is a property of the
+implementation language rather than of this contract; in Python, for example, the explicit form
+is `newline="\n"` on a text write, and encoding to bytes avoids the translation layer entirely.
+When a file's own format requires a different terminator, pin that one explicitly too, for the
+same reason.
+
+Verify by outcome rather than by inspection: after an edit, `git diff` should show only the
+intended lines and `git diff --check` should be clean. A whole-file diff after a small edit is
+this defect until proven otherwise.
+
 ## Constraints
 
 - Frontmatter MUST NOT contain dynamic node status, task progress, loop state, or blockers.

@@ -448,7 +448,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.out:
-        Path(args.out).write_text(payload + "\n", encoding="utf-8")
+        Path(args.out).write_text(payload + "\n", encoding="utf-8", newline="\n")
     print(
         json.dumps(
             {

@@ -1301,6 +1301,35 @@ def git_root_for(path: Path) -> Optional[Path]:
     return Path(result.stdout.strip()).resolve()
 
 
+def workshop_repo_root(config: Dict[str, Any]) -> Optional[Path]:
+    """Return the Git root of the workshop this configuration belongs to.
+
+    The workshop is identified by the configuration file `load_config` actually
+    used, recorded in `_source`. Builtin defaults name no workshop, and an
+    explicit `--config` pointing outside a `.xcoding` directory does not
+    establish one either: `find_workspace_config` only ever returns
+    `<somewhere>/.xcoding/<config>`, so that directory name is what separates a
+    discovered workshop configuration from an arbitrary file a caller passed.
+
+    The directory is resolved before the Git query, because a workshop is
+    commonly reached through a directory link whose target is the real
+    repository.
+    """
+    source = config.get("_source")
+    if not isinstance(source, str) or source == "builtin defaults":
+        return None
+    source_path = Path(source)
+    if source_path.parent.name != ".xcoding":
+        return None
+    try:
+        workshop_dir = source_path.parent.resolve()
+    except OSError:
+        return None
+    if not workshop_dir.is_dir():
+        return None
+    return git_root_for(workshop_dir / CONFIG_FILENAME)
+
+
 def commit_template(
     path: Path,
     operation: str,
@@ -1309,9 +1338,35 @@ def commit_template(
 ) -> Dict[str, Any]:
     if not config["git"]["auto_commit"]:
         return {"status": "disabled"}
+    topology = config.get("workshop", {}).get("topology", WORKSHOP_TOPOLOGY_DEFAULT)
+    if topology == "no-git":
+        return {
+            "status": "skipped_outside_workshop",
+            "reason": "topology_no_git",
+            "topology": topology,
+            "template_repository": "",
+            "workshop_repository": "",
+        }
     repo_root = git_root_for(path)
     if repo_root is None:
         return {"status": "not_applicable"}
+    # A managed template is checkpointed into the workshop repository, never
+    # into whichever repository happens to enclose the output path. Under every
+    # topology but `same-repo` those are different repositories, and committing
+    # into the project one would put workflow state into product history.
+    workshop_root = workshop_repo_root(config)
+    if workshop_root is None or workshop_root != repo_root:
+        return {
+            "status": "skipped_outside_workshop",
+            "reason": (
+                "workshop_unidentified"
+                if workshop_root is None
+                else "template_outside_workshop_repository"
+            ),
+            "topology": topology,
+            "template_repository": str(repo_root),
+            "workshop_repository": str(workshop_root) if workshop_root else "",
+        }
     resolved = path.resolve()
     if not resolved.exists():
         return {"status": "failed", "error": f"managed path does not exist: {resolved}"}

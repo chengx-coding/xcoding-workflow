@@ -262,7 +262,11 @@ def persist_template(root: ET.Element, out: Path, config_path: str, operation: s
 def cmd_new_spec(args: argparse.Namespace) -> Dict[str, Any]:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(spec_template(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(spec_template(), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
     return {"status": "created", "path": str(out)}
 
 

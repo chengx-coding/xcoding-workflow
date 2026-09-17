@@ -231,7 +231,7 @@ def main(argv: list[str] | None = None) -> int:
 
     payload = highlight(source, language)
     if args.out:
-        Path(args.out).write_text(payload, encoding="utf-8")
+        Path(args.out).write_text(payload, encoding="utf-8", newline="\n")
     print(
         json.dumps(
             {

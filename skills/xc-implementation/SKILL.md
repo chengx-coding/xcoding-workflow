@@ -27,6 +27,8 @@ Read the supplied node contract and approved inputs, make the smallest coherent 
 
 Any human-facing document created or revised within `work_scope`, including project documentation delivered through the work order, follows the public `xc-document` human-readable authoring default and supplied explicit authoring requirements. A user-facing implementation report follows the same contract. Preserve exact paths, commands, logs, machine output, and outcomes where literal accuracy matters.
 
+Every repository text file this node writes, including source, tests, and configuration, follows the public `xc-document` "Line Endings in Authored Files" contract, so that a small edit produces a small diff.
+
 When implementation evidence changes a feature baseline, add a separate document-evolution subtree or user gate through the caller's runtime workflow. Do not overwrite a baseline opportunistically from an implementation node.
 
 ## Adaptive Initial Node
