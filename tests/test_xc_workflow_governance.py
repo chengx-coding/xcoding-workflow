@@ -189,7 +189,15 @@ class WorkflowGovernanceFixtureTests(unittest.TestCase):
         self.assertEqual(self.manifest["manifest_id"], harness.CURRENT_MANIFEST_ID)
         self.assertEqual(self.manifest["manifest_role"], harness.CURRENT_MANIFEST_ROLE)
         self.assertEqual(self.manifest["normalization_version"], harness.NORMALIZATION_VERSION)
-        self.assertEqual(self.manifest["python_version"], harness.platform.python_version())
+        # `python_version` is provenance, not an acceptance gate: it records the interpreter a
+        # recording was produced on so a later drift can be attributed. Asserting equality with
+        # the running interpreter would fail every contributor whose patch release differs, on
+        # a clean checkout. What must hold is that the field is a usable record, so its shape is
+        # asserted and its value is not compared. See `test_verification_ignores_python_version`
+        # for the matching contract on the verifier.
+        recorded_python = self.manifest["python_version"]
+        self.assertIsInstance(recorded_python, str)
+        self.assertRegex(recorded_python, r"^\d+\.\d+\.\d+")
         self.assertNotIn("baseline_commit", self.manifest)
         self.assertRegex(self.manifest["recording_base_commit"], r"^[0-9a-f]{40}$")
         self.assertEqual(self.manifest["input_hashes"], harness.input_hashes())
@@ -459,6 +467,65 @@ class WorkflowGovernanceFixtureTests(unittest.TestCase):
             self.assertIn(f"input_hashes.{first_input}", {item["field"] for item in payload["drift"]})
             collect.assert_not_called()
             self.assertEqual(manifest_path.read_bytes(), before)
+
+    def test_verification_ignores_python_version(self) -> None:
+        """A manifest recorded on another interpreter still verifies.
+
+        The recorded `python_version` is provenance. Comparing it made the suite fail for any
+        contributor whose patch release differed from the recording host's, on a clean checkout
+        and with no change of their own. This test is the contract that the comparison stays
+        gone: the manifest below differs from the running interpreter in that field alone, and
+        every other field is the checked-in one.
+        """
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest_path = Path(temporary) / "other-interpreter.json"
+            changed = json.loads(CURRENT_MANIFEST.read_text(encoding="utf-8"))
+            recorded = changed["python_version"]
+            # A version that is valid, plausible and certainly not the one running here.
+            changed["python_version"] = "3.11.99" if not recorded.startswith("3.11.") else "3.9.99"
+            self.assertNotEqual(changed["python_version"], harness.platform.python_version())
+            manifest_path.write_text(json.dumps(changed), encoding="utf-8")
+
+            with mock.patch.object(
+                harness,
+                "collect_measurements",
+                return_value=self.manifest["measurements"],
+            ):
+                code, payload = harness.verify_manifest(manifest_path)
+            self.assertEqual(code, 0, payload)
+            self.assertEqual(payload["drift"], [])
+
+        # The field is still compared for nothing else: it is absent from the compared set and
+        # present in the recorded one, which is what "provenance, not gate" means mechanically.
+        self.assertNotIn("python_version", harness.COMPARED_IDENTITY_FIELDS)
+        self.assertIn("python_version", harness.current_identity())
+        self.assertNotIn("python_version", harness.compared_identity())
+
+    def test_normalization_is_independent_of_the_host_path_separator(self) -> None:
+        """`context_bytes` must not count the host's path-separator convention.
+
+        `context_bytes` is the byte length of a normalised payload, and JSON escapes each
+        Windows `\\` as `\\\\`. Without this normalisation the metric differed between Linux and
+        Windows for the same workflow, so a Windows contributor failed on a clean checkout.
+        """
+        windows = r"C:\some\project\.xcoding\work-orders\wo-1\runtime\orchestration.xml"
+        posix = "C:/some/project/.xcoding/work-orders/wo-1/runtime/orchestration.xml"
+        self.assertEqual(
+            harness.normalize_string(windows),
+            harness.normalize_string(posix),
+            "the same location must normalise identically whichever separator spells it",
+        )
+
+        # Root substitution must still run first: a root replaced into a placeholder is not
+        # re-spelled afterwards, and a path under the repository root still collapses to the
+        # placeholder rather than surviving as a separator-normalised absolute path.
+        inside = str(harness.REPOSITORY_ROOT.resolve() / "skills" / "xc-work" / "SKILL.md")
+        normalized = harness.normalize_string(inside)
+        self.assertTrue(
+            normalized.startswith("<REPOSITORY_ROOT>"),
+            f"root replacement must precede separator folding, got {normalized!r}",
+        )
+        self.assertNotIn("\\", normalized)
 
     def test_verification_is_not_bound_to_current_head(self) -> None:
         with mock.patch.object(

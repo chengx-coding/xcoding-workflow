@@ -66,7 +66,7 @@ python skills/xc-work/scripts/classify.py [--needs-persistence no|yes|unknown] [
 
 每个 mutation 模式 plan 都携带 `change_report` capability，因为产出可分析变更单元的工单必须解释这些单元；只读模式永远不会获得它，即使事实未知而升级到全能力集合也是如此。在 adaptive 路径上，报告位于实现与验证之后、任何 adaptive review 节点之前，且该顺序在那里是 main-session policy；初始强度档位由已确认的 `risk` 与 `audit` 事实决定；除非用户显式要求，其人类门禁保持关闭。
 
-名为 `context_bytes` 的工作流测量统计归一化 UTF-8 运行时协议 payload 的字节数。它不是 token 数、模型时延、执行时延、成本或质量指标。
+名为 `context_bytes` 的工作流测量统计归一化 UTF-8 运行时协议 payload 的字节数。它不是 token 数、模型时延、执行时延、成本或质量指标。归一化除处理根路径、时间戳和摘要外，还会折叠宿主路径分隔符，因此一条已记录的测量可以在另一个检出位置、另一种操作系统和另一个 CPython 版本上复现，而不只在录制它的主机上成立。
 
 ## 选择规则
 

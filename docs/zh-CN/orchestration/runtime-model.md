@@ -184,6 +184,6 @@ Control packet、completion requirement、归一化 receipt 和 structured gate 
 
 Scoped packet 减少运行时协议披露，但 runtime 无法阻止节点启动前的普通宿主工具调用，启动后也不代理宿主工具。本版本没有可信 validator 执行、claim binding、typed blackboard、host mediation 或模型专用执行 profile。模型能力不能扩大 packet 范围或削弱受管控制。
 
-任何名为 `context_bytes` 的测量都只统计归一化 UTF-8 协议 payload 字节。它不是 token 数，也不对模型时延、执行时延、成本或输出质量作出任何声明。
+任何名为 `context_bytes` 的测量都只统计归一化 UTF-8 协议 payload 字节。它不是 token 数，也不对模型时延、执行时延、成本或输出质量作出任何声明。归一化会替换仓库根与临时根、时间戳和内容摘要，并折叠宿主路径分隔符，因此该测量不随检出位置、操作系统的分隔符约定或录制时所用解释器版本而变化。
 
 公开命令契约见 [runtime protocol](../../../skills/xc-orchestration-runtime/references/runtime-protocol.md)。

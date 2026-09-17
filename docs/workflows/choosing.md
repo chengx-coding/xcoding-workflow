@@ -66,7 +66,7 @@ A minimal mutation can use one combined implementation/focused-verification leaf
 
 Every mutation-mode plan carries the `change_report` capability, because a work order that produces analysable change units must explain them; read-only modes never acquire it, even when unknown facts escalate to the full capability set. On the adaptive path the report follows implementation and verification and precedes any adaptive review node, and that order is main-session policy there; its initial strength tier follows the confirmed `risk` and `audit` facts, and its human gate stays closed unless the user explicitly asks for it.
 
-Workflow measurements named `context_bytes` count normalized UTF-8 runtime protocol payload bytes. They are not token counts, model latency, execution latency, cost, or quality measurements.
+Workflow measurements named `context_bytes` count normalized UTF-8 runtime protocol payload bytes. They are not token counts, model latency, execution latency, cost, or quality measurements. Normalization folds host path separators as well as roots, timestamps, and digests, so a recorded measurement is reproducible from another checkout location, another operating system, and another CPython version rather than only from the host that recorded it.
 
 ## Selection Rules
 

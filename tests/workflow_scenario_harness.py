@@ -34,7 +34,15 @@ DOCUMENT_EVOLUTION_TEMPLATE = (
     REPOSITORY_ROOT / "skills" / "xc-document-evolution" / "assets" / "document-evolution-template.xml"
 )
 DOCUMENT_TEMPLATES = REPOSITORY_ROOT / "skills" / "xc-document" / "assets" / "templates"
-NORMALIZATION_VERSION = 1
+NORMALIZATION_VERSION = 2
+#: The normalisation rule the immutable historical manifest was recorded under. It is a
+#: property of those frozen bytes, so it is a separate constant rather than a reference to the
+#: live `NORMALIZATION_VERSION`. Validating the frozen manifest against the live value is a
+#: contradiction: the two are equal only until the normalisation rule changes, and at that point
+#: the manifest would have to be rewritten to stay valid -- which its frozen SHA-256 forbids.
+#: The historical manifest is a record of a past measurement, not a recomputable one, so its
+#: recorded rule is what its validation must expect.
+HISTORICAL_NORMALIZATION_VERSION = 1
 HISTORICAL_MANIFEST_ROLE = "historical-pre-change"
 CURRENT_MANIFEST_ROLE = "current-post-change"
 HISTORICAL_MANIFEST_ID = "model-robust-workflow-baseline-v1"
@@ -314,6 +322,14 @@ def normalize_string(value: str, temporary_root: Path | None = None) -> str:
         normalized = normalized.replace(source, target)
     normalized = TIMESTAMP_PATTERN.sub("<TIMESTAMP>", normalized)
     normalized = SHA256_PATTERN.sub("<SHA256>", normalized)
+    # The two root replacements above cover the roots and nothing else, so every remaining path
+    # in a payload keeps its host spelling. `context_bytes` counts the JSON encoding of that
+    # payload, and JSON escapes each Windows `\` as `\\`: one extra byte per separator, which
+    # made the metric a function of the host's path-separator convention rather than of the
+    # workflow. Collapsing separators last leaves the already-substituted placeholders untouched
+    # and changes nothing at all on a POSIX host, so the metric stays an exact byte comparison
+    # and merely stops counting the convention.
+    normalized = normalized.replace("\\\\", "/").replace("\\", "/")
     return normalized
 
 
@@ -1498,11 +1514,31 @@ def collect_measurements() -> dict[str, object]:
 
 
 def current_identity() -> dict[str, object]:
+    """The identity block a recording carries.
+
+    `python_version` is **provenance**, not an acceptance condition: it records which
+    interpreter produced a recording so a later drift can be attributed, and `verify_manifest`
+    deliberately excludes it from the compared set. Comparing it would fail every contributor
+    whose interpreter differs from the recording host's by a patch release, on a clean
+    checkout, while protecting nothing -- the measurements it guards are compared exactly and
+    are reproducible across interpreter versions. See `compared_identity`.
+    """
     return {
         "normalization_version": NORMALIZATION_VERSION,
         "python_version": platform.python_version(),
         "input_hashes": input_hashes(),
     }
+
+
+#: The identity fields `verify_manifest` compares. `python_version` is recorded by
+#: `current_identity` and intentionally absent here; everything in this tuple is a function of
+#: the repository's own bytes and rules, not of the contributor's environment.
+COMPARED_IDENTITY_FIELDS = ("normalization_version", "input_hashes")
+
+
+def compared_identity() -> dict[str, object]:
+    identity = current_identity()
+    return {key: identity[key] for key in COMPARED_IDENTITY_FIELDS}
 
 
 def compare_values(expected: object, actual: object, prefix: str = "") -> list[dict[str, object]]:
@@ -1568,7 +1604,7 @@ def validate_historical_manifest(path: Path) -> tuple[int, dict[str, object]]:
     expected_identity = {
         "schema_version": 1,
         "manifest_id": HISTORICAL_MANIFEST_ID,
-        "normalization_version": NORMALIZATION_VERSION,
+        "normalization_version": HISTORICAL_NORMALIZATION_VERSION,
         "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
     }
     drift = compare_values(expected_identity, identity)
@@ -1741,13 +1777,9 @@ def verify_manifest(path: Path) -> tuple[int, dict[str, object]]:
         }
     expected_identity = {
         key: manifest.get(key)
-        for key in (
-            "normalization_version",
-            "python_version",
-            "input_hashes",
-        )
+        for key in COMPARED_IDENTITY_FIELDS
     }
-    identity_drift = compare_values(expected_identity, current_identity())
+    identity_drift = compare_values(expected_identity, compared_identity())
     if identity_drift:
         return 1, {
             "ok": False,

@@ -186,6 +186,6 @@ Control packets, completion requirements, normalized receipts, and structured ga
 
 Scoped packets reduce runtime protocol disclosure, but runtime cannot prevent ordinary host-tool calls before a node is started and does not mediate host tools afterward. This version has no trusted validator execution, claim binding, typed blackboard, host mediation, or model-specific execution profile. Model capability does not expand packet scope or weaken managed controls.
 
-Any reported `context_bytes` measurement counts normalized UTF-8 protocol payload bytes. It is not a token count and makes no claim about model latency, execution latency, cost, or output quality.
+Any reported `context_bytes` measurement counts normalized UTF-8 protocol payload bytes. It is not a token count and makes no claim about model latency, execution latency, cost, or output quality. Normalization replaces the repository and temporary roots, timestamps, and content digests, and folds host path separators, so the measurement does not vary with the checkout location, the operating system's separator convention, or the recording interpreter's version.
 
 See the [runtime protocol](../../skills/xc-orchestration-runtime/references/runtime-protocol.md) for the public command contract.

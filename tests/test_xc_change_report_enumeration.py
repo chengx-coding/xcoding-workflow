@@ -141,6 +141,14 @@ def init_repo(repo: Path) -> None:
     git(repo, "config", "user.email", "fixture@example.invalid")
     git(repo, "config", "user.name", "fixture")
     git(repo, "config", "core.autocrlf", "false")
+    # `core.fileMode=false` makes the staged mode an independent fact, which is what C17's
+    # "the index mode decides" requires of a fixture. Left at its default, git resolves to
+    # `true` on any permission-bearing filesystem and refreshes the index's executable bit
+    # from `stat()` before diffing: an index-only `100755` over a `0644` file collapses back
+    # to `100644`, and the mode change ceases to exist before any builder code runs. The
+    # scenario would then silently stop exercising the shape it is named for. `ShapeProvenanceTests`
+    # already sets this per-repository for the same reason; pinning it here covers every fixture.
+    git(repo, "config", "core.fileMode", "false")
 
 
 def decode_paths(payload: bytes) -> list[str]:
@@ -623,9 +631,28 @@ class ExoticShapeTests(ExoticShapeCase):
         entries = self.entries()
         modes = index_modes(self.repo)
 
+        # The precondition, asserted before the rows are read: the scenario must really hold a
+        # mode-only change. `git ls-files -s` alone does not establish it -- it reports the
+        # stored index mode without the stat refresh, so it still says `100755` on a host that
+        # resolves `core.fileMode` to `true` and has already decided the file is `100644`.
+        # What settles it is git's own diff, which is also the builder's C29 step-1 source: if
+        # the path is absent there, the fixture built no mode change at all, and the row
+        # assertions below would fail as a missing row and read as a builder defect.
+        self.assertEqual(modes["bin/tool.sh"], "100755")
+        self.assertEqual(
+            bm.tree_entries(self.repo, self.commit)["bin/tool.sh"]["mode"],
+            "100644",
+            "the baseline commit must hold the pre-flip mode, or there is no mode change",
+        )
+        self.assertIn(
+            "bin/tool.sh",
+            bm.name_status(self.repo, self.commit),
+            "the staged mode flip must survive git's index refresh; a host resolving "
+            "core.fileMode to true erases an index-only flip over an unchanged file",
+        )
+
         # The mode-only change: git reports the path as modified while the bytes are equal,
         # so only the index mode can carry the statement.
-        self.assertEqual(modes["bin/tool.sh"], "100755")
         tool = entries["bin/tool.sh"]
         self.assertEqual(tool["change_kind"], "modified")
         self.assertEqual(tool["exclude_reason"], "mode_change")
@@ -771,10 +798,18 @@ class ShapeVerificationCase(ScratchCase):
     """Shared fixtures for the shapes adversarial verification measured."""
 
     def submodule_source(self, name: str = "sub") -> str:
-        """A real nested repository plus the revision a `160000` index entry points at."""
+        """A real nested repository plus the revision a `160000` index entry points at.
+
+        The content is keyed by `name` so two sources cannot produce the same commit id. A
+        commit id hashes the tree, the author, the committer, the message and two one-second
+        timestamps; with identical content every one of those matches between two sources
+        created inside the same second, which is the normal case on a fast host. The pointer
+        a caller then "moves" would not move, and the test measuring the move would fail as a
+        missing row rather than as the collision it is.
+        """
         source = self.root / name
         init_repo(source)
-        (source / "lib.txt").write_bytes(b"submodule content\n")
+        (source / "lib.txt").write_bytes(f"submodule content for {name}\n".encode("utf-8"))
         git(source, "add", "-A")
         git(source, "commit", "-q", "-m", "submodule baseline")
         return git(source, "rev-parse", "HEAD").decode().strip()
@@ -932,6 +967,10 @@ class GitlinkShapeTests(ShapeVerificationCase):
 
         # ... and a moved pointer is a change, in the same repository.
         moved = self.submodule_source("sub2")
+        # The precondition: the pointer must really move. Two sources built from identical
+        # content inside the same second share a commit id, and the "move" below would then be
+        # a no-op that the next lookup reports as a missing row.
+        self.assertNotEqual(revision, moved, "the two submodule sources must differ")
         self.add_gitlink("vendor-sub", moved)
         manifest = self.build(commit)
         entry = self.by_path(manifest)["vendor-sub"]
