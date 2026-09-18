@@ -72,7 +72,7 @@ Daemon 继续保持只读，只把 `assignment-packet` 暴露为 typed query；�
 
 ## 完成与 Gate
 
-Opt-in completion metadata 可以要求非空 `summary` 或 `validation`、artifact 数量上下界、与 literal 或 blackboard selector 完全相同的 artifact 路径，以及已声明的归一化 check receipt。`complete` 通过可重复的 `--check-result-json` 接收每个已声明 check 的 receipt。Receipt 的精确形状是 `{"schema_version":1,"check":"...","ok":true,"subject":"...","facts":{...}}`；runtime 会验证其形状、已声明名称、`ok`、subject 和 fact 值，并且只保存归一化 receipt。
+Opt-in completion metadata 可以要求非空 `summary` 或 `validation`、artifact 数量上下界、与 literal 或 blackboard selector 完全相同的 artifact 路径，以及已声明的归一化 check receipt。`complete` 通过可重复的 `--check-result-json` 接收每个已声明 check 的 receipt；当 shell 会改写 JSON 的引号时，改用等价的 `--check-result-file`。Receipt 的精确形状是 `{"schema_version":1,"check":"...","ok":true,"subject":"...","facts":{...}}`；runtime 会验证其形状、已声明名称、`ok`、subject 和 fact 值，并且只保存归一化 receipt。
 
 调用方必须实际运行已声明 validator，要求进程退出成功且顶层结果成功，并只提取其归一化 receipt。即便如此，receipt 仍是未签名、未绑定 claimant 的调用方自报告；它既不能证明验证确实运行过，也不能证明运行者身份。完全匹配已声明结构和预期值的伪造 receipt 会被接受。Runtime 检查提高的是结果一致性，不会建立 trusted execution。
 

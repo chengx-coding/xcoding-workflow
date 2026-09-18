@@ -72,7 +72,7 @@ The daemon remains read-only and exposes `assignment-packet` only as a typed que
 
 ## Completion And Gates
 
-Opt-in completion metadata can require non-empty `summary` or `validation`, artifact minimum and maximum counts, an exact literal or blackboard-selected artifact path, and declared normalized check receipts. `complete` accepts one repeated `--check-result-json` value per declared check. A receipt has the exact shape `{"schema_version":1,"check":"...","ok":true,"subject":"...","facts":{...}}`; the runtime validates its shape, declared name, `ok`, subject, and fact values, then stores only the normalized receipt.
+Opt-in completion metadata can require non-empty `summary` or `validation`, artifact minimum and maximum counts, an exact literal or blackboard-selected artifact path, and declared normalized check receipts. `complete` accepts one repeated `--check-result-json` value per declared check, or the equivalent `--check-result-file` when the shell would rewrite the JSON's quoting. A receipt has the exact shape `{"schema_version":1,"check":"...","ok":true,"subject":"...","facts":{...}}`; the runtime validates its shape, declared name, `ok`, subject, and fact values, then stores only the normalized receipt.
 
 The caller must actually run the declared validator, require a successful process exit and top-level success, and extract only its normalized receipt. The receipt is nevertheless unsigned, unbound caller self-report, not proof that validation ran or proof of who ran it. A fabricated receipt that exactly matches the declared structure and expected values is accepted. Runtime checks improve result consistency; they do not establish trusted execution.
 

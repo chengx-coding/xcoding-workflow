@@ -22,6 +22,14 @@ by the author and bound to the code by recomputation.
 
 ## Position in the lifecycle
 
+- **Measure before reading the contracts.** The group's first step is
+  `build_manifest.py`, which is cheap and decides whether there is anything to report at all:
+  when it measures zero analysable change units it publishes `run_required=false`, the group
+  ends there, and the caller records `work_order.report_skip_reason=zero_analyzable_units`.
+  The three normative contracts below run to roughly 17,600 words, so reading them first and
+  only then learning that no report is due is wasted work. This ordering matters only for the
+  zero-unit case; a group that does produce a report still needs the contracts in full, and
+  their density is deliberate rather than excess.
 - In the full lifecycle the report group sits between the verification group and the result
   document: only after the code is implemented and verified does the report describe a state
   that still exists. It is the **last group before the result document**, and that lifecycle

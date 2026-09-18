@@ -602,15 +602,49 @@ def read_readiness(path: Path) -> Optional[Dict[str, Any]]:
     return payload
 
 
+def read_child_stderr(stderr_path: Path) -> str:
+    """Return the detached child's captured stderr, if it wrote any.
+
+    The child is detached, so this file is the only place its diagnostics can
+    survive. Reading it must never mask the launch failure being reported, so
+    every failure here degrades to an empty string.
+    """
+    try:
+        text = stderr_path.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return ""
+    return text
+
+
+def describe_launch_failure(message: str, stderr_path: Path) -> str:
+    """Attach the child's captured stderr to a launch failure message."""
+    captured = read_child_stderr(stderr_path)
+    if not captured:
+        return message
+    return f"{message}; child stderr: {captured}"
+
+
 def launch_background(args: argparse.Namespace) -> int:
     ready_dir = Path(tempfile.mkdtemp(prefix="xc-viewer-ready-"))
     readiness_path = ready_dir / "ready.json"
+    stderr_path = ready_dir / "stderr.log"
+    # The child's stderr is captured rather than discarded: it is a detached
+    # process, so a discarded stream leaves an import or interpreter failure
+    # with no reachable diagnostic. cwd is the private ready directory rather
+    # than the shared OS temp directory, which would otherwise put a
+    # world-writable directory on the child's sys.path.
+    try:
+        stderr_handle = stderr_path.open("wb")
+    except OSError as exc:
+        shutil.rmtree(ready_dir, ignore_errors=True)
+        print(f"viewer startup failed: {exc}", file=sys.stderr, flush=True)
+        return 2
     process_kwargs: Dict[str, Any] = {
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
+        "stderr": stderr_handle,
         "close_fds": True,
-        "cwd": tempfile.gettempdir(),
+        "cwd": str(ready_dir),
     }
     if os.name == "nt":
         process_kwargs["creationflags"] = (
@@ -620,39 +654,45 @@ def launch_background(args: argparse.Namespace) -> int:
     else:
         process_kwargs["start_new_session"] = True
     try:
-        process = subprocess.Popen(child_command(args, readiness_path), **process_kwargs)
-    except OSError as exc:
-        shutil.rmtree(ready_dir, ignore_errors=True)
-        print(f"viewer startup failed: {exc}", file=sys.stderr, flush=True)
-        return 2
-    deadline = time.monotonic() + BACKGROUND_START_TIMEOUT_SECONDS
-    try:
-        while time.monotonic() < deadline:
-            payload = read_readiness(readiness_path)
-            if payload is not None:
-                if payload.get("ok"):
-                    result = {
-                        "ok": True,
-                        "mode": "background",
-                        "pid": process.pid,
-                        "url": payload["url"],
-                        "trees": payload["trees"],
-                    }
-                    if not args.no_browser:
-                        webbrowser.open(str(payload["url"]))
-                    print(json.dumps(result, ensure_ascii=False), flush=True)
-                    return 0
-                message = str(payload.get("error", "viewer failed before startup"))
-                raise ViewerLaunchError(message)
-            if process.poll() is not None:
-                raise ViewerLaunchError(f"viewer process exited before startup (code {process.returncode})")
-            time.sleep(BACKGROUND_START_POLL_SECONDS)
-        raise ViewerLaunchError("viewer did not become ready before the startup timeout")
-    except ViewerLaunchError as exc:
-        stop_background_process(process)
-        print(f"viewer startup failed: {exc}", file=sys.stderr, flush=True)
-        return 2
+        try:
+            process = subprocess.Popen(child_command(args, readiness_path), **process_kwargs)
+        except OSError as exc:
+            shutil.rmtree(ready_dir, ignore_errors=True)
+            print(f"viewer startup failed: {exc}", file=sys.stderr, flush=True)
+            return 2
+        deadline = time.monotonic() + BACKGROUND_START_TIMEOUT_SECONDS
+        try:
+            while time.monotonic() < deadline:
+                payload = read_readiness(readiness_path)
+                if payload is not None:
+                    if payload.get("ok"):
+                        result = {
+                            "ok": True,
+                            "mode": "background",
+                            "pid": process.pid,
+                            "url": payload["url"],
+                            "trees": payload["trees"],
+                        }
+                        if not args.no_browser:
+                            webbrowser.open(str(payload["url"]))
+                        print(json.dumps(result, ensure_ascii=False), flush=True)
+                        return 0
+                    message = str(payload.get("error", "viewer failed before startup"))
+                    raise ViewerLaunchError(message)
+                if process.poll() is not None:
+                    raise ViewerLaunchError(
+                        f"viewer process exited before startup (code {process.returncode})"
+                    )
+                time.sleep(BACKGROUND_START_POLL_SECONDS)
+            raise ViewerLaunchError("viewer did not become ready before the startup timeout")
+        except ViewerLaunchError as exc:
+            stop_background_process(process)
+            stderr_handle.flush()
+            detail = describe_launch_failure(str(exc), stderr_path)
+            print(f"viewer startup failed: {detail}", file=sys.stderr, flush=True)
+            return 2
     finally:
+        stderr_handle.close()
         shutil.rmtree(ready_dir, ignore_errors=True)
 
 

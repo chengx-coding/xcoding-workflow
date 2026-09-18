@@ -63,6 +63,18 @@ def add_mutation_tree_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--expected-revision", type=int, default=None)
 
 
+def add_group_arguments(parser: argparse.ArgumentParser) -> None:
+    """Accept a dynamic group as either --group or --node.
+
+    Nine sibling commands address a node with --node, so requiring --group on
+    these two alone is a naming inconsistency rather than a distinction. Both
+    spellings target the same value; exactly one must be supplied, and supplying
+    both is accepted only when they agree.
+    """
+    parser.add_argument("--group", dest="group", default="")
+    parser.add_argument("--node", dest="group_node", default="")
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the exact parser used by both runtime command adapters."""
     from . import application
@@ -119,7 +131,9 @@ def build_parser() -> argparse.ArgumentParser:
     complete.add_argument("--artifact", action="append", default=[])
     complete.add_argument("--validation", default="")
     complete.add_argument("--set", action="append", default=[])
+    complete.add_argument("--set-file", action="append", default=[])
     complete.add_argument("--check-result-json", action="append", default=[])
+    complete.add_argument("--check-result-file", action="append", default=[])
     complete.add_argument("--gate-outcome", default="")
     complete.add_argument("--decision", default="")
     complete.set_defaults(func=application.cmd_complete)
@@ -160,7 +174,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     set_cmd = sub.add_parser("set", help="Set cross-node blackboard values.")
     add_mutation_tree_argument(set_cmd)
-    set_cmd.add_argument("--set", action="append", required=True)
+    set_cmd.add_argument("--set", action="append", default=[])
+    set_cmd.add_argument("--set-file", action="append", default=[])
     set_cmd.set_defaults(func=application.cmd_set)
 
     add_node = sub.add_parser(
@@ -194,6 +209,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_node.add_argument("--deliverables", default="")
     add_node.add_argument("--acceptance", default="")
     add_node.add_argument("--metadata", action="append", default=[])
+    add_node.add_argument("--metadata-file", action="append", default=[])
     add_node.add_argument("--before", default="")
     add_node.set_defaults(func=application.cmd_add_node)
 
@@ -212,7 +228,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Close a dynamic group so no further nodes may be appended.",
     )
     add_mutation_tree_argument(close_group)
-    close_group.add_argument("--group", required=True)
+    add_group_arguments(close_group)
     close_group.set_defaults(func=application.cmd_close_group)
 
     reopen_group = sub.add_parser(
@@ -220,7 +236,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Reopen a closed dynamic group for explicitly approved recovery.",
     )
     add_mutation_tree_argument(reopen_group)
-    reopen_group.add_argument("--group", required=True)
+    add_group_arguments(reopen_group)
     reopen_group.add_argument("--reason", required=True)
     reopen_group.set_defaults(func=application.cmd_reopen_group)
 

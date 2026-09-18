@@ -149,7 +149,13 @@ class PackageViewerTests(unittest.TestCase):
             return_value=readiness,
         ), mock.patch("builtins.print"):
             self.assertEqual(server.launch_background(args), 0)
-        self.assertEqual(popen.call_args.kwargs["cwd"], tempfile.gettempdir())
+        launched_cwd = Path(popen.call_args.kwargs["cwd"])
+        self.assertEqual(launched_cwd.name[:16], "xc-viewer-ready-")
+        self.assertNotEqual(launched_cwd, Path(tempfile.gettempdir()))
+        self.assertIsNot(
+            popen.call_args.kwargs["stderr"],
+            server.subprocess.DEVNULL,
+        )
         launched_command = popen.call_args.args[0]
         self.assertTrue(
             Path(launched_command[launched_command.index("--tree") + 1]).is_absolute()
@@ -256,6 +262,65 @@ class PackageViewerTests(unittest.TestCase):
                 )
             finally:
                 self.stop_process(int(payload["pid"]))
+
+
+    def test_failed_child_startup_reports_its_captured_stderr(self) -> None:
+        """A detached child's stderr is the only diagnostic it can leave.
+
+        Discarding it turned a one-line import failure into a multi-run
+        investigation, because the reported exit code came from the parent's
+        own error handling and contradicted the source.
+        """
+        args = server.build_parser().parse_args(
+            ["--tree", "tree.xml", "--port", "0", "--no-browser"]
+        )
+
+        def fake_popen(command, **kwargs):
+            handle = kwargs["stderr"]
+            handle.write(b"ModuleNotFoundError: No module named 'grp'\n")
+            handle.flush()
+            process = mock.Mock(pid=4321, returncode=1)
+            process.poll.return_value = 1
+            return process
+
+        messages: list[str] = []
+        with mock.patch.object(
+            server.subprocess, "Popen", side_effect=fake_popen
+        ), mock.patch.object(
+            server, "read_readiness", return_value=None
+        ), mock.patch.object(
+            server, "stop_background_process"
+        ), mock.patch(
+            "builtins.print",
+            side_effect=lambda *parts, **_: messages.append(" ".join(str(p) for p in parts)),
+        ):
+            self.assertEqual(server.launch_background(args), 2)
+
+        joined = "\n".join(messages)
+        self.assertIn("exited before startup", joined)
+        self.assertIn("ModuleNotFoundError", joined)
+
+    def test_launch_cleans_up_its_private_ready_directory(self) -> None:
+        args = server.build_parser().parse_args(
+            ["--tree", "tree.xml", "--port", "0", "--no-browser"]
+        )
+        captured: dict[str, Path] = {}
+
+        def fake_popen(command, **kwargs):
+            captured["cwd"] = Path(kwargs["cwd"])
+            process = mock.Mock(pid=99, returncode=None)
+            process.poll.return_value = None
+            return process
+
+        readiness = {"ok": True, "url": "http://127.0.0.1:1/", "trees": []}
+        with mock.patch.object(
+            server.subprocess, "Popen", side_effect=fake_popen
+        ), mock.patch.object(
+            server, "read_readiness", return_value=readiness
+        ), mock.patch("builtins.print"):
+            self.assertEqual(server.launch_background(args), 0)
+
+        self.assertFalse(captured["cwd"].exists())
 
 
 if __name__ == "__main__":

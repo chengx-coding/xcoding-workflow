@@ -196,6 +196,32 @@ class PackageCliTests(unittest.TestCase):
                 self.assertEqual(payload["command"], command)
         self.assertEqual(list(target.iterdir()), [])
 
+    def test_root_help_lists_commands_and_succeeds(self) -> None:
+        """Asking what the commands are is a request, not a usage error.
+
+        Without this the only command inventory lived in Skill prose, so a
+        caller had no way to discover a flag name from the tool itself.
+        """
+        for flag in ("--help", "-h", "help"):
+            with self.subTest(flag=flag):
+                result, payload = self.run_cli(flag)
+                self.assertEqual(result.returncode, 0)
+                self.assertIs(payload["ok"], True)
+                self.assertEqual(payload["command"], "help")
+                listed = {entry["command"] for entry in payload["result"]["commands"]}
+                self.assertLessEqual(
+                    {"version", "doctor", "setup", "runtime", "viewer"},
+                    listed,
+                )
+
+    def test_no_arguments_remains_an_error_that_names_help(self) -> None:
+        result, payload = self.run_cli()
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIs(payload["ok"], False)
+        self.assertEqual(payload["error"]["code"], "invalid_arguments")
+        self.assertIn("--help", payload["error"]["message"])
+
     def test_version_reports_stable_distribution_identity(self) -> None:
         result, payload = self.run_cli("version", "--json")
 

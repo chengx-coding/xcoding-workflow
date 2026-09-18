@@ -2242,6 +2242,181 @@ class OrchestrationRuntimeCliTests(unittest.TestCase):
                 ["finish"],
             )
 
+    def test_group_commands_accept_node_as_an_alias_for_group(self) -> None:
+        """Nine sibling commands spell this --node; these two spelled it --group.
+
+        The inconsistency cost real time because a usage error on the wrong
+        spelling is written to stderr, so a caller filtering stdout for success
+        keys believes the group closed when it did not.
+        """
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8"
+            )
+            config = core.load_config(context)
+            template = project / "alias.xml"
+            self.write_dynamic_group_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "alias" / "runtime"),
+                "--work-order-id",
+                "alias",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            waiting = self.run_cli("next", "--tree", str(tree_path), cwd=project)
+            group_id = str(waiting["awaiting_dynamic_groups"][0]["id"])
+
+            missing = self.run_cli_error("close-group", "--tree", str(tree_path), cwd=project)
+            self.assertIn("--group or --node", str(missing["error"]["message"]))
+
+            conflicting = self.run_cli_error(
+                "close-group",
+                "--tree",
+                str(tree_path),
+                "--group",
+                group_id,
+                "--node",
+                "rt_other",
+                cwd=project,
+            )
+            self.assertIn("different nodes", str(conflicting["error"]["message"]))
+
+            closed = self.run_cli(
+                "close-group", "--tree", str(tree_path), "--node", group_id, cwd=project
+            )
+            self.assertEqual(str(closed["group"]["id"]), group_id)
+            self.assertEqual(str(closed["group"]["attributes"]["dynamic.state"]), "closed")
+
+            reopened = self.run_cli(
+                "reopen-group",
+                "--tree",
+                str(tree_path),
+                "--node",
+                group_id,
+                "--reason",
+                "alias coverage",
+                cwd=project,
+            )
+            self.assertEqual(str(reopened["group"]["attributes"]["dynamic.state"]), "open")
+
+    def test_file_based_parameters_preserve_json_values_verbatim(self) -> None:
+        """A shell that strips quotes corrupts an inline JSON argument silently.
+
+        The damaging shape is a `set` that succeeds with a corrupted value and
+        only fails later at the consuming gate, so the diagnosis starts far from
+        the cause. A file path carries no quoting rules at all.
+        """
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8"
+            )
+            config = core.load_config(context)
+            template = project / "files.xml"
+            self.write_dynamic_group_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "files" / "runtime"),
+                "--work-order-id",
+                "files",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+
+            source_list = '["rt_files__dyn-1__write", "rt_files__dyn-2__review"]'
+            assignments = project / "assignments.txt"
+            # Written with a BOM on purpose: PowerShell 5.1 writes one by
+            # default, and a strict UTF-8 reader would reject the file with the
+            # same opaque error the inline form produced.
+            assignments.write_bytes(
+                "\ufeff".encode("utf-8")
+                + f"work_order.solution_source_ids={source_list}\n\nwork.flag=true\n".encode("utf-8")
+            )
+            applied = self.run_cli(
+                "set", "--tree", str(tree_path), "--set-file", str(assignments), cwd=project
+            )
+            blackboard = applied["blackboard"]
+            self.assertEqual(blackboard["work_order.solution_source_ids"], source_list)
+            self.assertEqual(blackboard["work.flag"], "true")
+
+            combined = self.run_cli(
+                "set",
+                "--tree",
+                str(tree_path),
+                "--set",
+                "work.inline=1",
+                "--set-file",
+                str(assignments),
+                cwd=project,
+            )
+            self.assertEqual(combined["blackboard"]["work.inline"], "1")
+            self.assertEqual(
+                combined["blackboard"]["work_order.solution_source_ids"], source_list
+            )
+
+            empty = self.run_cli_error("set", "--tree", str(tree_path), cwd=project)
+            self.assertIn("--set or --set-file", str(empty["error"]["message"]))
+
+            missing = self.run_cli_error(
+                "set",
+                "--tree",
+                str(tree_path),
+                "--set-file",
+                str(project / "absent.txt"),
+                cwd=project,
+            )
+            self.assertIn("could not read", str(missing["error"]["message"]))
+
+            group_id = str(
+                self.run_cli("next", "--tree", str(tree_path), cwd=project)[
+                    "awaiting_dynamic_groups"
+                ][0]["id"]
+            )
+            metadata = project / "metadata.txt"
+            metadata.write_text(
+                "metadata.artifact.audience=user\n"
+                "metadata.artifact.content_language=zh-CN\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            added = self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                group_id,
+                "--logical-key",
+                "from-file",
+                "--title",
+                "From file",
+                "--executor",
+                "main",
+                "--metadata-file",
+                str(metadata),
+                cwd=project,
+            )
+            attributes = added["node"]["attributes"]
+            self.assertEqual(attributes["metadata.artifact.audience"], "user")
+            self.assertEqual(attributes["metadata.artifact.content_language"], "zh-CN")
+
     def test_closed_dynamic_group_can_reopen_and_insert_approved_recovery_work(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             project = Path(temporary) / "project"

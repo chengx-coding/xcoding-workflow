@@ -491,6 +491,81 @@ def load_config(tree_path: Optional[Path] = None, config_path: Optional[Path] = 
     return config
 
 
+def read_parameter_file(path: str, option: str) -> str:
+    """Read a parameter file supplied through an --*-file option.
+
+    Files are decoded as UTF-8 and a byte-order mark is tolerated, because a
+    shell that writes UTF-8 with a BOM is common on Windows and the BOM would
+    otherwise reach a JSON or key=value parser as leading garbage.
+    """
+    try:
+        data = Path(path).read_bytes()
+    except OSError as error:
+        raise RuntimeErrorBase(
+            f"{option} could not read the supplied file",
+            {"path": path, "reason": error.strerror or type(error).__name__},
+        ) from error
+    try:
+        return data.decode("utf-8-sig")
+    except UnicodeDecodeError as error:
+        raise RuntimeErrorBase(
+            f"{option} expects a UTF-8 encoded file",
+            {"path": path, "reason": str(error)},
+        ) from error
+
+
+def read_assignment_files(paths: Optional[Sequence[str]], option: str) -> List[str]:
+    """Read key=value assignment entries from the supplied files.
+
+    One entry per line; blank lines are skipped so a trailing newline is not an
+    entry. Each line is otherwise preserved verbatim, because an assignment's
+    value may itself be JSON whose quotes and brackets must survive intact.
+    """
+    entries: List[str] = []
+    for path in paths or []:
+        for line in read_parameter_file(path, option).splitlines():
+            if line.strip():
+                entries.append(line)
+    return entries
+
+
+def read_json_files(paths: Optional[Sequence[str]], option: str) -> List[str]:
+    """Read one complete JSON document from each supplied file."""
+    documents: List[str] = []
+    for path in paths or []:
+        content = read_parameter_file(path, option).strip()
+        if not content:
+            raise RuntimeErrorBase(
+                f"{option} expects a non-empty JSON document",
+                {"path": path},
+            )
+        documents.append(content)
+    return documents
+
+
+def resolve_group_argument(group: str, node: str) -> str:
+    """Return the dynamic group id from whichever spelling the caller used.
+
+    `close-group` and `reopen-group` accept both `--group` and `--node`, because
+    nine sibling commands address a node with `--node` and requiring a different
+    spelling on these two alone is an inconsistency rather than a distinction.
+    """
+    group = (group or "").strip()
+    node = (node or "").strip()
+    if group and node and group != node:
+        raise RuntimeErrorBase(
+            "--group and --node name different nodes",
+            {"group": group, "node": node},
+        )
+    resolved = group or node
+    if not resolved:
+        raise RuntimeErrorBase(
+            "a dynamic group is required; pass --group or --node",
+            {},
+        )
+    return resolved
+
+
 def parse_set_values(values: Optional[Sequence[str]]) -> List[Tuple[str, str]]:
     result: List[Tuple[str, str]] = []
     for item in values or []:

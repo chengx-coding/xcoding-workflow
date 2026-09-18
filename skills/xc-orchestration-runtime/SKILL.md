@@ -81,6 +81,19 @@ transport switch.
 
 `--artifact` is optional and repeatable on `complete`, `fail`, and `block`.
 
+Every parameter that carries JSON or `key=value` text has a file counterpart, because a
+shell that rewrites quoting corrupts the inline form: `complete` accepts `--set-file` and
+`--check-result-file`, `set` accepts `--set-file`, and `add-node` accepts `--metadata-file`.
+A `--set-file` or `--metadata-file` holds one `key=value` entry per line with blank lines
+skipped, and each value is preserved verbatim so an embedded JSON array survives intact; a
+`--check-result-file` holds one complete JSON receipt. All of them decode UTF-8 and tolerate
+a byte-order mark. The string and file forms may be combined and are concatenated in flag
+order. `set` requires at least one of `--set` or `--set-file`.
+
+`close-group` and `reopen-group` accept the target group as either `--group` or `--node`,
+because nine sibling commands spell the same idea `--node`. Exactly one must be supplied;
+passing both is accepted only when they name the same node.
+
 Additional commands are `fail`, `block`, `unblock`, `retry-failed`, `set`, `add-node`,
 `embed-subtree`, `close-group`, `reopen-group`, `reopen`, `summary`, `show`,
 `find`, `artifacts`, `control-packet`, `assignment-packet`, `snapshot`, `integrity-status`,

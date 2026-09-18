@@ -310,6 +310,12 @@ def cmd_start(args: argparse.Namespace) -> Dict[str, Any]:
 
 
 def cmd_complete(args: argparse.Namespace) -> Dict[str, Any]:
+    assignments = list(args.set) + core.read_assignment_files(
+        getattr(args, "set_file", []), "--set-file"
+    )
+    check_results = list(args.check_result_json) + core.read_json_files(
+        getattr(args, "check_result_file", []), "--check-result-file"
+    )
     with runtime_mutation(args, "complete") as (path, tree, config):
         node = core.complete_node(
             tree.getroot(),
@@ -317,8 +323,8 @@ def cmd_complete(args: argparse.Namespace) -> Dict[str, Any]:
             args.summary,
             args.artifact,
             args.validation,
-            core.parse_set_values(args.set),
-            args.check_result_json,
+            core.parse_set_values(assignments),
+            check_results,
             args.gate_outcome,
             args.decision,
         )
@@ -392,9 +398,17 @@ def cmd_retry_failed(args: argparse.Namespace) -> Dict[str, Any]:
 
 
 def cmd_set(args: argparse.Namespace) -> Dict[str, Any]:
+    assignments = list(args.set) + core.read_assignment_files(
+        getattr(args, "set_file", []), "--set-file"
+    )
+    if not assignments:
+        raise core.RuntimeErrorBase(
+            "set requires at least one assignment; pass --set or --set-file",
+            {},
+        )
     with runtime_mutation(args, "set") as (path, tree, config):
         root = tree.getroot()
-        for key, value in core.parse_set_values(args.set):
+        for key, value in core.parse_set_values(assignments):
             core.set_blackboard(root, key, value, "main")
         core.stabilize(root)
         return write_runtime(
@@ -408,6 +422,9 @@ def cmd_set(args: argparse.Namespace) -> Dict[str, Any]:
 
 
 def cmd_add_node(args: argparse.Namespace) -> Dict[str, Any]:
+    metadata_entries = list(args.metadata) + core.read_assignment_files(
+        getattr(args, "metadata_file", []), "--metadata-file"
+    )
     with runtime_mutation(args, "add-node") as (path, tree, config):
         node = core.create_dynamic_node(
             tree.getroot(),
@@ -424,7 +441,7 @@ def cmd_add_node(args: argparse.Namespace) -> Dict[str, Any]:
             args.inputs,
             args.deliverables,
             args.acceptance,
-            core.parse_metadata_values(args.metadata),
+            core.parse_metadata_values(metadata_entries),
             args.before,
         )
         core.stabilize(tree.getroot())
@@ -497,8 +514,11 @@ def cmd_archive_subtree(args: argparse.Namespace) -> Dict[str, Any]:
 
 
 def cmd_close_group(args: argparse.Namespace) -> Dict[str, Any]:
+    group_id = core.resolve_group_argument(
+        getattr(args, "group", ""), getattr(args, "group_node", "")
+    )
     with runtime_mutation(args, "close-group") as (path, tree, config):
-        group = core.close_dynamic_group(tree.getroot(), args.group)
+        group = core.close_dynamic_group(tree.getroot(), group_id)
         return write_runtime(
             tree,
             path,
@@ -513,8 +533,11 @@ def cmd_close_group(args: argparse.Namespace) -> Dict[str, Any]:
 
 
 def cmd_reopen_group(args: argparse.Namespace) -> Dict[str, Any]:
+    group_id = core.resolve_group_argument(
+        getattr(args, "group", ""), getattr(args, "group_node", "")
+    )
     with runtime_mutation(args, "reopen-group") as (path, tree, config):
-        group = core.reopen_dynamic_group(tree.getroot(), args.group, args.reason)
+        group = core.reopen_dynamic_group(tree.getroot(), group_id, args.reason)
         return write_runtime(
             tree,
             path,

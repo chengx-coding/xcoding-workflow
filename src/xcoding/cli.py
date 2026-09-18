@@ -56,9 +56,36 @@ class _JsonArgumentParser(argparse.ArgumentParser):
     def error(self, message: str) -> None:
         raise CliInputError(
             "invalid_arguments",
-            message,
+            f"{message}; run 'xcoding --help' for the command list",
             details={},
         )
+
+
+_COMMAND_HELP = (
+    ("version", "Report the installed distribution and bundle versions."),
+    ("bundle inspect", "Inspect the installed Skill bundle."),
+    ("doctor", "Report host readiness for an xcoding installation."),
+    ("setup", "Install or repair the Skill bundle for one or more hosts."),
+    ("runtime", "Manage managed orchestration runtime trees."),
+    ("viewer", "Serve the local read-only runtime tree viewer."),
+    ("daemon", "Serve the loopback read-only runtime query daemon."),
+    ("delegate", "Manage delegation profiles and overlays."),
+)
+
+
+def _help_payload() -> dict[str, Any]:
+    return {
+        "commands": [
+            {"command": name, "summary": summary}
+            for name, summary in _COMMAND_HELP
+        ],
+        "usage": "xcoding <command> [options]",
+        "detail": (
+            "Every command emits exactly one JSON envelope. Machine-readable "
+            "commands require an explicit --json option. Use "
+            "'xcoding <command> --help' for a command's own options."
+        ),
+    }
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -250,6 +277,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return delegation_commands.main(raw_arguments[1:])
     if raw_arguments[:1] == ["runtime"]:
         return _runtime_main(raw_arguments[1:])
+    # Root help is a successful result, not an error: asking what the commands
+    # are is a legitimate request. It stays inside the one-JSON-envelope
+    # contract rather than printing argparse's plain-text usage.
+    if raw_arguments and raw_arguments[0] in {"--help", "-h", "help"}:
+        _emit(_success("help", _help_payload()))
+        return EXIT_SUCCESS
     command = _command_name(raw_arguments)
     try:
         arguments = _build_parser().parse_args(raw_arguments)

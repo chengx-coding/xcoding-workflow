@@ -3,7 +3,7 @@
   "manifest_id": "model-robust-workflow-post-change-v1",
   "manifest_role": "current-post-change",
   "normalization_version": 2,
-  "python_version": "3.12.10",
+  "python_version": "3.14.7",
   "input_hashes": {
     "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
     "tests/workflow_scenario_harness.py": "3b91258dc832cafd00299068b59b0bc76942a6c77e4100b5fe09a8e6d5bc01cc",
@@ -13,13 +13,13 @@
     "skills/xc-open-work-order/scripts/open_work_order.py": "5afd6c67aaadb218833fc51d195bce3a3847c02afc659fb7d864ce7df9ffc0eb",
     "skills/xc-orchestration-runtime/scripts/orchestration.py": "83513c89ba9319e1c891c6c7757d5f864028aefca2bce696d75620cf448d755c",
     "tests/runtime_cli.py": "31fbe397dbd34c63102eab28061d93b9fe47ad7770e4c6fa1fc2a10234701f43",
-    "src/xcoding/runtime/application.py": "e50eff3b2060e7cd60863ea8f09c00e76f79dea5fe202b7be8e9d4375af618b3",
-    "src/xcoding/runtime/commands.py": "1c7b613490b491513640694ab932b9d68cd33bc2ca83ad7de049503620f4876b",
+    "src/xcoding/runtime/application.py": "49f3865b9a3385efddd10018c5cf7c1306c68e78c999343e74a0a18f76ed3616",
+    "src/xcoding/runtime/commands.py": "2eb0ef2851054eba47a7a1777e733500c5b08a30e3a7acd62e9b0d39dce84b3e",
     "src/xcoding/runtime/__init__.py": "7cf28a6aa3e7fff6be3728b58ebd276e724a56ed2767d5b35f5fca512ec0286a",
-    "src/xcoding/runtime/core.py": "2e8216b52dea5a36b1e4798807a9da04f2130d93b4b58bea4d706f38a05e2afb",
+    "src/xcoding/runtime/core.py": "bfe79718c4e8b556f319a9ebc111b5a6dc1d5c50f881f5a0606bcd775fa60f86",
     "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
     "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
-    "src/xcoding/cli.py": "91d278988884fb90fa37cce3cf8d57cd7a3ff7f595b0cd23b281bf3f7954ce40",
+    "src/xcoding/cli.py": "3452cef240d4f8a1bf7567ac1a8cf269faf79606feb88eec3168d6107dcfd4c8",
     "skills/xc-work/assets/work-order-template.xml": "74259865fbbecf8b882ef7a8a4cff6684e0d1e791837bace11eb57870785a1d9",
     "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
     "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
@@ -30,7 +30,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "266cbefc4e032ee1d2c7fad432babd804f3fd95a",
+  "recording_base_commit": "6beca52a7a65ae87c5c404b2df0f5dab87a96eae",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -479,21 +479,21 @@
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
         "current_value": 110565,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 45812
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 5
       },
       {
@@ -504,27 +504,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field."
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
         "current_value": 111229,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 45812
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 5
       },
       {
@@ -535,27 +535,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field."
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
         "current_value": 140598,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 50052
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 4
       },
       {
@@ -566,27 +566,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field."
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
         "current_value": 141511,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 50052
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 4
       },
       {
@@ -597,27 +597,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field."
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
         "current_value": 206970,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 66832
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 6
       },
       {
@@ -628,27 +628,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field."
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
         "current_value": 208381,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 66832
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 6
       },
       {
@@ -659,27 +659,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field."
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
         "current_value": 235141,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 70247
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 6
       },
       {
@@ -690,27 +690,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field."
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
         "current_value": 236801,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 70247
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
         "numeric_delta": 6
       },
       {
@@ -721,12 +721,12 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field."
+        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
       }
     ]
   },
   "change_note": {
-    "reason": "Re-record after three inputs changed since ac583c3, after normalization v2 folds host path separators so context_bytes stops counting the separator convention, and after python_version became provenance rather than a compared identity field.",
+    "reason": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1566,13 +1566,13 @@
       "skills/xc-open-work-order/scripts/open_work_order.py": "5afd6c67aaadb218833fc51d195bce3a3847c02afc659fb7d864ce7df9ffc0eb",
       "skills/xc-orchestration-runtime/scripts/orchestration.py": "83513c89ba9319e1c891c6c7757d5f864028aefca2bce696d75620cf448d755c",
       "tests/runtime_cli.py": "31fbe397dbd34c63102eab28061d93b9fe47ad7770e4c6fa1fc2a10234701f43",
-      "src/xcoding/runtime/application.py": "e50eff3b2060e7cd60863ea8f09c00e76f79dea5fe202b7be8e9d4375af618b3",
-      "src/xcoding/runtime/commands.py": "1c7b613490b491513640694ab932b9d68cd33bc2ca83ad7de049503620f4876b",
+      "src/xcoding/runtime/application.py": "49f3865b9a3385efddd10018c5cf7c1306c68e78c999343e74a0a18f76ed3616",
+      "src/xcoding/runtime/commands.py": "2eb0ef2851054eba47a7a1777e733500c5b08a30e3a7acd62e9b0d39dce84b3e",
       "src/xcoding/runtime/__init__.py": "7cf28a6aa3e7fff6be3728b58ebd276e724a56ed2767d5b35f5fca512ec0286a",
-      "src/xcoding/runtime/core.py": "2e8216b52dea5a36b1e4798807a9da04f2130d93b4b58bea4d706f38a05e2afb",
+      "src/xcoding/runtime/core.py": "bfe79718c4e8b556f319a9ebc111b5a6dc1d5c50f881f5a0606bcd775fa60f86",
       "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
       "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
-      "src/xcoding/cli.py": "91d278988884fb90fa37cce3cf8d57cd7a3ff7f595b0cd23b281bf3f7954ce40",
+      "src/xcoding/cli.py": "3452cef240d4f8a1bf7567ac1a8cf269faf79606feb88eec3168d6107dcfd4c8",
       "skills/xc-work/assets/work-order-template.xml": "74259865fbbecf8b882ef7a8a4cff6684e0d1e791837bace11eb57870785a1d9",
       "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
       "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
