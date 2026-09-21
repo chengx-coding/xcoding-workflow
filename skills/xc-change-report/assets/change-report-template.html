@@ -18,6 +18,7 @@
 <header class="report-header">
 <h1>{{REPORT_TITLE}}</h1>
 <p class="report-subtitle">{{REPORT_SUBTITLE}}</p>
+<div class="report-meta-badges">{{META_BADGES}}</div>
 </header>
 <div class="report-layout">
 <nav class="report-toc" aria-label="Report contents">
@@ -25,40 +26,45 @@
 </nav>
 <main class="report-main">
 <section class="report-section" id="section-overview">
-<h2>1. {{SECTION_OVERVIEW_TITLE}}</h2>
+<h2>{{SECTION_OVERVIEW_TITLE}}</h2>
 {{OVERVIEW}}
 </section>
+<section class="report-section" id="section-purposes">
+<h2>{{SECTION_PURPOSES_TITLE}}</h2>
+{{PURPOSES}}
+</section>
 <section class="report-section" id="section-change-map">
-<h2>2. {{SECTION_CHANGE_MAP_TITLE}}</h2>
+<h2>{{SECTION_CHANGE_MAP_TITLE}}</h2>
 {{CHANGE_MAP}}
 {{EXCLUSION_TABLE}}
 </section>
 <section class="report-section" id="section-process-position">
-<h2>3. {{SECTION_PROCESS_POSITION_TITLE}}</h2>
+<h2>{{SECTION_PROCESS_POSITION_TITLE}}</h2>
 {{PROCESS_POSITION}}
 </section>
 <section class="report-section" id="section-units">
-<h2>4. {{SECTION_UNITS_TITLE}}</h2>
+<h2>{{SECTION_UNITS_TITLE}}</h2>
+<div id="unit-quick-index" class="report-quick-index">{{QUICK_INDEX}}</div>
 {{UNITS}}
 </section>
 <section class="report-section" id="section-related-code">
-<h2>5. {{SECTION_RELATED_CODE_TITLE}}</h2>
+<h2>{{SECTION_RELATED_CODE_TITLE}}</h2>
 {{RELATED_CODE}}
 </section>
 <section class="report-section" id="section-diagrams">
-<h2>6. {{SECTION_DIAGRAMS_TITLE}}</h2>
+<h2>{{SECTION_DIAGRAMS_TITLE}}</h2>
 {{DIAGRAMS}}
 </section>
 <section class="report-section" id="section-verification">
-<h2>7. {{SECTION_VERIFICATION_TITLE}}</h2>
+<h2>{{SECTION_VERIFICATION_TITLE}}</h2>
 {{VERIFICATION}}
 </section>
 <section class="report-section" id="section-glossary">
-<h2>8. {{SECTION_GLOSSARY_TITLE}}</h2>
+<h2>{{SECTION_GLOSSARY_TITLE}}</h2>
 {{GLOSSARY}}
 </section>
 <section class="report-section" id="section-report-info">
-<h2>9. {{SECTION_REPORT_INFO_TITLE}}</h2>
+<h2>{{SECTION_REPORT_INFO_TITLE}}</h2>
 {{REPORT_INFO}}
 </section>
 </main>

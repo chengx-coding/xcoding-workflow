@@ -30,6 +30,9 @@ from build_manifest import (  # noqa: E402
     CODE_BLOCK_CLASS,
     CODE_CONTEXT_CLASS,
     FIELD_NAMES,
+    MIN_PURPOSE_CHARS,
+    PURPOSE_COLOR_CYCLE,
+    RELATION_TYPES,
     SCHEMA_VERSION,
     SECTION_IDS,
     STRENGTHS,
@@ -60,6 +63,7 @@ _TMP_DIR: Path | None = None
 
 DEFAULT_SECTION_TITLES = {
     "overview": "Overview",
+    "purposes": "Purposes and themes",
     "change-map": "Change map",
     "process-position": "Position in the wider flow",
     "units": "Unit-by-unit analysis",
@@ -92,7 +96,11 @@ PLACEHOLDERS = (
     "STYLE",
     "TOC",
     "SECTION_OVERVIEW_TITLE",
+    "SECTION_PURPOSES_TITLE",
     "SECTION_CHANGE_MAP_TITLE",
+    "META_BADGES",
+    "PURPOSES",
+    "QUICK_INDEX",
     "SECTION_PROCESS_POSITION_TITLE",
     "SECTION_UNITS_TITLE",
     "SECTION_RELATED_CODE_TITLE",
@@ -308,17 +316,131 @@ def _old_line_text(repo: Path, manifest: dict[str, Any], entry: dict[str, Any], 
     return lines[index] if 0 <= index < len(lines) else ""
 
 
-def render_change_map(repo: Path, manifest: dict[str, Any]) -> str:
+
+def _purpose_map(analysis: dict[str, Any]) -> dict[int, dict[str, str]]:
+    """Map a unit index to its declared purpose {id, title} (A16). Optional and analysis-layer."""
+    units = analysis.get("units", {}) if isinstance(analysis.get("units"), dict) else {}
+    out: dict[int, dict[str, str]] = {}
+    for raw_index, spec in units.items():
+        if not isinstance(spec, dict):
+            continue
+        purpose = spec.get("purpose")
+        if isinstance(purpose, dict) and str(purpose.get("id", "")).strip():
+            out[int(raw_index)] = {
+                "id": str(purpose["id"]).strip(),
+                "title": str(purpose.get("title", purpose["id"])),
+            }
+    return out
+
+
+def _purpose_color(purpose_id: str, purposes: list[dict[str, Any]]) -> str:
+    """Map a purpose id to a --purpose-N CSS variable, cycling at PURPOSE_COLOR_CYCLE."""
+    order = [str(p.get("id", "")) for p in purposes if isinstance(p, dict)]
+    try:
+        position = order.index(purpose_id)
+    except ValueError:
+        position = 0
+    n = (position % PURPOSE_COLOR_CYCLE) + 1
+    return f"var(--purpose-{n})"
+
+
+def _purpose_list(analysis: dict[str, Any]) -> list[dict[str, Any]]:
+    purposes = analysis.get("purposes", [])
+    return [p for p in purposes if isinstance(p, dict)] if isinstance(purposes, list) else []
+
+
+def render_meta_badges(manifest: dict[str, Any], analysis: dict[str, Any], generated_at: str) -> str:
+    badges = [
+        ("strength", str(manifest["strength"]["selected"])),
+        ("language", str(analysis.get("language", "en"))),
+        ("generated", str(generated_at)),
+        ("units", str(manifest["units_total"])),
+    ]
+    return "".join(
+        f'<span class="report-badge"><span class="report-badge-key">{escape(key)}:</span> '
+        f"{escape(value)}</span>"
+        for key, value in badges
+    )
+
+
+def render_purposes(manifest: dict[str, Any], analysis: dict[str, Any]) -> str:
+    purposes = _purpose_list(analysis)
+    if not purposes:
+        return '<p class="report-muted">No macro purposes are declared for this change.</p>'
+    index_to_path: dict[int, str] = {}
+    for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"])):
+        for hunk in entry["hunks"]:
+            if not hunk.get("excluded"):
+                index_to_path[int(hunk["unit_index"])] = entry["path"]
+    diagrams = analysis.get("diagrams", []) if isinstance(analysis.get("diagrams"), list) else []
+    has_purpose_diagram = any(
+        isinstance(d, dict) and d.get("id") == "diagram-purpose-map" for d in diagrams
+    )
+    diagram_link = (
+        '<a class="report-purpose-link" href="#diagram-purpose-map">view traceability diagram &rarr;</a>'
+        if has_purpose_diagram
+        else ""
+    )
+    cards: list[str] = []
+    for purpose in purposes:
+        pid = str(purpose.get("id", "")).strip()
+        refs = purpose.get("unit_refs", []) or []
+        ref_items = "".join(
+            f'<li><a href="#unit-{int(ref)}">#unit-{int(ref)} '
+            f"{escape(index_to_path.get(int(ref), '?'))}</a></li>"
+            for ref in refs
+            if str(ref).strip().lstrip("-").isdigit()
+        )
+        cards.append(
+            f'<article class="report-purpose-card" id="purpose-{escape(pid)}">'
+            f"<h3>{escape(str(purpose.get('title', pid)))}</h3>"
+            f'<div class="report-purpose-theme">{escape(str(purpose.get("theme", "")))}</div>'
+            f'<p class="report-purpose-narrative">{escape(str(purpose.get("narrative", "")))}</p>'
+            f"<ul>{ref_items}</ul>"
+            f"{diagram_link}"
+            f"</article>"
+        )
+    return f'<div class="report-purpose-grid">{"".join(cards)}</div>'
+
+
+def render_quick_index(analysis: dict[str, Any]) -> str:
+    purposes = _purpose_list(analysis)
+    if not purposes:
+        return '<span class="report-quick-index-label">Quick index:</span>'
+    badges = "".join(
+        f'<a class="report-purpose-badge" href="#purpose-{escape(str(p.get("id", "")))}">'
+        f"{escape(str(p.get('title', p.get('id', ''))))}</a>"
+        for p in purposes
+    )
+    return f'<span class="report-quick-index-label">Purposes:</span>{badges}'
+
+
+def render_change_map(repo: Path, manifest: dict[str, Any], analysis: dict[str, Any]) -> str:
+    pmap = _purpose_map(analysis)
+    purposes = _purpose_list(analysis)
     rows: list[str] = []
     for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"])):
         for hunk in entry["hunks"]:
             if hunk["excluded"]:
                 continue
             location = _code_location(hunk)
+            purp = pmap.get(int(hunk["unit_index"]))
+            if purp:
+                color = _purpose_color(purp["id"], purposes)
+                purpose_cell = (
+                    f'<span class="report-purpose-tag" data-purpose="{escape(purp["id"])}" '
+                    f'style="color:{color}">{escape(purp["title"])}</span>'
+                )
+                row_purpose = purp["id"]
+            else:
+                purpose_cell = '<span class="report-muted">&mdash;</span>'
+                row_purpose = ""
             rows.append(
-                f'<tr data-unit="{hunk["unit_index"]}">'
+                f'<tr data-unit="{hunk["unit_index"]}" data-purpose="{escape(row_purpose)}">'
                 f"<td><code>{escape(entry['path'])}</code></td>"
-                f"<td>{escape(entry['change_kind'])}</td>"
+                f'<td><span class="report-change-kind report-change-kind-{escape(entry["change_kind"])}">'
+                f"{escape(entry['change_kind'])}</span></td>"
+                f"<td>{purpose_cell}</td>"
                 f'<td><a href="#unit-{hunk["unit_index"]}">{hunk["unit_index"]}</a></td>'
                 f"<td><code>{escape(hunk['content_sha256'][:12])}</code></td>"
                 f"<td><code>{escape(location)}</code></td>"
@@ -327,7 +449,7 @@ def render_change_map(repo: Path, manifest: dict[str, Any]) -> str:
             )
     return (
         '<table id="change-map" class="report-change-map"><thead><tr>'
-        "<th>Path</th><th>Change</th><th>Unit</th><th>Content hash</th>"
+        "<th>Path</th><th>Change</th><th>Purpose</th><th>Unit</th><th>Content hash</th>"
         "<th>Code location</th><th>Analysis</th>"
         "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
     )
@@ -378,22 +500,60 @@ def render_exclusion_table(manifest: dict[str, Any]) -> str:
     )
 
 
-def render_toc(manifest: dict[str, Any], titles: dict[str, str]) -> str:
+def render_toc(manifest: dict[str, Any], titles: dict[str, str], analysis: dict[str, Any]) -> str:
+    pmap = _purpose_map(analysis)
+    purposes = _purpose_list(analysis)
+    purpose_order = [str(p.get("id", "")) for p in purposes]
+    purpose_title = {
+        str(p.get("id", "")): str(p.get("title", p.get("id", ""))) for p in purposes
+    }
     parts: list[str] = []
-    for index, section_id in enumerate(SECTION_IDS, start=1):
+    for section_id in SECTION_IDS:
         key = section_id.replace("section-", "")
-        label = f"{index}. {escape(titles.get(key, DEFAULT_SECTION_TITLES.get(key, key)))}"
-        if key == "units":
+        label = escape(titles.get(key, DEFAULT_SECTION_TITLES.get(key, key)))
+        if key == "purposes":
             items = "".join(
-                f'<li><a href="#unit-{hunk["unit_index"]}">#{hunk["unit_index"]} '
-                f"{escape(entry['path'])} ({escape(_code_location(hunk))})</a></li>"
-                for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"]))
-                for hunk in entry["hunks"]
-                if not hunk["excluded"]
+                f'<li class="report-toc-unit"><a href="#purpose-{escape(pid)}">'
+                f"{escape(purpose_title.get(pid, pid))}</a></li>"
+                for pid in purpose_order
             )
             parts.append(
                 f'<details open><summary><a href="#{section_id}">{label}</a></summary>'
                 f"<ul>{items}</ul></details>"
+            )
+            continue
+        if key == "units":
+            ordered = [
+                (int(hunk["unit_index"]), entry["path"])
+                for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"]))
+                for hunk in entry["hunks"]
+                if not hunk["excluded"]
+            ]
+            ordered.sort(key=lambda item: item[0])
+            groups: dict[str, list[tuple[int, str]]] = {pid: [] for pid in purpose_order}
+            others: list[tuple[int, str]] = []
+            for uid, path in ordered:
+                purp = pmap.get(uid)
+                if purp and purp["id"] in groups:
+                    groups[purp["id"]].append((uid, path))
+                else:
+                    others.append((uid, path))
+            items_html: list[str] = []
+            for pid in purpose_order:
+                items_html.append(f'<li class="report-toc-group">&#9632; {escape(purpose_title.get(pid, pid))}</li>')
+                items_html.extend(
+                    f'<li class="report-toc-unit"><a href="#unit-{uid}">#{uid} {escape(path)}</a></li>'
+                    for uid, path in groups[pid]
+                )
+            if others:
+                items_html.append('<li class="report-toc-group">&#9632; Other</li>')
+                items_html.extend(
+                    f'<li class="report-toc-unit"><a href="#unit-{uid}">#{uid} {escape(path)}</a></li>'
+                    for uid, path in others
+                )
+            parts.append(
+                f'<details open><summary><a href="#{section_id}">{label}</a></summary>'
+                f"<ul>{''.join(items_html)}</ul></details>"
             )
             continue
         parts.append(f'<details open><summary><a href="#{section_id}">{label}</a></summary></details>')
@@ -404,6 +564,13 @@ def render_units(
     repo: Path, manifest: dict[str, Any], analysis: dict[str, Any]
 ) -> str:
     units = analysis.get("units", {}) if isinstance(analysis.get("units"), dict) else {}
+    pmap = _purpose_map(analysis)
+    purposes = _purpose_list(analysis)
+    purpose_units: dict[str, list[int]] = {}
+    for uid, purp in pmap.items():
+        purpose_units.setdefault(purp["id"], []).append(int(uid))
+    for gid in purpose_units:
+        purpose_units[gid].sort()
     ordered: list[tuple[dict[str, Any], dict[str, Any]]] = []
     for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"])):
         for hunk in entry["hunks"]:
@@ -416,21 +583,45 @@ def render_units(
     for position, (entry, hunk) in enumerate(ordered):
         unit_index = hunk["unit_index"]
         spec = units.get(str(unit_index), {}) if isinstance(units, dict) else {}
+        if not isinstance(spec, dict):
+            spec = {}
         covers = spec.get("covers") or [f"#unit-{unit_index}"]
         covers_attr = ",".join(str(item) for item in covers)
+        purp = pmap.get(int(unit_index))
+        data_purpose = purp["id"] if purp else ""
         parts.append(
             f'<article class="report-unit" id="unit-{unit_index}" data-unit="{unit_index}" '
-            f'data-covers="{escape(covers_attr)}">'
+            f'data-purpose="{escape(data_purpose)}" data-covers="{escape(covers_attr)}">'
         )
         if entry["path"] not in anchored_paths:
             anchored_paths.add(entry["path"])
             parts.append(
                 f'<span class="report-file-anchor" id="file-{escape(file_slug(entry["path"]))}"></span>'
             )
+        kind = str(entry["change_kind"])
         parts.append(
-            f'<h3>Unit {unit_index}: <code>{escape(entry["path"])}</code> '
-            f'({escape(entry["change_kind"])})</h3>'
+            f'<header class="report-unit-head">'
+            f'<h3>Unit {unit_index}: <code>{escape(entry["path"])}</code></h3>'
+            f'<span class="report-change-kind report-change-kind-{escape(kind)}">{escape(kind)}</span>'
         )
+        if purp:
+            color = _purpose_color(purp["id"], purposes)
+            parts.append(
+                f'<span class="report-purpose-tag" data-purpose="{escape(purp["id"])}" '
+                f'style="color:{color}">{escape(purp["title"])}</span>'
+            )
+        parts.append("</header>")
+        crumb_purpose = purp["title"] if purp else "Other"
+        parts.append(
+            f'<p class="report-breadcrumb"><a href="#section-units">Change units</a> / '
+            f"{escape(crumb_purpose)} / "
+            f'<a class="{ANCHOR_CLASS}" href="#unit-{unit_index}">#unit-{unit_index}</a></p>'
+        )
+        if purp:
+            parts.append(
+                f'<p><a class="report-back-to-purpose" href="#purpose-{escape(purp["id"])}">'
+                f"&uarr; back to purpose: {escape(purp['title'])}</a></p>"
+            )
         parts.append(
             f'<p class="report-unit-meta"><a class="{ANCHOR_CLASS}" href="#unit-{unit_index}">'
             f"#unit-{unit_index}</a> &middot; code location "
@@ -465,11 +656,36 @@ def render_units(
             parts.append(f'<p class="report-note">{escape(str(spec["note"]))}</p>')
         parts.append(render_unit_block(repo, manifest, entry, hunk))
         fields = spec.get("fields", {}) if isinstance(spec.get("fields"), dict) else {}
+        what_text = str(fields.get("what", "")).strip()
+        if what_text:
+            first_sentence = re.split(r"(?<=[.!?])\s+", what_text, maxsplit=1)[0]
+            parts.append(f'<p class="report-unit-summary">{escape(first_sentence)}</p>')
         for field in FIELD_NAMES:
             value = str(fields.get(field, "")).strip()
             parts.append(
                 f'<div class="report-unit-field" data-field="{field}">'
                 f"<h4>{escape(FIELD_LABELS[field])}</h4>{paragraph(value)}</div>"
+            )
+        refs = spec.get("related_code_refs", [])
+        refs = refs if isinstance(refs, list) else []
+        for ref in refs:
+            if not isinstance(ref, dict):
+                continue
+            rpath = str(ref.get("path", ""))
+            rlines = str(ref.get("lines", ""))
+            rrel = str(ref.get("relation_type", ""))
+            rnote = str(ref.get("note", ""))
+            rcode = str(ref.get("code", ""))
+            rlang = detect_language(rpath)
+            parts.append(
+                f'<div class="report-unit-context">'
+                f"<p>{escape(rrel)}: <code>{escape(rpath)}:{escape(rlines)}</code> "
+                f"{escape(rnote)} "
+                f'<a class="{ANCHOR_CLASS}" href="#section-related-code">see related-code index</a></p>'
+                f'<pre class="{CODE_CONTEXT_CLASS}" data-path="{escape(rpath)}" '
+                f'data-lines="{escape(rlines)}" data-relation-type="{escape(rrel)}">'
+                f"<code>{highlight(rcode, rlang)}</code></pre>"
+                f"</div>"
             )
         previous_link = (
             f'<a href="#unit-{ordered[position - 1][1]["unit_index"]}">&larr; previous change</a>'
@@ -481,7 +697,18 @@ def render_units(
             if position + 1 < len(ordered)
             else "<span>next change: none</span>"
         )
-        parts.append(f'<nav class="report-unit-nav">{previous_link}{next_link}</nav>')
+        purpose_context = ""
+        if purp:
+            grp = purpose_units.get(purp["id"], [])
+            if int(unit_index) in grp:
+                pos = grp.index(int(unit_index)) + 1
+                purpose_context = (
+                    f'<span class="report-purpose-context"> '
+                    f"(unit {pos} of {len(grp)} in {escape(purp['title'])})</span>"
+                )
+        parts.append(
+            f'<nav class="report-unit-nav">{previous_link}{next_link}{purpose_context}</nav>'
+        )
         parts.append("</article>")
     return "".join(parts)
 
@@ -650,9 +877,11 @@ def build_report(
 
     titles = analysis.get("section_titles", {})
     titles = titles if isinstance(titles, dict) else {}
-    resolved_titles = {
-        key: str(titles.get(key, DEFAULT_SECTION_TITLES[key])) for key in DEFAULT_SECTION_TITLES
-    }
+    resolved_titles: dict[str, str] = {}
+    for display_index, section_id in enumerate(SECTION_IDS, start=1):
+        key = section_id.replace("section-", "")
+        custom = str(titles.get(key, DEFAULT_SECTION_TITLES.get(key, key)))
+        resolved_titles[key] = f"{display_index}. {custom}"
     rounds = analysis.get("rounds", [])
     if not isinstance(rounds, list) or not rounds:
         rounds = [
@@ -687,9 +916,12 @@ def build_report(
         "MANIFEST_SHA256": escape(sha256_hex(manifest_bytes)),
         "STRENGTH": escape(strength),
         "STYLE": css_text,
-        "TOC": render_toc(manifest, resolved_titles),
+        "META_BADGES": render_meta_badges(manifest, analysis, generated_at),
+        "TOC": render_toc(manifest, resolved_titles, analysis),
         "OVERVIEW": render_overview(analysis),
-        "CHANGE_MAP": render_change_map(repo, manifest),
+        "PURPOSES": render_purposes(manifest, analysis),
+        "CHANGE_MAP": render_change_map(repo, manifest, analysis),
+        "QUICK_INDEX": render_quick_index(analysis),
         "EXCLUSION_TABLE": render_exclusion_table(manifest),
         "PROCESS_POSITION": render_process_position(analysis),
         "UNITS": render_units(repo, manifest, analysis),

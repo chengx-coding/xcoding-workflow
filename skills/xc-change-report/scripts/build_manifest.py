@@ -62,6 +62,17 @@ PLACEHOLDER_TOKENS = (
 )
 SYMBOL_ONLY_RE = re.compile(r"^[^\w]+$", re.UNICODE)
 
+# Purpose-driven narrative layer (A16/A17). These are analysis-layer constants only: the
+# purpose/theme/related-code narrative never enters the manifest, which stays pure coverage
+# evidence (C6/V1/V16). A unit's `purpose` field is optional for backward compatibility with
+# analysis JSON written before this layer existed.
+MIN_PURPOSE_CHARS = 20
+# Closed enumeration for the relation of an embedded `report-code-context` block (A17/V20).
+RELATION_TYPES = ("caller", "callee", "data-structure", "contract")
+# Purpose tag colour cycle: a 1-based purpose index maps to the CSS `--purpose-N` variable.
+# At most six distinct purposes get a dedicated colour; beyond six the cycle repeats.
+PURPOSE_COLOR_CYCLE = 6
+
 # Unit-window constants (C31) and strength constants.
 MAX_ADDED_UNIT_LINES = 400
 ADDED_UNIT_BLOCK_LINES = 200
@@ -273,6 +284,7 @@ CODE_EXCLUSION_CLASSES = (
 
 SECTION_IDS = (
     "section-overview",
+    "section-purposes",
     "section-change-map",
     "section-process-position",
     "section-units",

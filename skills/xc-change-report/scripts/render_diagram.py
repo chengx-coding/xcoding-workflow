@@ -81,6 +81,7 @@ def _normalise_nodes(spec: dict[str, Any]) -> list[dict[str, Any]]:
                 "label": str(item.get("label", node_id)),
                 "layer": item.get("layer"),
                 "index": index,
+                "kind": str(item.get("kind", "")),
             }
         )
     return nodes
@@ -240,12 +241,22 @@ def _render_svg_page(
                 f"<title>{_escape(full)}</title>{_escape(label)}</text>"
             )
 
+    kind_by_id = {item["id"]: item.get("kind", "") for item in _normalise_nodes(spec)}
     for node in sorted(positions, key=lambda item: (positions[item][1], positions[item][0])):
         x, y = positions[node]
         label = next(item["label"] for item in _normalise_nodes(spec) if item["id"] == node)
         visible_label, full_label = truncate_label(label)
+        node_kind = kind_by_id.get(node, "")
+        if node_kind == "purpose":
+            node_class = "diagram-node diagram-node-purpose"
+        elif node_kind == "theme":
+            node_class = "diagram-node diagram-node-theme"
+        elif node_kind == "unit":
+            node_class = "diagram-node diagram-node-unit"
+        else:
+            node_class = "diagram-node"
         line_records.append(
-            f'<rect class="diagram-node" x="{x}" y="{y}" width="{SVG_NODE_WIDTH}" '
+            f'<rect class="{node_class}" x="{x}" y="{y}" width="{SVG_NODE_WIDTH}" '
             f'height="{SVG_NODE_HEIGHT}" rx="4" />'
         )
         line_records.append(

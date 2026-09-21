@@ -88,6 +88,14 @@ present is well-formed and truthful about its carrier.
   Whether a table really expresses timing semantics or an inheritance relation is a human
   review item. The renderer draws no geometry for these three types and never accepts "degrade
   to a bad SVG" as an outcome.
+- **D19** A purpose-traceability diagram reuses the `flow` carrier and its layered SVG
+  geometry (no new diagram type; D9 stays at exactly five types). Its nodes carry an
+  optional `kind` of `purpose`, `theme` or `unit`, placed on explicit `layer` values
+  `0`/`1`/`2`. The renderer colours each node purely by `kind`: `purpose` uses the accent
+  primary, `theme` the accent secondary, and `unit` a neutral surface. Edges may run
+  purpose-to-theme, theme-to-unit, or purpose-to-unit directly (the existing skip-layer
+  orthogonal routing). The geometry constants D14-D17 are reused unchanged; a node without
+  `kind` renders byte-identically to an ordinary flow node.
 
 ## Geometry constants
 

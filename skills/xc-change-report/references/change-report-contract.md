@@ -21,11 +21,13 @@ Implementation constants named here live in `scripts/build_manifest.py`.
 
 ## Page structure (fixed order, no additions, no reordering)
 
-Sections carry these exact ids; the validator reads the order from the document.
+Sections carry these exact ids; the validator reads the order from the document. H42 is
+inserted after H6 and before H7; H6-H14 are not renumbered (their addresses are stable).
 
 | H | Section id | Content |
 |---|---|---|
-| H6 | `section-overview` | what changed, why, impact, reading guide |
+| H6 | `section-overview` | executive summary: top what/why/impact, metadata badges, reading guide |
+| **H42** | `section-purposes` | the macro purposes the change serves: one concept card per purpose (title, theme, narrative, unit anchors), linking to the purpose-map diagram |
 | H7 | `section-change-map` | the change map and the exclusion table |
 | H8 | `section-process-position` | where the change sits in the wider flow, before/after |
 | H9 | `section-units` | one section per analysable change unit |
@@ -41,11 +43,13 @@ of H6-H12 are human review items; no script decides whether a term was really ex
 ## Change map
 
 - **H15** One row per analysable change unit.
-- **H16** Six columns, in this order: repository-relative path, change kind, unit number,
-  first 12 hex characters of the manifest content hash, code location, link to the unit's
-  analysis section. The code location is `<path>:<start>-<end>` taken from `new_range`, or
-  from `old_range` for a unit whose content side is the old side (a pure deletion). V5
-  asserts both the row count and that the code-location column is non-empty.
+- **H16** Seven columns, in this order: repository-relative path, change kind, purpose tag,
+  unit number, first 12 hex characters of the manifest content hash, code location, link to
+  the unit's analysis section. The purpose tag (A16) is the unit's purpose id; a unit with no
+  purpose renders an empty tag cell. The code location is `<path>:<start>-<end>` taken from
+  `new_range`, or from `old_range` for a unit whose content side is the old side (a pure
+  deletion). V5 asserts both the row count and that the code-location column is non-empty;
+  V18 asserts the purpose tag matches the unit's declared purpose.
 - **H17** The change-map row count equals the manifest's `units_total`. Excluded files are
   not counted here and do not appear; the equation performs no subtraction.
 - **H18** Excluded entries have their own table with path, category and reason per row, plus
@@ -54,8 +58,10 @@ of H6-H12 are human review items; no script decides whether a term was really ex
 
 ## Table of contents and anchors
 
-- **H19** The left sidebar is a fixed two-level table of contents: section, then change unit,
-  collapsible.
+- **H19** The left sidebar is a fixed three-level table of contents: section, then purpose
+  group, then change unit, collapsible. Section level is always visible; purpose groups group
+  units by purpose without reordering the globally monotonic unit anchors. V20 asserts every
+  section, purpose group and unit target exists with no dangling or extra unit.
 - **H20** Collapsing uses native HTML (`<details>`/`<summary>`) and CSS only. No JavaScript.
 - **H21** Every analysable unit has the stable anchor `#unit-<unit_index>`, where
   `<unit_index>` is the manifest's globally monotonic unit number, not a per-file restart and
@@ -64,7 +70,10 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   it, replace `/`, `\`, `.` and every non-alphanumeric character with `-`, then collapse runs
   of `-`. The model never writes an anchor by hand.
 - **H23** Cross-references inside the page use in-page anchors. Every unit section carries a
-  previous/next change navigation.
+  previous/next change navigation, a breadcrumb and a "back to purpose" link to its H42
+  purpose card (`#purpose-<purpose_id>`). prev/next still follow the global unit order across
+  purpose groups, never truncating at a group boundary. V18 asserts the bidirectional
+  purpose-to-unit and unit-to-purpose links are not dangling.
 - **H24** Table-of-contents entries and anchors are validated: every table-of-contents target
   exists, every manifest anchor exists in the page, and no unit section exists outside the
   manifest.
@@ -111,6 +120,17 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   analysable unit is covered, that the verdict vocabulary is respected and that the
   thresholds hold. It cannot check whether a verdict is right, and the three statements are
   never merged.
+- **A16** `purpose` ties a unit to the macro purpose it serves: `{"id": "p1",
+  "title": "…"}`, linking to the H42 card `#purpose-<id>`. The title narrative is at least
+  `MIN_PURPOSE_CHARS = 20` non-whitespace characters. `purpose` is optional (analysis JSON
+  written before this layer exists still loads); it does **not** participate in the V11 token
+  intersection. V17 enforces purpose integrity and V18 enforces the purpose tag in the
+  change map.
+- **A17** `related_code_refs` lists unchanged code quoted inside the unit as one or more
+  `report-code-context` blocks: `{"path", "lines", "note", "relation_type", "code"}`.
+  `relation_type` is a closed enumeration `caller | callee | data-structure | contract`.
+  These blocks never participate in V10; V20 enforces their `data-path`/`data-lines` and
+  relation type.
 
 ## Code references, diffs and highlighting
 
@@ -146,9 +166,12 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   deletions) always use the snippet presentation, because dropping their rows would normalise
   to nothing.
 - **H28** The class names are contract: `report-code`, `report-code-changed`,
-  `report-code-context`, `report-diff-add`, `report-diff-del`, `report-anchor`. The inlined
+  `report-code-context`, `report-diff-add`, `report-diff-del`, `report-anchor`. The purpose
+  layer adds `report-meta-badges`, `report-purpose-card`, `report-purpose-tag`,
+  `report-purpose-badge`, `report-quick-index`, `report-unit-head`, `report-unit-summary`,
+  `report-unit-context`, `report-breadcrumb`, `report-back-to-purpose`. The inlined
   stylesheet provides the styling and the validator checks that the classes are used.
-  `report-code-context` is A11 context and never participates in V10.
+  `report-code-context` is A11/A17 context and never participates in V10.
 - **H29** Highlighting is a lightweight lexical colourer inside the script: comments,
   strings, numbers and a generic keyword set, emitted as `<span class="tok-*">`. Colours come
   from the inlined stylesheet.
@@ -229,6 +252,21 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   carries the public phrase `public \`xc-document\` human-readable authoring default` so the
   repository's authoring-contract assertion covers it.
 
+## Purpose-layer validation
+
+- **V17** Purpose integrity: when a unit carries an A16 purpose, H42 must render a purpose
+  card for every referenced purpose, every purpose card references at least one real unit,
+  and every unit purpose resolves to an existing card. When no unit has a purpose the check
+  is vacuous (backward compatible).
+- **V18** Cross-reference closure: the change-map purpose tag for each unit equals that
+  unit's declared purpose id; the purpose-card-to-unit, unit-to-purpose and related-code
+  links are not dangling.
+- **V19** Three-level TOC completeness: every section, purpose group and unit target in the
+  TOC exists, and no unit is listed twice or omitted.
+- **V20** Context block validity: every `report-code-context` block carries non-empty
+  `data-path` and `data-lines`, its `relation_type` is in the closed enumeration, and the
+  blocks are excluded from the V10 recomputation selection.
+
 ## Strength matrix
 
 The level is fixed by confirmed facts, never by task length or wording, and is written to
@@ -236,7 +274,7 @@ The level is fixed by confirmed facts, never by task length or wording, and is w
 
 | Level | Facts | Mandatory | Optional | Human gate |
 |---|---|---|---|---|
-| `minimal` | `mode in {change, repair, maintenance}`, `risk=low`, `audit=runtime-only`, measured `units_total <= MAX_UNITS_MINIMAL = 5` | coverage manifest, change map, one A1-A8 section per unit, verbatim code blocks, V1-V13 plus V15-V16, offline check, accuracy review | diagrams, related code, glossary | closed by default; opened only on explicit user request |
+| `minimal` | `mode in {change, repair, maintenance}`, `risk=low`, `audit=runtime-only`, measured `units_total <= MAX_UNITS_MINIMAL = 5` | coverage manifest, change map, the H42 purpose section, one A1-A8 section per unit, verbatim code blocks, V1-V13 plus V15-V16, offline check, accuracy review | diagrams, related code, glossary | closed by default; opened only on explicit user request |
 | `standard` | every other confirmed fact set | all of `minimal`, plus the diagrams required by D1-D6 and related-code references (A11) | glossary | closed by default; opened only on explicit user request |
 | `full` | `risk=high`, or `audit in {result, full}`, or explicit user request | all of `standard`, plus the glossary and per-unit alternative comparison | none | closed by default; opened only on explicit user request |
 
@@ -296,7 +334,14 @@ different steps, and only the validator judges.
   "rounds": [{"round": 1, "refresh_reason": "initial", "scope": "…",
               "manifest_sha256": "…", "at": "…", "sections": "…"}],
   "report_info": {"gate_note": "…", "skip_note": "…"},
-  "units": {"1": {"fields": {"what": "…", "why": "…", "design": "…", "tradeoffs": "…",
+  "purposes": [{"id": "p1", "title": "…", "theme": "…", "narrative": "…",
+                  "unit_refs": [1, 2]}],
+  "related_code": [{"path": "src/x.py", "lines": "10-20", "note": "…",
+                    "relation_type": "caller", "code": "…"}],
+  "units": {"1": {"purpose": {"id": "p1", "title": "…"},
+                 "related_code_refs": [{"path": "src/x.py", "lines": "10-20",
+                                        "note": "…", "relation_type": "caller", "code": "…"}],
+                 "fields": {"what": "…", "why": "…", "design": "…", "tradeoffs": "…",
                              "flow-position": "…", "alternatives": "…",
                              "business-process": "…", "data-and-control": "…"},
                  "covers": ["#unit-1"], "note": "…"}}

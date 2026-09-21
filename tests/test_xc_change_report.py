@@ -534,6 +534,52 @@ class ReportCase(unittest.TestCase):
         report_path.write_bytes((page if page is not None else self.page).encode("utf-8"))
         return report_path, manifest_path
 
+    def build_purpose_page(self, name: str) -> tuple[Path, int]:
+        """Render a report that carries the full purpose layer (H42/A16/A17/D19)."""
+        analysis = json.loads(json.dumps(self.analysis))
+        indices = [hunk["unit_index"] for entry, hunk in unit_pairs(self.manifest)]
+        first = indices[0]
+        analysis["purposes"] = [
+            {
+                "id": "p1",
+                "title": "Extend the reader navigation path",
+                "theme": "platform",
+                "narrative": "The change makes the reader path show the purpose of each unit.",
+                "unit_refs": indices,
+            }
+        ]
+        for index in indices:
+            analysis["units"][str(index)]["purpose"] = {
+                "id": "p1",
+                "title": "Extend the reader navigation path",
+            }
+        analysis["units"][str(first)]["related_code_refs"] = [
+            {
+                "path": "src/app.py",
+                "lines": "1-5",
+                "note": "caller",
+                "relation_type": "caller",
+                "code": "def caller(): pass",
+            }
+        ]
+        analysis["diagrams"].append(
+            {
+                "id": "diagram-purpose-map",
+                "type": "flow",
+                "render_mode": "svg",
+                "title": "Purpose traceability",
+                "summary": "Purpose to units.",
+                "nodes": [
+                    {"id": "p1", "label": "Extend reader path", "layer": 0, "kind": "purpose"},
+                    {"id": "u1", "label": f"unit {first}", "layer": 2, "kind": "unit"},
+                ],
+                "edges": [{"from": "p1", "to": "u1", "label": "covers"}],
+            }
+        )
+        out = self.case_dir(name) / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        return out, first
+
 
 # --------------------------------------------------------------------------------------
 # Positive cases
@@ -590,6 +636,56 @@ class PositiveReportTests(ReportCase):
         self.assertIn("https://api.example.invalid/v1", self.page)
         payload = self.validate()
         self.assertNotIn("V7", error_ids(payload))
+
+    def test_purpose_layer_renders_and_validates(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        indices = [hunk["unit_index"] for entry, hunk in unit_pairs(self.manifest)]
+        first = indices[0]
+        analysis["purposes"] = [
+            {
+                "id": "p1",
+                "title": "Extend the reader navigation path",
+                "theme": "platform",
+                "narrative": "The change makes the reader path show the purpose of each unit.",
+                "unit_refs": indices,
+            }
+        ]
+        for index in indices:
+            analysis["units"][str(index)]["purpose"] = {
+                "id": "p1",
+                "title": "Extend the reader navigation path",
+            }
+        analysis["units"][str(first)]["related_code_refs"] = [
+            {
+                "path": "src/app.py",
+                "lines": "1-5",
+                "note": "caller",
+                "relation_type": "caller",
+                "code": "def caller(): pass",
+            }
+        ]
+        analysis["diagrams"].append(
+            {
+                "id": "diagram-purpose-map",
+                "type": "flow",
+                "render_mode": "svg",
+                "title": "Purpose traceability",
+                "summary": "Purpose to units.",
+                "nodes": [
+                    {"id": "p1", "label": "Extend reader path", "layer": 0, "kind": "purpose"},
+                    {"id": "u1", "label": f"unit {first}", "layer": 2, "kind": "unit"},
+                ],
+                "edges": [{"from": "p1", "to": "u1", "label": "covers"}],
+            }
+        )
+        out = self.case_dir("purpose-layer") / "change-report.html"
+        page = render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        self.assertIn('id="section-purposes"', page)
+        self.assertIn("report-purpose-card", page)
+        self.assertIn('data-purpose="p1"', page)
+        self.assertIn("diagram-node-purpose", page)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
 
     def test_full_strength_requires_a_glossary(self) -> None:
         manifest = json.loads(json.dumps(self.manifest))
@@ -881,6 +977,55 @@ class EnumerationRegressionTests(unittest.TestCase):
 
 
 class NegativeCaseTests(ReportCase):
+    def test_negative_v17_missing_purpose_section_fails(self) -> None:
+        report, _ = self.build_purpose_page("nv17")
+        page = re.sub(
+            r'<section class="report-section" id="section-purposes">.*?</section>',
+            "",
+            report.read_text(encoding="utf-8"),
+            flags=re.S,
+        )
+        out, manifest = self.mutated("nv17", page=page)
+        payload = self.validate(report=out, manifest=manifest)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V17", error_ids(payload))
+
+    def test_negative_v18_mismatched_purpose_tag_fails(self) -> None:
+        report, first = self.build_purpose_page("nv18")
+        page = report.read_text(encoding="utf-8").replace(
+            f'id="unit-{first}" data-unit="{first}" data-purpose="p1"',
+            f'id="unit-{first}" data-unit="{first}" data-purpose="p2"',
+            1,
+        )
+        out, manifest = self.mutated("nv18", page=page)
+        payload = self.validate(report=out, manifest=manifest)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V18", error_ids(payload))
+
+    def test_negative_v19_missing_toc_unit_fails(self) -> None:
+        report, first = self.build_purpose_page("nv19")
+        page = re.sub(
+            rf'<li class="report-toc-unit"><a href="#unit-{first}">.*?</li>',
+            "",
+            report.read_text(encoding="utf-8"),
+            count=1,
+            flags=re.S,
+        )
+        out, manifest = self.mutated("nv19", page=page)
+        payload = self.validate(report=out, manifest=manifest)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V19", error_ids(payload))
+
+    def test_negative_v20_context_block_missing_path_fails(self) -> None:
+        report, _ = self.build_purpose_page("nv20")
+        page = report.read_text(encoding="utf-8").replace(
+            'data-path="src/app.py"', 'data-path=""', 1
+        )
+        out, manifest = self.mutated("nv20", page=page)
+        payload = self.validate(report=out, manifest=manifest)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V20", error_ids(payload))
+
     def test_negative_01_missing_analysis_section_fails_v2(self) -> None:
         page = re.sub(
             r'<article class="report-unit" id="unit-2".*?</article>', "", self.page, flags=re.S
@@ -987,7 +1132,7 @@ class NegativeCaseTests(ReportCase):
                 flags=re.S,
             ),
             "missing-map-row": re.sub(
-                r'<tr data-unit="1">.*?</tr>', "", self.page, count=1, flags=re.S
+                r'<tr data-unit="1"[^>]*>.*?</tr>', "", self.page, count=1, flags=re.S
             ),
         }
         for name, page in cases.items():

@@ -41,9 +41,11 @@ from build_manifest import (  # noqa: E402
     MIN_SVG_FONT_SIZE,
     MAX_SVG_CANVAS_HEIGHT,
     MAX_SVG_CANVAS_WIDTH,
+    MIN_PURPOSE_CHARS,
     PLACEHOLDER_TOKENS,
     RECOVERY_KEY,
     RECORDED_PATH_REASONS,
+    RELATION_TYPES,
     REPORT_GATE_OUTCOMES,
     REWORK_KEY,
     SCHEMA_VERSION,
@@ -753,7 +755,7 @@ def check_v5(checker: Checker, index: HtmlIndex, manifest: dict[str, Any], manif
     if order != [section_id for section_id in SECTION_IDS if index.by_id(section_id) is not None]:
         checker.fail(
             "V5",
-            "the nine report sections must appear in the fixed order H6-H14; found: "
+            "the required report sections must appear in the fixed order; found: "
             + ", ".join(order),
         )
 
@@ -767,14 +769,14 @@ def check_v5(checker: Checker, index: HtmlIndex, manifest: dict[str, Any], manif
         )
     else:
         header_cells = _header_cells(index, "change-map")
-        if len(header_cells) != 6:
-            checker.fail("V5", f"the change map must have six columns, found {len(header_cells)}")
+        if len(header_cells) != 7:
+            checker.fail("V5", f"the change map must have seven columns, found {len(header_cells)}")
         for row in map_rows:
             cells = _row_cells(index, row)
-            if len(cells) != 6:
-                checker.fail("V5", f"change map row {row['attrs'].get('data-unit')} must have six cells")
+            if len(cells) != 7:
+                checker.fail("V5", f"change map row {row['attrs'].get('data-unit')} must have seven cells")
                 continue
-            if not index.text_of(cells[4]).strip():
+            if not index.text_of(cells[5]).strip():
                 checker.fail(
                     "V5",
                     f"change map row {row['attrs'].get('data-unit')}: the code location column is empty",
@@ -2271,6 +2273,172 @@ def check_v16(checker: Checker, manifest: dict[str, Any], repo: Path) -> dict[st
 # --------------------------------------------------------------------------------------
 
 
+
+def _report_unit_purposes(index: HtmlIndex) -> dict[int, str]:
+    """Map #unit-N to its declared purpose id (empty string when the unit has no purpose)."""
+    out: dict[int, str] = {}
+    for article in index.by_class("report-unit"):
+        unit_id = article["attrs"].get("id", "")
+        if unit_id.startswith("unit-"):
+            try:
+                out[int(unit_id[len("unit-"):])] = article["attrs"].get("data-purpose", "")
+            except ValueError:
+                continue
+    return out
+
+
+def _report_purpose_cards(index: HtmlIndex) -> dict[str, list[int]]:
+    """Map purpose id -> unit indices referenced by that purpose card's own anchors."""
+    out: dict[str, list[int]] = {}
+    for card in index.by_class("report-purpose-card"):
+        card_id = card["attrs"].get("id", "")
+        purpose_id = card_id[len("purpose-"):] if card_id.startswith("purpose-") else card_id
+        refs: list[int] = []
+        for anchor in index.by_tag("a"):
+            href = anchor["attrs"].get("href", "")
+            if not href.startswith("#unit-"):
+                continue
+            if any(ancestor["index"] == card["index"] for ancestor in index.ancestors(anchor)):
+                try:
+                    refs.append(int(href[len("#unit-"):]))
+                except ValueError:
+                    pass
+        out[purpose_id] = refs
+    return out
+
+
+def check_v17(checker: Checker, index: HtmlIndex) -> None:
+    """Purpose integrity (A16/H42). Vacuous when no unit declares a purpose."""
+    unit_purpose = _report_unit_purposes(index)
+    cards = _report_purpose_cards(index)
+    declared = {purpose for purpose in unit_purpose.values() if purpose}
+    if not declared:
+        return
+    if not cards:
+        checker.fail("V17", "units declare purposes but no purpose section cards are present")
+        return
+    known = set(cards)
+    for unit_index, purpose in sorted(unit_purpose.items()):
+        if purpose and purpose not in known:
+            checker.fail(
+                "V17",
+                f"unit {unit_index} declares purpose {purpose!r} which has no purpose card",
+            )
+    for purpose, refs in cards.items():
+        if not refs:
+            checker.fail("V17", f"purpose card {purpose!r} references no analysable unit")
+    # A16: a purpose title is MIN_PURPOSE_CHARS non-whitespace characters or more.
+    for card in index.by_class("report-purpose-card"):
+        pid = card["attrs"].get("id", "")
+        purpose_id = pid[len("purpose-"):] if pid.startswith("purpose-") else pid
+        titles = [
+            e
+            for e in index.by_tag("h3")
+            if any(ancestor["index"] == card["index"] for ancestor in index.ancestors(e))
+        ]
+        if not titles:
+            continue
+        title_text = re.sub(r"\s+", "", index.text_of(titles[0]))
+        if len(title_text) < MIN_PURPOSE_CHARS:
+            checker.fail(
+                "V17",
+                f"purpose {purpose_id!r} title is {len(title_text)} chars, below "
+                f"MIN_PURPOSE_CHARS={MIN_PURPOSE_CHARS}",
+            )
+
+
+def check_v18(checker: Checker, index: HtmlIndex) -> None:
+    """Purpose tag in the change map matches the unit's declared purpose (H16/V18)."""
+    unit_purpose = _report_unit_purposes(index)
+    cards = _report_purpose_cards(index)
+    map_table = index.by_id("change-map")
+    if map_table is None:
+        return
+    for row in index.by_tag("tr"):
+        if not any(ancestor["index"] == map_table["index"] for ancestor in index.ancestors(row)):
+            continue
+        data_unit = row["attrs"].get("data-unit", "")
+        if not data_unit:
+            continue
+        try:
+            unit_index = int(data_unit)
+        except ValueError:
+            continue
+        row_purpose = row["attrs"].get("data-purpose", "")
+        expected = unit_purpose.get(unit_index, "")
+        if row_purpose != expected:
+            checker.fail(
+                "V18",
+                f"change-map row for unit {unit_index} has purpose {row_purpose!r} but the unit "
+                f"declares {expected!r}",
+            )
+    for purpose, refs in cards.items():
+        for ref in refs:
+            declared_purpose = unit_purpose.get(ref, "")
+            if declared_purpose and declared_purpose != purpose:
+                checker.fail(
+                    "V18",
+                    f"purpose card {purpose!r} lists unit {ref} but that unit declares "
+                    f"{declared_purpose!r}",
+                )
+    for link in index.by_class("report-back-to-purpose"):
+        href = link["attrs"].get("href", "")
+        if href.startswith("#purpose-") and href[len("#purpose-"):] not in cards:
+            checker.fail("V18", f"back-to-purpose link points at missing purpose card {href[len('#purpose-'):]!r}")
+
+
+def check_v19(checker: Checker, index: HtmlIndex) -> None:
+    """Three-level TOC completeness (H19): every unit listed exactly once, no extras."""
+    toc = index.by_class("report-toc")
+    if not toc:
+        return
+    toc_el = toc[0]
+    listed: list[int] = []
+    for anchor in index.by_tag("a"):
+        href = anchor["attrs"].get("href", "")
+        if not href.startswith("#unit-"):
+            continue
+        if any(ancestor["index"] == toc_el["index"] for ancestor in index.ancestors(anchor)):
+            try:
+                listed.append(int(href[len("#unit-"):]))
+            except ValueError:
+                continue
+    units = {
+        int(a["attrs"].get("id", "")[len("unit-"):])
+        for a in index.by_class("report-unit")
+        if a["attrs"].get("id", "").startswith("unit-")
+    }
+    duplicates = sorted({u for u in listed if listed.count(u) > 1})
+    if duplicates:
+        checker.fail("V19", f"units {duplicates} appear more than once in the table of contents")
+    missing = sorted(units - set(listed))
+    if missing:
+        checker.fail("V19", f"units {missing} are present but missing from the table of contents")
+    extra = sorted(set(listed) - units)
+    if extra:
+        checker.fail("V19", f"table of contents lists units {extra} that do not exist in the report")
+
+
+def check_v20(checker: Checker, index: HtmlIndex) -> None:
+    """Embedded context block validity (A17): data-path/data-lines, relation_type enum."""
+    for block in index.by_class("report-code-context"):
+        path = block["attrs"].get("data-path", "")
+        lines = block["attrs"].get("data-lines", "")
+        if not path.strip():
+            checker.fail("V20", "a report-code-context block has an empty data-path")
+        if not lines.strip():
+            checker.fail("V20", f"context block for {path!r} has an empty data-lines")
+        inside_unit = any("report-unit" in a["classes"] for a in index.ancestors(block))
+        if inside_unit:
+            relation = block["attrs"].get("data-relation-type", "")
+            if relation not in RELATION_TYPES:
+                checker.fail(
+                    "V20",
+                    f"context block for {path!r} has relation_type {relation!r}; "
+                    f"expected one of {', '.join(RELATION_TYPES)}",
+                )
+
+
 def validate(
     report_path: Path,
     manifest_path: Path,
@@ -2305,6 +2473,10 @@ def validate(
     check_v4(checker, index, manifest)
     info = check_v5(checker, index, manifest, manifest_bytes)
     check_v6(checker, index)
+    check_v17(checker, index)
+    check_v18(checker, index)
+    check_v19(checker, index)
+    check_v20(checker, index)
     check_v7(checker, index)
     diagram_stats = check_v8(checker, index, golden_dir)
     head_current = check_v9(checker, manifest, repo)
