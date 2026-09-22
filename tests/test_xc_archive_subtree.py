@@ -1306,5 +1306,184 @@ class TerminalSubtreeRecoveryTests(ArchiveSubtreeCliTests):
             self.assertIsNone(entry.get("warning"))
 
 
+class ArchivedStubInsideClosingLoopTests(ArchiveSubtreeCliTests):
+    """An archived stub must survive its ancestor loop reaching a terminal decision.
+
+    Regression for the deadlock where archiving an engine-derived blocked inner
+    loop produced a tree that validated clean, but the next terminal write on any
+    running leaf failed with four structural errors. When the outer loop reached
+    its terminal decision, ``close_loop_descendants`` overwrote the archived
+    stub's ``status`` from ``archived`` to ``skipped``, stripping the archived
+    exemption so the loop invariants and the registry/stub match check rejected
+    the tree. The fix skips archived stubs in ``close_loop_descendants``.
+    """
+
+    def write_nested_loop_template(self, path: Path, config: dict[str, object]) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": "nested-loop"})
+        blackboard = ET.SubElement(root, "blackboard")
+        ET.SubElement(blackboard, "var", {"key": "outer_again"}).text = "false"
+        ET.SubElement(blackboard, "var", {"key": "inner_open"}).text = "true"
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": "Nested Loop Recovery",
+                "type": "composite",
+                "role": "root",
+                "mode": "sequence",
+                "executor": "main",
+            },
+        )
+        children = ET.SubElement(workflow, "children")
+        outer = ET.SubElement(
+            children,
+            "node",
+            {
+                "template_id": "outer",
+                "title": "Outer",
+                "type": "loop",
+                "role": "outer-loop",
+                "mode": "sequence",
+                "executor": "main",
+                "loop.max_iterations": "3",
+                "loop.continue_when": "outer_again == true",
+                "loop.break_when": "outer_again == false",
+                "loop.on_limit": "blocked",
+            },
+        )
+        outer_children = ET.SubElement(outer, "children")
+        inner = ET.SubElement(
+            outer_children,
+            "node",
+            {
+                "template_id": "inner",
+                "title": "Inner",
+                "type": "loop",
+                "role": "inner-loop",
+                "mode": "sequence",
+                "executor": "main",
+                "loop.max_iterations": "1",
+                "loop.continue_when": "inner_open == true",
+                "loop.break_when": "inner_open == false",
+                "loop.on_limit": "blocked",
+            },
+        )
+        inner_children = ET.SubElement(inner, "children")
+        ET.SubElement(
+            inner_children,
+            "node",
+            {
+                "template_id": "inner-body",
+                "title": "Inner Body",
+                "type": "task",
+                "role": "worker",
+                "executor": "main",
+            },
+        )
+        ET.SubElement(
+            outer_children,
+            "node",
+            {
+                "template_id": "tail",
+                "title": "Tail",
+                "type": "task",
+                "role": "worker",
+                "executor": "main",
+            },
+        )
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
+    def create_nested_loop_runtime(self, project: Path, work_order_id: str) -> Path:
+        context = project / ".xcoding"
+        context.mkdir(parents=True)
+        (context / "xc-orchestration-runtime.json").write_text(
+            json.dumps({"git": {"auto_commit": False}}) + "\n",
+            encoding="utf-8",
+        )
+        config = core.load_config(context)
+        template = project / "template.xml"
+        self.write_nested_loop_template(template, config)
+        initialized = self.run_cli(
+            "init",
+            "--template",
+            str(template),
+            "--runtime-path",
+            str(context / "work-orders" / work_order_id / "runtime"),
+            "--work-order-id",
+            work_order_id,
+            cwd=project,
+        )
+        return Path(str(initialized["tree_path"]))
+
+    def status_of(self, project: Path, tree_path: Path, node_id: str) -> str:
+        return str(
+            self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"][
+                "status"
+            ]
+        )
+
+    def test_outer_loop_terminal_decision_preserves_archived_inner_stub(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            tree_path = self.create_nested_loop_runtime(project, "nested-archived")
+
+            inner_id = str(self.node_by_template(project, tree_path, "inner")["id"])
+            inner_body_id = str(self.node_by_template(project, tree_path, "inner-body")["id"])
+            tail_id = str(self.node_by_template(project, tree_path, "tail")["id"])
+
+            self.run_cli(
+                "start", "--tree", str(tree_path), "--node", inner_body_id, "--agent", "tester", cwd=project
+            )
+            self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                inner_body_id,
+                "--summary",
+                "one pass",
+                "--validation",
+                "ok",
+                cwd=project,
+            )
+            self.assertEqual(self.status_of(project, tree_path, inner_id), "blocked")
+
+            self.run_cli(
+                "archive-subtree",
+                "--tree",
+                str(tree_path),
+                "--subtree",
+                inner_id,
+                "--reason",
+                "Inner stage exhausted; archive so the outer loop can continue.",
+                cwd=project,
+            )
+            self.run_cli("validate", "--tree", str(tree_path), cwd=project)
+            self.assertEqual(self.status_of(project, tree_path, inner_id), "archived")
+
+            self.run_cli(
+                "start", "--tree", str(tree_path), "--node", tail_id, "--agent", "tester", cwd=project
+            )
+            self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                tail_id,
+                "--summary",
+                "tail done",
+                "--validation",
+                "ok",
+                cwd=project,
+            )
+
+            self.assertEqual(self.status_of(project, tree_path, inner_id), "archived")
+            parsed = core.parse_xml(tree_path)
+            self.assertEqual(core.validate_runtime_root(parsed.getroot(), check_integrity=False), [])
+            self.assertEqual(self.integrity_status(project, tree_path), "valid")
+
+
 if __name__ == "__main__":
     unittest.main()

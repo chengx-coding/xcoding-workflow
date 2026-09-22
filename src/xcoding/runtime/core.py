@@ -2291,6 +2291,13 @@ def close_loop_descendants(node: ET.Element) -> bool:
         for descendant in iter_nodes(child):
             if descendant.get("status", "pending") in TERMINAL_STATUSES:
                 continue
+            if is_archived_stub(descendant):
+                # An archived stub is already retired and is exempt from live
+                # structural invariants; overwriting its status to skipped would
+                # strip that exemption and make a later terminal write reject the
+                # tree. Leave it archived, matching reset_subtree, apply_switches,
+                # ready_from, and the scheduling and dependency guards.
+                continue
             descendant.set("status", "skipped")
             descendant.set("skip_reason", "loop_closed")
             descendant.set("skipped_at", utc_now())

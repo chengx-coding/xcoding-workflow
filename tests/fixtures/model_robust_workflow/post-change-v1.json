@@ -16,7 +16,7 @@
     "src/xcoding/runtime/application.py": "49f3865b9a3385efddd10018c5cf7c1306c68e78c999343e74a0a18f76ed3616",
     "src/xcoding/runtime/commands.py": "2eb0ef2851054eba47a7a1777e733500c5b08a30e3a7acd62e9b0d39dce84b3e",
     "src/xcoding/runtime/__init__.py": "7cf28a6aa3e7fff6be3728b58ebd276e724a56ed2767d5b35f5fca512ec0286a",
-    "src/xcoding/runtime/core.py": "bfe79718c4e8b556f319a9ebc111b5a6dc1d5c50f881f5a0606bcd775fa60f86",
+    "src/xcoding/runtime/core.py": "6672ad90d681d84d41b7bff033cfad0779c47308ed5491a6ffb84e1c67d4c27a",
     "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
     "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
     "src/xcoding/cli.py": "3452cef240d4f8a1bf7567ac1a8cf269faf79606feb88eec3168d6107dcfd4c8",
@@ -30,7 +30,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "6beca52a7a65ae87c5c404b2df0f5dab87a96eae",
+  "recording_base_commit": "f9b426c585c8343885657962cf4c45d4b9de82c2",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -479,21 +479,21 @@
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
         "current_value": 110565,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 45812
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 5
       },
       {
@@ -504,27 +504,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
         "current_value": 111229,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 45812
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 5
       },
       {
@@ -535,27 +535,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
         "current_value": 140598,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 50052
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 4
       },
       {
@@ -566,27 +566,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
         "current_value": 141511,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 50052
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 4
       },
       {
@@ -597,27 +597,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
         "current_value": 206970,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 66832
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 6
       },
       {
@@ -628,27 +628,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
         "current_value": 208381,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 66832
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 6
       },
       {
@@ -659,27 +659,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
         "current_value": 235141,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 70247
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 6
       },
       {
@@ -690,27 +690,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
         "current_value": 236801,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 70247
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
         "numeric_delta": 6
       },
       {
@@ -721,12 +721,12 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match."
+        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
       }
     ]
   },
   "change_note": {
-    "reason": "Re-record after work order 20260918-1809 added the file-based runtime parameters (--set-file, --check-result-file, --metadata-file), the close-group/reopen-group --node alias, and the root --help envelope. The recorded inputs src/xcoding/cli.py, runtime/commands.py, runtime/core.py and runtime/application.py changed, so the stored input hashes no longer match.",
+    "reason": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1569,7 +1569,7 @@
       "src/xcoding/runtime/application.py": "49f3865b9a3385efddd10018c5cf7c1306c68e78c999343e74a0a18f76ed3616",
       "src/xcoding/runtime/commands.py": "2eb0ef2851054eba47a7a1777e733500c5b08a30e3a7acd62e9b0d39dce84b3e",
       "src/xcoding/runtime/__init__.py": "7cf28a6aa3e7fff6be3728b58ebd276e724a56ed2767d5b35f5fca512ec0286a",
-      "src/xcoding/runtime/core.py": "bfe79718c4e8b556f319a9ebc111b5a6dc1d5c50f881f5a0606bcd775fa60f86",
+      "src/xcoding/runtime/core.py": "6672ad90d681d84d41b7bff033cfad0779c47308ed5491a6ffb84e1c67d4c27a",
       "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
       "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
       "src/xcoding/cli.py": "3452cef240d4f8a1bf7567ac1a8cf269faf79606feb88eec3168d6107dcfd4c8",

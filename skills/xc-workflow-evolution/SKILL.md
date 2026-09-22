@@ -60,8 +60,15 @@ packages. `--check` is read-only. Consumer-specific paths, installation
 policy, and deletion gates belong in the consumer bridge or managed work order, not
 in this Skill.
 
+## Architecture-Preserving Evolution
+
+Prefer the smallest correct fix that reuses an existing mechanism or established pattern over a new command, new state, new configuration surface, new node type, or new cross-cutting check. A minor or low-value problem does not justify durable added complexity.
+
+Evaluate every change against the whole architecture, not only its local symptom, and record in the work order whether the change leaves the system more coherent or more tangled. When a local repair would degrade the overall architecture, reconsider it. When the correct way to support a capability or fix a real defect is a local or broader refactor, identify and propose that refactor rather than layering a patch that preserves a worse structure; a behavior- or contract-changing refactor still requires analysis, documented alternatives, review, and an explicit user gate. Record deferred work and accepted trade-offs as durable structured project notes so a later evolution keeps the original reasoning.
+
 ## Constraints
 
 - Do not hand-edit generated agent outputs or generated orchestration templates.
 - Do not alter managed runtime trees outside the runtime public interface.
 - A broad architecture change requires analysis, documented alternatives, review, and an explicit user gate before implementation.
+- Do not add a new mechanism disproportionate to the problem; prefer reusing an existing mechanism, and record the whole-architecture impact and any deferred trade-offs.

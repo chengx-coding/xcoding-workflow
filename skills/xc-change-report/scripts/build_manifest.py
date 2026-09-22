@@ -798,6 +798,18 @@ def record_snapshot_dirs(record: dict[str, Any] | None) -> tuple[Path | None, Pa
     return (Path(worktree) if worktree else None, Path(untracked) if untracked else None)
 
 
+def record_captured_at(record: dict[str, Any] | None) -> str:
+    """The capture timestamp the open-state record holds (C5).
+
+    Like the two snapshot directories, ``captured_at`` is a fact the capture
+    wrote once and no later read can reproduce, so a caller that passes no
+    explicit ``--captured-at`` inherits it from the record instead of leaving
+    the manifest baseline identity empty, which would fail coverage validation
+    stage V1. An explicit argument always wins.
+    """
+    return str((record or {}).get("captured_at", "") or "")
+
+
 def snapshot_paths(directory: Path | None) -> list[str]:
     """Every relative path captured in a baseline snapshot directory (C4a)."""
     if directory is None or not directory.is_dir():
@@ -1402,6 +1414,12 @@ def build_manifest(
         baseline_worktree_dir = recorded_worktree_dir
     if baseline_untracked_dir is None:
         baseline_untracked_dir = recorded_untracked_dir
+    # captured_at is inherited from the record on the same terms as the two
+    # snapshot directories: an omitted --captured-at falls back to the value the
+    # capture wrote, so a first coverage run does not fail V1 on an empty
+    # baseline.captured_at. An explicit argument always wins.
+    if not captured_at:
+        captured_at = record_captured_at(record)
 
     # C4b: availability is decided by content, not by a directory test, so a present but
     # empty or partial capture degrades instead of passing as a healthy baseline.
@@ -1797,7 +1815,15 @@ def main(argv: list[str] | None = None) -> int:
             "<tmp-dir>/baseline-open-state.json, which is where the capture tool writes it."
         ),
     )
-    parser.add_argument("--captured-at", default="")
+    parser.add_argument(
+        "--captured-at",
+        default="",
+        help=(
+            "The baseline capture timestamp. Defaults to the captured_at this "
+            "work order's open-state record holds, so an omitted flag is not "
+            "fatal for a work order whose record is present."
+        ),
+    )
     parser.add_argument("--generated-at", default="")
     parser.add_argument("--strength", default="standard", choices=list(STRENGTHS))
     parser.add_argument("--out", required=True)

@@ -727,6 +727,61 @@ class SnapshotDirectoryDefaultTests(BaselineTestCase):
         self.assertEqual(named["baseline"]["worktree_snapshot"]["state"], "empty")
 
 
+class CapturedAtDefaultTests(BaselineTestCase):
+    """R-02b: captured_at defaults from the record on the same terms as the two dirs.
+
+    validate_report stage V1 requires a non-empty baseline.captured_at. The builder
+    already inherits both snapshot directories from the open-state record; captured_at
+    is the same kind of write-once capture fact, so a caller that omits --captured-at
+    inherits it instead of producing an empty identity that V1 rejects. An explicit
+    value still wins.
+    """
+
+    def capture_and_edit_a_tracked_path(self) -> None:
+        self.capture()
+        (self.repo / "src" / "app.py").write_text(
+            "def main():\n    return 1\n", encoding="utf-8"
+        )
+
+    def build(self, captured_at: str) -> dict[str, Any]:
+        return bm.build_manifest(
+            repo_path=self.repo,
+            work_order_id=WORK_ORDER_ID,
+            baseline_commit=self.commit,
+            baseline_digest=json.loads(self.record_path.read_text(encoding="utf-8"))[
+                "expected_digest"
+            ],
+            baseline_algorithm=bm.DIGEST_ALGORITHM,
+            baseline_worktree_dir=None,
+            baseline_untracked_dir=None,
+            tmp_dir=self.workbench / "tmp",
+            captured_at=captured_at,
+            generated_at="2026-09-15T18:00:00Z",
+            strength="standard",
+        )
+
+    def test_omitting_captured_at_inherits_it_from_the_record(self) -> None:
+        self.capture_and_edit_a_tracked_path()
+        recorded = json.loads(self.record_path.read_text(encoding="utf-8"))["captured_at"]
+        self.assertTrue(recorded)
+
+        defaulted = self.build("")
+
+        self.assertEqual(defaulted["baseline"]["captured_at"], recorded)
+
+    def test_an_explicit_captured_at_wins_over_the_record(self) -> None:
+        self.capture_and_edit_a_tracked_path()
+
+        named = self.build("2026-01-02T03:04:05Z")
+
+        self.assertEqual(named["baseline"]["captured_at"], "2026-01-02T03:04:05Z")
+
+    def test_record_captured_at_reads_the_field(self) -> None:
+        self.assertEqual(bm.record_captured_at({"captured_at": "X"}), "X")
+        self.assertEqual(bm.record_captured_at({}), "")
+        self.assertEqual(bm.record_captured_at(None), "")
+
+
 class OpenStateRecordSchemaTests(BaselineTestCase):
     """Three added facts, thirteen still required: both halves of the record's schema.
 
