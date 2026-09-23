@@ -521,7 +521,15 @@ def render_code_line(kind: str, lineno: int | str, payload_html: str) -> str:
 
 
 def render_code_rows(rows: list[tuple[str, int | str, str]]) -> str:
-    return "".join(render_code_line(kind, lineno, payload) + "\n" for kind, lineno, payload in rows)
+    # Each `render_code_line` emits a `report-line` span that the stylesheet renders as a
+    # block, so the block boundary alone places one code line per visual row. Joining the
+    # spans with a literal newline as well double-spaced every code block, because the
+    # enclosing `<pre>` preserves that newline and renders it as an extra blank line between
+    # each pair of code lines. The spans are concatenated with no separator: the block layout
+    # supplies the visible line break, and the H26a normalisation rebuilds each line from its
+    # own `report-line` element (one canonical LF per element), so it never consumed the
+    # inter-span newline and `content_sha256` is unchanged by dropping it.
+    return "".join(render_code_line(kind, lineno, payload) for kind, lineno, payload in rows)
 
 
 class _CodeBlockNormalizer(HTMLParser):

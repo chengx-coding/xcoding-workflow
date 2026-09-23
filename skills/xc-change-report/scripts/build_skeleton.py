@@ -85,6 +85,12 @@ FIELD_LABELS = {
     "data-and-control": "Data flow and control",
 }
 
+# Presentation split of the eight A1-A8 fields (content is unchanged; every field is still
+# rendered and still validated by V4). Primary fields stay open; secondary fields fold into a
+# native <details>. Their union and order match FIELD_NAMES.
+PRIMARY_FIELDS = ("what", "why", "design", "flow-position")
+SECONDARY_FIELDS = ("tradeoffs", "alternatives", "business-process", "data-and-control")
+
 PLACEHOLDERS = (
     "DOCUMENT_LANGUAGE",
     "REPORT_TITLE",
@@ -660,12 +666,26 @@ def render_units(
         if what_text:
             first_sentence = re.split(r"(?<=[.!?])\s+", what_text, maxsplit=1)[0]
             parts.append(f'<p class="report-unit-summary">{escape(first_sentence)}</p>')
-        for field in FIELD_NAMES:
+        # The eight A1-A8 fields are split for readability only: the four primary fields stay
+        # open, the four secondary ones fold into a native `<details>` so a long unit is not a
+        # wall of text. Every field div keeps its exact `report-unit-field`/`data-field` markup
+        # and stays a descendant of the unit section, so V4 still finds all eight and the A13
+        # threshold is unchanged - this changes presentation, never content.
+        def field_div(field: str) -> str:
             value = str(fields.get(field, "")).strip()
-            parts.append(
+            return (
                 f'<div class="report-unit-field" data-field="{field}">'
                 f"<h4>{escape(FIELD_LABELS[field])}</h4>{paragraph(value)}</div>"
             )
+
+        primary_open = "".join(field_div(field) for field in PRIMARY_FIELDS)
+        secondary = "".join(field_div(field) for field in SECONDARY_FIELDS)
+        parts.append(f'<div class="report-unit-fields">{primary_open}</div>')
+        parts.append(
+            '<details class="report-unit-more"><summary>More analysis '
+            "(trade-offs, alternatives, business process, data and control)</summary>"
+            f'<div class="report-unit-fields">{secondary}</div></details>'
+        )
         refs = spec.get("related_code_refs", [])
         refs = refs if isinstance(refs, list) else []
         for ref in refs:
@@ -918,9 +938,9 @@ def build_report(
         "STYLE": css_text,
         "META_BADGES": render_meta_badges(manifest, analysis, generated_at),
         "TOC": render_toc(manifest, resolved_titles, analysis),
-        "OVERVIEW": render_overview(analysis),
+        "OVERVIEW": render_overview(manifest, analysis),
         "PURPOSES": render_purposes(manifest, analysis),
-        "CHANGE_MAP": render_change_map(repo, manifest, analysis),
+        "CHANGE_MAP": render_kind_summary(manifest) + render_change_map(repo, manifest, analysis),
         "QUICK_INDEX": render_quick_index(analysis),
         "EXCLUSION_TABLE": render_exclusion_table(manifest),
         "PROCESS_POSITION": render_process_position(analysis),
@@ -960,10 +980,68 @@ def build_report(
     return page
 
 
-def render_overview(analysis: dict[str, Any]) -> str:
+def render_overview_stats(manifest: dict[str, Any]) -> str:
+    """A mechanical key-figure strip derived from the manifest (no model input).
+
+    The values are a pure function of the coverage manifest, so the strip stays deterministic
+    and adds no external resource. It gives the reader the size of the change before any prose.
+    """
+    stats = [
+        ("Units", str(manifest["units_total"])),
+        ("Excluded files", str(manifest["excluded_total"])),
+        ("Pre-existing", str(manifest["pre_existing_total"])),
+        ("Strength", str(manifest["strength"]["selected"])),
+    ]
+    cells = "".join(
+        f'<div class="report-stat"><div class="report-stat-value">{escape(value)}</div>'
+        f'<div class="report-stat-label">{escape(label)}</div></div>'
+        for label, value in stats
+    )
+    return f'<div class="report-stat-grid">{cells}</div>'
+
+
+def render_kind_summary(manifest: dict[str, Any]) -> str:
+    """A mechanical change-kind distribution derived from the manifest (no model input).
+
+    One analysable unit contributes to the count of its file's change kind. The proportional
+    bar and the legend are pure functions of the manifest, so they stay deterministic and
+    carry no external resource; the bar uses CSS variables for colour, never an image.
+    """
+    order = ("added", "modified", "deleted", "renamed")
+    counts: dict[str, int] = {kind: 0 for kind in order}
+    for entry in manifest["files"]:
+        kind = str(entry.get("change_kind", ""))
+        if kind not in counts:
+            continue
+        for hunk in entry["hunks"]:
+            if not hunk.get("excluded"):
+                counts[kind] += 1
+    total = sum(counts.values())
+    if total == 0:
+        return ""
+    segments = "".join(
+        f'<span class="report-kind-bar-{kind}" style="width:{counts[kind] * 100 // total}%" '
+        f'title="{escape(kind)}: {counts[kind]}"></span>'
+        for kind in order
+        if counts[kind]
+    )
+    legend = "".join(
+        f'<span><span class="report-kind-swatch report-kind-bar-{kind}"></span>'
+        f"{escape(kind)}: {counts[kind]}</span>"
+        for kind in order
+        if counts[kind]
+    )
+    return (
+        '<div class="report-summary-block"><h3>Change kinds</h3>'
+        f'<div class="report-kind-bar">{segments}</div>'
+        f'<div class="report-kind-legend">{legend}</div></div>'
+    )
+
+
+def render_overview(manifest: dict[str, Any], analysis: dict[str, Any]) -> str:
     overview = analysis.get("overview", {})
     overview = overview if isinstance(overview, dict) else {}
-    parts = []
+    parts = [render_overview_stats(manifest)]
     for key, label in (
         ("what_changed", "What changed"),
         ("why", "Why it changed"),

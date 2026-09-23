@@ -393,8 +393,8 @@ coverage time.
 - **V4 Analysis has substance**: all eight fields exist per unit section, are non-empty, meet
   the A13 threshold and carry no placeholder. V4 guarantees non-blank text only; it does not
   guarantee that the text is correct or even related to the code - V10 and V11 do that.
-- **V5 Structure is compliant**: the nine sections exist in order, the change map has
-  `units_total` body rows with six columns and a non-empty code location, the exclusion table
+- **V5 Structure is compliant**: the ten sections exist in order, the change map has
+  `units_total` body rows with seven columns and a non-empty code location, the exclusion table
   has `excluded_total + pre_existing_total` body rows with valid categories, no template
   placeholder survives in the page's own text (the rule is scoped with the same H37a
   element-interval exclusion V7 uses for URL text, so a placeholder-shaped literal a unit

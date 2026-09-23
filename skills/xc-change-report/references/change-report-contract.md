@@ -169,9 +169,17 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   `report-code-context`, `report-diff-add`, `report-diff-del`, `report-anchor`. The purpose
   layer adds `report-meta-badges`, `report-purpose-card`, `report-purpose-tag`,
   `report-purpose-badge`, `report-quick-index`, `report-unit-head`, `report-unit-summary`,
-  `report-unit-context`, `report-breadcrumb`, `report-back-to-purpose`. The inlined
-  stylesheet provides the styling and the validator checks that the classes are used.
-  `report-code-context` is A11/A17 context and never participates in V10.
+  `report-unit-context`, `report-breadcrumb`, `report-back-to-purpose`. The presentation
+  rebuild adds, for readability only, `report-stat-grid`/`report-stat` (the mechanical
+  overview key-figure strip), `report-summary-block`/`report-kind-bar`/`report-kind-legend`
+  (the mechanical change-kind distribution derived from the manifest), `report-unit-fields`
+  (the per-unit field wrapper) and `report-unit-more` (the native `<details>` that folds the
+  four secondary A1-A8 fields). These carry no analysis content of their own and gate no
+  mechanical check; every A1-A8 field div keeps its exact `report-unit-field`/`data-field`
+  markup and stays a descendant of its unit section, so V4 still finds all eight fields and
+  the A13 threshold is unchanged. The inlined stylesheet provides the styling and the
+  validator checks that the contract classes are used. `report-code-context` is A11/A17
+  context and never participates in V10.
 - **H29** Highlighting is a lightweight lexical colourer inside the script: comments,
   strings, numbers and a generic keyword set, emitted as `<span class="tok-*">`. Colours come
   from the inlined stylesheet.
