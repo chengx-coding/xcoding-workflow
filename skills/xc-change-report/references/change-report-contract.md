@@ -28,14 +28,21 @@ inserted after H6 and before H7; H6-H14 are not renumbered (their addresses are 
 |---|---|---|
 | H6 | `section-overview` | executive summary: top what/why/impact, metadata badges, reading guide |
 | **H42** | `section-purposes` | the macro purposes the change serves: one concept card per purpose (title, theme, narrative, unit anchors), linking to the purpose-map diagram |
-| H7 | `section-change-map` | the change map and the exclusion table |
-| H8 | `section-process-position` | where the change sits in the wider flow, before/after |
+| H8 | `section-process-position` | where the change sits in the wider flow, before/after (the macro system picture, shown before the detailed index) |
+| H7 | `section-change-map` | the change map and the exclusion table (the scannable index into the detail) |
 | H9 | `section-units` | one section per analysable change unit |
 | H10 | `section-related-code` | unchanged code quoted to explain context |
 | H11 | `section-diagrams` | diagrams required by the change features |
 | H12 | `section-verification` | referenced verification commands, results, residual risk |
 | H13 | `section-glossary` | every proper noun used in the body, explained once |
 | H14 | `section-report-info` | generation time, manifest hash, baseline, rounds, skips, degradations |
+
+The visual order is top-down (macro to detail): overview, purposes, the macro before/after
+(`section-process-position`), then the scannable `section-change-map` index, then the per-unit
+deep dive. The H numbers are stable ids, not positions: `section-process-position` (H8) is
+rendered before `section-change-map` (H7) so the report reads macro first, and the single source
+of the physical order is `SECTION_IDS` in `scripts/build_manifest.py`, which the renderer, the
+table of contents and V5 all consume.
 
 H6-H12 and H14 are judged mechanically (V5). The completeness of H13 and the writing quality
 of H6-H12 are human review items; no script decides whether a term was really explained.
@@ -157,14 +164,19 @@ vacuous for a unit that declares no change class.
   `motivation` also feed the L1 `report-design-lead` rendered before the code block.
   `design_dimensions` do not participate in V10 or V11. V21 enforces this three-state discipline;
   it never judges whether an answer is correct.
-- **A20** `depth_blocks` is a list of structured, deterministic **HTML-table** blocks, each a
+- **A20** `depth_blocks` is a list of structured, deterministic blocks, each a
   member of `DEPTH_BLOCK_KINDS` (`before_after`, `lifecycle`, `call_relations`). A `before_after`
-  block is a step table whose `change` column is drawn from `DEPTH_CHANGE_VOCAB`
-  (`added|removed|modified|unchanged`); a `lifecycle` block is a phase table with a `complete`
-  flag; a `call_relations` block is a `callers | unit | callees` table. Every block renders a
-  `report-depth-block` figure carrying `data-unit` and `data-kind`. Depth blocks are context: they
-  never participate in V10, add no SVG geometry and no golden fixture, and load no external
-  resource. V22 enforces their kind, unit binding and change vocabulary.
+  block is a **full-width comparison of steps**: each step is one `report-ba-step` card carrying
+  `data-change` from `DEPTH_CHANGE_VOCAB` (`added|removed|modified|unchanged`), with a before panel
+  and an after panel that sit side by side on a wide viewport and stack on a narrow one, so long
+  prose gets the full content width instead of a crushed table cell. A `lifecycle` block is a phase
+  table with a `complete` flag; a `call_relations` block is a `callers | unit | callees` table. Any
+  wide table is wrapped in a `report-table-scroll` container so it scrolls locally instead of
+  overflowing the page. Every block renders a `report-depth-block` figure carrying `data-unit` and
+  `data-kind`. Depth blocks are context: they never participate in V10, add no SVG geometry and no
+  golden fixture, and load no external resource. V22 enforces their kind, unit binding and change
+  vocabulary (carrier-agnostic: it checks the `data-change` of any element inside a `before_after`
+  block, not only a table row).
 - **A21** Prefer-diagrams authoring/review default: when the information content is comparable, a
   diagram is more readable than prose, so the report author and reviewer prefer a diagram wherever
   one is a good fit (a multi-step or cross-module flow, a call topology, a state machine, a schema,
@@ -223,8 +235,12 @@ vacuous for a unit that declares no change class.
   before the code block), `report-design-dimensions`/`report-design-dimension`/
   `report-dimension-na` (the A19 dimensions, carrying `data-dimension`), and
   `report-depth-block`/`report-depth-table`/`report-callgraph`/`report-lifecycle-flag` (the A20
-  structured tables, carrying `data-unit` and `data-kind`). The depth classes carry no
-  `report-code` and never enter the V10 recomputation. These carry no analysis content of their
+  structured blocks, carrying `data-unit` and `data-kind`), the before/after comparison classes
+  `report-ba-steps`/`report-ba-step`/`report-ba-step-head`/`report-ba-step-name`/`report-ba-change`/
+  `report-ba-panels`/`report-ba-panel`/`report-ba-before`/`report-ba-after`/`report-ba-label` (each
+  step carrying `data-change`), the `report-table-scroll` wrapper that keeps any wide table from
+  overflowing the page, and the `report-code-head`/`report-code-lang` code-block header. The depth
+  classes carry no `report-code` and never enter the V10 recomputation. These carry no analysis content of their
   own and gate no
   mechanical check; every A1-A8 field div keeps its exact `report-unit-field`/`data-field`
   markup and stays a descendant of its unit section, so V4 still finds all eight fields and
@@ -332,9 +348,10 @@ vacuous for a unit that declares no change class.
   required dimension fails. A unit with no `change_class` is vacuous (backward compatible). V21
   proves the dimension was addressed, never that the answer is correct.
 - **V22** Depth-block validity (A20): every `report-depth-block` carries a `data-kind` in
-  `DEPTH_BLOCK_KINDS` and a `data-unit` naming an analysable unit; a `before_after` row's
-  `data-change` is in `DEPTH_CHANGE_VOCAB`; depth blocks are excluded from the V10 recomputation
-  selection. Renders-nothing units stay vacuous.
+  `DEPTH_BLOCK_KINDS` and a `data-unit` naming an analysable unit; inside a `before_after` block
+  every element that carries `data-change` (a `report-ba-step` card) has a value in
+  `DEPTH_CHANGE_VOCAB` -- the check is carrier-agnostic and does not require a table row; depth
+  blocks are excluded from the V10 recomputation selection. Renders-nothing units stay vacuous.
 
 ## Strength matrix
 

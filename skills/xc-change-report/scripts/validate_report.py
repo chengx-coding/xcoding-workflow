@@ -978,8 +978,16 @@ def exclusion_intervals(index: HtmlIndex) -> list[tuple[int, int]]:
             if any(class_name in other["classes"] for class_name in CODE_EXCLUSION_CLASSES):
                 if other is element:
                     continue
-                end = inner
-                break
+                # A closed exclusion element owns its whole interval, so a nested
+                # exclusion-class descendant (a diff add/del line inside a report-code block)
+                # does not truncate it -- the verbatim context text between and after those
+                # descendants stays inside the parent's exemption (H26/H37a). Only an unclosed
+                # element is bounded by the first nested exclusion start, keeping the narrowed
+                # rule fail-closed.
+                if not closed:
+                    end = inner
+                    break
+                continue
             if other["tag"] in EXCLUSION_BOUNDARY_TAGS:
                 if not closed:
                     end = inner
@@ -1253,7 +1261,11 @@ def _check_svg_geometry(checker: Checker, index: HtmlIndex, figure: Element, spe
                 )
             if not visible.strip():
                 checker.fail("V8", f"diagram {diagram_id}: a text node carries no visible label")
-            if len(title_text) > len(visible) and title_text != visible.rstrip("\u2026"):
+            # A truncated visible label (ending in the ellipsis) keeps its full text in the
+            # <title>: the visible stem (minus the ellipsis) must be a prefix of the title. The
+            # title is deliberately longer than the visible stem, so a length/inequality test
+            # would reject the valid truncated case; the prefix test is the correct rule.
+            if visible.endswith("\u2026") and not title_text.startswith(visible[:-1]):
                 checker.fail(
                     "V8",
                     f"diagram {diagram_id}: a truncated label must keep its full text in <title>",
@@ -2569,16 +2581,19 @@ def check_v22(checker: Checker, index: HtmlIndex, manifest: dict[str, Any]) -> N
             except ValueError:
                 checker.fail("V22", f"a {kind or 'depth'} block has a non-numeric data-unit {unit_attr!r}")
         if kind == "before_after":
-            for row in index.elements:
-                if row["tag"] != "tr":
+            # Carrier-agnostic: the before/after block is a full-width card list (not a table),
+            # so any descendant element carrying `data-change` (a step card) is checked, never
+            # only `<tr>`. The change vocabulary contract (DEPTH_CHANGE_VOCAB) is unchanged.
+            for el in index.elements:
+                change = el["attrs"].get("data-change")
+                if change is None:
                     continue
-                if not any(a["index"] == block["index"] for a in index.ancestors(row)):
+                if not any(a["index"] == block["index"] for a in index.ancestors(el)):
                     continue
-                change = row["attrs"].get("data-change")
-                if change is not None and change not in DEPTH_CHANGE_VOCAB:
+                if change not in DEPTH_CHANGE_VOCAB:
                     checker.fail(
                         "V22",
-                        f"a before_after row for unit {unit_attr} has change {change!r}; expected "
+                        f"a before_after step for unit {unit_attr} has change {change!r}; expected "
                         f"one of {', '.join(DEPTH_CHANGE_VOCAB)}",
                     )
 

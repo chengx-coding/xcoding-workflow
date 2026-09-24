@@ -2240,6 +2240,82 @@ class AnalysisDepthTests(ReportCase):
 
 
 # --------------------------------------------------------------------------------------
+# Presentation rebuild: top-down funnel order + overflow-safe before/after cards
+# --------------------------------------------------------------------------------------
+
+
+class PresentationRebuildTests(AnalysisDepthTests):
+    def test_section_order_is_top_down_funnel(self):
+        # The macro system before/after must render before the detailed change-map index.
+        self.assertLess(
+            bm.SECTION_IDS.index("section-process-position"),
+            bm.SECTION_IDS.index("section-change-map"),
+            "process-position must come before change-map (macro before detail)",
+        )
+        # SECTION_IDS is the single source; the rendered page follows it.
+        analysis, first = self._depth_analysis()
+        out = self._render("funnel-order", analysis)
+        page = out.read_text(encoding="utf-8")
+        self.assertLess(
+            page.index('id="section-process-position"'),
+            page.index('id="section-change-map"'),
+            "the rendered section order must match SECTION_IDS",
+        )
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+        self.assertNotIn("V5", error_ids(payload))
+
+    def test_before_after_renders_as_cards_not_a_narrow_table(self):
+        analysis, first = self._depth_analysis(blocks=[
+            {"kind": "before_after", "title": "Status flow", "rows": [
+                {"step": "read", "before": "returned a partial view of the configuration",
+                 "after": "returns the complete configuration in a single pass", "change": "modified"},
+                {"step": "return", "before": "dict", "after": "dict", "change": "unchanged"}]},
+        ])
+        out = self._render("ba-cards", analysis)
+        page = out.read_text(encoding="utf-8")
+        # The full-width card carrier is used, carrying the change on each step card.
+        self.assertIn('class="report-ba-steps"', page)
+        self.assertIn('class="report-ba-step"', page)
+        self.assertIn('data-change="modified"', page)
+        self.assertIn('class="report-ba-panel report-ba-before"', page)
+        self.assertIn('class="report-ba-panel report-ba-after"', page)
+        # The before_after figure must NOT fall back to a bare depth table.
+        fig_start = page.index('data-kind="before_after"')
+        fig_end = page.index("</figure>", fig_start)
+        self.assertNotIn("report-depth-table", page[fig_start:fig_end])
+        # V22 still binds to the card change vocabulary.
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+        self.assertNotIn("V22", error_ids(payload))
+
+    def test_wide_tables_are_wrapped_for_overflow_safety(self):
+        analysis, first = self._depth_analysis()
+        out = self._render("scroll-wrap", analysis)
+        page = out.read_text(encoding="utf-8")
+        # The change map and the lifecycle/call-relations tables live inside a scroll wrapper.
+        self.assertIn('class="report-table-scroll"', page)
+        # The change map itself is inside such a wrapper.
+        map_at = page.index('id="change-map"')
+        self.assertIn("report-table-scroll", page[max(0, map_at - 120):map_at])
+
+    def test_css_carries_overflow_guard_and_card_classes(self):
+        css = (SKILL_ROOT / "assets" / "change-report.css").read_text(encoding="utf-8")
+        self.assertIn("overflow-x: hidden", css)          # page-level guard
+        self.assertIn("report-table-scroll", css)          # table scroll container
+        self.assertIn("overflow-wrap: anywhere", css)      # cell wrapping
+        self.assertIn("report-ba-panels", css)             # before/after card grid
+        # Narrow breakpoint stacks the before/after panels.
+        self.assertIn("max-width: 720px", css)
+
+    def test_contract_carries_the_rebuilt_presentation_tokens(self):
+        contract = (SKILL_ROOT / "references" / "change-report-contract.md").read_text(encoding="utf-8")
+        for token in ("report-ba-step", "report-table-scroll", "full-width comparison",
+                      "carrier-agnostic"):
+            self.assertIn(token, contract, token)
+
+
+# --------------------------------------------------------------------------------------
 # Prefer-diagrams: A20 derivation (D21), sequence SVG (D22), suitability advisory (A21/D20)
 # --------------------------------------------------------------------------------------
 
@@ -2275,6 +2351,22 @@ class DerivedDiagramTests(unittest.TestCase):
             {"kind": "call_relations", "unit_label": "fn()", "derive_diagram": False,
              "callers": [{"label": "c", "loc": "a:1"}], "callees": [{"label": "d", "loc": "b:2"}]}]}}}
         self.assertEqual(bs.derive_depth_block_diagrams(analysis), [])
+
+    def test_long_derived_label_truncates_but_keeps_full_text_in_title(self) -> None:
+        # A derived flow node whose label exceeds the character cap must render a truncated
+        # visible label AND keep the full text in <title>; the V8 truncation-consistency clause
+        # must accept it (regression: the old predicate rejected every genuine truncation).
+        long_text = "this before/after step description is deliberately much longer than the node cap"
+        self.assertGreater(len(long_text), rd.MAX_TEXT_NODE_CHARS)
+        spec = {
+            "id": "diagram-before-unit-9", "type": "flow", "render_mode": "svg",
+            "title": "Unit 9: before flow", "summary": "one step per node",
+            "nodes": [{"id": "n0", "label": long_text, "layer": 0, "kind": "unit"}],
+            "edges": [],
+        }
+        html = rd.render_diagram(spec)
+        self.assertIn("\u2026", html)
+        self.assertIn(f"<title>{long_text}</title>", html)
 
 
 class SequenceSvgTests(unittest.TestCase):

@@ -388,8 +388,8 @@ CODE_EXCLUSION_CLASSES = (
 SECTION_IDS = (
     "section-overview",
     "section-purposes",
-    "section-change-map",
     "section-process-position",
+    "section-change-map",
     "section-units",
     "section-related-code",
     "section-diagrams",

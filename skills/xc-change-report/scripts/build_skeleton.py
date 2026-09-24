@@ -462,10 +462,11 @@ def render_change_map(repo: Path, manifest: dict[str, Any], analysis: dict[str, 
                 "</tr>"
             )
     return (
+        '<div class="report-table-scroll">'
         '<table id="change-map" class="report-change-map"><thead><tr>'
         "<th>Path</th><th>Change</th><th>Purpose</th><th>Unit</th><th>Content hash</th>"
         "<th>Code location</th><th>Analysis</th>"
-        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"
     )
 
 
@@ -507,10 +508,11 @@ def render_exclusion_table(manifest: dict[str, Any]) -> str:
             )
     return (
         '<h3 id="exclusion-heading">Excluded entries</h3>'
+        '<div class="report-table-scroll">'
         f'<table id="exclusion-table"><caption>excluded files: {excluded_files}; '
         f"pre-existing regions: {pre_existing_regions}</caption><thead><tr><th>Path</th>"
         "<th>Category</th><th>Reason</th>"
-        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+        "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"
     )
 
 
@@ -649,28 +651,50 @@ def render_design_dimensions(spec: dict[str, Any]) -> str:
 
 
 def _render_before_after(block: dict[str, Any], unit_index: int) -> str:
+    """A20 before/after block as a full-width stacked comparison (not a narrow table).
+
+    Each step is one `report-ba-step` card carrying `data-change`; inside it a before panel and
+    an after panel sit side by side on a wide viewport and stack on a narrow one. Long prose
+    therefore gets the full content width instead of being crushed into a table cell (the P2
+    overflow root cause). The block still carries `data-kind="before_after"` and `data-unit`, and
+    each step still carries `data-change` from DEPTH_CHANGE_VOCAB, so V22 binds unchanged.
+    """
     rows_in = block.get("rows", [])
     rows_in = rows_in if isinstance(rows_in, list) else []
-    body: list[str] = []
+    dash = '<p class="report-muted">&mdash;</p>'
+    steps: list[str] = []
     for row in rows_in:
         if not isinstance(row, dict):
             continue
         change = str(row.get("change", "unchanged"))
-        body.append(
-            f'<tr data-change="{escape(change)}">'
-            f'<td>{escape(str(row.get("step", "")))}</td>'
-            f'<td>{escape(str(row.get("before", "")))}</td>'
-            f'<td>{escape(str(row.get("after", "")))}</td>'
-            f'<td>{escape(change)}</td></tr>'
+        step = str(row.get("step", "")).strip()
+        before = str(row.get("before", "")).strip()
+        after = str(row.get("after", "")).strip()
+        head = (
+            '<div class="report-ba-step-head">'
+            f'<span class="report-ba-step-name">{escape(step) or "&middot;"}</span>'
+            f'<span class="report-ba-change report-ba-change-{escape(change)}">{escape(change)}</span>'
+            "</div>"
+        )
+        panels = (
+            '<div class="report-ba-panels">'
+            '<div class="report-ba-panel report-ba-before">'
+            '<span class="report-ba-label">Before</span>'
+            f'{paragraph(before) if before else dash}</div>'
+            '<div class="report-ba-panel report-ba-after">'
+            '<span class="report-ba-label">After</span>'
+            f'{paragraph(after) if after else dash}</div>'
+            "</div>"
+        )
+        steps.append(
+            f'<div class="report-ba-step" data-change="{escape(change)}">{head}{panels}</div>'
         )
     title = escape(str(block.get("title", "Before vs after")))
     return (
         f'<figure class="report-depth-block" data-unit="{unit_index}" data-kind="before_after">'
         f"<figcaption>{title}</figcaption>"
-        '<table class="report-depth-table"><thead><tr><th>Step</th><th>Before</th>'
-        "<th>After</th><th>Change</th></tr></thead><tbody>"
-        + "".join(body)
-        + "</tbody></table></figure>"
+        f'<div class="report-ba-steps">{"".join(steps)}</div>'
+        "</figure>"
     )
 
 
@@ -697,10 +721,11 @@ def _render_lifecycle(block: dict[str, Any], unit_index: int) -> str:
         f'data-complete="{str(complete).lower()}">'
         f"<figcaption>Lifecycle of <code>{resource}</code> "
         f'<span class="report-lifecycle-flag">({flag})</span></figcaption>'
+        '<div class="report-table-scroll">'
         '<table class="report-depth-table"><thead><tr><th>Phase</th><th>Location</th>'
         "<th>Action</th><th>State</th><th>Note</th></tr></thead><tbody>"
         + "".join(body)
-        + "</tbody></table></figure>"
+        + "</tbody></table></div></figure>"
     )
 
 
@@ -720,11 +745,12 @@ def _render_call_relations(block: dict[str, Any], unit_index: int) -> str:
         f'<figure class="report-depth-block" data-unit="{unit_index}" data-kind="call_relations">'
         "<figcaption>Call relations (upstream callers &rarr; unit &rarr; downstream callees)"
         "</figcaption>"
+        '<div class="report-table-scroll">'
         '<table class="report-depth-table report-callgraph"><thead><tr>'
         "<th>Callers (upstream)</th><th>Unit</th><th>Callees (downstream)</th></tr></thead>"
         f"<tbody><tr><td>{side(block.get('callers'))}</td>"
         f"<td><strong>{unit_label}</strong></td>"
-        f"<td>{side(block.get('callees'))}</td></tr></tbody></table></figure>"
+        f"<td>{side(block.get('callees'))}</td></tr></tbody></table></div></figure>"
     )
 
 
