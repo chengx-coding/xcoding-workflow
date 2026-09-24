@@ -65,6 +65,23 @@ from highlight_code import detect_language, highlight  # noqa: E402
 import render_diagram  # noqa: E402
 from render_diagram import DiagramError  # noqa: E402
 
+
+class Counter:
+    """A deterministic monotonic 1-based counter for page-wide diagram-spec numbering.
+
+    One instance is shared across `render_units` (inline unit diagrams) and `render_diagrams`
+    (macro diagrams) so every `diagram-spec-N` id is unique and increases in document order
+    (FR-VIS-4). Determinism comes from the fixed render order, not from any global state.
+    """
+
+    def __init__(self, start: int = 1) -> None:
+        self._value = start
+
+    def next(self) -> int:
+        value = self._value
+        self._value += 1
+        return value
+
 # H4/C37: the workbench tmp directory the current render was asked to use. `None` means
 # the caller supplied none, and only then does the process fall back to the OS temp dir.
 _TMP_DIR: Path | None = None
@@ -778,8 +795,14 @@ def render_depth_blocks(spec: dict[str, Any], unit_index: int) -> str:
     return "".join(out)
 
 def render_units(
-    repo: Path, manifest: dict[str, Any], analysis: dict[str, Any]
+    repo: Path, manifest: dict[str, Any], analysis: dict[str, Any],
+    counter: "Counter | None" = None, derive_diagrams: bool = True,
 ) -> str:
+    # FR-VIS-4: unit-level derived diagrams are rendered inline inside their #unit-N block, so
+    # the shared page-wide counter numbers them before the macro diagrams that follow in
+    # section-diagrams. A missing counter (older callers) still renders, numbering unit diagrams
+    # from 1 locally. `derive_diagrams` is False at the minimal tier, which derives nothing.
+    counter = counter if counter is not None else Counter()
     units = analysis.get("units", {}) if isinstance(analysis.get("units"), dict) else {}
     pmap = _purpose_map(analysis)
     purposes = _purpose_list(analysis)
@@ -912,6 +935,17 @@ def render_units(
         # neither participates in the V10 recomputation (they are context, like related code).
         parts.append(render_design_dimensions(spec))
         parts.append(render_depth_blocks(spec, unit_index))
+        # FR-VIS-4: the diagrams derived from THIS unit's depth blocks (call graph, before/after
+        # flow) render right here, inside #unit-N and next to the blocks they explain, rather
+        # than being collected into the trailing section-diagrams. Their `*-unit-N` ids let the
+        # near-content validator bind each figure to this unit.
+        if derive_diagrams:
+            for diagram_spec in unit_diagram_specs(spec, unit_index):
+                parts.append(
+                    '<div class="report-unit-diagram">'
+                    + _render_diagram_block(diagram_spec, counter, f"diagram-unit-{unit_index}")
+                    + "</div>"
+                )
         refs = spec.get("related_code_refs", [])
         refs = refs if isinstance(refs, list) else []
         for ref in refs:
@@ -1091,22 +1125,68 @@ def derive_depth_block_diagrams(analysis: dict[str, Any]) -> list[dict[str, Any]
     return derived
 
 
-def render_diagrams(analysis: dict[str, Any]) -> str:
+def _render_diagram_block(spec: dict[str, Any], counter: "Counter", fallback_id: str) -> str:
+    """Render one diagram spec into its `diagram-spec-N` script block plus its `<figure>`.
+
+    `counter` assigns the page-wide sequential N so that diagrams inlined into unit blocks and
+    diagrams left in the macro section share one monotonic numbering in document order (D21/
+    FR-VIS-4). The figure id comes from the spec's own `id` (a derived unit diagram carries a
+    `*-unit-N` id), never from N, so V8 keeps matching spec to figure by id regardless of where
+    the figure sits on the page.
+    """
+    if not isinstance(spec, dict):
+        raise SkeletonError("diagram specs must be JSON objects")
+    payload = dict(spec)
+    payload.setdefault("id", fallback_id)
+    number = counter.next()
+    rendered = render_diagram.render_diagram(payload)
+    serialised = json.dumps(payload, ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
+    return (
+        f'<script type="application/json" id="diagram-spec-{number}">{serialised}</script>'
+        + rendered
+    )
+
+
+def unit_diagram_specs(spec: dict[str, Any], unit_index: int) -> list[dict[str, Any]]:
+    """Derive the unit-level diagram specs for one unit's A20 depth blocks (D21).
+
+    These are the diagrams that must render inline inside `#unit-<unit_index>` (FR-VIS-4). A block
+    opts out with `derive_diagram: false`. Pure and deterministic; the ids carry `-unit-N` so the
+    near-content validator can bind each figure to its unit.
+    """
+    blocks = spec.get("depth_blocks", [])
+    blocks = blocks if isinstance(blocks, list) else []
+    derived: list[dict[str, Any]] = []
+    for block in blocks:
+        if not isinstance(block, dict) or block.get("derive_diagram") is False:
+            continue
+        kind = str(block.get("kind", ""))
+        if kind == "call_relations":
+            one = _derive_callgraph_spec(unit_index, block)
+            if one is not None:
+                derived.append(one)
+        elif kind == "before_after":
+            derived.extend(_derive_before_after_specs(unit_index, block))
+    return derived
+
+
+def render_diagrams(analysis: dict[str, Any], counter: "Counter | None" = None) -> str:
+    """Render the macro / cross-unit diagrams that belong in `section-diagrams` (H11).
+
+    Only author-provided diagrams that are NOT bound to a single unit are rendered here; the
+    unit-level derived diagrams are inlined into their unit blocks by `render_units` (FR-VIS-4).
+    An author diagram may still be routed to a unit by carrying a `"unit"` field, in which case it
+    is skipped here. `counter` provides the shared page-wide diagram-spec numbering.
+    """
+    counter = counter if counter is not None else Counter()
     specs = analysis.get("diagrams", [])
-    if not isinstance(specs, list) or not specs:
-        return '<p class="report-muted">No diagram is required by the change features.</p>'
+    specs = specs if isinstance(specs, list) else []
+    macro = [s for s in specs if not (isinstance(s, dict) and s.get("unit") is not None)]
+    if not macro:
+        return '<p class="report-muted">No macro or cross-unit diagram is required by the change features.</p>'
     parts: list[str] = []
-    for index, spec in enumerate(specs, start=1):
-        if not isinstance(spec, dict):
-            raise SkeletonError("diagram specs must be JSON objects")
-        payload = dict(spec)
-        payload.setdefault("id", f"diagram-{index}")
-        rendered = render_diagram.render_diagram(payload)
-        serialised = json.dumps(payload, ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
-        parts.append(
-            f'<script type="application/json" id="diagram-spec-{index}">{serialised}</script>'
-        )
-        parts.append(rendered)
+    for index, spec in enumerate(macro, start=1):
+        parts.append(_render_diagram_block(spec, counter, f"diagram-{index}"))
     return "".join(parts)
 
 
@@ -1231,18 +1311,13 @@ def build_report(
     if strength == "full" and (not isinstance(glossary, list) or not glossary):
         raise SkeletonError("strength 'full' requires a glossary (strength matrix)")
 
-    # Prefer-diagrams (D21): derive flow diagram-specs from the A20 depth blocks and append them
-    # to the analysis diagrams so section-diagrams renders them alongside the tables. Derivation
-    # is on by default at standard/full; the minimal tier stays light and derives nothing. A
-    # block opts out with `derive_diagram: false`. This is a pure, deterministic transform, so
-    # the derived specs re-render byte-identically under V8.
-    if strength != "minimal":
-        derived = derive_depth_block_diagrams(analysis)
-        if derived:
-            analysis = dict(analysis)
-            existing = analysis.get("diagrams", [])
-            existing = list(existing) if isinstance(existing, list) else []
-            analysis["diagrams"] = existing + derived
+    # Prefer-diagrams (D21) + inline placement (FR-VIS-4): the diagrams derived from a unit's A20
+    # depth blocks are rendered inline inside that unit by render_units (see unit_diagram_specs),
+    # not appended to analysis["diagrams"]; section-diagrams keeps only the macro / cross-unit
+    # author diagrams. The minimal tier derives nothing. One page-wide counter numbers every
+    # diagram-spec-N in document order across the inline unit diagrams and the macro section.
+    diagram_counter = Counter()
+    derive_unit_diagrams = strength != "minimal"
 
     titles = analysis.get("section_titles", {})
     titles = titles if isinstance(titles, dict) else {}
@@ -1293,9 +1368,11 @@ def build_report(
         "QUICK_INDEX": render_quick_index(analysis),
         "EXCLUSION_TABLE": render_exclusion_table(manifest),
         "PROCESS_POSITION": render_process_position(analysis),
-        "UNITS": render_units(repo, manifest, analysis),
+        "UNITS": render_units(
+            repo, manifest, analysis, diagram_counter, derive_unit_diagrams
+        ),
         "RELATED_CODE": render_related_code(analysis),
-        "DIAGRAMS": render_diagrams(analysis),
+        "DIAGRAMS": render_diagrams(analysis, diagram_counter),
         "VERIFICATION": render_verification(analysis),
         "GLOSSARY": render_glossary(analysis),
         "REPORT_INFO": render_report_info(

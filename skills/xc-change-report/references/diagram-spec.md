@@ -142,6 +142,17 @@ automatic derivation, and an optional real-SVG carrier - never with a "no diagra
   only: a deterministic, non-overlapping SVG layout for member boxes and routed relations is not
   something this renderer can guarantee, and the contract does not accept a low-quality SVG (D18),
   so their layout quality stays a documented boundary rather than a bad drawing.
+- **D23** Diagram placement: inline unit diagrams vs the macro region (FR-VIS-4). A diagram
+  derived from a unit's A20 depth blocks (D21) is a **unit-level** diagram; its id ends in
+  `-unit-<N>` and it renders **inline inside that unit's `#unit-N` block**, next to the depth
+  block it explains (wrapped in `report-unit-diagram`), never collected into the trailing macro
+  section. An author diagram in `analysis["diagrams"]` is **macro / cross-unit** by default (a
+  purpose map, a system-level before/after) and renders in `section-diagrams`; an author diagram
+  may opt into a unit by carrying a `"unit": N` field. The `diagram-spec-N` script-block numbers
+  are assigned by one page-wide counter in document order across the inline unit diagrams and the
+  macro section, so every `diagram-spec-N` id is unique and monotonic. V8 is unchanged (it matches
+  a spec to its `<figure>` by the spec id anywhere on the page); V23 enforces that a `*-unit-N`
+  figure sits inside `#unit-N` and not in the macro region.
 
 ## Geometry constants
 All constants live in `scripts/build_manifest.py` and are imported by `render_diagram.py`.

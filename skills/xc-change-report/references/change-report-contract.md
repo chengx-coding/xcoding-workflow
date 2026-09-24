@@ -30,9 +30,9 @@ inserted after H6 and before H7; H6-H14 are not renumbered (their addresses are 
 | **H42** | `section-purposes` | the macro purposes the change serves: one concept card per purpose (title, theme, narrative, unit anchors), linking to the purpose-map diagram |
 | H8 | `section-process-position` | where the change sits in the wider flow, before/after (the macro system picture, shown before the detailed index) |
 | H7 | `section-change-map` | the change map and the exclusion table (the scannable index into the detail) |
-| H9 | `section-units` | one section per analysable change unit |
+| H9 | `section-units` | one section per analysable change unit, including that unit's inline diagrams (FR-VIS-4) |
 | H10 | `section-related-code` | unchanged code quoted to explain context |
-| H11 | `section-diagrams` | diagrams required by the change features |
+| H11 | `section-diagrams` | macro / cross-unit diagrams only (purpose map, system-level before/after); unit-level detail diagrams are inlined in their unit, not here (FR-VIS-4) |
 | H12 | `section-verification` | referenced verification commands, results, residual risk |
 | H13 | `section-glossary` | every proper noun used in the body, explained once |
 | H14 | `section-report-info` | generation time, manifest hash, baseline, rounds, skips, degradations |
@@ -239,7 +239,9 @@ vacuous for a unit that declares no change class.
   `report-ba-steps`/`report-ba-step`/`report-ba-step-head`/`report-ba-step-name`/`report-ba-change`/
   `report-ba-panels`/`report-ba-panel`/`report-ba-before`/`report-ba-after`/`report-ba-label` (each
   step carrying `data-change`), the `report-table-scroll` wrapper that keeps any wide table from
-  overflowing the page, and the `report-code-head`/`report-code-lang` code-block header. The depth
+  overflowing the page, the `report-code-head`/`report-code-lang` code-block header, and the
+  `report-unit-diagram` wrapper that carries a unit-level diagram rendered inline inside its unit
+  block (FR-VIS-4). The depth
   classes carry no `report-code` and never enter the V10 recomputation. These carry no analysis content of their
   own and gate no
   mechanical check; every A1-A8 field div keeps its exact `report-unit-field`/`data-field`
@@ -352,6 +354,14 @@ vacuous for a unit that declares no change class.
   every element that carries `data-change` (a `report-ba-step` card) has a value in
   `DEPTH_CHANGE_VOCAB` -- the check is carrier-agnostic and does not require a table row; depth
   blocks are excluded from the V10 recomputation selection. Renders-nothing units stay vacuous.
+
+- **V23** Near-content diagram placement (FR-VIS-4): a diagram whose spec id ends in `-unit-<N>`
+  (a call graph or before/after flow derived from unit N's depth blocks, D21) must render inline
+  inside that unit's `#unit-<N>` block, and must not sit in the macro `section-diagrams` region;
+  the macro region carries only macro / cross-unit diagrams. The rule keys on the figure id, so it
+  is independent of the page-wide `diagram-spec-N` numbering and of V8 (which matches a spec to its
+  figure by id anywhere on the page). Whether a diagram is appropriate at all stays a human /
+  accuracy judgement; V23 only proves placement.
 
 ## Strength matrix
 

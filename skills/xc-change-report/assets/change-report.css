@@ -532,6 +532,11 @@ pre code { font-family: inherit; }
 .report-diagram-summary { margin: var(--sp-2) 0; color: var(--text-secondary); font-size: var(--fs-small); }
 .report-diagram-table { margin-top: var(--sp-2); }
 .report-diagram-a11y { position: absolute; width: 0; height: 0; overflow: hidden; }
+/* FR-VIS-4: a unit-level diagram rendered inline inside its #unit-N block, next to the depth
+   block it explains. It reads as part of the unit, so it carries a subtle accent to mark it as
+   this unit's own figure. */
+.report-unit-diagram { margin: var(--sp-3) 0; }
+.report-unit-diagram .report-diagram { border-left: 3px solid var(--accent); }
 
 .diagram-node { fill: var(--surface-hover); stroke: var(--accent); stroke-width: 1; }
 .diagram-node-purpose { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }

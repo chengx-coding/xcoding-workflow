@@ -2870,5 +2870,94 @@ class LiteralBraceGuardTests(unittest.TestCase):
         self.assertEqual(bs.template_residue("{{UNITS}}"), [])
 
 
+# --------------------------------------------------------------------------------------
+# FR-VIS-4: inline unit diagrams + macro region + global numbering + V23 near-content
+# --------------------------------------------------------------------------------------
+
+
+class InlineDiagramTests(DiagramSuitabilityAdvisoryTests):
+    CALLREL = [{"kind": "call_relations", "unit_label": "fn()",
+                "callers": [{"label": "caller_a", "loc": "a.py:1"}],
+                "callees": [{"label": "callee_x", "loc": "x.py:2"}]}]
+
+    def test_unit_derived_diagram_renders_inside_its_unit_block(self):
+        analysis, first = self._analysis_with("function", depth_blocks=self.CALLREL)
+        out = self._render("inline-unit", analysis)
+        page = out.read_text(encoding="utf-8")
+        # The derived call-graph figure exists with a *-unit-N id.
+        fig = f'id="diagram-callgraph-unit-{first}"'
+        self.assertIn(fig, page)
+        # It renders INSIDE the #unit-N article, not in section-diagrams. Structural check: the
+        # figure offset lies between the unit article's start and the next section boundary.
+        unit_at = page.index(f'id="unit-{first}"')
+        fig_at = page.index(fig)
+        section_diagrams_at = page.index('id="section-diagrams"')
+        self.assertGreater(fig_at, unit_at)
+        self.assertLess(fig_at, section_diagrams_at,
+                        "unit-level diagram must render before (inside units), not in section-diagrams")
+        # A spec block with global numbering exists for it.
+        self.assertRegex(page, r'id="diagram-spec-\d+"')
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+        self.assertNotIn("V8", error_ids(payload))
+        self.assertNotIn("V23", error_ids(payload))
+
+    def test_macro_author_diagram_stays_in_section_diagrams(self):
+        analysis, first = self._analysis_with("function", depth_blocks=self.CALLREL)
+        analysis["diagrams"] = [{
+            "id": "diagram-macro-x", "type": "flow", "render_mode": "svg",
+            "title": "Macro", "summary": "macro overview",
+            "nodes": [{"id": "a", "label": "A", "layer": 0}, {"id": "b", "label": "B", "layer": 1}],
+            "edges": [{"from": "a", "to": "b", "label": ""}],
+        }]
+        out = self._render("inline-macro", analysis)
+        page = out.read_text(encoding="utf-8")
+        macro_at = page.index('id="diagram-macro-x"')
+        section_diagrams_at = page.index('id="section-diagrams"')
+        self.assertGreater(macro_at, section_diagrams_at,
+                           "a macro (non-unit) diagram belongs in section-diagrams")
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+        self.assertNotIn("V23", error_ids(payload))
+
+    def test_v23_fails_when_unit_diagram_is_misplaced(self):
+        # Force a *-unit-N figure to sit outside its #unit-N block by routing a derived-shaped
+        # id through the macro section (author diagram with a unit-style id). V23 must fail.
+        analysis, first = self._analysis_with("function", depth_blocks=None)
+        analysis["diagrams"] = [{
+            "id": f"diagram-callgraph-unit-{first}", "type": "flow", "render_mode": "svg",
+            "title": "Misplaced", "summary": "should be inside its unit",
+            "nodes": [{"id": "a", "label": "A", "layer": 0}, {"id": "b", "label": "B", "layer": 1}],
+            "edges": [{"from": "a", "to": "b", "label": ""}],
+        }]
+        out = self._render("inline-misplaced", analysis)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V23", error_ids(payload))
+
+    def test_global_diagram_numbering_is_unique_and_sequential(self):
+        analysis, first = self._analysis_with("function", depth_blocks=self.CALLREL)
+        analysis["diagrams"] = [{
+            "id": "diagram-macro-x", "type": "flow", "render_mode": "svg",
+            "title": "Macro", "summary": "macro overview",
+            "nodes": [{"id": "a", "label": "A", "layer": 0}, {"id": "b", "label": "B", "layer": 1}],
+            "edges": [{"from": "a", "to": "b", "label": ""}],
+        }]
+        out = self._render("inline-numbering", analysis)
+        page = out.read_text(encoding="utf-8")
+        nums = [int(n) for n in re.findall(r'id="diagram-spec-(\d+)"', page)]
+        self.assertEqual(nums, sorted(nums))
+        self.assertEqual(len(nums), len(set(nums)), "diagram-spec-N numbers must be unique")
+        self.assertEqual(nums, list(range(1, len(nums) + 1)), "numbering is 1..N sequential")
+
+    def test_contract_carries_inline_diagram_tokens(self):
+        contract = (SKILL_ROOT / "references" / "change-report-contract.md").read_text(encoding="utf-8")
+        for token in ("V23", "report-unit-diagram"):
+            self.assertIn(token, contract, token)
+        diagrams = (SKILL_ROOT / "references" / "diagram-spec.md").read_text(encoding="utf-8")
+        for token in ("inline", "section-diagrams"):
+            self.assertIn(token, diagrams, token)
+
+
 if __name__ == "__main__":
     unittest.main()

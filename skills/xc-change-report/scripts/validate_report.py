@@ -2597,6 +2597,53 @@ def check_v22(checker: Checker, index: HtmlIndex, manifest: dict[str, Any]) -> N
                         f"one of {', '.join(DEPTH_CHANGE_VOCAB)}",
                     )
 
+def check_v23(checker: Checker, index: HtmlIndex) -> None:
+    """Near-content diagram placement (FR-VIS-4).
+
+    A unit-level diagram -- a diagram whose spec id ends in `-unit-<N>` (a call graph or a
+    before/after flow derived from unit N's depth blocks, D21) -- must render inline INSIDE that
+    unit's `#unit-<N>` block, next to the content it explains, not in the trailing macro diagram
+    section. Conversely, the macro `section-diagrams` region must not contain any `*-unit-N`
+    figure. This makes the "diagrams appear near the content they explain" requirement a
+    mechanical rule; whether a diagram is appropriate at all stays a human / accuracy judgement.
+
+    The rule keys on the figure id, so it is independent of numbering and of V8 (which matches a
+    spec to its figure by id anywhere on the page). A non-unit figure (a macro diagram) is not
+    constrained here.
+    """
+    unit_id_re = re.compile(r"-unit-(\d+)$")
+    diagrams_section = index.by_id("section-diagrams")
+    for figure in index.by_class("report-diagram"):
+        figure_id = figure["attrs"].get("id", "").strip()
+        match = unit_id_re.search(figure_id)
+        if match is None:
+            continue  # a macro / cross-unit diagram: no placement constraint here
+        unit_number = match.group(1)
+        unit_block = index.by_id(f"unit-{unit_number}")
+        if unit_block is None:
+            checker.fail(
+                "V23",
+                f"unit-level diagram {figure_id!r} names unit {unit_number} which has no "
+                f"#unit-{unit_number} block",
+            )
+            continue
+        inside_unit = any(a["index"] == unit_block["index"] for a in index.ancestors(figure))
+        if not inside_unit:
+            checker.fail(
+                "V23",
+                f"unit-level diagram {figure_id!r} must render inside its #unit-{unit_number} "
+                "block (FR-VIS-4: diagrams appear next to the content they explain)",
+            )
+        if diagrams_section is not None and any(
+            a["index"] == diagrams_section["index"] for a in index.ancestors(figure)
+        ):
+            checker.fail(
+                "V23",
+                f"unit-level diagram {figure_id!r} must not sit in the macro section-diagrams "
+                "region; that region carries only macro / cross-unit diagrams",
+            )
+
+
 def check_diagram_suitability(checker: Checker, index: HtmlIndex, manifest: dict[str, Any]) -> None:
     """A21/D20 prefer-diagrams advisory (NON-BLOCKING).
 
@@ -2701,6 +2748,7 @@ def validate(
     check_v20(checker, index)
     check_v21(checker, index, manifest)
     check_v22(checker, index, manifest)
+    check_v23(checker, index)
     check_diagram_suitability(checker, index, manifest)
     check_v7(checker, index)
     diagram_stats = check_v8(checker, index, golden_dir)
