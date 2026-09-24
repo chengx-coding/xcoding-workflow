@@ -165,7 +165,17 @@ vacuous for a unit that declares no change class.
   `report-depth-block` figure carrying `data-unit` and `data-kind`. Depth blocks are context: they
   never participate in V10, add no SVG geometry and no golden fixture, and load no external
   resource. V22 enforces their kind, unit binding and change vocabulary.
-
+- **A21** Prefer-diagrams authoring/review default: when the information content is comparable, a
+  diagram is more readable than prose, so the report author and reviewer prefer a diagram wherever
+  one is a good fit (a multi-step or cross-module flow, a call topology, a state machine, a schema,
+  a type relationship). This is a default with a judgement, not a mandate: a light change (a
+  constant, a piece of copy, D6) may carry no diagram, and whether a diagram should exist for a
+  given change is a human review item. The mechanical support is deliberately non-blocking: the
+  A20 depth blocks derive `flow` diagrams automatically (D21), `sequence` offers an optional real
+  SVG carrier (D22), and a unit of a diagram-preferred change class that provides no diagram and
+  does not waive the diagram-relevant dimensions earns a non-blocking advisory (D20) - never a
+  failure. "No diagram" is never a hard error; the per-change-class suitability map lives in
+  `references/analysis-depth.md` and the diagram mechanisms in `references/diagram-spec.md`.
 ## Code references, diffs and highlighting
 
 - **H25** Every analysable unit has at least one code block showing its diff, and exactly one

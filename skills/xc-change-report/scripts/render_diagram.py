@@ -33,6 +33,12 @@ from build_manifest import (  # noqa: E402
     MAX_SVG_CANVAS_HEIGHT,
     MAX_SVG_CANVAS_WIDTH,
     MAX_TEXT_NODE_CHARS,
+    SEQ_BOTTOM_MARGIN,
+    SEQ_HEADER_HEIGHT,
+    SEQ_MESSAGE_GAP,
+    SEQ_PARTICIPANT_GAP,
+    SEQ_PARTICIPANT_WIDTH,
+    SEQ_TOP_MARGIN,
     SVG_FONT_SIZE,
     SVG_LAYER_GAP,
     SVG_MARGIN,
@@ -286,6 +292,121 @@ def _render_svg_page(
     return "".join(lines)
 
 
+def render_sequence_svg(spec: dict[str, Any]) -> str:
+    """Render a `sequence` spec as a deterministic inline SVG (D22, optional carrier).
+
+    Participants are fixed columns with a header box and a vertical lifeline; messages are
+    time-ordered rows drawn as horizontal arrows from the source column to the target column,
+    with the message text above the arrow and an optional note. Everything sits on the integer
+    grid and is a pure function of the spec, so the output is byte-deterministic and
+    golden-fixture friendly. A self-message (from == to) is drawn as a short right-pointing
+    stub. This carrier is opt-in; the default sequence carrier is still the table (D18).
+    """
+    diagram_id = str(spec.get("id", "diagram"))
+    participants = spec.get("participants")
+    messages = spec.get("messages")
+    if not isinstance(participants, list) or not participants:
+        raise DiagramError(f"diagram {diagram_id}: 'participants' must be a non-empty list")
+    if not isinstance(messages, list) or not messages:
+        raise DiagramError(f"diagram {diagram_id}: 'messages' must be a non-empty list")
+    names = [str(item) for item in participants]
+    known = set(names)
+    column_x: dict[str, int] = {}
+    for index, name in enumerate(names):
+        column_x[name] = SVG_MARGIN + index * (SEQ_PARTICIPANT_WIDTH + SEQ_PARTICIPANT_GAP) + SEQ_PARTICIPANT_WIDTH // 2
+    width = 2 * SVG_MARGIN + len(names) * SEQ_PARTICIPANT_WIDTH + max(0, len(names) - 1) * SEQ_PARTICIPANT_GAP
+    first_row_y = SEQ_TOP_MARGIN + SEQ_HEADER_HEIGHT + SEQ_MESSAGE_GAP
+    height = first_row_y + len(messages) * SEQ_MESSAGE_GAP + SEQ_BOTTOM_MARGIN
+    lifeline_bottom = height - SEQ_BOTTOM_MARGIN
+
+    records: list[str] = []
+    # participant headers + lifelines
+    for name in names:
+        cx = column_x[name]
+        box_x = cx - SEQ_PARTICIPANT_WIDTH // 2
+        records.append(
+            f'<rect class="diagram-node diagram-seq-participant" x="{box_x}" y="{SEQ_TOP_MARGIN}" '
+            f'width="{SEQ_PARTICIPANT_WIDTH}" height="{SEQ_HEADER_HEIGHT}" rx="4" />'
+        )
+        label, full = truncate_label(name)
+        records.append(
+            f'<text class="diagram-node-label" x="{cx}" '
+            f'y="{SEQ_TOP_MARGIN + SEQ_HEADER_HEIGHT // 2 + SVG_FONT_SIZE // 2 - 1}" '
+            f'font-size="{SVG_FONT_SIZE}" text-anchor="middle">'
+            f"<title>{_escape(full)}</title>{_escape(label)}</text>"
+        )
+        records.append(
+            f'<line class="diagram-seq-lifeline" x1="{cx}" y1="{SEQ_TOP_MARGIN + SEQ_HEADER_HEIGHT}" '
+            f'x2="{cx}" y2="{lifeline_bottom}" />'
+        )
+    # messages, in specification order (time order)
+    for order, message in enumerate(messages):
+        if not isinstance(message, dict):
+            raise DiagramError(f"diagram {diagram_id}: message entries must be objects")
+        source = str(message.get("from", ""))
+        target = str(message.get("to", ""))
+        for reference in (source, target):
+            if reference not in known:
+                raise DiagramError(
+                    f"diagram {diagram_id}: message references unknown participant {reference!r}"
+                )
+        y = first_row_y + order * SEQ_MESSAGE_GAP
+        sx = column_x[source]
+        tx = column_x[target]
+        text = str(message.get("message", ""))
+        label, full = truncate_label(text)
+        if source == target:
+            stub = min(SEQ_PARTICIPANT_GAP // 2, 30)
+            path = f"M {sx} {y} L {sx + stub} {y} L {sx + stub} {y + 12} L {sx} {y + 12}"
+            records.append(
+                f'<path class="diagram-edge" d="{path}" marker-end="url(#{_escape(diagram_id)}-arrow)" fill="none" />'
+            )
+            records.append(
+                f'<text class="diagram-edge-label" x="{sx + stub + 4}" y="{y - 4}" '
+                f'font-size="{SVG_FONT_SIZE}" text-anchor="start">'
+                f"<title>{_escape(full)}</title>{_escape(label)}</text>"
+            )
+        else:
+            records.append(
+                f'<line class="diagram-edge" x1="{sx}" y1="{y}" x2="{tx}" y2="{y}" '
+                f'marker-end="url(#{_escape(diagram_id)}-arrow)" />'
+            )
+            mid = (sx + tx) // 2
+            records.append(
+                f'<text class="diagram-edge-label" x="{mid}" y="{y - 4}" '
+                f'font-size="{SVG_FONT_SIZE}" text-anchor="middle">'
+                f"<title>{_escape(full)}</title>{_escape(label)}</text>"
+            )
+        note = str(message.get("note", "")).strip()
+        if note:
+            note_label, note_full = truncate_label(note)
+            records.append(
+                f'<text class="diagram-edge-label diagram-seq-note" x="{width - SVG_MARGIN}" y="{y - 4}" '
+                f'font-size="{SVG_FONT_SIZE}" text-anchor="end">'
+                f"<title>{_escape(note_full)}</title>{_escape(note_label)}</text>"
+            )
+
+    title, _ = truncate_label(str(spec.get("title", diagram_id)))
+    summary = str(spec.get("summary", ""))
+    lines: list[str] = []
+    lines.append(
+        f'<svg class="report-diagram-svg" id="{_escape(diagram_id)}" '
+        f'width="{int(width)}" height="{int(height)}" '
+        f'viewBox="0 0 {int(width)} {int(height)}" role="img" '
+        f'font-size="{SVG_FONT_SIZE}">'
+    )
+    lines.append(f"<title>{_escape(title)}</title>")
+    lines.append(f"<desc>{_escape(summary)}</desc>")
+    lines.append(
+        f'<defs><marker id="{_escape(diagram_id)}-arrow" viewBox="0 0 10 10" refX="10" refY="5" '
+        f'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+        f'<path d="M 0 0 L 10 5 L 0 10 z" /></marker></defs>'
+    )
+    lines.extend(records)
+    lines.append("</svg>")
+    return "".join(lines)
+
+
 def render_table(spec: dict[str, Any], diagram_type: str) -> str:
     """Render a `sequence`/`class`/`er` spec as a deterministic HTML table plus a11y text."""
     diagram_id = str(spec.get("id", "diagram"))
@@ -414,6 +535,15 @@ def validate_spec(spec: dict[str, Any]) -> str:
             f"(supported: {', '.join(DIAGRAM_TYPES)})"
         )
     render_mode = str(spec.get("render_mode", "")).strip()
+    if diagram_type == "sequence":
+        # D22: sequence is a dual-carrier type. The default carrier is the table (D18); an
+        # optional inline-SVG carrier is selected with render_mode="svg". Both are valid.
+        if render_mode not in ("table", "svg"):
+            raise DiagramError(
+                f"diagram {spec.get('id', '?')}: type 'sequence' requires render_mode "
+                f"'table' or 'svg', found {render_mode!r}"
+            )
+        return render_mode
     expected = "svg" if diagram_type in SVG_RENDER_TYPES else "table"
     if render_mode != expected:
         raise DiagramError(
@@ -427,11 +557,15 @@ def render_diagram(spec: dict[str, Any]) -> str:
     """Render one diagram spec into a `<figure>` fragment."""
     render_mode = validate_spec(spec)
     diagram_id = str(spec.get("id", "diagram"))
-    payload = (
-        "".join(render_svg_pages(spec))
-        if render_mode == "svg"
-        else render_table(spec, str(spec.get("type")))
-    )
+    diagram_type = str(spec.get("type"))
+    if render_mode == "svg":
+        payload = (
+            render_sequence_svg(spec)
+            if diagram_type == "sequence"
+            else "".join(render_svg_pages(spec))
+        )
+    else:
+        payload = render_table(spec, diagram_type)
     return (
         f'<figure class="report-diagram" id="{_escape(diagram_id)}" '
         f'data-diagram-id="{_escape(diagram_id)}" data-diagram-type="{_escape(str(spec.get("type")))}" '

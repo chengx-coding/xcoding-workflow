@@ -152,7 +152,21 @@ MIN_NA_REASON_CHARS = 12
 DEPTH_BLOCK_KINDS = ("before_after", "lifecycle", "call_relations")
 # The change vocabulary a before_after row may carry.
 DEPTH_CHANGE_VOCAB = ("added", "removed", "modified", "unchanged")
-
+# A21/D20 prefer-diagrams advisory. These change classes are the ones for which a diagram is
+# usually the best expression (a multi-step or cross-module flow, a call topology, a state
+# machine, a schema or a type relationship). A unit of one of these classes that provides no
+# diagram and does not mark the diagram-relevant dimensions not-applicable earns a NON-BLOCKING
+# advisory, never a failure: light classes (constant-config, test-config, other) are absent
+# here, and whether a diagram should really exist stays a human review judgement.
+DIAGRAM_PREFERRED_CLASSES = (
+    "function",
+    "call-dependency",
+    "control-flow",
+    "concurrency",
+    "data-schema",
+    "type-contract",
+    "api-contract",
+)
 # Unit-window constants (C31) and strength constants.
 MAX_ADDED_UNIT_LINES = 400
 ADDED_UNIT_BLOCK_LINES = 200
@@ -271,6 +285,15 @@ SVG_NODE_GAP = 40
 SVG_LAYER_GAP = 90
 SVG_MARGIN = 24
 SVG_CHAR_WIDTH = 7
+# Sequence-diagram SVG geometry (D22, optional sequence carrier). Participants are fixed
+# columns with vertical lifelines; messages are time-ordered rows with horizontal arrows. All
+# integer, so the layout is byte-deterministic and golden-fixture friendly.
+SEQ_PARTICIPANT_WIDTH = 150
+SEQ_PARTICIPANT_GAP = 60
+SEQ_MESSAGE_GAP = 44
+SEQ_HEADER_HEIGHT = 40
+SEQ_TOP_MARGIN = 24
+SEQ_BOTTOM_MARGIN = 24
 TABLE_CELL_CHARS = 120
 
 # Sensitive detection (C34).

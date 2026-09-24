@@ -28,6 +28,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from build_manifest import (  # noqa: E402
     CHANGE_CLASSES,
     CODE_BLOCK_CLASS,
+    DIAGRAM_PREFERRED_CLASSES,
     CODE_CONTEXT_CLASS,
     CODE_EXCLUSION_CLASSES,
     DIGEST_ALGORITHM,
@@ -341,12 +342,21 @@ def has_word_content(text: str) -> bool:
 class Checker:
     def __init__(self) -> None:
         self.errors: list[dict[str, str]] = []
+        self.advisories: list[dict[str, str]] = []
 
     def fail(self, check: str, message: str) -> None:
         # The cap is applied here, at the one point every check message passes through, because
         # the contract states it for every message and a per-check site would be a rule a later
         # check can forget. A message inside the cap is returned unchanged.
         self.errors.append({"id": check, "message": bounded_message(message)})
+
+    def advise(self, check: str, message: str) -> None:
+        # A21/D20 prefer-diagrams advisory: a non-blocking signal that a unit that is a good
+        # candidate for a diagram did not provide one and did not mark the relevant dimension
+        # not-applicable. It never enters `errors`, never changes `ok` or the receipt, and is
+        # identical at both stages. It is a suggestion, not a gate: light changes may omit
+        # diagrams, and whether a diagram *should* exist is a human review judgement.
+        self.advisories.append({"id": check, "message": bounded_message(message)})
 
     @property
     def ok(self) -> bool:
@@ -2572,6 +2582,70 @@ def check_v22(checker: Checker, index: HtmlIndex, manifest: dict[str, Any]) -> N
                         f"one of {', '.join(DEPTH_CHANGE_VOCAB)}",
                     )
 
+def check_diagram_suitability(checker: Checker, index: HtmlIndex, manifest: dict[str, Any]) -> None:
+    """A21/D20 prefer-diagrams advisory (NON-BLOCKING).
+
+    For a unit whose declared change class is in DIAGRAM_PREFERRED_CLASSES, a diagram is usually
+    the best expression. When such a unit has no diagram bound to it (no `<figure>` whose id
+    references `unit-<N>`, e.g. a derived call-graph / before / after) and does not mark the
+    diagram-relevant dimensions (`before_after`, `upstream_downstream`) not-applicable, emit one
+    advisory. This never fails the node, never changes `ok` or the receipt, and is identical at
+    both stages: whether a diagram should really exist is a human review judgement, and a light
+    change may legitimately omit one.
+    """
+    # collect diagram figure ids once
+    diagram_ids = [
+        el["attrs"].get("id", "")
+        for el in index.by_class("report-diagram")
+    ]
+    for entry in manifest.get("files", []):
+        for hunk in entry.get("hunks", []):
+            if hunk.get("excluded"):
+                continue
+            unit_index = hunk["unit_index"]
+            section = index.by_id(f"unit-{unit_index}")
+            if section is None:
+                continue
+            badges = [
+                el for el in index.by_class("report-change-class")
+                if any(a["index"] == section["index"] for a in index.ancestors(el))
+            ]
+            if not badges:
+                continue
+            change_class = badges[0]["attrs"].get("data-change-class", "").strip()
+            if change_class not in DIAGRAM_PREFERRED_CLASSES:
+                continue
+            token = f"unit-{unit_index}"
+            has_diagram = any(token in did for did in diagram_ids)
+            if has_diagram:
+                continue
+            # did the author mark the diagram-relevant dimensions not-applicable?
+            waived = False
+            for el in index.elements:
+                if "report-design-dimension" not in el["classes"]:
+                    continue
+                if el["attrs"].get("data-dimension", "") not in ("before_after", "upstream_downstream"):
+                    continue
+                if not any(a["index"] == section["index"] for a in index.ancestors(el)):
+                    continue
+                if any(
+                    "report-dimension-na" in child["classes"]
+                    and any(a["index"] == el["index"] for a in index.ancestors(child))
+                    for child in index.elements
+                ):
+                    waived = True
+                    break
+            if waived:
+                continue
+            checker.advise(
+                "A21",
+                f"unit {unit_index} ({change_class}): a diagram is usually the best expression "
+                "for this change class, but this unit provides none and does not mark the "
+                "before/after or upstream/downstream dimension not-applicable. Consider a diagram "
+                "(this is a non-blocking suggestion, not a failure).",
+            )
+
+
 def validate(
     report_path: Path,
     manifest_path: Path,
@@ -2612,6 +2686,7 @@ def validate(
     check_v20(checker, index)
     check_v21(checker, index, manifest)
     check_v22(checker, index, manifest)
+    check_diagram_suitability(checker, index, manifest)
     check_v7(checker, index)
     diagram_stats = check_v8(checker, index, golden_dir)
     head_current = check_v9(checker, manifest, repo)
@@ -2657,6 +2732,7 @@ def validate(
         "manifest": str(manifest_path.resolve()),
         "next_action": "refresh" if not head_current else "none",
         "errors": checker.errors,
+        "advisories": checker.advisories,
         "facts": facts,
         "details": {
             "gate": gate,

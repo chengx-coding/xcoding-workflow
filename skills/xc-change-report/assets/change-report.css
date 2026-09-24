@@ -564,6 +564,9 @@ pre code { font-family: inherit; }
 .diagram-node-label { fill: var(--text-primary); }
 .diagram-edge { stroke: var(--text-muted); stroke-width: 1; }
 .diagram-edge-label { fill: var(--text-muted); }
+.diagram-seq-participant { fill: var(--accent-primary-soft); stroke: var(--accent-primary); stroke-width: 1.5; }
+.diagram-seq-lifeline { stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 4 4; }
+.diagram-seq-note { fill: var(--text-muted); font-style: italic; }
 
 /* ---------------------------------------------------------------- footer */
 .report-footer { padding: var(--sp-5) var(--sp-7) var(--sp-8); color: var(--text-muted); font-size: var(--fs-small); }

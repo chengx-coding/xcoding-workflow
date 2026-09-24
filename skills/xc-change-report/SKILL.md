@@ -186,10 +186,10 @@ same string values.
 
 The four reference documents are normative:
 - `references/change-report-contract.md` - H1-H42 (page structure, anchors, class names,
-  offline self-containment, language) and A1-A20 (per-unit analysis content: A1-A15 fields,
+  offline self-containment, language) and A1-A21 (per-unit analysis content: A1-A15 fields,
   the A16 purpose and A17 related-code-refs layer, and the A18-A20 analysis-depth layer -
-  change class, design dimensions, structured depth blocks), plus the A13 threshold constants,
-  the V17-V22 purpose-layer and analysis-depth validation, the strength matrix and the strength
+  change class, design dimensions, structured depth blocks, and the A21 prefer-diagrams authoring/review default), plus the A13 threshold constants,
+  the V17-V22 purpose-layer and analysis-depth validation, the A21 prefer-diagrams default, the strength matrix and the strength
   constants' calibration record.
 - `references/analysis-depth.md` - the change taxonomy (A18) x design-dimension (A19) matrix,
   the three-state answer discipline, the A20 depth blocks, the strength-matrix interaction, and
@@ -200,8 +200,9 @@ The four reference documents are normative:
   refresh, sensitive and non-decodable content, the lifecycle coverage disposition, the
   calibration record of the acceptance-gating constants) plus the O1-O9 orchestration contract,
   the V1-V16 failure table and the normalisation rule.
-- `references/diagram-spec.md` - D1-D19 (diagram grammar, the two render modes, trigger
-  conditions, geometry constants).
+- `references/diagram-spec.md` - D1-D22 (diagram grammar, the two render modes, trigger
+  conditions, geometry constants, the prefer-diagrams mechanisms: D20 non-blocking suitability
+  advisory, D21 depth-block diagram derivation, D22 the optional sequence SVG carrier).
 
 The report is a user-facing artefact, so its prose follows the
 public `xc-document` human-readable authoring default and the work order's document

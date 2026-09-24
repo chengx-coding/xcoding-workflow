@@ -130,14 +130,43 @@ run no script, and they never participate in the V10 recomputation (they are con
   (downstream)`, each side listing `label` + `file:line`. Use it for a new/changed function or a
   changed call dependency, to show who depends on the unit and what the unit now depends on.
 
-### Why tables and not SVG here
+### Tables and their derived diagrams
 
-A layered SVG call-graph or before/after flow is expressive, but a general directed-graph layout
-that stays byte-deterministic under a standard-library-only, integer-grid renderer is costly and
-crossing-prone, and each new SVG type needs a golden fixture. The ordered, enumerable, row-diffable
-nature of these three relations maps cleanly onto tables, which are deterministic by construction
-and accessible without extra markup. SVG variants (a rank-layered call-graph, a side-by-side flow
-diff) remain a documented future option; they are **not** part of this layer.
+The three depth blocks are stored as deterministic HTML tables (ordered, enumerable,
+row-diffable, accessible without extra markup). Following the prefer-diagrams principle (A21),
+two of them also **derive a diagram automatically** and render it beside the table (D21): a
+`call_relations` block derives a layered call-graph SVG, and a `before_after` block derives a
+paired before/after flow SVG. The derivation reuses the `flow` carrier, is a pure function, and
+is re-rendered and checked by V8 like any flow spec; it is on at `standard`/`full`, skipped at
+`minimal`, and a block opts out with `derive_diagram: false`. So the reader gets the table for
+completeness and the diagram for intuition, from one piece of authored data.
+
+## Prefer-diagrams: suitability by change class (A21 / D20)
+
+When the information content is comparable, a diagram is the more readable expression. The map
+below is the authoring/review guidance and the basis of the non-blocking D20 advisory: a unit of a
+diagram-preferred class that provides no diagram and does not waive the diagram-relevant
+dimensions earns an advisory (never a failure). Light classes may omit a diagram.
+
+| change_class | best expression | preferred diagram (carrier) |
+|---|---|---|
+| `function` (multi-step or cross-module) | diagram | call graph (flow SVG, derived) + before/after flow (flow SVG, derived); sequence (D22 SVG) for timed interaction |
+| `call-dependency` | diagram | call/dependency graph (flow SVG, derived from `call_relations`) |
+| `control-flow` | diagram | before/after flow comparison (flow SVG, derived from `before_after`) |
+| `concurrency` / state field | diagram | state machine (state SVG); sequence (D22 SVG) for interaction timing |
+| `data-schema` | diagram | ER (table carrier) + field before/after (`before_after`, derived flow) |
+| `type-contract` | diagram | class relations (table carrier) |
+| `api-contract` | diagram or table | sequence (D22 SVG or table) + field before/after |
+| `signature` | diagram or table | signature before/after (table) + affected-caller graph (flow SVG) |
+| `member-var` / `global-state` | mixed | lifecycle (table) + read/write or call graph (flow SVG) |
+| `constant-config` / `test-config` / `other` (light) | may omit | none required (D6); no advisory |
+
+The carrier choice follows the deterministic-rendering rule: an ordered, enumerable, row-diffable
+relation (class members, ER fields) stays a table; a two-dimensional topology (a call graph, a
+flow, a state machine) is a layered SVG; a timed interaction may use the optional sequence SVG
+(D22). `class` and `er` keep the table carrier because a deterministic, non-overlapping SVG layout
+for them is not guaranteed and a low-quality SVG is not accepted (D18) - that is a documented
+boundary, not an oversight.
 
 ## Strength matrix interaction
 

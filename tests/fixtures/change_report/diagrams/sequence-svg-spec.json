@@ -1,0 +1,40 @@
+{
+  "id": "diagram-seq-1",
+  "type": "sequence",
+  "render_mode": "svg",
+  "title": "Status query",
+  "summary": "Client asks the service for status.",
+  "participants": [
+    "Client",
+    "Service",
+    "Store"
+  ],
+  "messages": [
+    {
+      "from": "Client",
+      "to": "Service",
+      "message": "get_status()",
+      "note": "entry"
+    },
+    {
+      "from": "Service",
+      "to": "Store",
+      "message": "load_batch()"
+    },
+    {
+      "from": "Store",
+      "to": "Service",
+      "message": "rows"
+    },
+    {
+      "from": "Service",
+      "to": "Service",
+      "message": "assemble view"
+    },
+    {
+      "from": "Service",
+      "to": "Client",
+      "message": "status view"
+    }
+  ]
+}

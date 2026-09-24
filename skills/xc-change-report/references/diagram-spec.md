@@ -50,7 +50,7 @@ present is well-formed and truthful about its carrier.
   `diagram-spec-N` and no attribute other than `type` and `id`.
 - **D9** Exactly five types are supported: `flow`, `sequence`, `class`, `er`, `state`. A sixth
   type is an error: no guessing, no degradation. "Supported" means "has a defined carrier", not
-  "drawn as SVG": `svg` mode accepts only `flow` and `state`.
+  "drawn as SVG": the layered `svg` mode accepts `flow` and `state`, and `sequence` has an optional dedicated `svg` carrier (D22) in addition to its default table.
 - **D10** The SVG renderer uses a layered layout and emits pure SVG (`<rect>`, `<path>`,
   `<text>`, `<line>`). All coordinates sit on the integer grid, and the same specification
   always renders to the same bytes. Text escaping uses the standard library's HTML escaping.
@@ -97,8 +97,53 @@ present is well-formed and truthful about its carrier.
   orthogonal routing). The geometry constants D14-D17 are reused unchanged; a node without
   `kind` renders byte-identically to an ordinary flow node.
 
-## Geometry constants
 
+## Prefer-diagrams principle and its mechanisms (D20-D22)
+
+The authoring/review default is stated in the analysis contract (A21): when the information
+content is comparable, a diagram is more readable than prose, so prefer a diagram wherever one is
+a good fit. This is a default with a judgement, not a mandate: a light change (a constant, a piece
+of copy) may carry no diagram, and whether a diagram should exist for a given change is a human
+review item (D6). The mechanisms below implement that principle with a non-blocking signal, an
+automatic derivation, and an optional real-SVG carrier - never with a "no diagram = fail" gate.
+
+- **D20** Diagram-suitability advisory (non-blocking). For a unit whose `change_class` is in
+  `DIAGRAM_PREFERRED_CLASSES` (`function`, `call-dependency`, `control-flow`, `concurrency`,
+  `data-schema`, `type-contract`, `api-contract` - the classes whose best expression is usually a
+  diagram) the validator emits one advisory when the unit binds no diagram and does not mark the
+  diagram-relevant dimensions (`before_after`, `upstream_downstream`) not-applicable. An advisory
+  is recorded in the result's `advisories` list; it never enters `errors`, never changes `ok` or
+  the receipt, and is identical at both stages. Light classes (`constant-config`, `test-config`,
+  `other`) never earn one. This is the checkable half of A21; the substantive "should this change
+  have a diagram" remains a review judgement. The suitability map by change class is in
+  `references/analysis-depth.md`.
+- **D21** Structured-depth-block derivation. The A20 depth blocks derive `flow` diagram-specs
+  deterministically, so the structured data a unit already carries becomes a diagram without extra
+  authoring - the concrete face of "prefer a diagram". A `call_relations` block derives a layered
+  call graph (`diagram-callgraph-unit-<N>`): callers on layer 0, the unit on layer 1, callees on
+  layer 2, edges caller->unit and unit->callee, coloured by the existing `kind` scheme. A
+  `before_after` block derives a pair of flow specs (`diagram-before-unit-<N>` /
+  `diagram-after-unit-<N>`) chaining the before and after cells so the old flow sits beside the
+  new one. Derivation is a pure function (fixed node/edge ordering, unit-prefixed ids), on by
+  default at `standard`/`full` and skipped at `minimal`; a block opts out with
+  `derive_diagram: false`. The derived specs coexist with the tables, are embedded like any other
+  diagram, and are re-rendered and checked by V8 exactly like a hand-written flow spec. They reuse
+  the `flow` carrier, so D9 stays at five types and no new golden fixture is required on the
+  production path.
+- **D22** Optional `sequence` SVG carrier (dual carrier). `sequence` remains a table by default
+  (`render_mode: "table"`, D18 unchanged, existing fixture and tests unchanged). A spec may select
+  `render_mode: "svg"` to render a deterministic inline sequence diagram instead: participants are
+  fixed columns with a header box and a dashed vertical lifeline, and messages are time-ordered
+  rows drawn as horizontal arrows from source to target column with the message text above the
+  arrow and an optional note at the right; a self-message (`from == to`) is a short stub. All
+  coordinates are integers and the layout is a pure function of the spec, so the output is
+  byte-deterministic; the `SEQ_*` geometry constants below and the D14-D17 caps apply, and the
+  golden fixture is `sequence-svg-golden.svg`. `class` and `er` deliberately keep the table carrier
+  only: a deterministic, non-overlapping SVG layout for member boxes and routed relations is not
+  something this renderer can guarantee, and the contract does not accept a low-quality SVG (D18),
+  so their layout quality stays a documented boundary rather than a bad drawing.
+
+## Geometry constants
 All constants live in `scripts/build_manifest.py` and are imported by `render_diagram.py`.
 
 | Constant | Value | Purpose |
@@ -114,6 +159,10 @@ All constants live in `scripts/build_manifest.py` and are imported by `render_di
 | `SVG_MARGIN` | 24 | canvas margin |
 | `SVG_CHAR_WIDTH` | 7 | label width estimate used for layout only |
 | `TABLE_CELL_CHARS` | 120 | per-cell cap for table carriers |
+| `SEQ_PARTICIPANT_WIDTH` / `SEQ_PARTICIPANT_GAP` | 150 / 60 | sequence-SVG participant column width and gap (D22) |
+| `SEQ_MESSAGE_GAP` | 44 | sequence-SVG vertical gap between messages (D22) |
+| `SEQ_HEADER_HEIGHT` | 40 | sequence-SVG participant header box height (D22) |
+| `SEQ_TOP_MARGIN` / `SEQ_BOTTOM_MARGIN` | 24 / 24 | sequence-SVG top and bottom margins (D22) |
 
 ## Layout rules
 

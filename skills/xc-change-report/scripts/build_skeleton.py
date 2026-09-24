@@ -955,6 +955,116 @@ def render_related_code(analysis: dict[str, Any]) -> str:
     return "".join(parts)
 
 
+def _derive_callgraph_spec(unit_index: int, block: dict[str, Any]) -> dict[str, Any] | None:
+    """Derive a layered `flow` spec from a `call_relations` depth block (D21).
+
+    callers (layer 0) -> the unit (layer 1) -> callees (layer 2). This is a pure function of
+    the block, so the spec is deterministic; node ids are prefixed with the unit index and
+    ordering is fixed. The derived diagram coexists with the table; V8 re-renders and checks it.
+    """
+    callers = block.get("callers") if isinstance(block.get("callers"), list) else []
+    callees = block.get("callees") if isinstance(block.get("callees"), list) else []
+    unit_label = str(block.get("unit_label", f"unit {unit_index}"))
+    nodes: list[dict[str, Any]] = []
+    edges: list[dict[str, str]] = []
+    center = f"cg{unit_index}-unit"
+    for pos, item in enumerate(callers):
+        if not isinstance(item, dict):
+            continue
+        nid = f"cg{unit_index}-caller-{pos}"
+        nodes.append({"id": nid, "label": str(item.get("label", "")), "layer": 0, "kind": "theme"})
+        edges.append({"from": nid, "to": center, "label": "calls"})
+    nodes.append({"id": center, "label": unit_label, "layer": 1, "kind": "purpose"})
+    for pos, item in enumerate(callees):
+        if not isinstance(item, dict):
+            continue
+        nid = f"cg{unit_index}-callee-{pos}"
+        nodes.append({"id": nid, "label": str(item.get("label", "")), "layer": 2, "kind": "unit"})
+        edges.append({"from": center, "to": nid, "label": "calls"})
+    if len(nodes) < 2:
+        return None  # nothing to draw beyond the unit itself
+    return {
+        "id": f"diagram-callgraph-unit-{unit_index}",
+        "type": "flow",
+        "render_mode": "svg",
+        "title": f"Call relations of {unit_label}",
+        "summary": f"Upstream callers, unit {unit_index}, and downstream callees.",
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def _derive_before_after_specs(unit_index: int, block: dict[str, Any]) -> list[dict[str, Any]]:
+    """Derive paired before/after `flow` specs from a `before_after` depth block (D21).
+
+    One flow chains the `before` cells, one chains the `after` cells, so the reader sees the
+    old flow beside the new one. Pure and deterministic; ids prefixed by the unit index.
+    """
+    rows = block.get("rows") if isinstance(block.get("rows"), list) else []
+    specs: list[dict[str, Any]] = []
+    for side in ("before", "after"):
+        nodes: list[dict[str, Any]] = []
+        edges: list[dict[str, str]] = []
+        prev: str | None = None
+        for pos, row in enumerate(rows):
+            if not isinstance(row, dict):
+                continue
+            text = str(row.get(side, "")).strip()
+            if not text:
+                continue
+            nid = f"ba{unit_index}-{side}-{pos}"
+            change = str(row.get("change", "unchanged"))
+            kind = "purpose" if (side == "after" and change in ("added", "modified")) else "unit"
+            nodes.append({"id": nid, "label": text, "layer": pos, "kind": kind})
+            if prev is not None:
+                edges.append({"from": prev, "to": nid, "label": ""})
+            prev = nid
+        if len(nodes) < 1:
+            continue
+        specs.append({
+            "id": f"diagram-{side}-unit-{unit_index}",
+            "type": "flow",
+            "render_mode": "svg",
+            "title": f"Unit {unit_index}: {side} flow",
+            "summary": f"The {side} flow of unit {unit_index}, one step per node.",
+            "nodes": nodes,
+            "edges": edges,
+        })
+    return specs
+
+
+def derive_depth_block_diagrams(analysis: dict[str, Any]) -> list[dict[str, Any]]:
+    """Prefer-diagrams (D21): derive flow specs from the A20 depth blocks of every unit.
+
+    Derivation is on by default (that is the prefer-diagrams principle); a block may opt out
+    with `derive_diagram: false`. The result is deterministic and ordered by unit index then by
+    block position, so the diagram-spec numbering stays stable.
+    """
+    units = analysis.get("units", {}) if isinstance(analysis.get("units"), dict) else {}
+    derived: list[dict[str, Any]] = []
+    for raw_index in sorted(units, key=lambda value: int(value) if str(value).lstrip("-").isdigit() else 0):
+        spec = units.get(raw_index)
+        if not isinstance(spec, dict):
+            continue
+        try:
+            unit_index = int(raw_index)
+        except (TypeError, ValueError):
+            continue
+        blocks = spec.get("depth_blocks", [])
+        blocks = blocks if isinstance(blocks, list) else []
+        for block in blocks:
+            if not isinstance(block, dict) or block.get("derive_diagram") is False:
+                continue
+            kind = str(block.get("kind", ""))
+            if kind == "call_relations":
+                one = _derive_callgraph_spec(unit_index, block)
+                if one is not None:
+                    derived.append(one)
+            elif kind == "before_after":
+                derived.extend(_derive_before_after_specs(unit_index, block))
+    return derived
+
+
 def render_diagrams(analysis: dict[str, Any]) -> str:
     specs = analysis.get("diagrams", [])
     if not isinstance(specs, list) or not specs:
@@ -1094,6 +1204,19 @@ def build_report(
     glossary = analysis.get("glossary", [])
     if strength == "full" and (not isinstance(glossary, list) or not glossary):
         raise SkeletonError("strength 'full' requires a glossary (strength matrix)")
+
+    # Prefer-diagrams (D21): derive flow diagram-specs from the A20 depth blocks and append them
+    # to the analysis diagrams so section-diagrams renders them alongside the tables. Derivation
+    # is on by default at standard/full; the minimal tier stays light and derives nothing. A
+    # block opts out with `derive_diagram: false`. This is a pure, deterministic transform, so
+    # the derived specs re-render byte-identically under V8.
+    if strength != "minimal":
+        derived = derive_depth_block_diagrams(analysis)
+        if derived:
+            analysis = dict(analysis)
+            existing = analysis.get("diagrams", [])
+            existing = list(existing) if isinstance(existing, list) else []
+            analysis["diagrams"] = existing + derived
 
     titles = analysis.get("section_titles", {})
     titles = titles if isinstance(titles, dict) else {}

@@ -784,9 +784,10 @@ class DiagramTests(unittest.TestCase):
         with self.assertRaises(rd.DiagramError):
             rd.render_diagram({"id": "d", "type": "timeline", "render_mode": "svg"})
         with self.assertRaises(rd.DiagramError):
-            rd.render_diagram({"id": "d", "type": "sequence", "render_mode": "svg"})
-        with self.assertRaises(rd.DiagramError):
             rd.render_diagram({"id": "d", "type": "flow", "render_mode": "table"})
+        # sequence is a dual carrier (D22): an unknown render_mode is still an error.
+        with self.assertRaises(rd.DiagramError):
+            rd.render_diagram({"id": "d", "type": "sequence", "render_mode": "diagram"})
 
     def test_geometry_constants_are_respected(self) -> None:
         spec = {
@@ -2236,6 +2237,141 @@ class AnalysisDepthTests(ReportCase):
         depth = (SKILL_ROOT / "references" / "analysis-depth.md").read_text(encoding="utf-8")
         for token in ("CHANGE_CLASSES", "REQUIRED_DIMENSIONS", "before_after", "lifecycle", "call_relations"):
             self.assertIn(token, depth, token)
+
+
+# --------------------------------------------------------------------------------------
+# Prefer-diagrams: A20 derivation (D21), sequence SVG (D22), suitability advisory (A21/D20)
+# --------------------------------------------------------------------------------------
+
+
+class DerivedDiagramTests(unittest.TestCase):
+    def test_call_relations_derives_a_layered_callgraph_flow(self) -> None:
+        analysis = {"units": {"3": {"depth_blocks": [
+            {"kind": "call_relations", "unit_label": "fn()",
+             "callers": [{"label": "caller_a", "loc": "a.py:1"}],
+             "callees": [{"label": "callee_x", "loc": "x.py:2"}, {"label": "callee_y", "loc": "y.py:3"}]}]}}}
+        derived = bs.derive_depth_block_diagrams(analysis)
+        ids = [d["id"] for d in derived]
+        self.assertIn("diagram-callgraph-unit-3", ids)
+        spec = next(d for d in derived if d["id"] == "diagram-callgraph-unit-3")
+        self.assertEqual(spec["type"], "flow")
+        self.assertEqual(spec["render_mode"], "svg")
+        # renders deterministically as SVG
+        first = rd.render_diagram(spec)
+        self.assertEqual(first, rd.render_diagram(spec))
+        self.assertIn('class="report-diagram-svg"', first)
+
+    def test_before_after_derives_paired_before_and_after_flows(self) -> None:
+        analysis = {"units": {"4": {"depth_blocks": [
+            {"kind": "before_after", "title": "flow",
+             "rows": [{"step": "s1", "before": "old a", "after": "new a", "change": "modified"},
+                      {"step": "s2", "before": "old b", "after": "new b", "change": "unchanged"}]}]}}}
+        ids = [d["id"] for d in bs.derive_depth_block_diagrams(analysis)]
+        self.assertIn("diagram-before-unit-4", ids)
+        self.assertIn("diagram-after-unit-4", ids)
+
+    def test_opt_out_and_minimal_suppress_derivation(self) -> None:
+        analysis = {"units": {"5": {"depth_blocks": [
+            {"kind": "call_relations", "unit_label": "fn()", "derive_diagram": False,
+             "callers": [{"label": "c", "loc": "a:1"}], "callees": [{"label": "d", "loc": "b:2"}]}]}}}
+        self.assertEqual(bs.derive_depth_block_diagrams(analysis), [])
+
+
+class SequenceSvgTests(unittest.TestCase):
+    def test_sequence_svg_renders_deterministically_and_matches_golden(self) -> None:
+        spec = json.loads((GOLDEN_DIR / "sequence-svg-spec.json").read_text(encoding="utf-8"))
+        first = rd.render_diagram(spec)
+        self.assertEqual(first, rd.render_diagram(spec))
+        self.assertIn('class="report-diagram-svg"', first)
+        golden = (GOLDEN_DIR / "sequence-svg-golden.svg").read_text(encoding="utf-8").strip()
+        svg = re.search(r"<svg class=\"report-diagram-svg\".*?</svg>", first, re.S)
+        self.assertIsNotNone(svg)
+        self.assertEqual(svg.group(0).strip(), golden)
+
+    def test_sequence_table_still_default_and_supported(self) -> None:
+        spec = json.loads((GOLDEN_DIR / "sequence-spec.json").read_text(encoding="utf-8"))
+        html = rd.render_diagram(spec)
+        self.assertIn('class="report-diagram-table"', html)
+        self.assertNotIn("<svg class=\"report-diagram-svg\"", html)
+
+    def test_sequence_svg_unknown_participant_raises(self) -> None:
+        spec = {"id": "d", "type": "sequence", "render_mode": "svg",
+                "participants": ["A"], "messages": [{"from": "A", "to": "B", "message": "x"}]}
+        with self.assertRaises(rd.DiagramError):
+            rd.render_diagram(spec)
+
+
+class DiagramSuitabilityAdvisoryTests(ReportCase):
+    def _analysis_with(self, change_class, *, depth_blocks=None, dims=None):
+        analysis = json.loads(json.dumps(self.analysis))
+        indices = [hunk["unit_index"] for entry, hunk in unit_pairs(self.manifest)]
+        first = str(indices[0])
+        unit = analysis["units"][first]
+        unit["change_class"] = change_class
+        long = "This unit belongs to the status flow and its behaviour is described here at length."
+        base_dims = [
+            {"key": k, "answer": long} for k in
+            ("role", "motivation", "before_after", "upstream_downstream", "tradeoffs",
+             "alternatives", "lifecycle", "impact_risk")
+        ]
+        unit["design_dimensions"] = dims if dims is not None else base_dims
+        if depth_blocks is not None:
+            unit["depth_blocks"] = depth_blocks
+        return analysis, int(first)
+
+    def _render(self, name, analysis):
+        out = self.case_dir(name) / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        return out
+
+    def test_advisory_is_non_blocking_and_present_when_preferred_class_has_no_diagram(self):
+        analysis, first = self._analysis_with("function", depth_blocks=None)
+        out = self._render("adv-present", analysis)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])  # advisory never fails
+        self.assertNotIn("A21", error_ids(payload))
+        adv_ids = [a["id"] for a in payload.get("advisories", [])]
+        self.assertIn("A21", adv_ids)
+
+    def test_no_advisory_when_a_diagram_is_derived_for_the_unit(self):
+        blocks = [{"kind": "call_relations", "unit_label": "fn()",
+                   "callers": [{"label": "c", "loc": "a:1"}], "callees": [{"label": "d", "loc": "b:2"}]}]
+        analysis, first = self._analysis_with("function", depth_blocks=blocks)
+        out = self._render("adv-diagram", analysis)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+        adv = [a for a in payload.get("advisories", []) if a["id"] == "A21" and f"unit {first} " in a["message"]]
+        self.assertEqual(adv, [])
+
+    def test_no_advisory_for_light_change_class(self):
+        analysis, first = self._analysis_with("constant-config", depth_blocks=None,
+                                              dims=[{"key": k, "answer": "x" * 45} for k in ("role", "motivation", "impact_risk")])
+        out = self._render("adv-light", analysis)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+        adv = [a for a in payload.get("advisories", []) if f"unit {first} " in a["message"]]
+        self.assertEqual(adv, [])
+
+    def test_no_advisory_when_diagram_dimensions_are_waived(self):
+        dims = [{"key": "role", "answer": "x" * 45}, {"key": "motivation", "answer": "x" * 45},
+                {"key": "before_after", "not_applicable": True, "reason": "no flow change in this unit"},
+                {"key": "upstream_downstream", "not_applicable": True, "reason": "no caller or callee change"},
+                {"key": "tradeoffs", "answer": "x" * 45}]
+        analysis, first = self._analysis_with("function", depth_blocks=None, dims=dims)
+        out = self._render("adv-waived", analysis)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+        adv = [a for a in payload.get("advisories", []) if a["id"] == "A21" and f"unit {first} " in a["message"]]
+        self.assertEqual(adv, [])
+
+    def test_contract_carries_prefer_diagram_series(self):
+        contract = (SKILL_ROOT / "references" / "change-report-contract.md").read_text(encoding="utf-8")
+        self.assertIn("A21", contract)
+        diagrams = (SKILL_ROOT / "references" / "diagram-spec.md").read_text(encoding="utf-8")
+        for token in ("D20", "D21", "D22", "DIAGRAM_PREFERRED_CLASSES", "sequence-svg-golden.svg"):
+            self.assertIn(token, diagrams, token)
+        depth = (SKILL_ROOT / "references" / "analysis-depth.md").read_text(encoding="utf-8")
+        self.assertIn("suitability by change class", depth)
 
 
 # --------------------------------------------------------------------------------------
