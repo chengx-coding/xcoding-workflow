@@ -415,6 +415,77 @@ body {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
+/* ---------------------------------------------------------------- analysis depth (A18-A20) */
+.report-change-class {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--accent-secondary-soft);
+  color: var(--accent-secondary);
+  border: 1px solid var(--accent-secondary);
+}
+.report-design-lead {
+  margin: var(--sp-3) 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-left: 4px solid var(--accent-primary);
+  background: var(--accent-primary-soft);
+  color: var(--text-primary);
+  font-size: var(--fs-4);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.report-design-dimensions { margin: var(--sp-4) 0; }
+.report-dimensions-title {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.report-design-dimension {
+  margin: var(--sp-2) 0;
+  padding: var(--sp-2) var(--sp-4);
+  border-left: 2px solid var(--border-strong);
+  background: var(--surface-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.report-design-dimension h4 {
+  margin: 0 0 2px;
+  font-size: var(--fs-small);
+  color: var(--accent-primary-strong);
+  font-weight: 700;
+}
+.report-design-dimension p { margin: 0; }
+.report-dimension-na { color: var(--text-muted); font-style: italic; }
+
+.report-depth-block {
+  margin: var(--sp-4) 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+.report-depth-block figcaption {
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+}
+.report-depth-table { margin: 0; }
+.report-depth-table th, .report-depth-table td { border: none; border-bottom: 1px solid var(--border); }
+.report-depth-table tr[data-change="added"] td { background: var(--add-bg); }
+.report-depth-table tr[data-change="removed"] td { background: var(--del-bg); }
+.report-depth-table tr[data-change="modified"] td { background: var(--changed-bg); }
+.report-callgraph td { vertical-align: top; width: 33%; }
+.report-callgraph ul { margin: 0; padding-left: var(--sp-4); }
+.report-callgraph li { margin: 2px 0; font-size: var(--fs-small); }
+.report-lifecycle-flag { color: var(--text-muted); font-weight: 400; }
 /* ---------------------------------------------------------------- tables */
 table { border-collapse: collapse; width: 100%; font-size: var(--fs-4); margin: var(--sp-3) 0; }
 caption { text-align: left; color: var(--text-muted); font-size: var(--fs-small); margin-bottom: var(--sp-2); }

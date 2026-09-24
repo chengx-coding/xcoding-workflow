@@ -132,6 +132,40 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   These blocks never participate in V10; V20 enforces their `data-path`/`data-lines` and
   relation type.
 
+## Analysis-depth layer (A18-A20)
+
+The analysis-depth layer makes a unit explain a change **top-down, design to implementation**.
+The full change taxonomy, the per-class design questions and their sources are enumerated in
+`references/analysis-depth.md`; the items below are the contract increment the scripts enforce.
+All three fields are optional, so analysis written before this layer still loads and V21/V22 stay
+vacuous for a unit that declares no change class.
+
+- **A18** `change_class` is the unit's change-taxonomy label, a member of the closed set
+  `CHANGE_CLASSES` in `scripts/build_manifest.py` (`member-var`, `constant-config`, `data-schema`,
+  `global-state`, `function`, `signature`, `control-flow`, `call-dependency`, `type-contract`,
+  `api-contract`, `concurrency`, `error-handling`, `di-lifecycle`, `performance`, `refactor`,
+  `test-config`, `other`). It renders a `report-change-class` badge in the unit head carrying
+  `data-change-class`. V21 rejects a declared class outside the set.
+- **A19** `design_dimensions` is a list of the design questions the unit's class must address.
+  Each item is `{"key", "answer"}` or `{"key", "not_applicable": true, "reason"}`; `key` is one of
+  `DIMENSION_LABELS` and the dimensions a class must address are `REQUIRED_DIMENSIONS[class]`
+  (falling back to `REQUIRED_DIMENSIONS_DEFAULT`). A required dimension is satisfied in exactly one
+  of three states: **answered** (text >= `MIN_DIMENSION_CHARS` = 40 non-whitespace characters),
+  **not applicable** (`not_applicable=true` with a reason >= `MIN_NA_REASON_CHARS` = 12
+  characters), or it is **missing** and V21 fails. A dimension renders one
+  `report-design-dimension` block carrying `data-dimension`; the six-layer skeleton's `role`/
+  `motivation` also feed the L1 `report-design-lead` rendered before the code block.
+  `design_dimensions` do not participate in V10 or V11. V21 enforces this three-state discipline;
+  it never judges whether an answer is correct.
+- **A20** `depth_blocks` is a list of structured, deterministic **HTML-table** blocks, each a
+  member of `DEPTH_BLOCK_KINDS` (`before_after`, `lifecycle`, `call_relations`). A `before_after`
+  block is a step table whose `change` column is drawn from `DEPTH_CHANGE_VOCAB`
+  (`added|removed|modified|unchanged`); a `lifecycle` block is a phase table with a `complete`
+  flag; a `call_relations` block is a `callers | unit | callees` table. Every block renders a
+  `report-depth-block` figure carrying `data-unit` and `data-kind`. Depth blocks are context: they
+  never participate in V10, add no SVG geometry and no golden fixture, and load no external
+  resource. V22 enforces their kind, unit binding and change vocabulary.
+
 ## Code references, diffs and highlighting
 
 - **H25** Every analysable unit has at least one code block showing its diff, and exactly one
@@ -174,7 +208,14 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   overview key-figure strip), `report-summary-block`/`report-kind-bar`/`report-kind-legend`
   (the mechanical change-kind distribution derived from the manifest), `report-unit-fields`
   (the per-unit field wrapper) and `report-unit-more` (the native `<details>` that folds the
-  four secondary A1-A8 fields). These carry no analysis content of their own and gate no
+  four secondary A1-A8 fields). The analysis-depth layer (A18-A20) adds `report-change-class`
+  (the A18 badge carrying `data-change-class`), `report-design-lead` (the L1 lead rendered
+  before the code block), `report-design-dimensions`/`report-design-dimension`/
+  `report-dimension-na` (the A19 dimensions, carrying `data-dimension`), and
+  `report-depth-block`/`report-depth-table`/`report-callgraph`/`report-lifecycle-flag` (the A20
+  structured tables, carrying `data-unit` and `data-kind`). The depth classes carry no
+  `report-code` and never enter the V10 recomputation. These carry no analysis content of their
+  own and gate no
   mechanical check; every A1-A8 field div keeps its exact `report-unit-field`/`data-field`
   markup and stays a descendant of its unit section, so V4 still finds all eight fields and
   the A13 threshold is unchanged. The inlined stylesheet provides the styling and the
@@ -260,7 +301,7 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   carries the public phrase `public \`xc-document\` human-readable authoring default` so the
   repository's authoring-contract assertion covers it.
 
-## Purpose-layer validation
+## Purpose-layer and analysis-depth validation
 
 - **V17** Purpose integrity: when a unit carries an A16 purpose, H42 must render a purpose
   card for every referenced purpose, every purpose card references at least one real unit,
@@ -274,6 +315,16 @@ of H6-H12 are human review items; no script decides whether a term was really ex
 - **V20** Context block validity: every `report-code-context` block carries non-empty
   `data-path` and `data-lines`, its `relation_type` is in the closed enumeration, and the
   blocks are excluded from the V10 recomputation selection.
+- **V21** Design-dimension completeness (A18/A19): when a unit declares a `change_class`, the
+  class must be in `CHANGE_CLASSES`, and every dimension in `REQUIRED_DIMENSIONS[class]` renders a
+  `report-design-dimension` inside that unit in one of two accepted states -- answered (text
+  >= `MIN_DIMENSION_CHARS`) or not-applicable with a reason (>= `MIN_NA_REASON_CHARS`). A missing
+  required dimension fails. A unit with no `change_class` is vacuous (backward compatible). V21
+  proves the dimension was addressed, never that the answer is correct.
+- **V22** Depth-block validity (A20): every `report-depth-block` carries a `data-kind` in
+  `DEPTH_BLOCK_KINDS` and a `data-unit` naming an analysable unit; a `before_after` row's
+  `data-change` is in `DEPTH_CHANGE_VOCAB`; depth blocks are excluded from the V10 recomputation
+  selection. Renders-nothing units stay vacuous.
 
 ## Strength matrix
 
@@ -283,8 +334,8 @@ The level is fixed by confirmed facts, never by task length or wording, and is w
 | Level | Facts | Mandatory | Optional | Human gate |
 |---|---|---|---|---|
 | `minimal` | `mode in {change, repair, maintenance}`, `risk=low`, `audit=runtime-only`, measured `units_total <= MAX_UNITS_MINIMAL = 5` | coverage manifest, change map, the H42 purpose section, one A1-A8 section per unit, verbatim code blocks, V1-V13 plus V15-V16, offline check, accuracy review | diagrams, related code, glossary | closed by default; opened only on explicit user request |
-| `standard` | every other confirmed fact set | all of `minimal`, plus the diagrams required by D1-D6 and related-code references (A11) | glossary | closed by default; opened only on explicit user request |
-| `full` | `risk=high`, or `audit in {result, full}`, or explicit user request | all of `standard`, plus the glossary and per-unit alternative comparison | none | closed by default; opened only on explicit user request |
+| `standard` | every other confirmed fact set | all of `minimal`, plus the diagrams required by D1-D6, related-code references (A11), and -- for every unit that declares a `change_class` -- its `REQUIRED_DIMENSIONS` design dimensions (A19, three-state) | glossary, depth blocks (A20) | closed by default; opened only on explicit user request |
+| `full` | `risk=high`, or `audit in {result, full}`, or explicit user request | all of `standard`, plus the glossary, per-unit alternative comparison, and the depth blocks (A20) a unit's change class triggers (e.g. `function` -> call relations, `member-var` -> lifecycle, `control-flow`/`signature`/`data-schema` -> before/after) | none | closed by default; opened only on explicit user request |
 
 The `audit` values in this matrix are members of the shipped planning domain
 `{runtime-only, result, full, unknown}` (`skills/xc-work/scripts/plan_work_policy.py`), which is
@@ -352,9 +403,29 @@ different steps, and only the validator judges.
                  "fields": {"what": "…", "why": "…", "design": "…", "tradeoffs": "…",
                              "flow-position": "…", "alternatives": "…",
                              "business-process": "…", "data-and-control": "…"},
+                 "change_class": "function",
+                 "design_lead": "…",
+                 "design_dimensions": [
+                     {"key": "role", "answer": "…"},
+                     {"key": "before_after", "answer": "…"},
+                     {"key": "tradeoffs", "not_applicable": true, "reason": "…"}],
+                 "depth_blocks": [
+                     {"kind": "call_relations", "unit_label": "fn()",
+                      "callers": [{"label": "caller_a", "loc": "src/a.py:10"}],
+                      "callees": [{"label": "callee_x", "loc": "src/x.py:5"}]},
+                     {"kind": "before_after", "title": "…",
+                      "rows": [{"step": "…", "before": "…", "after": "…", "change": "modified"}]},
+                     {"kind": "lifecycle", "resource": "self._x", "complete": true,
+                      "phases": [{"phase": "init", "loc": "src/a.py:12", "action": "…",
+                                  "state": "…", "note": "…"}]}],
                  "covers": ["#unit-1"], "note": "…"}}
 }
 ```
+
+The `change_class`, `design_lead`, `design_dimensions` and `depth_blocks` keys are the optional
+analysis-depth layer (A18-A20). A unit that omits them renders and validates exactly as before;
+when `change_class` is present, V21 requires the class's `REQUIRED_DIMENSIONS` to be addressed and
+V22 checks any depth block's shape and binding.
 
 Round records are mandatory: when the analysis carries none, the builder writes one
 `refresh_reason=initial` row, and V5 fails any table whose first row is not `initial`, so

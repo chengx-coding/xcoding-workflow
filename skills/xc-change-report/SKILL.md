@@ -184,16 +184,22 @@ same string values.
 
 ## Contract
 
-The three reference documents are normative:
+The four reference documents are normative:
 - `references/change-report-contract.md` - H1-H42 (page structure, anchors, class names,
-  offline self-containment, language) and A1-A17 (per-unit analysis content, including the
-  A16 purpose and A17 related-code-refs layer), plus the
-  A13 threshold constants, the strength matrix and the strength constants' calibration record.
+  offline self-containment, language) and A1-A20 (per-unit analysis content: A1-A15 fields,
+  the A16 purpose and A17 related-code-refs layer, and the A18-A20 analysis-depth layer -
+  change class, design dimensions, structured depth blocks), plus the A13 threshold constants,
+  the V17-V22 purpose-layer and analysis-depth validation, the strength matrix and the strength
+  constants' calibration record.
+- `references/analysis-depth.md` - the change taxonomy (A18) x design-dimension (A19) matrix,
+  the three-state answer discipline, the A20 depth blocks, the strength-matrix interaction, and
+  the honest capability boundary, distilled from ADR / design-doc / code-review / SemVer / C4 /
+  refactoring / concurrency / schema-evolution practice.
 - `references/coverage-protocol.md` - C1-C39 (manifest format, the six-step enumeration
   algorithm, baseline recording and the C4b snapshot contract, exclusion rules, staleness and
   refresh, sensitive and non-decodable content, the lifecycle coverage disposition, the
   calibration record of the acceptance-gating constants) plus the O1-O9 orchestration contract,
-  the V1-V20 failure table and the normalisation rule.
+  the V1-V16 failure table and the normalisation rule.
 - `references/diagram-spec.md` - D1-D19 (diagram grammar, the two render modes, trigger
   conditions, geometry constants).
 

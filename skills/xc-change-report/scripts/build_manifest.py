@@ -73,6 +73,86 @@ RELATION_TYPES = ("caller", "callee", "data-structure", "contract")
 # At most six distinct purposes get a dedicated colour; beyond six the cycle repeats.
 PURPOSE_COLOR_CYCLE = 6
 
+# Analysis-depth layer (A18/A19/A20, V21/V22). Analysis-layer constants only: the change
+# class, the design-dimension answers and the structured depth blocks never enter the
+# manifest, which stays pure coverage evidence (C6/V1/V16). Every field below is optional, so
+# analysis JSON written before this layer still loads and the V21/V22 checks stay vacuous when
+# a unit declares no change class.
+
+# A18: the closed change-taxonomy a unit may declare. The taxonomy and the design questions
+# each class must answer are enumerated in references/analysis-depth.md; this tuple is the
+# single machine-readable source of the legal values.
+CHANGE_CLASSES = (
+    "member-var",
+    "constant-config",
+    "data-schema",
+    "global-state",
+    "function",
+    "signature",
+    "control-flow",
+    "call-dependency",
+    "type-contract",
+    "api-contract",
+    "concurrency",
+    "error-handling",
+    "di-lifecycle",
+    "performance",
+    "refactor",
+    "test-config",
+    "other",
+)
+
+# A19: the canonical design-dimension keys and their human labels. A dimension is one design
+# question a change should answer (the six-layer skeleton plus class-specific dimensions). The
+# label is the report heading; the body language follows work_order.document_language.
+DIMENSION_LABELS = {
+    "role": "Role in the flow",
+    "motivation": "Motivation (why, and why-not-skip)",
+    "before_after": "Before vs after",
+    "alternatives": "Alternatives and why rejected",
+    "tradeoffs": "Trade-offs",
+    "lifecycle": "Lifecycle (init / assign / read / dispose)",
+    "upstream_downstream": "Upstream callers and downstream callees",
+    "impact_risk": "Impact and risk",
+}
+
+# A19: the dimensions each change class MUST address. "Address" means one of the three states
+# V21 enforces: an answer that clears MIN_DIMENSION_CHARS, or not_applicable=true with a
+# non-empty reason. A class not listed falls back to REQUIRED_DIMENSIONS_DEFAULT. Every key
+# must be in DIMENSION_LABELS. Kept small per class so the requirement stays proportional.
+REQUIRED_DIMENSIONS_DEFAULT = ("role", "motivation", "impact_risk")
+REQUIRED_DIMENSIONS = {
+    "member-var": ("role", "motivation", "alternatives", "lifecycle", "upstream_downstream"),
+    "constant-config": ("role", "motivation", "impact_risk"),
+    "data-schema": ("motivation", "before_after", "impact_risk", "upstream_downstream"),
+    "global-state": ("role", "alternatives", "lifecycle", "impact_risk"),
+    "function": ("role", "motivation", "before_after", "upstream_downstream", "tradeoffs"),
+    "signature": ("before_after", "impact_risk", "upstream_downstream"),
+    "control-flow": ("role", "before_after", "impact_risk"),
+    "call-dependency": ("before_after", "upstream_downstream", "impact_risk"),
+    "type-contract": ("role", "before_after", "alternatives", "impact_risk"),
+    "api-contract": ("before_after", "impact_risk", "upstream_downstream"),
+    "concurrency": ("role", "before_after", "lifecycle", "impact_risk"),
+    "error-handling": ("before_after", "impact_risk"),
+    "di-lifecycle": ("role", "lifecycle", "impact_risk"),
+    "performance": ("motivation", "before_after", "tradeoffs", "impact_risk"),
+    "refactor": ("motivation", "before_after", "impact_risk"),
+    "test-config": ("role", "motivation"),
+    "other": REQUIRED_DIMENSIONS_DEFAULT,
+}
+# A19 thresholds. An answer must clear this many non-whitespace characters; a not-applicable
+# dimension must give a reason of at least MIN_NA_REASON_CHARS, so a high-risk dimension can be
+# waived only with a stated justification, never silently.
+MIN_DIMENSION_CHARS = 40
+MIN_NA_REASON_CHARS = 12
+
+# A20: the closed set of structured depth-block kinds, all carried by deterministic HTML tables
+# (no SVG geometry, no golden fixture). Each block binds to its unit by data-unit and is
+# excluded from the V10 recomputation selection, exactly like report-code-context.
+DEPTH_BLOCK_KINDS = ("before_after", "lifecycle", "call_relations")
+# The change vocabulary a before_after row may carry.
+DEPTH_CHANGE_VOCAB = ("added", "removed", "modified", "unchanged")
+
 # Unit-window constants (C31) and strength constants.
 MAX_ADDED_UNIT_LINES = 400
 ADDED_UNIT_BLOCK_LINES = 200

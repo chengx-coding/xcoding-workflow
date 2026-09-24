@@ -26,10 +26,14 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from build_manifest import (  # noqa: E402
+    CHANGE_CLASSES,
     CODE_BLOCK_CLASS,
     CODE_CONTEXT_CLASS,
     CODE_EXCLUSION_CLASSES,
     DIGEST_ALGORITHM,
+    DEPTH_BLOCK_KINDS,
+    DEPTH_CHANGE_VOCAB,
+    DIMENSION_LABELS,
     EXCLUSION_CATEGORIES,
     FIELD_NAMES,
     GATE_OUTCOME_KEY,
@@ -37,7 +41,9 @@ from build_manifest import (  # noqa: E402
     MAX_MISLEADING,
     MAX_TEXT_NODE_CHARS,
     MAX_WRONG,
+    MIN_DIMENSION_CHARS,
     MIN_FIELD_CHARS,
+    MIN_NA_REASON_CHARS,
     MIN_SVG_FONT_SIZE,
     MAX_SVG_CANVAS_HEIGHT,
     MAX_SVG_CANVAS_WIDTH,
@@ -47,6 +53,8 @@ from build_manifest import (  # noqa: E402
     RECORDED_PATH_REASONS,
     RELATION_TYPES,
     REPORT_GATE_OUTCOMES,
+    REQUIRED_DIMENSIONS,
+    REQUIRED_DIMENSIONS_DEFAULT,
     REWORK_KEY,
     SCHEMA_VERSION,
     SECTION_IDS,
@@ -2439,6 +2447,131 @@ def check_v20(checker: Checker, index: HtmlIndex) -> None:
                 )
 
 
+def check_v21(checker: Checker, index: HtmlIndex, manifest: dict[str, Any]) -> None:
+    """Design-dimension completeness (A18/A19).
+
+    When a unit declares a change class (a `report-change-class` badge with a legal
+    `data-change-class`), the report must address every dimension that class requires: each
+    required dimension renders one `report-design-dimension` inside that unit, and it is either
+    answered (its text clears MIN_DIMENSION_CHARS) or explicitly marked not-applicable with a
+    non-empty reason. A unit with no change-class badge is vacuous (backward compatible). This
+    check proves the dimensions were addressed, never that the answers are correct - that is the
+    accuracy review's job.
+    """
+    for entry in manifest.get("files", []):
+        for hunk in entry.get("hunks", []):
+            if hunk.get("excluded"):
+                continue
+            unit_index = hunk["unit_index"]
+            section = index.by_id(f"unit-{unit_index}")
+            if section is None:
+                continue
+            badges = [
+                el for el in index.by_class("report-change-class")
+                if any(a["index"] == section["index"] for a in index.ancestors(el))
+            ]
+            if not badges:
+                continue  # no change class declared: V21 is vacuous for this unit
+            change_class = badges[0]["attrs"].get("data-change-class", "").strip()
+            if change_class not in CHANGE_CLASSES:
+                checker.fail(
+                    "V21",
+                    f"unit {unit_index}: change class {change_class!r} is not one of the "
+                    f"{len(CHANGE_CLASSES)} legal classes",
+                )
+                continue
+            rendered: dict[str, Any] = {}
+            for el in index.elements:
+                if "report-design-dimension" not in el["classes"]:
+                    continue
+                if not any(a["index"] == section["index"] for a in index.ancestors(el)):
+                    continue
+                key = el["attrs"].get("data-dimension", "").strip()
+                if key:
+                    rendered.setdefault(key, el)
+            required = REQUIRED_DIMENSIONS.get(change_class, REQUIRED_DIMENSIONS_DEFAULT)
+            for key in required:
+                el = rendered.get(key)
+                if el is None:
+                    checker.fail(
+                        "V21",
+                        f"unit {unit_index} ({change_class}): required design dimension "
+                        f"{key!r} is missing",
+                    )
+                    continue
+                na = [
+                    child for child in index.elements
+                    if "report-dimension-na" in child["classes"]
+                    and any(a["index"] == el["index"] for a in index.ancestors(child))
+                ]
+                text = normalise_field(field_value(index, el).strip())
+                if na:
+                    reason = normalise_field(field_value(index, na[0]).strip())
+                    # the marker word "Not applicable" is stripped for the length check
+                    reason_body = reason.replace("Notapplicable", "").replace("Not applicable", "")
+                    if len(reason_body) < MIN_NA_REASON_CHARS:
+                        checker.fail(
+                            "V21",
+                            f"unit {unit_index} ({change_class}): dimension {key!r} is marked "
+                            f"not-applicable but its reason is shorter than {MIN_NA_REASON_CHARS} "
+                            "characters",
+                        )
+                    continue
+                if len(text) < MIN_DIMENSION_CHARS:
+                    checker.fail(
+                        "V21",
+                        f"unit {unit_index} ({change_class}): design dimension {key!r} has "
+                        f"{len(text)} characters after whitespace removal, below the "
+                        f"{MIN_DIMENSION_CHARS} floor (answer it or mark it not-applicable with a "
+                        "reason)",
+                    )
+
+
+def check_v22(checker: Checker, index: HtmlIndex, manifest: dict[str, Any]) -> None:
+    """Structured depth-block validity (A20).
+
+    Every `report-depth-block` carries a legal `data-kind` and a `data-unit` that names an
+    existing analysable unit; a `before_after` block's rows carry only the legal change
+    vocabulary. Depth blocks are context and are excluded from the V10 recomputation selection
+    (they are figures, not `report-code`). Renders-nothing units stay vacuous.
+    """
+    valid_units = {
+        int(hunk["unit_index"])
+        for entry in manifest.get("files", [])
+        for hunk in entry.get("hunks", [])
+        if not hunk.get("excluded") and hunk.get("unit_index") is not None
+    }
+    for block in index.by_class("report-depth-block"):
+        kind = block["attrs"].get("data-kind", "").strip()
+        unit_attr = block["attrs"].get("data-unit", "").strip()
+        if kind not in DEPTH_BLOCK_KINDS:
+            checker.fail("V22", f"a depth block has an unknown data-kind {kind!r}")
+        if not unit_attr:
+            checker.fail("V22", f"a {kind or 'depth'} block has an empty data-unit")
+        else:
+            try:
+                if int(unit_attr) not in valid_units:
+                    checker.fail(
+                        "V22",
+                        f"a {kind or 'depth'} block binds to unit {unit_attr} which is not an "
+                        "analysable unit",
+                    )
+            except ValueError:
+                checker.fail("V22", f"a {kind or 'depth'} block has a non-numeric data-unit {unit_attr!r}")
+        if kind == "before_after":
+            for row in index.elements:
+                if row["tag"] != "tr":
+                    continue
+                if not any(a["index"] == block["index"] for a in index.ancestors(row)):
+                    continue
+                change = row["attrs"].get("data-change")
+                if change is not None and change not in DEPTH_CHANGE_VOCAB:
+                    checker.fail(
+                        "V22",
+                        f"a before_after row for unit {unit_attr} has change {change!r}; expected "
+                        f"one of {', '.join(DEPTH_CHANGE_VOCAB)}",
+                    )
+
 def validate(
     report_path: Path,
     manifest_path: Path,
@@ -2477,6 +2610,8 @@ def validate(
     check_v18(checker, index)
     check_v19(checker, index)
     check_v20(checker, index)
+    check_v21(checker, index, manifest)
+    check_v22(checker, index, manifest)
     check_v7(checker, index)
     diagram_stats = check_v8(checker, index, golden_dir)
     head_current = check_v9(checker, manifest, repo)

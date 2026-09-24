@@ -2083,6 +2083,162 @@ class ScratchPlacementTests(ReportCase):
 
 
 # --------------------------------------------------------------------------------------
+# Analysis-depth layer (A18-A20, V21/V22)
+# --------------------------------------------------------------------------------------
+
+
+class AnalysisDepthTests(ReportCase):
+    ANSWER = (
+        "This function is the read entry point of the status flow and owns the response shape "
+        "that downstream callers rely on."
+    )
+
+    def _depth_analysis(self, *, dims=None, blocks=None, change_class="function"):
+        analysis = json.loads(json.dumps(self.analysis))
+        indices = [hunk["unit_index"] for entry, hunk in unit_pairs(self.manifest)]
+        first = str(indices[0])
+        unit = analysis["units"][first]
+        unit["change_class"] = change_class
+        unit["design_lead"] = (
+            "Before, the status path returned a partial view; after this unit it returns the "
+            "complete configuration in one pass."
+        )
+        if dims is None:
+            dims = [
+                {"key": "role", "answer": self.ANSWER},
+                {"key": "motivation", "answer": self.ANSWER},
+                {"key": "before_after", "answer": self.ANSWER},
+                {"key": "upstream_downstream", "answer": self.ANSWER},
+                {"key": "tradeoffs", "not_applicable": True,
+                 "reason": "no material trade-off; the change is a pure additive read path"},
+            ]
+        unit["design_dimensions"] = dims
+        if blocks is None:
+            blocks = [
+                {"kind": "call_relations", "unit_label": "get_status()",
+                 "callers": [{"label": "handle_request", "loc": "src/app.py:20"}],
+                 "callees": [{"label": "load_batch", "loc": "src/store.py:8"}]},
+                {"kind": "before_after", "title": "Status flow",
+                 "rows": [
+                     {"step": "read", "before": "partial", "after": "complete", "change": "modified"},
+                     {"step": "return", "before": "dict", "after": "dict", "change": "unchanged"}]},
+                {"kind": "lifecycle", "resource": "self._cache", "complete": True,
+                 "phases": [{"phase": "init", "loc": "src/app.py:5", "action": "assign",
+                             "state": "empty", "note": "constructed once"}]},
+            ]
+        unit["depth_blocks"] = blocks
+        return analysis, int(first)
+
+    def _render(self, name, analysis):
+        out = self.case_dir(name) / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        return out
+
+    def test_analysis_depth_renders_and_validates(self):
+        analysis, first = self._depth_analysis()
+        out = self._render("depth-ok", analysis)
+        page = out.read_text(encoding="utf-8")
+        self.assertIn('class="report-change-class"', page)
+        self.assertIn('data-change-class="function"', page)
+        self.assertIn('class="report-design-lead"', page)
+        self.assertIn('data-dimension="role"', page)
+        self.assertIn('class="report-depth-block"', page)
+        self.assertIn('data-kind="call_relations"', page)
+        self.assertIn('data-kind="before_after"', page)
+        self.assertIn('data-kind="lifecycle"', page)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+        self.assertNotIn("V21", error_ids(payload))
+        self.assertNotIn("V22", error_ids(payload))
+        # V10 must be unaffected: depth blocks are not report-code.
+        self.assertEqual(payload["facts"]["units_total"], payload["facts"]["hash_bound"])
+
+    def test_missing_required_dimension_fails_v21(self):
+        analysis, first = self._depth_analysis(dims=[
+            {"key": "role", "answer": self.ANSWER},
+            {"key": "motivation", "answer": self.ANSWER},
+            # 'before_after', 'upstream_downstream', 'tradeoffs' required for 'function' are absent
+        ])
+        out = self._render("depth-missing", analysis)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V21", error_ids(payload))
+
+    def test_illegal_change_class_fails_v21(self):
+        analysis, first = self._depth_analysis(change_class="not-a-real-class")
+        out = self._render("depth-illegal-class", analysis)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V21", error_ids(payload))
+
+    def test_not_applicable_without_reason_fails_v21(self):
+        analysis, first = self._depth_analysis(dims=[
+            {"key": "role", "answer": self.ANSWER},
+            {"key": "motivation", "answer": self.ANSWER},
+            {"key": "before_after", "answer": self.ANSWER},
+            {"key": "upstream_downstream", "answer": self.ANSWER},
+            {"key": "tradeoffs", "not_applicable": True, "reason": "no"},
+        ])
+        out = self._render("depth-na-noreason", analysis)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V21", error_ids(payload))
+
+    def test_short_dimension_answer_fails_v21(self):
+        analysis, first = self._depth_analysis(dims=[
+            {"key": "role", "answer": "too short"},
+            {"key": "motivation", "answer": self.ANSWER},
+            {"key": "before_after", "answer": self.ANSWER},
+            {"key": "upstream_downstream", "answer": self.ANSWER},
+            {"key": "tradeoffs", "not_applicable": True,
+             "reason": "no material trade-off in this additive read path"},
+        ])
+        out = self._render("depth-short", analysis)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V21", error_ids(payload))
+
+    def test_depth_block_bad_unit_binding_fails_v22(self):
+        analysis, first = self._depth_analysis()
+        out = self._render("depth-badunit", analysis)
+        page = out.read_text(encoding="utf-8")
+        # rebind one depth block to a non-existent unit
+        broken = page.replace('data-kind="call_relations">', 'data-kind="call_relations">', 1)
+        broken = page.replace(
+            f'data-unit="{first}" data-kind="call_relations"',
+            'data-unit="9999" data-kind="call_relations"', 1)
+        report_path, manifest_path = self.mutated("depth-badunit2", page=broken)
+        payload = self.validate(report=report_path, manifest=manifest_path)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V22", error_ids(payload))
+
+    def test_before_after_illegal_change_fails_v22(self):
+        analysis, first = self._depth_analysis(blocks=[
+            {"kind": "before_after", "title": "Status flow",
+             "rows": [{"step": "read", "before": "a", "after": "b", "change": "frobnicated"}]},
+        ])
+        out = self._render("depth-badchange", analysis)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V22", error_ids(payload))
+
+    def test_no_change_class_is_backward_compatible(self):
+        # The base analysis declares no change_class; V21/V22 must be vacuous.
+        payload = self.validate()
+        self.assertTrue(payload["ok"], payload["errors"])
+        self.assertNotIn("V21", error_ids(payload))
+        self.assertNotIn("V22", error_ids(payload))
+
+    def test_reference_and_contract_carry_the_depth_series(self):
+        contract = (SKILL_ROOT / "references" / "change-report-contract.md").read_text(encoding="utf-8")
+        for token in ("A18", "A19", "A20", "V21", "V22", "change_class", "design_dimensions", "depth_blocks"):
+            self.assertIn(token, contract, token)
+        depth = (SKILL_ROOT / "references" / "analysis-depth.md").read_text(encoding="utf-8")
+        for token in ("CHANGE_CLASSES", "REQUIRED_DIMENSIONS", "before_after", "lifecycle", "call_relations"):
+            self.assertIn(token, depth, token)
+
+
+# --------------------------------------------------------------------------------------
 # Skill package contract tests
 # --------------------------------------------------------------------------------------
 
@@ -2096,6 +2252,7 @@ class SkillPackageTests(unittest.TestCase):
         for relative in (
             "SKILL.md",
             "references/change-report-contract.md",
+            "references/analysis-depth.md",
             "references/coverage-protocol.md",
             "references/diagram-spec.md",
             "assets/change-report-template.html",

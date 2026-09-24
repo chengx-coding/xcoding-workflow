@@ -27,9 +27,17 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from build_manifest import (  # noqa: E402
     ANCHOR_CLASS,
+    CHANGE_CLASSES,
     CODE_BLOCK_CLASS,
     CODE_CONTEXT_CLASS,
+    DEPTH_BLOCK_KINDS,
+    DEPTH_CHANGE_VOCAB,
+    DIMENSION_LABELS,
     FIELD_NAMES,
+    MIN_DIMENSION_CHARS,
+    MIN_NA_REASON_CHARS,
+    REQUIRED_DIMENSIONS,
+    REQUIRED_DIMENSIONS_DEFAULT,
     MIN_PURPOSE_CHARS,
     PURPOSE_COLOR_CYCLE,
     RELATION_TYPES,
@@ -566,6 +574,183 @@ def render_toc(manifest: dict[str, Any], titles: dict[str, str], analysis: dict[
     return "".join(parts)
 
 
+def required_dimensions_for(change_class: str) -> tuple[str, ...]:
+    """The design dimensions a change class must address (A19). Falls back to the default
+    set for an unlisted or empty class; the returned keys are always in DIMENSION_LABELS."""
+    return REQUIRED_DIMENSIONS.get(change_class, REQUIRED_DIMENSIONS_DEFAULT)
+
+
+def render_design_lead(spec: dict[str, Any]) -> str:
+    """L1 top-down lead placed before the code block (A18/A19).
+
+    Prefers an explicit `design_lead`; otherwise composes one from the `role` and
+    `motivation` dimension answers so the reader still gets the intent before the diff.
+    Renders nothing when no material is available (backward compatible).
+    """
+    lead = str(spec.get("design_lead", "")).strip()
+    if not lead:
+        dims = spec.get("design_dimensions", [])
+        dims = dims if isinstance(dims, list) else []
+        picked: list[str] = []
+        for want in ("role", "motivation"):
+            for item in dims:
+                if not isinstance(item, dict):
+                    continue
+                if str(item.get("key", "")) == want and not item.get("not_applicable"):
+                    text = str(item.get("answer", "")).strip()
+                    if text:
+                        picked.append(text)
+                    break
+        lead = " ".join(picked)
+    if not lead:
+        return ""
+    return f'<p class="report-design-lead">{escape(lead)}</p>'
+
+
+def render_design_dimensions(spec: dict[str, Any]) -> str:
+    """L3 per-class design dimensions (A19).
+
+    Each declared dimension renders one `report-design-dimension` block carrying its key.
+    An answered dimension shows its prose; a not-applicable dimension shows the reason marked
+    as such. The builder only lays them out; V21 judges completeness against the change class.
+    Renders nothing when the unit declares no dimensions (backward compatible).
+    """
+    dims = spec.get("design_dimensions", [])
+    dims = dims if isinstance(dims, list) else []
+    if not dims:
+        return ""
+    rows: list[str] = []
+    for item in dims:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("key", "")).strip()
+        if not key:
+            continue
+        label = DIMENSION_LABELS.get(key, key)
+        if item.get("not_applicable"):
+            reason = str(item.get("reason", "")).strip()
+            body = (
+                '<p class="report-dimension-na">Not applicable'
+                + (f": {escape(reason)}" if reason else "")
+                + "</p>"
+            )
+        else:
+            body = paragraph(str(item.get("answer", "")).strip())
+        rows.append(
+            f'<div class="report-design-dimension" data-dimension="{escape(key)}">'
+            f"<h4>{escape(str(label))}</h4>{body}</div>"
+        )
+    if not rows:
+        return ""
+    return (
+        '<div class="report-design-dimensions"><h4 class="report-dimensions-title">'
+        "Design analysis</h4>" + "".join(rows) + "</div>"
+    )
+
+
+def _render_before_after(block: dict[str, Any], unit_index: int) -> str:
+    rows_in = block.get("rows", [])
+    rows_in = rows_in if isinstance(rows_in, list) else []
+    body: list[str] = []
+    for row in rows_in:
+        if not isinstance(row, dict):
+            continue
+        change = str(row.get("change", "unchanged"))
+        body.append(
+            f'<tr data-change="{escape(change)}">'
+            f'<td>{escape(str(row.get("step", "")))}</td>'
+            f'<td>{escape(str(row.get("before", "")))}</td>'
+            f'<td>{escape(str(row.get("after", "")))}</td>'
+            f'<td>{escape(change)}</td></tr>'
+        )
+    title = escape(str(block.get("title", "Before vs after")))
+    return (
+        f'<figure class="report-depth-block" data-unit="{unit_index}" data-kind="before_after">'
+        f"<figcaption>{title}</figcaption>"
+        '<table class="report-depth-table"><thead><tr><th>Step</th><th>Before</th>'
+        "<th>After</th><th>Change</th></tr></thead><tbody>"
+        + "".join(body)
+        + "</tbody></table></figure>"
+    )
+
+
+def _render_lifecycle(block: dict[str, Any], unit_index: int) -> str:
+    phases = block.get("phases", [])
+    phases = phases if isinstance(phases, list) else []
+    body: list[str] = []
+    for ph in phases:
+        if not isinstance(ph, dict):
+            continue
+        body.append(
+            "<tr>"
+            f'<td>{escape(str(ph.get("phase", "")))}</td>'
+            f'<td><code>{escape(str(ph.get("loc", "")))}</code></td>'
+            f'<td>{escape(str(ph.get("action", "")))}</td>'
+            f'<td>{escape(str(ph.get("state", "")))}</td>'
+            f'<td>{escape(str(ph.get("note", "")))}</td></tr>'
+        )
+    resource = escape(str(block.get("resource", "")))
+    complete = bool(block.get("complete", False))
+    flag = "complete" if complete else "incomplete"
+    return (
+        f'<figure class="report-depth-block" data-unit="{unit_index}" data-kind="lifecycle" '
+        f'data-complete="{str(complete).lower()}">'
+        f"<figcaption>Lifecycle of <code>{resource}</code> "
+        f'<span class="report-lifecycle-flag">({flag})</span></figcaption>'
+        '<table class="report-depth-table"><thead><tr><th>Phase</th><th>Location</th>'
+        "<th>Action</th><th>State</th><th>Note</th></tr></thead><tbody>"
+        + "".join(body)
+        + "</tbody></table></figure>"
+    )
+
+
+def _render_call_relations(block: dict[str, Any], unit_index: int) -> str:
+    def side(items: Any) -> str:
+        items = items if isinstance(items, list) else []
+        cells = "".join(
+            f'<li><span>{escape(str(it.get("label", "")))}</span> '
+            f'<code>{escape(str(it.get("loc", "")))}</code></li>'
+            for it in items
+            if isinstance(it, dict)
+        )
+        return f"<ul>{cells}</ul>" if cells else '<span class="report-muted">none</span>'
+
+    unit_label = escape(str(block.get("unit_label", "this unit")))
+    return (
+        f'<figure class="report-depth-block" data-unit="{unit_index}" data-kind="call_relations">'
+        "<figcaption>Call relations (upstream callers &rarr; unit &rarr; downstream callees)"
+        "</figcaption>"
+        '<table class="report-depth-table report-callgraph"><thead><tr>'
+        "<th>Callers (upstream)</th><th>Unit</th><th>Callees (downstream)</th></tr></thead>"
+        f"<tbody><tr><td>{side(block.get('callers'))}</td>"
+        f"<td><strong>{unit_label}</strong></td>"
+        f"<td>{side(block.get('callees'))}</td></tr></tbody></table></figure>"
+    )
+
+
+def render_depth_blocks(spec: dict[str, Any], unit_index: int) -> str:
+    """L2/L3 structured depth blocks (A20), all carried by deterministic HTML tables.
+
+    Each block binds to its unit via data-unit and carries a data-kind from DEPTH_BLOCK_KINDS.
+    The builder lays them out; V22 checks structure, the change vocabulary and the binding.
+    Renders nothing when the unit declares no depth blocks (backward compatible).
+    """
+    blocks = spec.get("depth_blocks", [])
+    blocks = blocks if isinstance(blocks, list) else []
+    out: list[str] = []
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        kind = str(block.get("kind", ""))
+        if kind == "before_after":
+            out.append(_render_before_after(block, unit_index))
+        elif kind == "lifecycle":
+            out.append(_render_lifecycle(block, unit_index))
+        elif kind == "call_relations":
+            out.append(_render_call_relations(block, unit_index))
+        # An unknown kind is left out here; V22 fails it from the analysis side.
+    return "".join(out)
+
 def render_units(
     repo: Path, manifest: dict[str, Any], analysis: dict[str, Any]
 ) -> str:
@@ -605,11 +790,17 @@ def render_units(
                 f'<span class="report-file-anchor" id="file-{escape(file_slug(entry["path"]))}"></span>'
             )
         kind = str(entry["change_kind"])
+        change_class = str(spec.get("change_class", "")).strip()
         parts.append(
             f'<header class="report-unit-head">'
             f'<h3>Unit {unit_index}: <code>{escape(entry["path"])}</code></h3>'
             f'<span class="report-change-kind report-change-kind-{escape(kind)}">{escape(kind)}</span>'
         )
+        if change_class:
+            parts.append(
+                f'<span class="report-change-class" data-change-class="{escape(change_class)}">'
+                f"{escape(change_class)}</span>"
+            )
         if purp:
             color = _purpose_color(purp["id"], purposes)
             parts.append(
@@ -660,6 +851,10 @@ def render_units(
             )
         if spec.get("note"):
             parts.append(f'<p class="report-note">{escape(str(spec["note"]))}</p>')
+        # L1 design lead (A18/A19): a top-down sentence placed BEFORE the code block so the
+        # reader learns the unit's role and motivation before reading the diff. It is optional
+        # and drawn from `design_lead`, falling back to the role/motivation dimension answers.
+        parts.append(render_design_lead(spec))
         parts.append(render_unit_block(repo, manifest, entry, hunk))
         fields = spec.get("fields", {}) if isinstance(spec.get("fields"), dict) else {}
         what_text = str(fields.get("what", "")).strip()
@@ -686,6 +881,11 @@ def render_units(
             "(trade-offs, alternatives, business process, data and control)</summary>"
             f'<div class="report-unit-fields">{secondary}</div></details>'
         )
+        # L2/L3 analysis-depth (A19/A20): the per-class design dimensions and the structured
+        # depth blocks (before/after, lifecycle, call relations). Both bind to this unit and
+        # neither participates in the V10 recomputation (they are context, like related code).
+        parts.append(render_design_dimensions(spec))
+        parts.append(render_depth_blocks(spec, unit_index))
         refs = spec.get("related_code_refs", [])
         refs = refs if isinstance(refs, list) else []
         for ref in refs:
