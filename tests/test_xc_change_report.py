@@ -587,6 +587,134 @@ class ReportCase(unittest.TestCase):
 
 
 class PositiveReportTests(ReportCase):
+    def test_design_topics_can_reference_a_derived_unit_diagram(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        first = next(hunk["unit_index"] for _, hunk in unit_pairs(self.manifest))
+        analysis["units"][str(first)]["depth_blocks"] = [
+            {
+                "kind": "call_relations",
+                "callers": [{"label": "reader"}],
+                "callees": [{"label": "validator"}],
+            }
+        ]
+        analysis["design"] = {
+            "topics": [
+                {
+                    "id": "derived-flow",
+                    "title": "Derived flow",
+                    "kind": "architecture",
+                    "summary": "The call path around the changed unit.",
+                    "current": "The call path is implicit in the code.",
+                    "target": "The call path is visible beside the unit.",
+                    "unit_refs": [first],
+                    "diagram_refs": [f"diagram-callgraph-unit-{first}"],
+                }
+            ]
+        }
+        out = self.case_dir("derived-topic") / "change-report.html"
+        page = render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        self.assertIn(f'id="diagram-callgraph-unit-{first}"', page)
+        self.assertIn("rendered in its unit", page)
+        self.assertEqual(len(re.findall(rf'<figure[^>]+id="diagram-callgraph-unit-{first}"', page)), 1)
+
+    def test_supplied_design_requires_topics(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["design"] = {}
+        with self.assertRaises(bs.SkeletonError):
+            bs.build_report(
+                repo=self.harness["repo"],
+                manifest=self.manifest,
+                analysis=analysis,
+                template_text=(SKILL_ROOT / "assets" / "change-report-template.html").read_text(encoding="utf-8"),
+                css_text=(SKILL_ROOT / "assets" / "change-report.css").read_text(encoding="utf-8"),
+                generated_at="2026-09-15T18:00:00Z",
+                manifest_bytes=self.manifest_path.read_bytes(),
+            )
+
+    def test_invalid_topic_evidence_status_or_anchor_fails_validation(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        first = next(hunk["unit_index"] for _, hunk in unit_pairs(self.manifest))
+        analysis["design"] = {
+            "topics": [
+                {
+                    "id": "bad-evidence",
+                    "title": "Bad evidence",
+                    "kind": "risk",
+                    "summary": "This fixture is intentionally invalid.",
+                    "unit_refs": [first],
+                    "evidence": [
+                        {"kind": "intent", "status": "passed", "ref": "#missing-anchor"}
+                    ],
+                }
+            ]
+        }
+        out = self.case_dir("bad-evidence") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload, _ = vr.validate(
+            report_path=out,
+            manifest_path=self.manifest_path,
+            repo=self.harness["repo"],
+            work_order_id=WORK_ORDER_ID,
+            stage="coverage",
+            verdicts_path=None,
+            accuracy_open_issues=None,
+            flow_spec_path=self.flow_path,
+            golden_dir=None,
+        )
+        self.assertFalse(payload["ok"])
+        self.assertIn("V25", error_ids(payload))
+
+    def test_optional_design_topics_render_with_shared_figure_once(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        first = next(hunk["unit_index"] for _, hunk in unit_pairs(self.manifest))
+        analysis["design"] = {
+            "topics": [
+                {
+                    "id": "runtime-flow",
+                    "title": "Runtime flow",
+                    "kind": "behavior",
+                    "summary": "How the report moves through the workflow.",
+                    "current": "The workflow has separate generation and validation steps.",
+                    "target": "The workflow explains the complete path to reviewers.",
+                    "decision": "Keep the existing phases and connect them with a shared flow.",
+                    "unit_refs": [first],
+                    "evidence": [
+                        {"kind": "verification", "status": "passed", "ref": "#section-verification"}
+                    ],
+                    "diagram_refs": ["diagram-1"],
+                },
+                {
+                    "id": "operational-risk",
+                    "title": "Operational risk",
+                    "kind": "risk",
+                    "summary": "Where readers should look for residual risk.",
+                    "decision": "Keep residual risk in the existing verification section.",
+                    "unit_refs": [first],
+                    "evidence": [
+                        {"kind": "verification", "status": "passed", "ref": "#section-verification"}
+                    ],
+                    "diagram_refs": ["diagram-1"],
+                },
+            ]
+        }
+        out = self.case_dir("design-topics") / "change-report.html"
+        page = render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        self.assertEqual(len(re.findall(r'<figure[^>]+id="diagram-1"', page)), 1)
+        self.assertIn('id="design-topic-runtime-flow"', page)
+        self.assertIn('class="report-back-to-topic" href="#design-topic-runtime-flow"', page)
+        payload, _ = vr.validate(
+            report_path=out,
+            manifest_path=self.manifest_path,
+            repo=self.harness["repo"],
+            work_order_id=WORK_ORDER_ID,
+            stage="coverage",
+            verdicts_path=None,
+            accuracy_open_issues=None,
+            flow_spec_path=self.flow_path,
+            golden_dir=None,
+        )
+        self.assertTrue(payload["ok"], payload["errors"])
+
     def test_full_pipeline_passes_and_receipt_is_normalised(self) -> None:
         payload = self.validate()
         self.assertTrue(payload["ok"], payload["errors"])
@@ -761,6 +889,24 @@ class PositiveReportTests(ReportCase):
 
 
 class DiagramTests(unittest.TestCase):
+    def test_owner_metadata_is_emitted_by_the_renderer(self) -> None:
+        spec = {
+            "id": "shared-flow",
+            "type": "flow",
+            "render_mode": "svg",
+            "title": "Shared flow",
+            "summary": "A shared design flow",
+            "topic": "runtime-flow",
+            "unit": 3,
+            "nodes": [{"id": "start", "label": "Start", "layer": 0}],
+            "edges": [],
+        }
+        html = rd.render_diagram(spec)
+        self.assertIn('data-design-topic="runtime-flow"', html)
+        self.assertIn('data-unit="3"', html)
+        self.assertEqual(html.count('data-design-topic="runtime-flow"'), 1)
+        self.assertEqual(html.count('data-unit="3"'), 1)
+
     def test_svg_rendering_is_byte_stable_and_matches_golden(self) -> None:
         for name, kind in (("flow", "flow"), ("state", "state")):
             spec = json.loads((GOLDEN_DIR / f"{name}-spec.json").read_text(encoding="utf-8"))

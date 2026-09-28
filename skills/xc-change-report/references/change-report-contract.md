@@ -329,6 +329,33 @@ vacuous for a unit that declares no change class.
   carries the public phrase `public \`xc-document\` human-readable authoring default` so the
   repository's authoring-contract assertion covers it.
 
+## Optional design-topic layer
+
+- **H43** `analysis.design` is optional. Its absence is the legacy path and does not change the
+  fixed section order, minimal strength, or V1-V23 behavior. When present, it is rendered inside
+  H8 (`section-process-position`) as a reader-question index before the change map; it never
+  creates a second top-level report or a second macro before/after narrative.
+- **H44** Existing `overview` and `process_position` fields remain the sole macro narrative
+  authority. A design topic may link to those rendered anchors and add a concise decision or
+  boundary, but it must not require authors to repeat the overview fields.
+- **H45** A topic has a unique `id`, visible non-empty `title` and `summary`, a display-only
+  `kind` (`behavior`, `architecture`, `data`, `state`, `tradeoff`, or `risk`), optional
+  `current`/`target`/`decision`, and optional `purpose_refs`, `unit_refs`, `diagram_refs` and
+  `evidence`. `behavior`, `architecture`, `data` and `state` topics require current and target;
+  tradeoff and risk topics may omit them only with a visible reason.
+- **H46** Topic `unit_refs` are the only author source for topic-to-unit relations. The builder
+  derives unit-to-topic backlinks and the topic index; an analysable unit may link to multiple
+  topics without duplicating its code or analysis.
+- **H47** Evidence refs are typed, non-empty in-page anchors. `intent` accepts
+  `approved|planned|unknown`, `implementation` accepts `observed|planned|unknown`,
+  `verification` accepts `passed|planned|unknown`, and `inference` accepts `unknown|planned`.
+  Planned, unknown and inference evidence carries a visible reason. A filename or bare source
+  range is not an evidence closure.
+- **H48** Diagram rendering has one canonical owner (`topic`, `unit`, or `macro`) and exactly
+  one `<figure>`, while references may be many-to-many and render backlinks only. The materialized
+  diagram registry includes author and derived unit diagrams, so a topic may reference a derived
+  id without copying its specification. Unclaimed macro figures retain H11 ownership.
+
 ## Purpose-layer and analysis-depth validation
 
 - **V17** Purpose integrity: when a unit carries an A16 purpose, H42 must render a purpose
@@ -363,6 +390,21 @@ vacuous for a unit that declares no change class.
   figure by id anywhere on the page). Whether a diagram is appropriate at all stays a human /
   accuracy judgement; V23 only proves placement.
 
+- **V24** Design-topic shape: when `analysis.design` is present, every topic has a unique valid
+  id, a visible title and summary, a supported display kind, and the required current/target
+  fields for its kind. Minimal reports without design remain valid without this check.
+- **V25** Design reference closure: purpose, unit, diagram and evidence refs resolve to rendered
+  in-page anchors or the materialized diagram registry. Evidence kind/status combinations follow
+  H47, and planned/unknown/inference entries carry a visible reason.
+- **V26** Design navigation and ownership: every topic appears in the design index, every topic
+  unit ref has a generated unit backlink, every canonical figure renders once, and shared refs do
+  not duplicate figures. Unclaimed macro figures remain in H11; unit-derived figures remain in
+  their unit block.
+- **V27** Design accuracy coverage: the final accuracy artifact may include `topic_findings[]`.
+  Required topic findings (wrong or misleading topic/diagram/evidence claims) set the existing
+  accuracy-open flag and enter the same bounded revision loop as unit findings. Per-unit V14
+  coverage remains unchanged.
+
 ## Strength matrix
 
 The level is fixed by confirmed facts, never by task length or wording, and is written to
@@ -373,6 +415,11 @@ The level is fixed by confirmed facts, never by task length or wording, and is w
 | `minimal` | `mode in {change, repair, maintenance}`, `risk=low`, `audit=runtime-only`, measured `units_total <= MAX_UNITS_MINIMAL = 5` | coverage manifest, change map, the H42 purpose section, one A1-A8 section per unit, verbatim code blocks, V1-V13 plus V15-V16, offline check, accuracy review | diagrams, related code, glossary | closed by default; opened only on explicit user request |
 | `standard` | every other confirmed fact set | all of `minimal`, plus the diagrams required by D1-D6, related-code references (A11), and -- for every unit that declares a `change_class` -- its `REQUIRED_DIMENSIONS` design dimensions (A19, three-state) | glossary, depth blocks (A20) | closed by default; opened only on explicit user request |
 | `full` | `risk=high`, or `audit in {result, full}`, or explicit user request | all of `standard`, plus the glossary, per-unit alternative comparison, and the depth blocks (A20) a unit's change class triggers (e.g. `function` -> call relations, `member-var` -> lifecycle, `control-flow`/`signature`/`data-schema` -> before/after) | none | closed by default; opened only on explicit user request |
+
+The design-topic layer is optional at every level. A minimal report never requires it. When a
+standard or full author supplies it to answer a real reader question, V24-V27 apply; the level
+does not impose a fixed topic count, chart count, or prose length. This keeps the existing
+minimal burden while allowing a full report to explain design decisions before unit detail.
 
 The `audit` values in this matrix are members of the shipped planning domain
 `{runtime-only, result, full, unknown}` (`skills/xc-work/scripts/plan_work_policy.py`), which is
@@ -423,6 +470,12 @@ different steps, and only the validator judges.
   "title": "…", "subtitle": "…",
   "overview": {"what_changed": "…", "why": "…", "impact": "…", "reading_guide": "…"},
   "process_position": {"narrative": "…", "before": "…", "after": "…"},
+  "design": {"topics": [{"id": "grant-path", "title": "…", "kind": "behavior",
+               "summary": "…", "current": "…", "target": "…", "decision": "…",
+               "purpose_refs": ["p1"], "unit_refs": [1],
+               "diagram_refs": ["diagram-1"],
+               "evidence": [{"kind": "implementation", "status": "observed",
+                              "ref": "#unit-1"}]}]},
   "related_code": [{"path": "src/x.py", "lines": "10-20", "note": "…", "code": "…"}],
   "glossary": [{"term": "…", "explanation": "…"}],
   "verification": {"commands": [{"command": "…", "result": "…"}], "residual_risks": "…"},

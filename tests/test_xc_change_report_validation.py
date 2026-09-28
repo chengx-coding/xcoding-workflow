@@ -698,6 +698,54 @@ class AccuracyCeilingTests(ScratchRoot):
             self.assertFalse(above.ok)
             self.assertEqual(error_ids(above), {"V14"})
 
+    def test_topic_findings_join_accuracy_loop(self) -> None:
+        path = self.root / "topic.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": bm.SCHEMA_VERSION,
+                    "verdicts": [{"unit_index": 1, "verdict": "accurate", "reason": "probe"}],
+                    "topic_findings": [
+                        {
+                            "topic_id": "runtime-flow",
+                            "verdict": "misleading",
+                            "evidence_ref": "#design-topic-runtime-flow",
+                            "rework_reason": "The target claim omits the retry path.",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        checker = vr.Checker()
+        result = vr.check_v14(checker, deepcopy(self.MANIFEST), path, "true")
+        self.assertTrue(checker.ok, checker.errors)
+        self.assertEqual(result["topic_findings"], 1)
+        self.assertEqual(result["topic_misleading"], 1)
+
+    def test_topic_finding_requires_anchor_and_reason_for_nonaccurate(self) -> None:
+        path = self.root / "invalid-topic.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": bm.SCHEMA_VERSION,
+                    "verdicts": [{"unit_index": 1, "verdict": "accurate", "reason": "probe"}],
+                    "topic_findings": [
+                        {
+                            "topic_id": "runtime-flow",
+                            "verdict": "wrong",
+                            "evidence_ref": "source.py:4",
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        checker = vr.Checker()
+        vr.check_v14(checker, deepcopy(self.MANIFEST), path, "true")
+        self.assertFalse(checker.ok)
+        self.assertIn("V14", error_ids(checker))
+
 
 # --------------------------------------------------------------------------------------
 # G-41, the bounded V11 failure text

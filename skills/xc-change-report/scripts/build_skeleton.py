@@ -589,6 +589,20 @@ def render_toc(manifest: dict[str, Any], titles: dict[str, str], analysis: dict[
                 f"<ul>{''.join(items_html)}</ul></details>"
             )
             continue
+        if key == "process-position":
+            topics = analysis.get("design", {}).get("topics", []) if isinstance(analysis.get("design"), dict) else []
+            topics = topics if isinstance(topics, list) else []
+            topic_items = "".join(
+                f'<li class="report-toc-topic"><a href="#design-topic-{escape(str(topic.get("id", "")))}">'
+                f'{escape(str(topic.get("title", topic.get("id", ""))))}</a></li>'
+                for topic in topics
+                if isinstance(topic, dict) and str(topic.get("id", "")).strip()
+            )
+            parts.append(
+                f'<details open><summary><a href="#{section_id}">{label}</a></summary>'
+                f'<ul>{topic_items}</ul></details>'
+            )
+            continue
         parts.append(f'<details open><summary><a href="#{section_id}">{label}</a></summary></details>')
     return "".join(parts)
 
@@ -794,6 +808,37 @@ def render_depth_blocks(spec: dict[str, Any], unit_index: int) -> str:
         # An unknown kind is left out here; V22 fails it from the analysis side.
     return "".join(out)
 
+def _design_topics(analysis: dict[str, Any]) -> list[dict[str, Any]]:
+    if "design" not in analysis:
+        return []
+    design = analysis.get("design")
+    if not isinstance(design, dict):
+        raise SkeletonError("analysis.design must be an object when supplied")
+    if "topics" not in design or not isinstance(design.get("topics"), list) or not design["topics"]:
+        raise SkeletonError("analysis.design.topics must be a non-empty list when design is supplied")
+    topics = design.get("topics", [])
+    if any(not isinstance(topic, dict) for topic in topics):
+        raise SkeletonError("analysis.design.topics entries must be objects")
+    return topics
+
+
+def _topic_refs_by_unit(analysis: dict[str, Any]) -> dict[int, list[dict[str, Any]]]:
+    out: dict[int, list[dict[str, Any]]] = {}
+    for topic in _design_topics(analysis):
+        topic_id = str(topic.get("id", "")).strip()
+        if not topic_id:
+            continue
+        refs = topic.get("unit_refs", [])
+        if not isinstance(refs, list):
+            continue
+        for ref in refs:
+            try:
+                out.setdefault(int(ref), []).append(topic)
+            except (TypeError, ValueError):
+                continue
+    return out
+
+
 def render_units(
     repo: Path, manifest: dict[str, Any], analysis: dict[str, Any],
     counter: "Counter | None" = None, derive_diagrams: bool = True,
@@ -805,6 +850,7 @@ def render_units(
     counter = counter if counter is not None else Counter()
     units = analysis.get("units", {}) if isinstance(analysis.get("units"), dict) else {}
     pmap = _purpose_map(analysis)
+    topic_map = _topic_refs_by_unit(analysis)
     purposes = _purpose_list(analysis)
     purpose_units: dict[str, list[int]] = {}
     for uid, purp in pmap.items():
@@ -868,6 +914,14 @@ def render_units(
                 f'<p><a class="report-back-to-purpose" href="#purpose-{escape(purp["id"])}">'
                 f"&uarr; back to purpose: {escape(purp['title'])}</a></p>"
             )
+        topic_links = topic_map.get(int(unit_index), [])
+        if topic_links:
+            links = ", ".join(
+                f'<a class="report-back-to-topic" href="#design-topic-{escape(str(topic.get("id", "")))}">'
+                f'{escape(str(topic.get("title", topic.get("id", ""))))}</a>'
+                for topic in topic_links
+            )
+            parts.append(f'<p class="report-topic-context">Design topics: {links}</p>')
         parts.append(
             f'<p class="report-unit-meta"><a class="{ANCHOR_CLASS}" href="#unit-{unit_index}">'
             f"#unit-{unit_index}</a> &middot; code location "
@@ -946,6 +1000,18 @@ def render_units(
                     + _render_diagram_block(diagram_spec, counter, f"diagram-unit-{unit_index}")
                     + "</div>"
                 )
+        author_unit_diagrams = [
+            diagram for diagram in (analysis.get("diagrams", []) if isinstance(analysis.get("diagrams"), list) else [])
+            if isinstance(diagram, dict)
+            and str(diagram.get("unit", "")) == str(unit_index)
+            and not diagram.get("topic")
+        ]
+        for diagram_spec in author_unit_diagrams:
+            parts.append(
+                '<div class="report-unit-diagram report-author-unit-diagram">'
+                + _render_diagram_block(diagram_spec, counter, f"diagram-unit-{unit_index}-author")
+                + "</div>"
+            )
         refs = spec.get("related_code_refs", [])
         refs = refs if isinstance(refs, list) else []
         for ref in refs:
@@ -1045,6 +1111,7 @@ def _derive_callgraph_spec(unit_index: int, block: dict[str, Any]) -> dict[str, 
         return None  # nothing to draw beyond the unit itself
     return {
         "id": f"diagram-callgraph-unit-{unit_index}",
+        "unit": unit_index,
         "type": "flow",
         "render_mode": "svg",
         "title": f"Call relations of {unit_label}",
@@ -1083,6 +1150,7 @@ def _derive_before_after_specs(unit_index: int, block: dict[str, Any]) -> list[d
             continue
         specs.append({
             "id": f"diagram-{side}-unit-{unit_index}",
+            "unit": unit_index,
             "type": "flow",
             "render_mode": "svg",
             "title": f"Unit {unit_index}: {side} flow",
@@ -1123,6 +1191,21 @@ def derive_depth_block_diagrams(analysis: dict[str, Any]) -> list[dict[str, Any]
             elif kind == "before_after":
                 derived.extend(_derive_before_after_specs(unit_index, block))
     return derived
+
+
+def _diagram_registry(analysis: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Materialize author and derived specs so topic refs resolve before unit rendering."""
+    specs = analysis.get("diagrams", [])
+    specs = specs if isinstance(specs, list) else []
+    registry: dict[str, dict[str, Any]] = {}
+    for spec in [item for item in specs if isinstance(item, dict)] + derive_depth_block_diagrams(analysis):
+        diagram_id = str(spec.get("id", "")).strip()
+        if not diagram_id:
+            continue
+        if diagram_id in registry and registry[diagram_id] != spec:
+            raise SkeletonError(f"duplicate diagram id with conflicting specs: {diagram_id}")
+        registry[diagram_id] = spec
+    return registry
 
 
 def _render_diagram_block(spec: dict[str, Any], counter: "Counter", fallback_id: str) -> str:
@@ -1181,7 +1264,17 @@ def render_diagrams(analysis: dict[str, Any], counter: "Counter | None" = None) 
     counter = counter if counter is not None else Counter()
     specs = analysis.get("diagrams", [])
     specs = specs if isinstance(specs, list) else []
-    macro = [s for s in specs if not (isinstance(s, dict) and s.get("unit") is not None)]
+    topic_ids = {
+        str(ref)
+        for topic in _design_topics(analysis)
+        for ref in (topic.get("diagram_refs", []) if isinstance(topic.get("diagram_refs", []), list) else [])
+    }
+    macro = [
+        s for s in specs
+        if isinstance(s, dict)
+        and s.get("unit") is None
+        and str(s.get("id", "")) not in topic_ids
+    ]
     if not macro:
         return '<p class="report-muted">No macro or cross-unit diagram is required by the change features.</p>'
     parts: list[str] = []
@@ -1367,7 +1460,7 @@ def build_report(
         "CHANGE_MAP": render_kind_summary(manifest) + render_change_map(repo, manifest, analysis),
         "QUICK_INDEX": render_quick_index(analysis),
         "EXCLUSION_TABLE": render_exclusion_table(manifest),
-        "PROCESS_POSITION": render_process_position(analysis),
+        "PROCESS_POSITION": render_process_position(analysis, diagram_counter),
         "UNITS": render_units(
             repo, manifest, analysis, diagram_counter, derive_unit_diagrams
         ),
@@ -1478,7 +1571,95 @@ def render_overview(manifest: dict[str, Any], analysis: dict[str, Any]) -> str:
     return "".join(parts)
 
 
-def render_process_position(analysis: dict[str, Any]) -> str:
+def _render_design_topics(
+    analysis: dict[str, Any], counter: "Counter | None" = None
+) -> str:
+    topics = _design_topics(analysis)
+    if not topics:
+        return ""
+    counter = counter if counter is not None else Counter()
+    by_id = _diagram_registry(analysis)
+    rendered: set[str] = set()
+    parts = ['<nav class="report-design-index" aria-label="Design topics"><strong>Design topics</strong><ul>']
+    parts.extend(
+        f'<li><a href="#design-topic-{escape(str(topic.get("id", "")))}">'
+        f'{escape(str(topic.get("title", topic.get("id", ""))))}</a></li>'
+        for topic in topics
+        if str(topic.get("id", "")).strip()
+    )
+    parts.append("</ul></nav>")
+    for topic in topics:
+        topic_id = str(topic.get("id", "")).strip()
+        if not topic_id:
+            continue
+        title = str(topic.get("title", topic_id)).strip()
+        kind = str(topic.get("kind", "")).strip()
+        parts.append(
+            f'<article class="report-design-topic" id="design-topic-{escape(topic_id)}" '
+            f'data-topic-kind="{escape(kind)}"><h3>{escape(title)}</h3>'
+        )
+        summary = str(topic.get("summary", "")).strip()
+        if summary:
+            parts.append(f'<p class="report-design-topic-summary">{escape(summary)}</p>')
+        for key, label in (("current", "Current"), ("target", "Target"), ("decision", "Decision")):
+            value = str(topic.get(key, "")).strip()
+            if value:
+                parts.append(f'<h4>{escape(label)}</h4>{paragraph(value)}')
+        boundaries = topic.get("boundaries", [])
+        if isinstance(boundaries, list) and boundaries:
+            items = "".join(f"<li>{escape(str(item))}</li>" for item in boundaries if str(item).strip())
+            if items:
+                parts.append(f'<details class="report-design-details"><summary>Boundaries</summary><ul>{items}</ul></details>')
+        refs = topic.get("unit_refs", [])
+        if isinstance(refs, list) and refs:
+            links = ", ".join(f'<a href="#unit-{escape(str(ref))}">unit-{escape(str(ref))}</a>' for ref in refs)
+            parts.append(f'<p class="report-topic-units">Implementation units: {links}</p>')
+        purpose_refs = topic.get("purpose_refs", [])
+        if isinstance(purpose_refs, list) and purpose_refs:
+            links = ", ".join(
+                f'<a href="#purpose-{escape(str(ref))}">purpose-{escape(str(ref))}</a>'
+                for ref in purpose_refs
+            )
+            parts.append(f'<p class="report-topic-purposes">Purposes: {links}</p>')
+        evidence = topic.get("evidence", [])
+        if isinstance(evidence, list) and evidence:
+            rows = []
+            for item in evidence:
+                if not isinstance(item, dict):
+                    continue
+                ref = str(item.get("ref", "")).strip()
+                ref_html = f'<a href="{escape(ref)}">{escape(ref)}</a>' if ref.startswith("#") else f"<code>{escape(ref)}</code>"
+                reason = str(item.get("reason", "")).strip()
+                rows.append(
+                    f'<li><strong>{escape(str(item.get("kind", "")))}</strong> '
+                    f'<span class="report-evidence-status">{escape(str(item.get("status", "")))}</span> '
+                    f"{ref_html}{(' &mdash; ' + escape(reason)) if reason else ''}</li>"
+                )
+            if rows:
+                parts.append('<details class="report-design-details"><summary>Evidence</summary><ul class="report-design-evidence">' + "".join(rows) + "</ul></details>")
+        diagram_refs = topic.get("diagram_refs", [])
+        if isinstance(diagram_refs, list):
+            for diagram_id in diagram_refs:
+                diagram_id = str(diagram_id).strip()
+                spec = by_id.get(diagram_id)
+                if spec is None:
+                    parts.append(f'<p class="report-note">Diagram reference unavailable: <code>{escape(diagram_id)}</code></p>')
+                    continue
+                if spec.get("unit") is not None:
+                    parts.append(f'<p class="report-topic-diagram-link">Diagram: <a href="#{escape(diagram_id)}"><code>{escape(diagram_id)}</code></a> (rendered in its unit)</p>')
+                    continue
+                if diagram_id in rendered:
+                    parts.append(f'<p class="report-topic-diagram-link">Shared diagram: <a href="#{escape(diagram_id)}"><code>{escape(diagram_id)}</code></a></p>')
+                    continue
+                spec = dict(spec)
+                spec.setdefault("topic", topic_id)
+                parts.append('<div class="report-design-diagram">' + _render_diagram_block(spec, counter, diagram_id) + '</div>')
+                rendered.add(diagram_id)
+        parts.append("</article>")
+    return "".join(parts)
+
+
+def render_process_position(analysis: dict[str, Any], counter: "Counter | None" = None) -> str:
     data = analysis.get("process_position", {})
     data = data if isinstance(data, dict) else {}
     parts = [paragraph(str(data.get("narrative", "")))]
@@ -1489,6 +1670,7 @@ def render_process_position(analysis: dict[str, Any]) -> str:
             '<table id="process-position-table"><thead><tr><th>Before</th><th>After</th></tr>'
             f"</thead><tbody><tr><td>{escape(before)}</td><td>{escape(after)}</td></tr></tbody></table>"
         )
+    parts.append(_render_design_topics(analysis, counter))
     return "".join(parts)
 
 

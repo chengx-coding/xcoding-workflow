@@ -566,11 +566,18 @@ def render_diagram(spec: dict[str, Any]) -> str:
         )
     else:
         payload = render_table(spec, diagram_type)
-    return (
-        f'<figure class="report-diagram" id="{_escape(diagram_id)}" '
-        f'data-diagram-id="{_escape(diagram_id)}" data-diagram-type="{_escape(str(spec.get("type")))}" '
-        f'data-render-mode="{_escape(render_mode)}">{payload}</figure>'
-    )
+    attrs = [
+        f'class="report-diagram"',
+        f'id="{_escape(diagram_id)}"',
+        f'data-diagram-id="{_escape(diagram_id)}"',
+        f'data-diagram-type="{_escape(str(spec.get("type")))}"',
+        f'data-render-mode="{_escape(render_mode)}"',
+    ]
+    if spec.get("topic") is not None:
+        attrs.append(f'data-design-topic="{_escape(str(spec["topic"]))}"')
+    if spec.get("unit") is not None:
+        attrs.append(f'data-unit="{_escape(str(spec["unit"]))}"')
+    return f'<figure {" ".join(attrs)}>{payload}</figure>'
 
 
 def render_diagrams(specs: list[dict[str, Any]]) -> list[str]:

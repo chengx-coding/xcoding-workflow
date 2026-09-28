@@ -20,6 +20,22 @@ writes the explanation.** Section order, table rows, anchors, code blocks and di
 rendering are mechanical and script-generated; the prose of each analysis field is written
 by the author and bound to the code by recomputation.
 
+## Optional design-to-implementation layer
+
+An analysis may provide `design.topics` when a change has a real feature-level question that is
+hard to understand from the existing overview, purposes, and unit sections alone. Topics are
+rendered inside `section-process-position` and link to existing purpose, unit, diagram, and
+verification anchors. They do not replace the existing overview/process-position fields, create a
+second report, or require a fixed number of charts. Minimal reports remain valid without design.
+
+Design evidence uses typed in-page refs: intent (`approved|planned|unknown`), implementation
+(`observed|planned|unknown`), verification (`passed|planned|unknown`), and inference
+(`unknown|planned`). Planned, unknown, and inference entries include a visible reason. A figure
+has one canonical render owner, but multiple topics may reference it and receive backlinks. Macro
+figures remain in `section-diagrams`; derived unit diagrams remain inside their unit. The final
+accuracy review grades topic claims, diagram semantics, and evidence status in addition to the
+existing per-unit verdicts.
+
 ## Position in the lifecycle
 
 - **Measure before reading the contracts.** The group's first step is

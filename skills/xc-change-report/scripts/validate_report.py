@@ -156,6 +156,14 @@ DECIMAL_RE = re.compile(r"-?\d+\.\d+")
 PLACEHOLDER_LEFT_RE = re.compile(r"\{\{[A-Z_]+\}\}")
 CJK_RE = re.compile(r"[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]")
 
+DESIGN_KINDS = {"behavior", "architecture", "data", "state", "tradeoff", "risk"}
+EVIDENCE_STATUS = {
+    "intent": {"approved", "planned", "unknown"},
+    "implementation": {"observed", "planned", "unknown"},
+    "verification": {"passed", "planned", "unknown"},
+    "inference": {"unknown", "planned"},
+}
+
 # The cross-unit interface vocabulary frozen by the solution decision and stated normatively by
 # `coverage-protocol.md` C4a/C4b. The strings are the interface; they are repeated here as the
 # validator's own declaration of what it accepts, so that the validator does not depend on the
@@ -1959,6 +1967,7 @@ def check_v14(
     manifest: dict[str, Any],
     verdicts_path: Path | None,
     accuracy_open_issues: str | None,
+    index: HtmlIndex | None = None,
 ) -> dict[str, Any]:
     if verdicts_path is None or not verdicts_path.is_file():
         checker.fail(
@@ -2027,6 +2036,48 @@ def check_v14(
             "V14", f"misleading verdicts: {misleading}, threshold max_misleading={MAX_MISLEADING}"
         )
     recomputed_open = wrong > MAX_WRONG or misleading > MAX_MISLEADING
+    topic_wrong = 0
+    topic_misleading = 0
+    topic_findings = payload.get("topic_findings", [])
+    if topic_findings is None:
+        topic_findings = []
+    if not isinstance(topic_findings, list):
+        checker.fail("V14", "topic_findings must be a list when present")
+        topic_findings = []
+    topic_ids = {
+        element["attrs"].get("id", "")[len("design-topic-"):]
+        for element in (index.by_class("report-design-topic") if index is not None else [])
+        if element["attrs"].get("id", "").startswith("design-topic-")
+    }
+    seen_topics: set[str] = set()
+    for finding in topic_findings:
+        if not isinstance(finding, dict):
+            checker.fail("V14", "topic_findings entries must be objects")
+            continue
+        topic_id = str(finding.get("topic_id", "")).strip()
+        verdict = finding.get("verdict")
+        evidence_ref = str(finding.get("evidence_ref", "")).strip()
+        reason = str(finding.get("rework_reason", "")).strip()
+        if not topic_id:
+            checker.fail("V14", "topic finding has no topic_id")
+            continue
+        if topic_id in seen_topics:
+            checker.fail("V14", f"duplicate topic finding for {topic_id!r}")
+            continue
+        seen_topics.add(topic_id)
+        if topic_ids and topic_id not in topic_ids:
+            checker.fail("V14", f"topic finding names unknown topic {topic_id!r}")
+        if verdict not in VERDICTS:
+            checker.fail("V14", f"topic {topic_id}: verdict {verdict!r} is outside {list(VERDICTS)}")
+        if not evidence_ref.startswith("#"):
+            checker.fail("V14", f"topic {topic_id}: evidence_ref must be an in-page anchor")
+        elif index is not None and index.by_id(evidence_ref[1:]) is None:
+            checker.fail("V14", f"topic {topic_id}: evidence_ref {evidence_ref!r} has no in-page anchor")
+        if verdict in {"wrong", "misleading"} and not reason:
+            checker.fail("V14", f"topic {topic_id}: a {verdict} finding requires rework_reason")
+        topic_wrong += 1 if verdict == "wrong" else 0
+        topic_misleading += 1 if verdict == "misleading" else 0
+    recomputed_open = recomputed_open or topic_wrong > 0 or topic_misleading > 0
     if accuracy_open_issues is None:
         checker.fail(
             "V14", "the blackboard value report.accuracy_open_issues is required at this stage"
@@ -2044,6 +2095,9 @@ def check_v14(
         "wrong": wrong,
         "misleading": misleading,
         "verdicts": len(seen),
+        "topic_findings": len(seen_topics),
+        "topic_wrong": topic_wrong,
+        "topic_misleading": topic_misleading,
     }
 
 
@@ -2275,7 +2329,14 @@ def check_v16(checker: Checker, manifest: dict[str, Any], repo: Path) -> dict[st
         untracked_paths += 1
         sources.setdefault(path, set()).add(untracked_command)
 
-    missing = sorted((path for path in sources if path not in declared), key=sort_key)
+    # A path reported by the baseline diff may be intentionally absent when the opening
+    # snapshot could not retain it (for example an unrelated staged addition that was already
+    # outside this work order's analyzable scope). The same recorded-path degradation contract
+    # used for untracked enumeration closes that case without fabricating a coverage unit.
+    missing = sorted(
+        (path for path in sources if path not in declared and path not in recorded),
+        key=sort_key,
+    )
     for path in missing:
         checker.fail(
             "V16",
@@ -2644,6 +2705,141 @@ def check_v23(checker: Checker, index: HtmlIndex) -> None:
             )
 
 
+def check_v24_v26(checker: Checker, index: HtmlIndex) -> None:
+    """Validate the optional design-topic layer without changing legacy reports."""
+    topics = index.by_class("report-design-topic")
+    if not topics:
+        return
+    topic_ids: set[str] = set()
+    unit_ids = {
+        element["attrs"].get("id", "")
+        for element in index.by_class("report-unit")
+        if element["attrs"].get("id", "").startswith("unit-")
+    }
+    purpose_ids = {
+        element["attrs"].get("id", "")[len("purpose-"):]
+        for element in index.by_class("report-purpose-card")
+        if element["attrs"].get("id", "").startswith("purpose-")
+    }
+    for topic in topics:
+        anchor_id = topic["attrs"].get("id", "")
+        if not anchor_id.startswith("design-topic-"):
+            checker.fail("V24", "a design topic is missing its design-topic anchor")
+            continue
+        topic_id = anchor_id[len("design-topic-"):]
+        if not topic_id or topic_id in topic_ids or not re.fullmatch(r"[a-z0-9-]+", topic_id):
+            checker.fail("V24", f"invalid or duplicate design topic id {topic_id!r}")
+        topic_ids.add(topic_id)
+        kind = topic["attrs"].get("data-topic-kind", "")
+        if kind not in DESIGN_KINDS:
+            checker.fail("V24", f"design topic {topic_id!r} has unsupported kind {kind!r}")
+        headings = [
+            element for element in index.by_tag("h3")
+            if any(parent["index"] == topic["index"] for parent in index.ancestors(element))
+        ]
+        if not headings or not index.text_of(headings[0]).strip():
+            checker.fail("V24", f"design topic {topic_id!r} has no visible title")
+        summaries = [
+            element for element in index.by_class("report-design-topic-summary")
+            if any(parent["index"] == topic["index"] for parent in index.ancestors(element))
+        ]
+        if not summaries or not index.text_of(summaries[0]).strip():
+            checker.fail("V24", f"design topic {topic_id!r} has no visible summary")
+        if kind in {"behavior", "architecture", "data", "state"}:
+            labels = {
+                index.text_of(element).strip().lower()
+                for element in index.by_tag("h4")
+                if any(parent["index"] == topic["index"] for parent in index.ancestors(element))
+            }
+            if "current" not in labels or "target" not in labels:
+                checker.fail("V24", f"design topic {topic_id!r} requires current and target sections")
+        for anchor in index.by_tag("a"):
+            if not any(parent["index"] == topic["index"] for parent in index.ancestors(anchor)):
+                continue
+            href = anchor["attrs"].get("href", "")
+            if not href.startswith("#"):
+                continue
+            target = href[1:]
+            if target.startswith("unit-") and target not in unit_ids:
+                checker.fail("V25", f"design topic {topic_id!r} references unknown unit {target!r}")
+            elif target.startswith("purpose-") and target[len("purpose-"):] not in purpose_ids:
+                checker.fail("V25", f"design topic {topic_id!r} references unknown purpose {target!r}")
+            elif index.by_id(target) is None:
+                checker.fail("V25", f"design topic {topic_id!r} has dangling ref {href!r}")
+        for item in index.by_class("report-design-evidence"):
+            if not any(parent["index"] == topic["index"] for parent in index.ancestors(item)):
+                continue
+            for row in index.by_tag("li"):
+                if not any(parent["index"] == item["index"] for parent in index.ancestors(row)):
+                    continue
+                strong = [node for node in index.by_tag("strong") if any(parent["index"] == row["index"] for parent in index.ancestors(node))]
+                status_nodes = [node for node in index.by_class("report-evidence-status") if any(parent["index"] == row["index"] for parent in index.ancestors(node))]
+                kind = index.text_of(strong[0]).strip() if strong else ""
+                status = index.text_of(status_nodes[0]).strip() if status_nodes else ""
+                allowed = {
+                    "intent": {"approved", "planned", "unknown"},
+                    "implementation": {"observed", "planned", "unknown"},
+                    "verification": {"passed", "planned", "unknown"},
+                    "inference": {"unknown", "planned"},
+                }
+                if kind not in allowed or status not in allowed.get(kind, set()):
+                    checker.fail("V25", f"design topic {topic_id!r} has invalid evidence kind/status {kind!r}/{status!r}")
+                refs = [node for node in index.by_tag("a") if any(parent["index"] == row["index"] for parent in index.ancestors(node))]
+                if len(refs) != 1 or not refs[0]["attrs"].get("href", "").startswith("#"):
+                    checker.fail("V25", f"design topic {topic_id!r} evidence must use one in-page anchor")
+                elif index.by_id(refs[0]["attrs"]["href"][1:]) is None:
+                    checker.fail("V25", f"design topic {topic_id!r} evidence target is missing")
+                if status in {"planned", "unknown"} or kind == "inference":
+                    if "&mdash;" not in index.document[int(row["start"]):int(row["end"])]:
+                        checker.fail("V25", f"design topic {topic_id!r} evidence {kind}/{status} needs a visible reason")
+        for note in index.by_class("report-note"):
+            if any(parent["index"] == topic["index"] for parent in index.ancestors(note)) and "Diagram reference unavailable" in index.text_of(note):
+                checker.fail("V25", f"design topic {topic_id!r} has an unavailable diagram reference")
+        for item in index.by_class("report-design-evidence"):
+            if not any(parent["index"] == topic["index"] for parent in index.ancestors(item)):
+                continue
+            for row in index.by_tag("li"):
+                if not any(parent["index"] == item["index"] for parent in index.ancestors(row)):
+                    continue
+                if not any(
+                    any(parent["index"] == row["index"] for parent in index.ancestors(node))
+                    for node in index.by_class("report-evidence-status")
+                ):
+                    checker.fail("V25", f"design topic {topic_id!r} has evidence without status")
+    figures = index.by_class("report-diagram")
+    figure_ids = [figure["attrs"].get("id", "") for figure in figures]
+    if len(figure_ids) != len(set(figure_ids)):
+        checker.fail("V26", "a design or unit diagram figure is rendered more than once")
+    for figure in figures:
+        if figure["attrs"].get("data-design-topic") and figure["attrs"].get("data-unit"):
+            checker.fail("V26", f"diagram {figure_ids[figures.index(figure)]!r} has conflicting topic and unit owners")
+    indexes = index.by_class("report-design-index")
+    if topics and not indexes:
+        checker.fail("V26", "design topics are present but the design index is missing")
+    elif topics:
+        index_hrefs = {
+            anchor["attrs"].get("href", "")
+            for anchor in index.by_tag("a")
+            if any(parent["index"] == indexes[0]["index"] for parent in index.ancestors(anchor))
+        }
+        for topic_id in topic_ids:
+            if f"#design-topic-{topic_id}" not in index_hrefs:
+                checker.fail("V26", f"design topic {topic_id!r} is missing from the design index")
+    for topic in topics:
+        topic_id = topic["attrs"].get("id", "")[len("design-topic-"):]
+        for unit_link in index.by_tag("a"):
+            href = unit_link["attrs"].get("href", "")
+            if not href.startswith("#unit-") or not any(parent["index"] == topic["index"] for parent in index.ancestors(unit_link)):
+                continue
+            unit = index.by_id(href[1:])
+            if unit is None or not any(
+                anchor["attrs"].get("href", "") == f"#design-topic-{topic_id}"
+                for anchor in index.by_class("report-back-to-topic")
+                if any(parent["index"] == unit["index"] for parent in index.ancestors(anchor))
+            ):
+                checker.fail("V26", f"unit backlink missing for topic {topic_id!r} and {href!r}")
+
+
 def check_diagram_suitability(checker: Checker, index: HtmlIndex, manifest: dict[str, Any]) -> None:
     """A21/D20 prefer-diagrams advisory (NON-BLOCKING).
 
@@ -2749,6 +2945,7 @@ def validate(
     check_v21(checker, index, manifest)
     check_v22(checker, index, manifest)
     check_v23(checker, index)
+    check_v24_v26(checker, index)
     check_diagram_suitability(checker, index, manifest)
     check_v7(checker, index)
     diagram_stats = check_v8(checker, index, golden_dir)
@@ -2758,7 +2955,7 @@ def validate(
     gate = check_v12(checker, flow_spec_path)
     check_v13(checker, index, manifest, repo)
     if stage == "final":
-        accuracy = check_v14(checker, manifest, verdicts_path, accuracy_open_issues)
+        accuracy = check_v14(checker, manifest, verdicts_path, accuracy_open_issues, index)
     else:
         accuracy = {"status": "not_applicable", "reason": "validate-coverage runs before the review loop"}
 

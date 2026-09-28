@@ -154,6 +154,19 @@ automatic derivation, and an optional real-SVG carrier - never with a "no diagra
   a spec to its `<figure>` by the spec id anywhere on the page); V23 enforces that a `*-unit-N`
   figure sits inside `#unit-N` and not in the macro region.
 
+### Design-topic references and ownership
+
+- **D24** A report may materialize a design-topic registry after author and depth-derived specs
+  are known. Registry entries carry `id`, `owner` (`topic`, `unit`, or `macro`) and the final
+  serialized spec. A topic reference resolves against this registry, including ids such as
+  `diagram-callgraph-unit-<N>` and `diagram-before-unit-<N>` produced by D21.
+- **D25** Registry ownership controls rendering, not reference cardinality. One canonical owner
+  emits one figure and one `diagram-spec-N` carrier. Multiple topics may reference that id and
+  receive backlinks; they never cause a second figure or spec block.
+- **D26** Unclaimed author diagrams remain macro diagrams in H11. An explicit `unit` binding
+  routes the figure to that unit; a topic binding routes it inline beside the topic. The renderer
+  rejects conflicting owner declarations instead of silently dropping or duplicating a diagram.
+
 ## Geometry constants
 All constants live in `scripts/build_manifest.py` and are imported by `render_diagram.py`.
 
