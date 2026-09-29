@@ -16,14 +16,14 @@ description: "Executes and records project-defined verification for a workflow n
   - Allowed values: `focused`, `feature`, `regression`, `adoption`, `diagnosis-verify`, `workflow`.
 
 - `inputs` - `path[]`; optional
-  - Scope: Feature verification contracts, work order solution, diagnosis artifacts, changed-path summaries, and user constraints.
+  - Scope: Feature verification contracts, work order solution, diagnosis artifacts, changed-path summaries, the resolved project-convention discovery record produced by `xc-conventions`, and user constraints.
 
 - `artifact_path` - `path`; required
   - Scope: A `node-artifact` location for the execution summary and evidence.
 
 ## Operation
 
-Read the project bridge before choosing commands. Select the smallest command set that proves the requested acceptance conditions, then broaden it when shared contracts or cross-module behavior changed. Record each command, pass/fail/blocked outcome, relevant assertion coverage, environment prerequisites, and unexecuted checks with reasons.
+Read the project bridge before choosing commands. Select the smallest command set that proves the requested acceptance conditions, then broaden it when shared contracts or cross-module behavior changed. Commands may come from the project bridge, an accepted solution, a feature verification contract, or the C2 configured signals (formatter, linter, type-check, build manifest, CI workflow) that a resolved `xc-conventions` discovery record surfaces; those are project facts, not invented commands. Record each command, pass/fail/blocked outcome, relevant assertion coverage, environment prerequisites, and unexecuted checks with reasons.
 
 For `xc-work operation=adaptive-run`, the validated plan supplies an ordered minimum scope:
 
@@ -56,7 +56,7 @@ Select only terminal leaves whose artifacts supply the evidence this verificatio
 
 ## Constraints
 
-- Do not invent test commands, tools, environments, thresholds, or pass criteria.
+- Do not invent test commands, tools, environments, thresholds, or pass criteria. A C2 signal from a discovery record is a project fact the project itself enforces; it is not an invention, but an unavailable or unrunnable project command is still recorded as a gap rather than substituted.
 - Do not modify product behavior only to make a validation command pass without returning to the caller's solution and implementation nodes.
 - Preserve credentials, sensitive output, and raw logs outside general node artifacts unless the project bridge explicitly requires durable retention.
 - Temporary scripts, intermediate outputs, and process files belong under the workbench `tmp/` directory; keep them out of the user home directory, operating-system temporary locations, and any project-repository content outside the workbench, and never declare them as artifacts.

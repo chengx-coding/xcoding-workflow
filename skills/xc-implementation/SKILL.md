@@ -16,14 +16,14 @@ description: "Executes one approved implementation node in a managed work order.
   - Scope: The node's bounded code, configuration, migration, or documentation change.
 
 - `inputs` - `path[]`; required
-  - Scope: Approved work order solution, relevant feature baselines, analysis artifacts, and project bridge references.
+  - Scope: Approved work order solution, relevant feature baselines, analysis artifacts, the resolved project-convention discovery record produced by `xc-conventions` (with a `found` or `not-applicable` outcome), and project bridge references.
 
 - `artifact_path` - `path`; required
   - Scope: Node artifact recording changed paths, validation, and residual risk.
 
 ## Operation
 
-Read the supplied node contract and approved inputs, make the smallest coherent change, and preserve unrelated worktree changes. Run focused verification before reporting success. Record changed paths, validation commands and outcomes, baseline impact, and any unresolved issue in the declared artifact. Implementation artifacts default to internal English; localize only an explicitly declared `metadata.artifact.audience=user` report using its resolved artifact language.
+Read the supplied node contract and approved inputs, make the smallest coherent change, and preserve unrelated worktree changes. Follow the project conventions the resolved `xc-conventions` record surfaces: apply each applicable C1 declared rule, treat C2 configured signals as facts, and keep any C3 de-facto pattern labeled as non-mandatory. The declared artifact accounts for every applicable C1 rule as followed or explicitly deviated from with a reason; silently violating one is not a success. Run focused verification before reporting success. Record changed paths, validation commands and outcomes, baseline impact, convention accounting, and any unresolved issue in the declared artifact. Implementation artifacts default to internal English; localize only an explicitly declared `metadata.artifact.audience=user` report using its resolved artifact language.
 
 Any human-facing document created or revised within `work_scope`, including project documentation delivered through the work order, follows the public `xc-document` human-readable authoring default and supplied explicit authoring requirements. A user-facing implementation report follows the same contract. Preserve exact paths, commands, logs, machine output, and outcomes where literal accuracy matters.
 
