@@ -6,10 +6,10 @@
 
 ## 生命周期
 
-1. **加载项目策略。** 在选择命令或作出项目专属假设前，读取项目指引、workshop 桥接和已声明的知识指引。
+1. **加载项目策略。** 在选择命令或作出项目专属假设前，读取项目指引、workshop 桥接和已声明的知识指引。对每个变更类工单，本步还要运行强制的 [`xc-conventions`](../../../skills/xc-conventions/SKILL.md) L1 扫描（按比例的规范发现地板），读取适用的声明性规则，并记录 `found` 或 `not-applicable` 结果；直达路径改为执行更轻的 L0 触发线，一旦看到显著规范、冲突或非局部范围就升级。
 2. **打开并初始化 work order。** 创建持久 workbench，初始化受管树，并在写入第一份顶层文档前固定 work order 文档语言。使用开启器返回的 `tmp_path` 存放临时文件与过程文件；既有 workbench 没有该目录时创建 `<workbench>/tmp/`。若该工单会产出变更报告，就在此处、工作树仍处于打开状态时采集基线：打开状态之后无法再恢复。采集命令与快照路径见 [`xc-change-report`](../../../skills/xc-change-report/SKILL.md)。
 3. **记录目标。** `goal.md` 定义请求结果、边界、约束和验收方向。
-4. **建立证据。** 需要事实、影响、备选方案、诊断或 feature 协调时，[`xc-analysis`](../../../skills/xc-analysis/SKILL.md)把不同视角的证据记录到节点 artifact，并将接受的事实综合到 `analysis.md`。
+4. **建立证据。** 需要事实、影响、备选方案、诊断、feature 协调或规范深度研读时，[`xc-analysis`](../../../skills/xc-analysis/SKILL.md)把不同视角的证据记录到节点 artifact，并将接受的事实综合到 `analysis.md`。当 L1 发现记录显示冲突、歧义、多个治理源或庞大约定集时，analysis 以 `analysis_scope=convention-review` 承担 L2 重度研读；这是在准备阶段已完成的 L1 地板之上的追加，而非替代。
 5. **澄清人类决策。** 当证据无法回答重要决策时，[`xc-clarify`](../../../skills/xc-clarify/SKILL.md)在方案选择前通过主会话 gate 提出有界问题。它不能代替调查。
 6. **选择并批准方案。** `solution.md` 记录选定变更、边界、风险、兼容性影响和验证策略。重要决策和未解决风险必须经过显式用户 gate。
 7. **执行有界实现节点。** 每个 [`xc-implementation`](../../../skills/xc-implementation/SKILL.md) worker 只接收一个已批准范围，只修改归其所有的文件，记录证据，并通过运行时报告结果。

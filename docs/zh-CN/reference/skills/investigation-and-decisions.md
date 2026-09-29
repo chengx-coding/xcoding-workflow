@@ -4,13 +4,23 @@
 
 这些支撑 Skill 在实现前收集证据或解决决策。
 
+## `xc-conventions`
+
+[规范契约](../../../../skills/xc-conventions/SKILL.md)
+
+- **何时调用：** 即将进行实质性变更时，用于发现存在于项目中、但不在 bridge 内的项目自有开发规范。
+- **用途：** 按比例分三级做约定发现：直达路径的 L0 触发线、准备阶段强制的 L1 扫描、以及 L2 重度研读。
+- **公开入口：** 必填 `project_root` 和 `tier`（`l0-tripwire`、`l1-scan`、`l2-study`）；可选 `targets`、`bridge_locations`、`workbench_path`。
+- **典型用法：** 确定性脚本枚举并分级候选（C1 声明性指令文件、C2 配置性的格式化/lint/CI 信号）；Agent 读取适用的 C1 规则，并把一份紧凑的发现记录路由进实现与验证的 inputs。
+- **主要边界：** L1 是独立于可裁剪 analysis 阶段的地板；检查必须留痕（`found` 或 `not-applicable`），扫描失败 fail-closed；未成文的 de-facto 模式只是需标注的弱推断；该 Skill 不连接知识库，也不解析规则语义。
+
 ## `xc-analysis`
 
 [规范契约](../../../../skills/xc-analysis/SKILL.md)
 
 - **何时调用：** 受管工作订单需要事实、影响分析、对账、诊断支持、方案比较或审查支持时。
 - **用途：** 产出证据 artifact，并将获接受的事实、假设、风险、备选方案和未知项综合到工作订单分析中。
-- **公开入口：** 必填 `workbench_path` 和 `analysis_scope`；可选 `feature_ids` 和 `inputs`。
+- **公开入口：** 必填 `workbench_path` 和 `analysis_scope`（`investigation`、`reconciliation`、`diagnosis-support`、`solution-support`、`review-support` 或 `convention-review`）；可选 `feature_ids` 和 `inputs`。
 - **典型用法：** 调度相互独立的证据视角，再通过文档演进子树进行综合。
 - **主要边界：** 分析不修改产品代码或功能基线；不得静默合并无依据主张或冲突证据。
 
