@@ -33,6 +33,8 @@ xcoding version --json
 xcoding doctor --json
 ```
 
+包含新快捷入口实现的构建也支持 `xcoding --version`；既有安装请继续使用 `xcoding version --json`，直到升级至包含该变更的构建。重新安装同一历史 wheel 不会增加该能力。
+
 安装结果提供 `xcoding`，不提供 `xc` alias。XC 不分发 `install.ps1`、`install.sh`、远程脚本 pipe 命令或兼容 wrapper。不要从 PyPI 安装同名或近似名称的 package。
 
 ## 在项目中配置 Agent 宿主
@@ -175,7 +177,7 @@ xcoding setup --project-root /absolute/path/to/project --recover --json
 
 ### 本次改名的版本处置依据
 
-本次改名不被判定为破坏已文档化公开契约的变更，因此作为普通 `0.1.x` 补丁交付，而不是被路由到 `0.2.0` 或更晚的 minor 版本。这是一项记录在案的用户判断，且与上文的维护政策句子处于张力之中：本仓库中没有任何受跟踪明文把已安装 agent 文件名或 host 可见 agent handle 定为契约条款，本页也只记录 host 标识符及其项目相对目标根。该张力在此不化解。版本号及其载体不变：`pyproject.toml` 保持 `0.1.0`，任何版本提升都推迟到后续发布。
+历史决定：用户将此前改名判断为未破坏已文档化公开契约的兼容维护，并把数值升级推迟到后续发行，当时版本保持 `0.1.0`。判断依据是当时受跟踪契约未把已安装 agent 文件名或宿主可见 handle 明确列为契约条款；与维护政策的解释张力仍作为待复核依据保留。此决定不构成未来版本升级的批准或长期例外；后续迭代与累计未发布变更按[版本维护政策](../development/versioning.md)重新评估。
 
 ## Release 与维护政策
 

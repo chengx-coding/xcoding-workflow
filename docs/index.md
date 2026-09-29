@@ -41,4 +41,6 @@ This is the canonical English documentation for xcoding-workflow. The Chinese tr
 
 - [Documentation maintenance](development/documentation-maintenance.md): bilingual structure, evidence, links, checks, and review.
 
+- [Version maintenance](development/versioning.md): version sources, recommendations, consent, and release consistency checks.
+
 Return to the [project README](../README.md) or read the [MIT License](../LICENSE).

@@ -4,6 +4,8 @@
 
 xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审查的结果。它不绑定特定编程语言、框架或运行编码 Agent 的应用；本文把这类应用称为 **Agent 宿主**。
 
+当前源码候选版本：<!-- xc:version -->0.1.0<!-- /xc:version -->. [版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
+
 ## 它能做什么
 
 - XC 由必要的 `xcoding` CLI package 和一组称为 **Skills** 的工作流模块组成。
@@ -63,6 +65,8 @@ python skills/xc-work/scripts/classify.py [事实参数]
 uv tool install /absolute/path/to/xcoding_workflow-0.1.0-py3-none-any.whl
 xcoding version --json
 ```
+
+包含新快捷入口实现的构建也支持 `xcoding --version`；既有安装请继续使用 `xcoding version --json`，直到升级至包含该变更的构建。重新安装同一历史 wheel 不会增加该能力。
 
 安装结果只提供 `xcoding` 命令。在消费项目根目录为一个或多个显式宿主执行设置；重复的 `--host` 值共同构成完整 desired host set：
 

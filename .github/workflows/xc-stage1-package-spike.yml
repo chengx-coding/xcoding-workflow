@@ -35,10 +35,17 @@ name: XC Stage 1 package spike evidence
         description: Expected complete candidate tree SHA-256
         required: true
         type: string
+      wheel_filename:
+        description: Candidate wheel basename (validated against the verified candidate pyproject.toml)
+        required: true
+        type: string
       wheel_sha256:
         description: Expected shared wheel SHA-256
         required: true
         type: string
+
+env:
+  XC_WHEEL_FILENAME: ${{ inputs.wheel_filename }}
 
 permissions:
   actions: read
@@ -61,13 +68,14 @@ jobs:
       - name: Verify immutable candidate and wheel
         shell: pwsh
         run: |
+          if ($env:XC_WHEEL_FILENAME -notmatch '^xcoding_workflow-(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-py3-none-any\.whl$') { throw "Invalid wheel basename" }
           python scripts/run_stage1_matrix.py verify-inputs `
             --candidate-archive "${{ runner.temp }}/xc-stage1-input/candidate-source.zip" `
             --candidate-archive-sha256 "${{ inputs.candidate_archive_sha256 }}" `
             --candidate-descriptor "${{ runner.temp }}/xc-stage1-input/candidate-descriptor.json" `
             --candidate-descriptor-sha256 "${{ inputs.candidate_descriptor_sha256 }}" `
             --candidate-tree-sha256 "${{ inputs.candidate_tree_sha256 }}" `
-            --wheel "${{ runner.temp }}/xc-stage1-input/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl" `
+            --wheel "${{ runner.temp }}/xc-stage1-input/${env:XC_WHEEL_FILENAME}" `
             --wheel-sha256 "${{ inputs.wheel_sha256 }}" `
             --output "${{ runner.temp }}/xc-stage1-input/input-verification.json"
       - uses: actions/upload-artifact@v4
@@ -111,6 +119,7 @@ jobs:
       - name: Validate runner-owned cell evidence
         shell: pwsh
         run: |
+          if ($env:XC_WHEEL_FILENAME -notmatch '^xcoding_workflow-(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-py3-none-any\.whl$') { throw "Invalid wheel basename" }
           python scripts/run_stage1_matrix.py validate-cell `
             --cell "${{ matrix.cell }}" `
             --evidence "${{ runner.temp }}/xc-stage1-evidence/cell-evidence.json" `
@@ -121,7 +130,7 @@ jobs:
             --candidate-descriptor "${{ runner.temp }}/xc-stage1-input/candidate-descriptor.json" `
             --candidate-descriptor-sha256 "${{ inputs.candidate_descriptor_sha256 }}" `
             --candidate-tree-sha256 "${{ inputs.candidate_tree_sha256 }}" `
-            --wheel "${{ runner.temp }}/xc-stage1-input/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl" `
+            --wheel "${{ runner.temp }}/xc-stage1-input/${env:XC_WHEEL_FILENAME}" `
             --wheel-sha256 "${{ inputs.wheel_sha256 }}" `
             --output "${{ runner.temp }}/xc-stage1-evidence/validation.json"
       - uses: actions/upload-artifact@v4
@@ -162,13 +171,14 @@ jobs:
               evidence_args+=(--cell-evidence "${cell}=${evidence}")
             fi
           done
+          [[ "$XC_WHEEL_FILENAME" =~ ^xcoding_workflow-(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-py3-none-any\.whl$ ]] || exit 2
           python scripts/run_stage1_matrix.py summarize \
             --candidate-archive "${RUNNER_TEMP}/xc-stage1-input/candidate-source.zip" \
             --candidate-archive-sha256 "${{ inputs.candidate_archive_sha256 }}" \
             --candidate-descriptor "${RUNNER_TEMP}/xc-stage1-input/candidate-descriptor.json" \
             --candidate-descriptor-sha256 "${{ inputs.candidate_descriptor_sha256 }}" \
             --candidate-tree-sha256 "${{ inputs.candidate_tree_sha256 }}" \
-            --wheel "${RUNNER_TEMP}/xc-stage1-input/xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl" \
+            --wheel "${RUNNER_TEMP}/xc-stage1-input/${XC_WHEEL_FILENAME}" \
             --wheel-sha256 "${{ inputs.wheel_sha256 }}" \
             --expected-run-id "${{ inputs.source_run_id }}" \
             "${evidence_args[@]}" \

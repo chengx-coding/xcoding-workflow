@@ -81,8 +81,10 @@ def _help_payload() -> dict[str, Any]:
         ],
         "usage": "xcoding <command> [options]",
         "detail": (
-            "Every command emits exactly one JSON envelope. Machine-readable "
-            "commands require an explicit --json option. Use "
+            "Commands emit exactly one JSON envelope, except standalone "
+            "'xcoding --version', which prints 'xcoding <version>' on success. "
+            "Version validation failures still emit a JSON error envelope. "
+            "Machine-readable commands require an explicit --json option. Use "
             "'xcoding <command> --help' for a command's own options."
         ),
     }
@@ -261,8 +263,22 @@ def _execute(arguments: argparse.Namespace, command: str) -> dict[str, Any]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Execute one command, emit exactly one JSON envelope, and return its exit."""
+    """Emit one JSON envelope, or plain text for successful bare --version."""
     raw_arguments = list(sys.argv[1:] if argv is None else argv)
+    if (
+        raw_arguments
+        and raw_arguments[0] in {"--help", "-h", "help"}
+        and "--version" in raw_arguments
+    ):
+        _emit(
+            _failure(
+                _command_name(raw_arguments),
+                "invalid_arguments",
+                "--version must be used alone; run 'xcoding --help' for the command list",
+                {},
+            )
+        )
+        return EXIT_INPUT
     if raw_arguments[:1] == ["viewer"]:
         from .viewer import cli as viewer_cli
 
@@ -283,8 +299,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if raw_arguments and raw_arguments[0] in {"--help", "-h", "help"}:
         _emit(_success("help", _help_payload()))
         return EXIT_SUCCESS
-    command = _command_name(raw_arguments)
+    command = (
+        "version" if raw_arguments == ["--version"] else _command_name(raw_arguments)
+    )
     try:
+        if raw_arguments == ["--version"]:
+            result = version_report()
+            sys.stdout.write(f"xcoding {result['xc_version']}\n")
+            return EXIT_SUCCESS
         arguments = _build_parser().parse_args(raw_arguments)
         result = _execute(arguments, command)
     except (CliInputError, SetupInputError) as error:

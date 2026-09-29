@@ -4,6 +4,8 @@
 
 xcoding-workflow helps coding agents carry work from an initial request to a tested, reviewed result. It works across programming languages, frameworks, and the applications that run coding agents, known here as **Agent hosts**.
 
+Current source candidate version: <!-- xc:version -->0.1.0<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
+
 ## What It Does
 
 - XC uses a required `xcoding` CLI package plus workflow modules called
@@ -64,6 +66,8 @@ Download the wheel and integrity files from the same release, verify them as des
 uv tool install /absolute/path/to/xcoding_workflow-0.1.0-py3-none-any.whl
 xcoding version --json
 ```
+
+Builds containing the new shortcut also support `xcoding --version`; existing installations can keep using `xcoding version --json` until upgraded to a build containing that change. Reinstalling the same historical wheel does not add the capability.
 
 The installation creates only the `xcoding` command. Configure one or more explicit hosts from the consumer project root; repeated `--host` values form the complete desired host set:
 

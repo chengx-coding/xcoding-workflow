@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from build_support.version import validate_version
+
 from src.xcoding.delegation.adapters import parse_adapter_statement
 from src.xcoding.delegation.errors import DelegationError
 
@@ -244,8 +246,10 @@ def load_project_metadata(project_root: Path) -> tuple[str, str]:
         python_requires = project["requires-python"]
     except (OSError, UnicodeError, tomllib.TOMLDecodeError, KeyError) as error:
         _raise_invalid(f"cannot load package metadata from {path}: {error}")
-    if not isinstance(version, str) or not version:
-        _raise_invalid("project.version must be a non-empty string")
+    try:
+        validate_version(version)
+    except ValueError as error:
+        _raise_invalid(str(error))
     if not isinstance(python_requires, str) or not python_requires:
         _raise_invalid("project.requires-python must be a non-empty string")
     return version, python_requires

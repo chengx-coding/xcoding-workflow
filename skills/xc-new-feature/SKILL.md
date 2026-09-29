@@ -65,6 +65,10 @@ The feature baselines are approved target documents, not dynamic status ledgers:
 
 The implementation may begin only after required approval gates have published `approved`. If approval feedback changes a baseline, add document revision, review, and successor approval nodes in the open recovery group rather than overwriting a completed node or modifying the runtime tree directly.
 
+## Project Version Decisions
+
+Apply the public Project Version Decisions contract of `xc-work` during preparation and before feature closure. Use the project bridge's numbering policy and existing solution/result or node artifacts for the structured assessment; creating a feature is not automatic authorization to increment a version. Before modifying a version, an existing main-session gate must capture explicit consent to the concrete candidate and scope. Re-assess changed scope and retain rejection or deferral without silently changing the version.
+
 ## Constraints
 
 - Do not create feature documents outside document-evolution nodes.

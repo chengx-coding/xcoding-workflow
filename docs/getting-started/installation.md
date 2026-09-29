@@ -33,6 +33,8 @@ xcoding version --json
 xcoding doctor --json
 ```
 
+Builds containing the new shortcut also support `xcoding --version`; existing installations can keep using `xcoding version --json` until upgraded to a build containing that change. Reinstalling the same historical wheel does not add the capability.
+
 The installation creates `xcoding`; there is no `xc` alias. XC does not distribute `install.ps1`, `install.sh`, remote-script pipe commands, or compatibility wrappers. Do not install a similarly named package from PyPI.
 
 ## Configure Agent hosts in a project
@@ -175,7 +177,7 @@ After a successful migration, the old-named file is gone from each configured ho
 
 ### Version-disposition basis for this rename
 
-The rename is not being treated as a change that breaks a documented public contract, so it is delivered as an ordinary `0.1.x` patch rather than being routed into `0.2.0` or another later minor version. This is a recorded user judgement, and it is in tension with the maintenance policy sentence above: no tracked statement in this repository makes an installed agent filename or a host-visible agent handle a contract term, and this page records only the host identifiers and their project-relative target roots. The tension is not resolved here. The version number and its carriers are unchanged: `pyproject.toml` stays at `0.1.0`, and any version bump is deferred to a later release.
+Historical decision: the user judged the earlier rename to be compatible maintenance that did not break a documented public contract, and deferred the numerical bump to a later release, leaving the version at `0.1.0` at that time. The rationale was that tracked contracts did not explicitly make installed agent filenames or host-visible handles contract terms; the tension with the maintenance-policy interpretation remains evidence for reconsideration. This decision is neither approval for future bumps nor a standing exception; subsequent iterations and cumulative unpublished changes are assessed under the [version policy](../development/versioning.md).
 
 ## Release and maintenance policy
 

@@ -21,7 +21,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 sys.path.insert(0, str(REPOSITORY_ROOT / "src"))
 
-from build_support.bundle import CandidateProvenance, collect_bundle
+from build_support.bundle import CandidateProvenance, collect_bundle, load_project_metadata
 from xcoding import cli
 from xcoding import doctor as doctor_module
 from xcoding import setup_transaction as setup_module
@@ -33,7 +33,7 @@ PROVENANCE = CandidateProvenance(
     candidate_tree_sha256="2" * 64,
     candidate_source_archive_sha256="3" * 64,
 )
-VERSION = "0.1.0"
+VERSION = load_project_metadata(REPOSITORY_ROOT)[0]
 ADAPTER = "claude-code"
 
 
@@ -213,6 +213,7 @@ class PackageCliTests(unittest.TestCase):
                     {"version", "doctor", "setup", "runtime", "viewer"},
                     listed,
                 )
+                self.assertIn("xcoding --version", payload["result"]["detail"])
 
     def test_no_arguments_remains_an_error_that_names_help(self) -> None:
         result, payload = self.run_cli()
@@ -228,6 +229,99 @@ class PackageCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(payload["result"]["distribution"], "xcoding-workflow")
         self.assertEqual(payload["result"]["xc_version"], VERSION)
+
+    def test_bare_version_reports_validated_installed_version_as_text(self) -> None:
+        result = subprocess.run(
+            [sys.executable, "-B", "-m", "xcoding", "--version"],
+            cwd=self.root,
+            env=self.cli_environment(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(result.stdout, f"xcoding {VERSION}\n")
+
+    def test_version_flag_rejects_mixed_duplicate_and_abbreviated_arguments(self) -> None:
+        for arguments in (
+            ("--version", "--json"),
+            ("--version", "version"),
+            ("--version", "--version"),
+            ("--version", "extra"),
+            ("version", "--version"),
+            ("--help", "--version"),
+            ("--version", "--help"),
+            ("--vers",),
+            ("--version=true",),
+        ):
+            with self.subTest(arguments=arguments):
+                result, payload = self.run_cli(*arguments)
+                self.assertEqual(result.returncode, 2)
+                self.assertFalse(payload["ok"])
+                self.assertEqual(payload["error"]["code"], "invalid_arguments")
+
+    def test_bare_version_retains_bundle_and_metadata_errors(self) -> None:
+        tampered = self._make_install("version-tampered")
+        target = tampered / "xcoding" / "_bundle" / "skills" / "xc-analysis" / "SKILL.md"
+        data = target.read_bytes()
+        target.write_bytes(bytes([data[0] ^ 1]) + data[1:])
+        for arguments in (("--version",), ("version", "--json")):
+            with self.subTest(arguments=arguments):
+                result, payload = self.run_cli(*arguments, install=tampered)
+                self.assertEqual(result.returncode, 3)
+                self.assertEqual(payload["command"], "version")
+                self.assertEqual(payload["error"]["code"], "resource_hash_mismatch")
+
+        # Simulate a source checkout without installed distribution metadata.
+        # Patch metadata discovery, not version_report, so no fallback version
+        # can be fabricated by the shortcut or its resource inspection path.
+        for arguments in (("--version",), ("version", "--json")):
+            with self.subTest(arguments=arguments):
+                output = io.StringIO()
+                with (
+                    mock.patch(
+                        "xcoding.bundle.resources.metadata.version",
+                        side_effect=cli.metadata.PackageNotFoundError("xcoding-workflow"),
+                    ),
+                    contextlib.redirect_stdout(output),
+                ):
+                    code = cli.main(arguments)
+                payload = json.loads(output.getvalue())
+                self.assertEqual(code, 3)
+                self.assertFalse(payload["ok"])
+                self.assertEqual(payload["command"], "version")
+                self.assertEqual(payload["error"]["code"], "version_mismatch")
+                self.assertEqual(
+                    payload["error"]["message"],
+                    "installed distribution metadata is unavailable",
+                )
+
+    def test_version_text_inside_runtime_payload_is_passed_through(self) -> None:
+        arguments = ["complete", "--summary", "--version"]
+        with mock.patch.object(cli, "_runtime_main", return_value=0) as execute:
+            self.assertEqual(cli.main(["runtime", *arguments]), 0)
+        execute.assert_called_once_with(arguments)
+
+    def test_bare_version_in_source_checkout_does_not_invent_metadata(self) -> None:
+        result = subprocess.run(
+            [sys.executable, "-B", "-S", "-m", "xcoding", "--version"],
+            cwd=self.root,
+            env=self.cli_environment(REPOSITORY_ROOT / "src"),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(result.returncode, 3)
+        self.assertEqual(result.stderr, "")
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["error"]["code"], "version_mismatch")
+        self.assertEqual(
+            payload["error"]["message"],
+            "installed distribution metadata is unavailable",
+        )
 
     def test_input_bundle_readiness_and_internal_exit_codes(self) -> None:
         cases = (

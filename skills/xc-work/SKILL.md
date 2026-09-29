@@ -294,6 +294,14 @@ The orchestration tree is a managed work order's single authoritative progress s
 
 Work orders may analyze and design for the same feature concurrently. Before any baseline modification, the active work order re-checks feature provenance and warns when another work order changed the baseline. The workflow does not use feature locks or leases. Users coordinate the serialized timing of actual feature baseline modifications.
 
+## Project Version Decisions
+
+For both `run` and `adaptive-run`, read the project bridge's version policy during preparation and apply it before changing a version and again before closure. The policy owns numbering, affected surfaces, recommendation triggers, and release requirements; generic workflows do not prescribe a project's version scheme. If no version policy is declared, record that fact when version impact is relevant and do not invent one or silently change a version.
+
+When policy requires an assessment, retain a structured version disposition in an existing solution, result, or node artifact: current version, proposed candidate or no-change value, project-selected classification, reason, change scope, evidence references, decision status, decision actor, and decision date. Labels such as `no-bump`, `patch`, `minor`, and `major` apply only when the project policy selects them. Include accumulated unreleased changes when that policy requires them. Adaptive work may use its implementation or finalizer artifact; it does not need an extra top-level document solely for this record.
+
+A recommendation is not approval. Present a concrete candidate, reason, and scope through an existing main-session gate before modifying version sources; only explicit user consent covering that candidate and scope authorizes the change. Approval of an implementation plan, a previous release, or automatic commits does not imply version approval. Record rejection or deferral durably, retain the current version, and re-assess when scope changes. Approval of a version change does not authorize publication or tagging. Reuse existing document and gate contracts rather than adding runtime version state. These are lifecycle policy obligations, not an engine-enforced release authorization mechanism.
+
 ## Constraints
 
 - An ordinary work order never implicitly creates `.xcoding/features/<feature-id>/`.

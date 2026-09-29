@@ -26,7 +26,8 @@ class PackageMetadataTests(unittest.TestCase):
 
         self.assertEqual(project["name"], "xcoding-workflow")
         self.assertEqual(DISTRIBUTION_NAME, project["name"])
-        self.assertEqual(project["version"], "0.1.0")
+        from build_support.version import validate_version
+        self.assertEqual(validate_version(project["version"]), project["version"])
         self.assertEqual(project["requires-python"], ">=3.12")
         self.assertNotIn(
             "Development Status :: 2 - Pre-Alpha",

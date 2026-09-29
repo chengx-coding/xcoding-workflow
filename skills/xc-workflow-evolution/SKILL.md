@@ -66,6 +66,10 @@ Prefer the smallest correct fix that reuses an existing mechanism or established
 
 Evaluate every change against the whole architecture, not only its local symptom, and record in the work order whether the change leaves the system more coherent or more tangled. When a local repair would degrade the overall architecture, reconsider it. When the correct way to support a capability or fix a real defect is a local or broader refactor, identify and propose that refactor rather than layering a patch that preserves a worse structure; a behavior- or contract-changing refactor still requires analysis, documented alternatives, review, and an explicit user gate. Record deferred work and accepted trade-offs as durable structured project notes so a later evolution keeps the original reasoning.
 
+## Project Version Policy
+
+Apply the public Project Version Decisions contract of `xc-work` on full and adaptive evolution work. Read numbering and release choices from the project bridge, assess version impact before closure, and retain the recommendation and exact consent or deferral in the existing work-order artifacts. A workflow improvement does not itself authorize a version bump or publication. Keep project-specific numbering rules out of portable assets.
+
 ## Constraints
 
 - Do not hand-edit generated agent outputs or generated orchestration templates.

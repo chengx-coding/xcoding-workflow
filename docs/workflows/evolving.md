@@ -63,3 +63,7 @@ The English page is normative; the Chinese page must preserve the same topic, fa
 Public pages link only files available in a clean checkout. They do not link workshop state, local Agent discovery assets, project instructions, or other ignored and excluded maintenance files.
 
 The release contract defines an explicit Python, platform, and Agent-host matrix. Documentation may describe only the formal baseline and experimental cells declared by that contract, and a public release may claim support only after candidate-bound evidence verifies the required cells. An accepted Python version, detected executable, or unverified host must not be promoted into a compatibility guarantee.
+
+## Version Impact and Consent
+
+Every XC iteration assesses its changes and accumulated unpublished changes under the [version policy](../development/versioning.md), recording a recommendation or justified no-bump. Before editing a version, the Agent must obtain explicit user consent to the concrete candidate and scope; rejection or deferral is retained too. Generic workflows read numbering rules from the project bridge and reuse existing gates and artifacts on full, adaptive, and new-feature paths. This is lifecycle policy, not engine-enforced release authorization. Version approval is distinct from publication approval.

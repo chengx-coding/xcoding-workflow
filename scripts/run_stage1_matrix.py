@@ -25,16 +25,19 @@ import unicodedata
 import uuid
 import zipfile
 from datetime import datetime
+from email import policy
+from email.parser import BytesParser
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Iterable, Mapping, Sequence
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from build_support.version import dist_info, parse_project_version, wheel_filename
 
 
 SCHEMA_VERSION = 1
 CELL_EVIDENCE_KIND = "xc-stage1-package-spike-cell"
 SUMMARY_EVIDENCE_KIND = "xc-stage1-package-spike-summary"
-EXPECTED_WHEEL_FILENAME = (
-    "xcoding_workflow_spike-0.0.0.dev0-py3-none-any.whl"
-)
 MANIFEST_MEMBER = "xcoding/_bundle/bundle-manifest.json"
 TOOLCHAIN_MEMBER = "build_support/stage1_toolchain.json"
 REQUIRED_CELLS = (
@@ -789,14 +792,6 @@ def verify_inputs(
         field="candidate_tree_sha256",
     )
     expected_wheel = _require_hash(wheel_sha256, field="wheel_sha256")
-    if wheel_path.name != EXPECTED_WHEEL_FILENAME:
-        _fail(
-            "wheel_invalid",
-            "wheel filename is not the fixed Stage 1 wheel",
-            expected=EXPECTED_WHEEL_FILENAME,
-            actual=wheel_path.name,
-        )
-
     descriptor, files = _verify_descriptor(
         descriptor_path.read_bytes(),
         expected_descriptor_sha256=expected_descriptor,
@@ -808,23 +803,42 @@ def verify_inputs(
         expected_sha256=expected_archive,
         files=files,
     )
+    try:
+        expected_version = parse_project_version(members["pyproject.toml"])
+    except (UnicodeError, ValueError, KeyError) as error:
+        _fail("candidate_invalid", f"candidate project version is invalid: {error}")
+    expected_filename = wheel_filename(expected_version)
+    if wheel_path.name != expected_filename:
+        _fail(
+            "wheel_invalid", "wheel filename does not match verified candidate metadata",
+            expected=expected_filename, actual=wheel_path.name,
+        )
     if _sha256_file(wheel_path) != expected_wheel:
         _fail("wheel_digest_mismatch", "wheel SHA-256 mismatch")
     try:
         with zipfile.ZipFile(wheel_path, "r") as wheel_archive:
             manifest_data = wheel_archive.read(MANIFEST_MEMBER)
+            metadata_data = wheel_archive.read(f"{dist_info(expected_version)}/METADATA")
     except (OSError, KeyError, zipfile.BadZipFile) as error:
         _fail(
             "wheel_invalid",
-            "wheel Bundle manifest is unavailable",
+            "wheel Bundle manifest or METADATA is unavailable",
             exception=type(error).__name__,
         )
+    metadata = BytesParser(policy=policy.default).parsebytes(metadata_data)
+    if (
+        metadata.defects
+        or metadata.get_all("Name") != ["xcoding-workflow"]
+        or metadata.get_all("Version") != [expected_version]
+    ):
+        _fail("wheel_invalid", "wheel METADATA identity differs from verified candidate")
     manifest = _load_json_bytes(
         manifest_data,
         label="wheel Bundle manifest",
         require_canonical=True,
     )
     expected_manifest = {
+        "xc_version": expected_version,
         "baseline_revision": descriptor["baseline_revision"],
         "source_state": "work-order-candidate",
         "candidate_tree_sha256": expected_tree,
@@ -858,7 +872,7 @@ def verify_inputs(
         "candidate_source_archive_sha256": expected_archive,
         "candidate_descriptor_sha256": expected_descriptor,
         "wheel_sha256": expected_wheel,
-        "wheel_filename": EXPECTED_WHEEL_FILENAME,
+        "wheel_filename": expected_filename,
     }
     return {
         "bindings": bindings,

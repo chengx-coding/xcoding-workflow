@@ -3,7 +3,7 @@
   "manifest_id": "model-robust-workflow-post-change-v1",
   "manifest_role": "current-post-change",
   "normalization_version": 2,
-  "python_version": "3.14.7",
+  "python_version": "3.12.10",
   "input_hashes": {
     "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
     "tests/workflow_scenario_harness.py": "3b91258dc832cafd00299068b59b0bc76942a6c77e4100b5fe09a8e6d5bc01cc",
@@ -19,7 +19,7 @@
     "src/xcoding/runtime/core.py": "6672ad90d681d84d41b7bff033cfad0779c47308ed5491a6ffb84e1c67d4c27a",
     "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
     "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
-    "src/xcoding/cli.py": "3452cef240d4f8a1bf7567ac1a8cf269faf79606feb88eec3168d6107dcfd4c8",
+    "src/xcoding/cli.py": "25e4436a222ca98498595a246657f11a11c5dc1cc72e5e6c52cb3ee495b1d59b",
     "skills/xc-work/assets/work-order-template.xml": "74259865fbbecf8b882ef7a8a4cff6684e0d1e791837bace11eb57870785a1d9",
     "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
     "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
@@ -30,7 +30,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "f9b426c585c8343885657962cf4c45d4b9de82c2",
+  "recording_base_commit": "ed72757969222027dae00fd23a1e6b7b977e97aa",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -479,21 +479,21 @@
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
         "current_value": 110565,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 45812
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 5
       },
       {
@@ -504,27 +504,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios."
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
         "current_value": 111229,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 45812
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 5
       },
       {
@@ -535,27 +535,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios."
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
         "current_value": 140598,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 50052
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 4
       },
       {
@@ -566,27 +566,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios."
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
         "current_value": 141511,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 50052
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 4
       },
       {
@@ -597,27 +597,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios."
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
         "current_value": 206970,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 66832
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 6
       },
       {
@@ -628,27 +628,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios."
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
         "current_value": 208381,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 66832
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 6
       },
       {
@@ -659,27 +659,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios."
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
         "current_value": 235141,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 70247
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 6
       },
       {
@@ -690,27 +690,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios."
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
         "current_value": 236801,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 70247
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
         "numeric_delta": 6
       },
       {
@@ -721,12 +721,12 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged."
+        "explanation": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios."
       }
     ]
   },
   "change_note": {
-    "reason": "Re-record input_hashes after archived-stub loop-close fix in runtime core.py (close_loop_descendants now skips archived stubs); measurement values unchanged.",
+    "reason": "Refresh measured governance fixture after approved CLI version shortcut; preserve historical baseline and recompute current inputs through public runtime scenarios.",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1572,7 +1572,7 @@
       "src/xcoding/runtime/core.py": "6672ad90d681d84d41b7bff033cfad0779c47308ed5491a6ffb84e1c67d4c27a",
       "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
       "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
-      "src/xcoding/cli.py": "3452cef240d4f8a1bf7567ac1a8cf269faf79606feb88eec3168d6107dcfd4c8",
+      "src/xcoding/cli.py": "25e4436a222ca98498595a246657f11a11c5dc1cc72e5e6c52cb3ee495b1d59b",
       "skills/xc-work/assets/work-order-template.xml": "74259865fbbecf8b882ef7a8a4cff6684e0d1e791837bace11eb57870785a1d9",
       "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
       "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",

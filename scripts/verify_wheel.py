@@ -24,16 +24,14 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping, Sequence
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from build_support.version import (
+    dist_info, read_project_version, validate_version, wheel_filename,
+)
+
+
 EXPECTED_DISTRIBUTION = "xcoding-workflow"
-EXPECTED_NORMALIZED_DISTRIBUTION = "xcoding_workflow"
-EXPECTED_VERSION = "0.1.0"
 EXPECTED_TAG = "py3-none-any"
-EXPECTED_WHEEL_FILENAME = (
-    f"{EXPECTED_NORMALIZED_DISTRIBUTION}-{EXPECTED_VERSION}-{EXPECTED_TAG}.whl"
-)
-EXPECTED_DIST_INFO = (
-    f"{EXPECTED_NORMALIZED_DISTRIBUTION}-{EXPECTED_VERSION}.dist-info"
-)
 EXPECTED_PYTHON_REQUIRES = ">=3.12"
 EXPECTED_SOURCE_STATE = "work-order-candidate"
 EXPECTED_CANDIDATE_DESCRIPTOR_SCHEMA = 2
@@ -670,10 +668,12 @@ def _single_header(message: Any, name: str, *, label: str) -> str:
     return str(values[0])
 
 
-def _verify_core_metadata(members: Mapping[str, bytes], expected_tag: str) -> None:
-    metadata_name = f"{EXPECTED_DIST_INFO}/METADATA"
-    wheel_name = f"{EXPECTED_DIST_INFO}/WHEEL"
-    entry_points_name = f"{EXPECTED_DIST_INFO}/entry_points.txt"
+def _verify_core_metadata(
+    members: Mapping[str, bytes], expected_tag: str, expected_version: str,
+) -> None:
+    metadata_name = f"{dist_info(expected_version)}/METADATA"
+    wheel_name = f"{dist_info(expected_version)}/WHEEL"
+    entry_points_name = f"{dist_info(expected_version)}/entry_points.txt"
     for required in (
         "xcoding/__init__.py",
         "xcoding/__main__.py",
@@ -716,7 +716,7 @@ def _verify_core_metadata(members: Mapping[str, bytes], expected_tag: str) -> No
         metadata_name,
         wheel_name,
         entry_points_name,
-        f"{EXPECTED_DIST_INFO}/RECORD",
+        f"{dist_info(expected_version)}/RECORD",
     ):
         if required not in members:
             _fail("member_missing", "wheel is missing a required member", member=required)
@@ -727,7 +727,7 @@ def _verify_core_metadata(members: Mapping[str, bytes], expected_tag: str) -> No
         _fail("metadata_invalid", "METADATA has parser defects")
     expected_headers = {
         "Name": EXPECTED_DISTRIBUTION,
-        "Version": EXPECTED_VERSION,
+        "Version": expected_version,
     }
     for name, expected in expected_headers.items():
         actual = _single_header(metadata, name, label="METADATA")
@@ -787,8 +787,8 @@ def _verify_core_metadata(members: Mapping[str, bytes], expected_tag: str) -> No
         _fail("metadata_invalid", "entry_points.txt console script mismatch")
 
 
-def _verify_record(members: Mapping[str, bytes]) -> None:
-    record_name = f"{EXPECTED_DIST_INFO}/RECORD"
+def _verify_record(members: Mapping[str, bytes], expected_version: str) -> None:
+    record_name = f"{dist_info(expected_version)}/RECORD"
     try:
         text = members[record_name].decode("utf-8")
         rows = list(csv.reader(io.StringIO(text, newline="")))
@@ -841,6 +841,7 @@ def _verify_record(members: Mapping[str, bytes]) -> None:
 def _verify_manifest(
     members: Mapping[str, bytes],
     *,
+    expected_version: str,
     baseline_revision: str,
     candidate_tree_sha256: str,
     candidate_source_archive_sha256: str,
@@ -856,7 +857,7 @@ def _verify_manifest(
         )
     expected_values = {
         "bundle_schema_version": EXPECTED_BUNDLE_SCHEMA,
-        "xc_version": EXPECTED_VERSION,
+        "xc_version": expected_version,
         "baseline_revision": baseline_revision,
         "source_state": EXPECTED_SOURCE_STATE,
         "candidate_tree_sha256": candidate_tree_sha256,
@@ -948,12 +949,19 @@ def _zip_metadata(info: zipfile.ZipInfo) -> tuple[Any, ...]:
 def inspect_wheel(
     path: Path,
     *,
+    expected_version: str,
     expected_tag: str,
     baseline_revision: str,
     candidate_tree_sha256: str,
     candidate_source_archive_sha256: str,
 ) -> WheelInspection:
     """Verify one fixed Stage 1 wheel without extracting it."""
+    try:
+        validate_version(expected_version)
+    except ValueError as error:
+        _fail("metadata_invalid", str(error))
+    if path.name != wheel_filename(expected_version):
+        _fail("wheel_invalid", "wheel filename does not match trusted project version")
     wheel_bytes = path.read_bytes()
     try:
         with zipfile.ZipFile(io.BytesIO(wheel_bytes), mode="r") as archive:
@@ -987,7 +995,7 @@ def inspect_wheel(
                     )
                 if not (
                     name.startswith("xcoding/")
-                    or name.startswith(f"{EXPECTED_DIST_INFO}/")
+                    or name.startswith(f"{dist_info(expected_version)}/")
                 ):
                     _fail(
                         "member_unexpected",
@@ -1002,10 +1010,11 @@ def inspect_wheel(
     except (OSError, zipfile.BadZipFile) as error:
         _fail("wheel_invalid", f"cannot read wheel: {error}")
 
-    _verify_core_metadata(members, expected_tag)
-    _verify_record(members)
+    _verify_core_metadata(members, expected_tag, expected_version)
+    _verify_record(members, expected_version)
     manifest = _verify_manifest(
         members,
+        expected_version=expected_version,
         baseline_revision=baseline_revision,
         candidate_tree_sha256=candidate_tree_sha256,
         candidate_source_archive_sha256=candidate_source_archive_sha256,
@@ -1021,7 +1030,7 @@ def inspect_wheel(
     )
 
 
-def _sole_wheel(output_directory: Path) -> Path:
+def _sole_wheel(output_directory: Path, expected_version: str) -> Path:
     entries = sorted(output_directory.iterdir(), key=lambda item: item.name)
     if any(_is_link_or_junction(entry) or not entry.is_file() for entry in entries):
         _fail(
@@ -1029,11 +1038,11 @@ def _sole_wheel(output_directory: Path) -> Path:
             "wheel output directory must contain only one regular file",
             entries=[entry.name for entry in entries],
         )
-    if [entry.name for entry in entries] != [EXPECTED_WHEEL_FILENAME]:
+    if [entry.name for entry in entries] != [wheel_filename(expected_version)]:
         _fail(
             "wheel_output_invalid",
             "wheel output directory does not contain exactly the expected wheel",
-            expected=EXPECTED_WHEEL_FILENAME,
+            expected=wheel_filename(expected_version),
             actual=[entry.name for entry in entries],
         )
     return entries[0]
@@ -1052,7 +1061,10 @@ def verify_reproducible_wheels(
 ) -> dict[str, Any]:
     """Verify two independently built wheels and prove byte identity."""
     project, disposable = _validate_roots(project_root, disposable_root)
-    del project
+    try:
+        expected_version = read_project_version(project)
+    except (OSError, ValueError, KeyError) as error:
+        _fail("metadata_invalid", f"trusted project version is invalid: {error}")
     first_output = _external_output_path(
         first_directory,
         disposable,
@@ -1081,14 +1093,16 @@ def verify_reproducible_wheels(
             _fail("candidate_invalid", f"{field} must be 64 lowercase hex")
 
     first = inspect_wheel(
-        _sole_wheel(first_output),
+        _sole_wheel(first_output, expected_version),
+        expected_version=expected_version,
         expected_tag=expected_tag,
         baseline_revision=baseline_revision,
         candidate_tree_sha256=candidate_tree_sha256,
         candidate_source_archive_sha256=candidate_source_archive_sha256,
     )
     second = inspect_wheel(
-        _sole_wheel(second_output),
+        _sole_wheel(second_output, expected_version),
+        expected_version=expected_version,
         expected_tag=expected_tag,
         baseline_revision=baseline_revision,
         candidate_tree_sha256=candidate_tree_sha256,
@@ -1114,7 +1128,7 @@ def verify_reproducible_wheels(
             second_sha256=second.sha256,
         )
     return {
-        "wheel_filename": EXPECTED_WHEEL_FILENAME,
+        "wheel_filename": wheel_filename(expected_version),
         "wheel_sha256": first.sha256,
         "wheel_size": first.size,
         "member_count": len(first.members),

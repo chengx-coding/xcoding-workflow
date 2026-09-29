@@ -35,6 +35,7 @@ These Skills select and govern complete workflow lifecycles.
 - **Planning:** execute `python skills/xc-work/scripts/plan_work.py [planning facts]`. The plan monotonically derives documents, analysis, gates, implementation units, verification scopes, change report, review, recovery, depth, and a request/bridge-bound plan receipt. Invalid or forged output fails closed to the full safe capability set.
 - **Typical managed usage:** omit `operation` or use `operation=run` for the existing full lifecycle. Use explicit `adaptive-run` for a root plus sequence dynamic group whose minimal form has one combined work leaf and one finalizer; more capabilities are added only when facts require them.
 - **Boundaries:** classification is read-only and performs no substantive action. The public adapter validates observable subprocess results but does not authenticate the caller, interpreter, executable bytes, or host and provides no host mediation or attestation. The strict low-level classifier retains nonzero diagnostic errors and is not a lifecycle entry. Managed work never creates or adopts a feature implicitly.
+- **Version decisions:** full and adaptive paths read numbering policy from the project bridge and retain assessments in existing artifacts; a main-session gate obtains explicit user consent to the concrete candidate and scope before changing a version. New-feature and workflow-evolution paths reuse this contract. XC itself follows the [version policy](../../development/versioning.md).
 
 ## `xc-new-feature`
 

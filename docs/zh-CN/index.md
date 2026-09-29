@@ -41,4 +41,6 @@
 
 - [文档维护](development/documentation-maintenance.md)：双语结构、证据、链接、检查与审查。
 
+- [版本维护](development/versioning.md)：版本来源、升级建议、用户同意和发行一致性检查。
+
 返回[项目中文 README](../../README.zh-CN.md)，或阅读 [MIT License](../../LICENSE)。

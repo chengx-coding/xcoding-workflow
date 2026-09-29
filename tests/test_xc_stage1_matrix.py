@@ -63,7 +63,7 @@ class Stage1MatrixTests(unittest.TestCase):
         self.root = Path(self.temporary.name).resolve()
         self.archive = self.root / "candidate-source.zip"
         self.descriptor = self.root / "candidate-descriptor.json"
-        self.wheel = self.root / matrix.EXPECTED_WHEEL_FILENAME
+        self.wheel = self.root / "xcoding_workflow-0.7.3-py3-none-any.whl"
         self._write_inputs()
         self.verified = matrix.verify_inputs(
             candidate_archive=self.archive,
@@ -133,6 +133,7 @@ class Stage1MatrixTests(unittest.TestCase):
             },
         }
         source = {
+            "pyproject.toml": b'[project]\nname = "xcoding-workflow"\nversion = "0.7.3"\n',
             matrix.TOOLCHAIN_MEMBER: (
                 json.dumps(toolchain, sort_keys=True, indent=2) + "\n"
             ).encode("utf-8"),
@@ -186,6 +187,7 @@ class Stage1MatrixTests(unittest.TestCase):
         self.descriptor.write_bytes(canonical_json(descriptor))
         self.descriptor_sha256 = sha256(self.descriptor.read_bytes())
         manifest = {
+            "xc_version": "0.7.3",
             "baseline_revision": "a" * 40,
             "source_state": "work-order-candidate",
             "candidate_tree_sha256": self.candidate_tree_sha256,
@@ -193,7 +195,43 @@ class Stage1MatrixTests(unittest.TestCase):
         }
         with zipfile.ZipFile(self.wheel, "w") as wheel:
             wheel.writestr(matrix.MANIFEST_MEMBER, canonical_json(manifest))
+            wheel.writestr("xcoding_workflow-0.7.3.dist-info/METADATA",
+                           "Metadata-Version: 2.3\nName: xcoding-workflow\nVersion: 0.7.3\n\n")
         self.wheel_sha256 = sha256(self.wheel.read_bytes())
+
+    def test_rejects_wheel_identity_self_claim(self) -> None:
+        with zipfile.ZipFile(self.wheel, "r") as archive:
+            manifest = archive.read(matrix.MANIFEST_MEMBER)
+        with zipfile.ZipFile(self.wheel, "w") as archive:
+            archive.writestr(matrix.MANIFEST_MEMBER, manifest)
+            archive.writestr("xcoding_workflow-0.7.3.dist-info/METADATA",
+                            "Metadata-Version: 2.3\nName: xcoding-workflow\nVersion: 9.9.9\n\n")
+        with self.assertRaises(matrix.MatrixError) as raised:
+            matrix.verify_inputs(
+                candidate_archive=self.archive, candidate_archive_sha256=self.archive_sha256,
+                candidate_descriptor=self.descriptor, candidate_descriptor_sha256=self.descriptor_sha256,
+                candidate_tree_sha256=self.candidate_tree_sha256,
+                wheel=self.wheel, wheel_sha256=sha256(self.wheel.read_bytes()),
+            )
+        self.assertEqual(raised.exception.code, "wheel_invalid")
+
+    def test_rejects_bundle_version_self_claim(self) -> None:
+        with zipfile.ZipFile(self.wheel, "r") as archive:
+            members = {name: archive.read(name) for name in archive.namelist()}
+        manifest = json.loads(members[matrix.MANIFEST_MEMBER])
+        manifest["xc_version"] = "9.9.9"
+        members[matrix.MANIFEST_MEMBER] = canonical_json(manifest)
+        with zipfile.ZipFile(self.wheel, "w") as archive:
+            for name, data in members.items():
+                archive.writestr(name, data)
+        with self.assertRaises(matrix.MatrixError) as raised:
+            matrix.verify_inputs(
+                candidate_archive=self.archive, candidate_archive_sha256=self.archive_sha256,
+                candidate_descriptor=self.descriptor, candidate_descriptor_sha256=self.descriptor_sha256,
+                candidate_tree_sha256=self.candidate_tree_sha256,
+                wheel=self.wheel, wheel_sha256=sha256(self.wheel.read_bytes()),
+            )
+        self.assertEqual(raised.exception.code, "wheel_provenance_mismatch")
 
     def _platform(self, cell_id: str) -> tuple[str, str, str, str]:
         if cell_id == "windows-x86_64":
@@ -436,7 +474,7 @@ class Stage1MatrixTests(unittest.TestCase):
             self.verified["bindings"]["wheel_sha256"],
             self.wheel_sha256,
         )
-        self.assertEqual(self.verified["candidate_file_count"], 2)
+        self.assertEqual(self.verified["candidate_file_count"], 3)
 
     def test_rejects_archive_descriptor_and_wheel_mismatches(self) -> None:
         cases = (

@@ -21,6 +21,10 @@ from scripts import verify_wheel
 from scripts.verify_wheel import VerificationError
 
 
+from build_support.version import read_project_version, dist_info, wheel_filename
+
+VERSION = read_project_version(REPOSITORY_ROOT)
+
 BASELINE = "1" * 40
 CANDIDATE_TREE = "2" * 64
 CANDIDATE_ARCHIVE = "3" * 64
@@ -49,11 +53,12 @@ def record_hash(data: bytes) -> str:
 def manifest_bytes(
     *,
     candidate_tree: str = CANDIDATE_TREE,
+    version: str = VERSION,
 ) -> bytes:
     return canonical_json_bytes(
         {
             "bundle_schema_version": 1,
-            "xc_version": verify_wheel.EXPECTED_VERSION,
+            "xc_version": version,
             "baseline_revision": BASELINE,
             "source_state": "work-order-candidate",
             "candidate_tree_sha256": candidate_tree,
@@ -79,13 +84,15 @@ def write_test_wheel(
     *,
     timestamp: tuple[int, int, int, int, int, int] = (2026, 1, 2, 3, 4, 6),
     unsafe_member: str | None = None,
-    metadata_version: str = verify_wheel.EXPECTED_VERSION,
+    version: str = VERSION,
+    metadata_version: str | None = None,
     candidate_tree: str = CANDIDATE_TREE,
     bad_record_hash: bool = False,
     bad_record_size: bool = False,
     omitted_member: str | None = None,
 ) -> Path:
-    dist_info = verify_wheel.EXPECTED_DIST_INFO
+    metadata_version = version if metadata_version is None else metadata_version
+    wheel_dist_info = dist_info(version)
     members = {
         "xcoding/__init__.py": b"",
         "xcoding/__main__.py": b"from .cli import main\n",
@@ -127,22 +134,23 @@ def write_test_wheel(
         f"xcoding/_bundle/{RESOURCE_PATH}": RESOURCE_DATA,
         verify_wheel.MANIFEST_MEMBER: manifest_bytes(
             candidate_tree=candidate_tree,
+            version=version,
         ),
-        f"{dist_info}/METADATA": (
+        f"{wheel_dist_info}/METADATA": (
             "Metadata-Version: 2.3\n"
             "Name: xcoding-workflow\n"
             f"Version: {metadata_version}\n"
             "Requires-Python: >=3.12\n"
             "\n"
         ).encode("utf-8"),
-        f"{dist_info}/WHEEL": (
+        f"{wheel_dist_info}/WHEEL": (
             "Wheel-Version: 1.0\n"
             "Generator: test\n"
             "Root-Is-Purelib: true\n"
             "Tag: py3-none-any\n"
             "\n"
         ).encode("utf-8"),
-        f"{dist_info}/entry_points.txt": (
+        f"{wheel_dist_info}/entry_points.txt": (
             "[console_scripts]\nxcoding = xcoding.cli:main\n"
         ).encode("utf-8"),
     }
@@ -151,7 +159,7 @@ def write_test_wheel(
     if unsafe_member is not None:
         members[unsafe_member] = b"unsafe"
 
-    record_name = f"{dist_info}/RECORD"
+    record_name = f"{wheel_dist_info}/RECORD"
     rows: list[list[str]] = []
     for name, data in members.items():
         digest = record_hash(data)
@@ -166,7 +174,7 @@ def write_test_wheel(
     csv.writer(record_stream, lineterminator="\n").writerows(rows)
     members[record_name] = record_stream.getvalue().encode("utf-8")
 
-    wheel_path = output / verify_wheel.EXPECTED_WHEEL_FILENAME
+    wheel_path = output / wheel_filename(version)
     with zipfile.ZipFile(
         wheel_path,
         "x",
@@ -218,6 +226,30 @@ class WheelVerifierTests(unittest.TestCase):
             self.assertEqual(first_wheel.read_bytes(), second_wheel.read_bytes())
             self.assertIs(result["wheel_byte_identical"], True)
             self.assertIs(result["zip_metadata_byte_identical"], True)
+
+    def test_future_version_uses_trusted_project_not_wheel_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            project, disposable = root / "project", root / "builds"
+            project.mkdir()
+            disposable.mkdir()
+            first, second = disposable / "first", disposable / "second"
+            first.mkdir()
+            second.mkdir()
+            (project / "pyproject.toml").write_text(
+                '[project]\nname = "xcoding-workflow"\nversion = "0.7.3"\n', encoding="utf-8")
+            write_test_wheel(first, version="0.7.3")
+            write_test_wheel(second, version="0.7.3")
+            kwargs = dict(project_root=project, disposable_root=disposable,
+                          first_directory=first, second_directory=second,
+                          expected_tag="py3-none-any", baseline_revision=BASELINE,
+                          candidate_tree_sha256=CANDIDATE_TREE,
+                          candidate_source_archive_sha256=CANDIDATE_ARCHIVE)
+            result = verify_wheel.verify_reproducible_wheels(**kwargs)
+            self.assertEqual(result["wheel_filename"], wheel_filename("0.7.3"))
+            (project / "pyproject.toml").write_text(
+                '[project]\nname = "xcoding-workflow"\nversion = "0.7.4"\n', encoding="utf-8")
+            self.assert_code("wheel_output_invalid", verify_wheel.verify_reproducible_wheels, **kwargs)
 
     def test_rejects_non_exact_output_and_unsafe_members(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
