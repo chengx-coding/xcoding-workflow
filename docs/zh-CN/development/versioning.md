@@ -2,7 +2,7 @@
 
 **语言：** [English](../../development/versioning.md) | **简体中文**
 
-当前源码版本为 <!-- xc:version -->0.1.0<!-- /xc:version -->。它标识源码候选，不代表公开发行或支持证据已经存在。新快捷入口只存在于包含本次实现的构建；原有安装可继续使用 `xcoding version --json`，重新安装同一历史 wheel 不会获得新能力。受支持的发行边界见[安装契约](../getting-started/installation.md)。
+当前源码版本为 <!-- xc:version -->0.2.0<!-- /xc:version -->。它标识源码候选，不代表公开发行或支持证据已经存在。新快捷入口只存在于包含本次实现的构建；原有安装可继续使用 `xcoding version --json`，重新安装同一历史 wheel 不会获得新能力。受支持的发行边界见[安装契约](../getting-started/installation.md)。
 
 ## 单一版本来源
 

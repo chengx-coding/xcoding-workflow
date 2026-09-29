@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xcoding-workflow"
-version = "0.1.0"
+version = "0.2.0"
 description = "Portable xcoding workflow runtime, Viewer, daemon, and Skill Bundle."
 requires-python = ">=3.12"
 dependencies = []

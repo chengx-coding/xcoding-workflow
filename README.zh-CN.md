@@ -4,7 +4,7 @@
 
 xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审查的结果。它不绑定特定编程语言、框架或运行编码 Agent 的应用；本文把这类应用称为 **Agent 宿主**。
 
-当前源码候选版本：<!-- xc:version -->0.1.0<!-- /xc:version -->. [版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
+当前源码候选版本：<!-- xc:version -->0.2.0<!-- /xc:version -->. [版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
 
 ## 它能做什么
 
@@ -59,10 +59,10 @@ python skills/xc-work/scripts/classify.py [事实参数]
 
 受支持的 distribution 是 `xcoding-workflow`；`0.1.0` 只通过不可变 GitHub Release 分发，不发布到 PyPI。如果不可变 release 及其完整性文件尚不可用，就还没有受支持的公开安装产物。
 
-从同一个 release 下载 wheel 和完整性文件，按[安装](docs/zh-CN/getting-started/installation.md)中的说明完成校验，再安装本地 wheel：
+对于已经发布的 release，应从该 release 下载 wheel 和完整性文件，并按[安装](docs/zh-CN/getting-started/installation.md)中的说明校验。以下文件名仅示意当前尚未发布的 `0.2.0` 源码候选，不表示发行产物已经可用或已获得发行资格。只有在候选 wheel 完成构建并针对预期用途验证后，才安装它：
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.1.0-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.2.0-py3-none-any.whl
 xcoding version --json
 ```
 
