@@ -31,6 +31,8 @@ Work order 是一次调查、变更、修复、评审或维护工作的持久单
 
 一个 work order 可以关联零个、一个或多个已有 feature。通用的 [work 生命周期](../../../skills/xc-work/SKILL.md)不会仅因为一项变更需要持久管理就自动创建 feature。
 
+[核心设计](core-design.md)概览按路径与标题指认本项目唯一规范的核心设计；本页主题在工作流自身参照框架中的位置，即由此确定。
+
 ## Feature 基线
 
 一个受管 feature 拥有稳定标识和三份已批准的基线文档：

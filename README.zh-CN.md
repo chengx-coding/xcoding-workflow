@@ -128,6 +128,7 @@ New-Item -ItemType Junction -Path (Join-Path $ProjectRoot ".xcoding") -Target (J
 - [文档索引](docs/zh-CN/index.md)
 - [安装](docs/zh-CN/getting-started/installation.md)
 - [快速开始](docs/zh-CN/getting-started/quick-start.md)
+- [核心设计](docs/zh-CN/concepts/core-design.md)
 
 `build_agents.py` 只用于开发本仓库。它刷新当前检出中的本地 Skill 镜像，不会把 XC 安装到其他项目。
 

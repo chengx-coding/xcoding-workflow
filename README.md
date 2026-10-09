@@ -129,6 +129,7 @@ Agent hosts use different invocation syntax. Follow your host's normal Skill syn
 - [Documentation index](docs/index.md)
 - [Installation](docs/getting-started/installation.md)
 - [Quick start](docs/getting-started/quick-start.md)
+- [Core design](docs/concepts/core-design.md)
 
 `build_agents.py` is only for developing this repository. It refreshes this checkout's local Skill mirror; it does not install XC into another project.
 

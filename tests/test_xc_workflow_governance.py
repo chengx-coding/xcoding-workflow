@@ -1174,6 +1174,36 @@ class WorkflowGovernanceClassifierTests(unittest.TestCase):
         self.assertIn("depends only on the documented `xc-work` Skill name and public parameters", contract)
         self.assertNotIn("classify_governance.py", contract)
 
+    def test_workflow_evolution_states_the_core_design_obligation(self) -> None:
+        """Pin the clause's presence in the contract, not its execution.
+
+        The clause names the authoritative core design by role and leaves its
+        location to the project bridge, so this test also proves the portable
+        asset carries no project path. It proves the promise is stated and
+        cannot be deleted silently; it cannot prove that an iteration read the
+        design or that a user confirmed a change to it.
+        """
+        contract = WORKFLOW_EVOLUTION_SKILL.read_text(encoding="utf-8")
+        prefix, separator, remainder = contract.partition("## Core Design Alignment")
+        # Control: a failed slice must fail the test rather than pass vacuously.
+        self.assertEqual(separator, "## Core Design Alignment")
+        self.assertIn("## Architecture-Preserving Evolution", prefix)
+        self.assertIn("## Project Version Policy", remainder)
+        section = remainder.split("\n## ", 1)[0]
+        flattened = " ".join(section.split())
+        self.assertTrue(flattened, "the core design section must not be empty")
+        self.assertNotIn("## Project Version Policy", section)
+        # Duty 1: every self-evolution iteration re-checks the declared design
+        # before doing the work.
+        self.assertIn("re-check the project's declared authoritative core design", flattened)
+        # Duty 2: any change to that design needs the user's prior confirmation
+        # before it takes effect.
+        self.assertIn("requires the user's prior confirmation before it takes effect", flattened)
+        # The portable asset carries no project path; the bridge supplies it.
+        self.assertNotIn(".xcoding", flattened)
+        self.assertNotIn("core-design.md", flattened)
+        self.assertNotIn("docs/", flattened)
+
     def test_generic_governance_contract_is_model_and_vendor_independent(self) -> None:
         contract_path = REPOSITORY_ROOT / "AGENTS.md"
         if not contract_path.exists():

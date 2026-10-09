@@ -88,6 +88,8 @@ transport 切换；后续 mutation、remote transport 或发布工作需要单�
 
 每个消费项目通过概念路径 `.xcoding/WORKFLOW.md` 提供这些选择，可选的项目知识指引位于 `.xcoding/KNOWLEDGE.md`。这些 workshop 本地路径有意不作为公开文档链接。
 
+[核心设计](core-design.md)概览按路径与标题指认本项目唯一规范的核心设计，并说明如何在不复制它的情况下使用它。
+
 实际生效的数据流为：
 
 ```text

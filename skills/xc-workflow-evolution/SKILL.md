@@ -66,6 +66,14 @@ Prefer the smallest correct fix that reuses an existing mechanism or established
 
 Evaluate every change against the whole architecture, not only its local symptom, and record in the work order whether the change leaves the system more coherent or more tangled. When a local repair would degrade the overall architecture, reconsider it. When the correct way to support a capability or fix a real defect is a local or broader refactor, identify and propose that refactor rather than layering a patch that preserves a worse structure; a behavior- or contract-changing refactor still requires analysis, documented alternatives, review, and an explicit user gate. Record deferred work and accepted trade-offs as durable structured project notes so a later evolution keeps the original reasoning.
 
+## Core Design Alignment
+
+Before selecting or implementing any workflow-asset change, re-check the project's declared authoritative core design document, which the project bridge names and is the only source of its location and identity. Read that document and judge this iteration's intended change against the principles, invariants, and decision criteria it states. A previous iteration's re-check does not exempt the current one.
+
+Any adjustment, improvement, or change to that core design requires the user's prior confirmation before it takes effect. An implementer who concludes that the core design should change proposes the change and obtains that confirmation; it does not edit the design as a side effect of the work, and it does not bypass or reinterpret the design because a different course is more convenient.
+
+**Documentation-only strength.** This clause adds no mechanical enforcement by itself: its entire force is documentation discipline plus one phrase-level test that the clause is still stated. Its constraint reduces to a duty to read the declared design before acting and a duty to propose a design change rather than assume it. Nothing verifies that an iteration actually read the design, and nothing verifies that a user actually confirmed a change. Keep project-specific locations, titles, and numbering rules out of portable assets; the project bridge supplies them.
+
 ## Project Version Policy
 
 Apply the public Project Version Decisions contract of `xc-work` on full and adaptive evolution work. Read numbering and release choices from the project bridge, assess version impact before closure, and retain the recommendation and exact consent or deferral in the existing work-order artifacts. A workflow improvement does not itself authorize a version bump or publication. Keep project-specific numbering rules out of portable assets.
@@ -76,3 +84,4 @@ Apply the public Project Version Decisions contract of `xc-work` on full and ada
 - Do not alter managed runtime trees outside the runtime public interface.
 - A broad architecture change requires analysis, documented alternatives, review, and an explicit user gate before implementation.
 - Do not add a new mechanism disproportionate to the problem; prefer reusing an existing mechanism, and record the whole-architecture impact and any deferred trade-offs.
+- Do not change the project's declared authoritative core design without the user's prior confirmation, and do not skip re-checking that design before the work of an iteration begins.

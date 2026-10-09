@@ -96,6 +96,8 @@ Generic Skills define reusable lifecycle behavior. They do not hard-code a consu
 
 Each consumer project supplies those choices through the conceptual bridge path `.xcoding/WORKFLOW.md`. Optional project knowledge guidance lives at `.xcoding/KNOWLEDGE.md`. These workshop-local paths are deliberately not public documentation links.
 
+The [core design](core-design.md) overview names the project's single normative core design by path and title and explains how to use it without copying it.
+
 The effective flow is:
 
 ```text
