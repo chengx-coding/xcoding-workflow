@@ -13,7 +13,7 @@ This is the canonical English documentation for xcoding-workflow. The Chinese tr
 
 - [Architecture](concepts/architecture.md): canonical sources, generated outputs, adapters, and ownership boundaries.
 - [Workshops and features](concepts/workshops-features.md): work orders, independent workshop history, and explicit feature baselines.
-- [Core design](concepts/core-design.md): where the authoritative XC core design lives and how to use it.
+- [Core design](concepts/core-design.md): what the XC core design rests on, and how this overview presents its five dimensions and the obligations that run through them.
 
 ## Workflows
 

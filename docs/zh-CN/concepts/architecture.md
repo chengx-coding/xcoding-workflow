@@ -86,9 +86,9 @@ transport 切换；后续 mutation、remote transport 或发布工作需要单�
 
 通用 Skill 定义可复用的生命周期行为，不会硬编码消费项目的语言、框架、仓库布局、构建命令、测试工具、文档策略、业务规则或项目专属能力。
 
-每个消费项目通过概念路径 `.xcoding/WORKFLOW.md` 提供这些选择，可选的项目知识指引位于 `.xcoding/KNOWLEDGE.md`。这些 workshop 本地路径有意不作为公开文档链接。
+每个消费项目通过概念路径 `.xcoding/WORKFLOW.md` 提供这些选择，可选的项目知识指引位于 `.xcoding/KNOWLEDGE.md`。
 
-[核心设计](core-design.md)概览按路径与标题指认本项目唯一规范的核心设计，并说明如何在不复制它的情况下使用它。
+[核心设计](core-design.md)概览概括其余页面所依据的这份设计，使读者能把实现层面的页面放进整体框架中理解。
 
 实际生效的数据流为：
 

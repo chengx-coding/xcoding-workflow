@@ -5,6 +5,7 @@ import io
 import itertools
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1217,6 +1218,265 @@ class WorkflowGovernanceClassifierTests(unittest.TestCase):
         self.assertIn("### Proportional Governance", contract)
         self.assertIn("independent of model name, model vendor, context-window size", contract)
         self.assertIn("Missing, unavailable, malformed, or conflicting evidence", contract)
+
+
+# --- Private workshop citation boundary --------------------------------------
+#
+# The normative rule lives in the repository instruction body that agents read
+# as `AGENTS.md`, under "Private Workshop Boundaries". This module owns the
+# single mechanical definition of that boundary, so no second implementation of
+# the pattern exists to drift away from this one.
+PRIVATE_WORKSHOP_CITATION_PATTERN = re.compile(
+    r"\.xcoding/(?:[A-Za-z0-9._-]+/)*[A-Za-z0-9._-]*"
+)
+# The exact forms a public surface may name: the fixed workshop directory, the
+# fixed bridges, the engine's fixed configuration filenames, the fixed layout
+# directories, and the placeholder layout paths that document the workshop
+# schema. A concrete identifier beneath a layout directory is none of these, so
+# it fails -- a bare `.xcoding/` prefix never makes what follows allowed.
+PRIVATE_WORKSHOP_ALLOWED_REFERENCES = frozenset(
+    {
+        ".xcoding/",
+        ".xcoding/WORKFLOW.md",
+        ".xcoding/KNOWLEDGE.md",
+        ".xcoding/xc-orchestration-runtime.json",
+        ".xcoding/xc-orchestration-runtime.toml",
+        ".xcoding/work-orders/",
+        ".xcoding/features/",
+        ".xcoding/work-orders/<work-order-id>/",
+        ".xcoding/features/<feature-id>/",
+    }
+)
+# A placeholder layout path whose `<...>` segment the token pattern stops at:
+# only the trailing directory separator is visible to it. The two entries above
+# that already end in a separator are matched directly.
+PRIVATE_WORKSHOP_PLACEHOLDER_LAYOUTS = frozenset(
+    {
+        ".xcoding/work-orders/<work-order-id>",
+        ".xcoding/features/<feature-id>",
+    }
+)
+# The tracked public surfaces the rule governs, beyond the `docs/` and
+# `skills/` trees.
+PRIVATE_WORKSHOP_GOVERNED_ROOT_FILES = ("README.md", "README.zh-CN.md")
+# The two overview pages whose subject used to be the private authority itself.
+PRIVATE_WORKSHOP_OVERVIEW_PAGES = (
+    "docs/concepts/core-design.md",
+    "docs/zh-CN/concepts/core-design.md",
+)
+# Coarse, comparable fragments of the stricter second reading. They cannot
+# decide "mentions private development-process information" -- that is a
+# semantic judgement -- but they pin the regressions that matter on these pages.
+PRIVATE_WORKSHOP_FORBIDDEN_OVERVIEW_FRAGMENTS = (
+    ".xcoding",
+    "context repository",
+    "上下文仓库",
+    "workshop's own",
+)
+# Seeds that must fail and decoys that must pass. The decoys are `.xcoding`
+# substrings unrelated to the workshop: the pattern requires a directory
+# separator right after `.xcoding`, so `-`-suffixed names are structurally
+# unreachable rather than excluded by a name blacklist.
+PRIVATE_WORKSHOP_CITATION_SEEDS = (
+    ".xcoding/docs/core-design.md",
+    ".xcoding/notes/dev-note.md",
+    ".xcoding/work-orders/20260101-0000-real-id/goal.md",
+    ".xcoding/features/real-feature-id/contract.md",
+)
+PRIVATE_WORKSHOP_CITATION_DECOYS = (
+    ".agents/.xcoding-setup/manifest.json",
+    ".xcoding-setup/manifest.json",
+    ".xcoding-delegation-tmp",
+    "x/.xcoding-delegation-tmp/y",
+)
+#: The delivered violation this guard was written against. Its second element is
+#: a deliberate violation sample, not reference material: it is a real private
+#: path kept only because the check below must recognize that exact form, which
+#: the rule's `tests/**` verification-surface permission allows. Do not copy it
+#: into test prose, comments, or documentation written for any other purpose.
+#: The sibling fix that rewrites the overview pages removes the citation from the
+#: page; the guard must catch it while it is still there and must stay consistent
+#: with the file afterwards.
+PRIVATE_WORKSHOP_DELIVERED_VIOLATION = (
+    "docs/concepts/core-design.md",
+    ".xcoding/docs/core-design.md",  # deliberate violation sample, see above
+)
+
+
+def private_workshop_reference_is_allowed(token: str) -> bool:
+    """True when `token` is one of the fixed contract names the rule allows."""
+    normalized = token.rstrip(".")
+    if normalized in PRIVATE_WORKSHOP_ALLOWED_REFERENCES:
+        return True
+    return (
+        normalized.endswith("/")
+        and normalized[:-1] in PRIVATE_WORKSHOP_PLACEHOLDER_LAYOUTS
+    )
+
+
+def scan_private_workshop_citations(text: str) -> list[tuple[int, str]]:
+    """`(line, token)` for every disallowed `.xcoding/` reference in `text`."""
+    findings: list[tuple[int, str]] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        for match in PRIVATE_WORKSHOP_CITATION_PATTERN.finditer(line):
+            token = match.group(0)
+            if not private_workshop_reference_is_allowed(token):
+                findings.append((number, token))
+    return findings
+
+
+def is_governed_public_surface(relative: str) -> bool:
+    """True for a tracked path the private-workshop citation rule governs."""
+    return (
+        relative.startswith("docs/")
+        or relative.startswith("skills/")
+        or relative in PRIVATE_WORKSHOP_GOVERNED_ROOT_FILES
+    )
+
+
+def tracked_repository_paths() -> list[str]:
+    """Tracked paths straight from the Git index, in a deterministic order.
+
+    The guard must behave identically in a clean checkout and in CI and must not
+    depend on the private `.xcoding/` tree existing, so it enumerates the index
+    rather than walking a directory.
+    """
+    completed = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=str(REPOSITORY_ROOT),
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        raise AssertionError(
+            "git ls-files failed: "
+            + completed.stderr.decode("utf-8", "replace").strip()
+        )
+    return sorted(
+        (
+            item.decode("utf-8", "surrogateescape")
+            for item in completed.stdout.split(b"\x00")
+            if item
+        ),
+        key=lambda item: item.encode("utf-8", "surrogateescape"),
+    )
+
+
+class PrivateWorkshopCitationGuardTests(unittest.TestCase):
+    """The tracked mechanical guard for the private workshop citation boundary.
+
+    It proves what a pattern can prove: a concrete `.xcoding/` artifact path --
+    a Markdown link, an inline code span, a bare path in prose or a directory
+    reference -- cannot be added to a tracked public surface without failing
+    this module, while the workflow's own fixed contract names stay allowed.
+    It cannot prove that the public `docs/` pages still say the same thing as
+    the private authority they depend on: no mechanism can, and that drift risk
+    stays a review obligation recorded in `AGENTS.md`.
+    """
+
+    def test_governed_surfaces_cite_no_private_workshop_artifact(self) -> None:
+        """No tracked public surface cites a concrete artifact inside `.xcoding/`.
+
+        The normalized file set comes from the Git index, so the verdict is the
+        same in a clean checkout and in CI. The two controls below fail the test
+        when the scan is empty, so "nothing to scan" can never read as green.
+        """
+        governed = [item for item in tracked_repository_paths() if is_governed_public_surface(item)]
+        self.assertGreater(
+            len(governed),
+            0,
+            "non-vacuous control: the governed public surface set came back empty",
+        )
+        occurrences = 0
+        findings: list[str] = []
+        for relative in governed:
+            path = REPOSITORY_ROOT / relative
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8", errors="surrogateescape")
+            occurrences += text.count(".xcoding")
+            findings.extend(
+                f"{relative}:{line}: {token}"
+                for line, token in scan_private_workshop_citations(text)
+            )
+        self.assertGreater(
+            occurrences,
+            0,
+            "non-vacuous control: no `.xcoding` occurrence was scanned at all",
+        )
+        self.assertEqual(
+            findings,
+            [],
+            "tracked public content cites a private workshop artifact:\n"
+            + "\n".join(findings),
+        )
+
+    def test_private_workshop_citation_guard_fails_on_seeds_and_passes_allowed_forms(
+        self,
+    ) -> None:
+        """Prove the guard fails on violations and accepts every allowed form.
+
+        Four concrete citations must be caught, every reference in the rule's
+        allowed set must pass, and the `.xcoding-setup` /
+        `.xcoding-delegation-tmp` decoys must stay unreachable. The last check
+        scans the text of a real delivered page rather than a synthetic seed, so
+        the guard is shown catching an actual defect instead of only strings
+        written for it.
+        """
+        for seed in PRIVATE_WORKSHOP_CITATION_SEEDS:
+            with self.subTest(seed=seed):
+                self.assertTrue(
+                    scan_private_workshop_citations(seed),
+                    f"the guard must reject the private citation {seed!r}",
+                )
+        for allowed in sorted(PRIVATE_WORKSHOP_ALLOWED_REFERENCES):
+            with self.subTest(allowed=allowed):
+                self.assertEqual(
+                    scan_private_workshop_citations(allowed),
+                    [],
+                    f"the guard must accept the fixed contract name {allowed!r}",
+                )
+        for decoy in PRIVATE_WORKSHOP_CITATION_DECOYS:
+            with self.subTest(decoy=decoy):
+                self.assertEqual(
+                    scan_private_workshop_citations(decoy),
+                    [],
+                    f"the guard must not fire on the unrelated substring {decoy!r}",
+                )
+        relative, token = PRIVATE_WORKSHOP_DELIVERED_VIOLATION
+        text = (REPOSITORY_ROOT / relative).read_text(encoding="utf-8")
+        tokens = [found for _, found in scan_private_workshop_citations(text)]
+        # While the page still carries the citation the guard must name it; once
+        # the sibling fix removes it the guard must stop naming it. Asserting the
+        # equality keeps the test true on both sides of that fix.
+        self.assertEqual(
+            token in text,
+            token in tokens,
+            f"{relative} must be reported exactly while it still cites {token!r}",
+        )
+
+    def test_public_overview_pages_state_no_private_process_information(self) -> None:
+        """Pin the comparable subset of the stricter second reading.
+
+        The overview pages must not name the workshop, the private context
+        repository, or where the project's design authority lives. This is a
+        coarse negative assertion, not a semantic judgement: it cannot decide
+        whether a page leaks private development-process information in other
+        wording, and that judgement stays with the independent review.
+        """
+        for relative in PRIVATE_WORKSHOP_OVERVIEW_PAGES:
+            text = (REPOSITORY_ROOT / relative).read_text(encoding="utf-8")
+            with self.subTest(page=relative):
+                self.assertGreater(
+                    len(text.strip()),
+                    0,
+                    f"non-vacuous control: {relative} is empty",
+                )
+                for fragment in PRIVATE_WORKSHOP_FORBIDDEN_OVERVIEW_FRAGMENTS:
+                    self.assertNotIn(
+                        fragment,
+                        text,
+                        f"{relative} must not mention {fragment!r}",
+                    )
 
 
 if __name__ == "__main__":

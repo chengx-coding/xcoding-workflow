@@ -27,7 +27,17 @@ Unimplemented ideas may appear only in the explicitly non-normative future secti
 
 ## Public Links
 
-Public pages may link only to exact-case targets that exist in a clean checkout, are tracked or staged for the same release, and are not ignored or excluded. Do not link local maintenance assets, workshop state, private instructions, generated local adapters, or any other checkout-only context. Relative links and anchors must resolve in both languages.
+Public pages may link only to exact-case targets that exist in a clean checkout, are tracked or staged for the same release, and are not ignored or excluded. Do not link local maintenance assets, workshop state, generated local adapters, or any other checkout-only context. Relative links and anchors must resolve in both languages.
+
+## Private Workshop Boundaries
+
+Public pages are tracked and open-source-visible. They must not cite a concrete artifact inside a project's private workshop: not the core design, design documents, work orders, feature baselines, notes, runtime state, or knowledge guidance under `.xcoding/`, in any form -- a Markdown link, an inline code span, a bare path in prose, or a directory reference. Fixed contract names and structural paths remain allowed, because the public workflow contract must be able to name its own fixed paths and structures: the workshop directory `.xcoding/`, the bridges `.xcoding/WORKFLOW.md` and `.xcoding/KNOWLEDGE.md`, the engine's configuration filenames `.xcoding/xc-orchestration-runtime.json` and `.xcoding/xc-orchestration-runtime.toml`, the fixed structural orchestration-tree path `runtime/orchestration.xml`, and placeholder layout paths such as `.xcoding/work-orders/<work-order-id>/` and `.xcoding/features/<feature-id>/`. A bare `.xcoding/` prefix does not make what follows allowed: a concrete identifier beneath a fixed layout directory is a citation, not a layout path.
+
+This rule governs the tracked `docs/` tree in both languages, the root `README.md` / `README.zh-CN.md` pair, and `skills/**`. The repository's governance test suite carries a mechanical guard for the citation boundary. That guard cannot decide the stricter reading below, which stays a review obligation rather than a machine-decidable rule.
+
+Beyond the citation ban, public pages are held to a stricter reading. They are explanatory material, and they are what a reader has. They may restate and summarize the core design, and they must remain intelligible without any non-public source: a public page must not disclose development-process internals, must not state or imply that it was produced from or synchronized with a source outside the public documentation, and must not point a reader at one. The design is presented publicly, in the page's own voice.
+
+The stricter reading applies to every tracked public page and to both language versions of each page, and it covers a page's framing and omissions as much as its explicit statements.
 
 ## Review Evidence
 
