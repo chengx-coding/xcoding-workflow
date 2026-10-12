@@ -1,0 +1,3190 @@
+from __future__ import annotations
+from tests.support.paths import REPO_ROOT, TESTS_ROOT  # noqa: E402
+from tests.support.cli import run_runtime_in_process  # noqa: E402
+
+import argparse
+import errno
+import json
+import os
+import socket
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import unittest
+import urllib.error
+import urllib.request
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from unittest import mock
+from urllib.parse import urlparse
+
+
+REPOSITORY_ROOT = REPO_ROOT
+SOURCE_ROOT = REPOSITORY_ROOT / "src"
+RUNTIME_CLI = TESTS_ROOT / "runtime_cli.py"
+VIEWER_SERVER = TESTS_ROOT / "viewer_cli.py"
+MINIMAL_TEMPLATE = (
+    SOURCE_ROOT / "xcoding" / "runtime" / "assets" / "minimal-template.xml"
+)
+CONTROL_METADATA_FIXTURE = (
+    REPOSITORY_ROOT
+    / "tests"
+    / "fixtures"
+    / "orchestration"
+    / "control-metadata-conformance-v1.json"
+)
+
+sys.path.insert(0, str(SOURCE_ROOT))
+from xcoding.runtime import application as runtime_cli
+from xcoding.runtime import core
+from xcoding.viewer import server as viewer_server
+
+
+class OrchestrationRuntimeCliTests(unittest.TestCase):
+    def run_cli(self, *args: str, cwd: Path) -> dict[str, object]:
+        """Run the runtime subcommand in-process and return its JSON payload.
+
+        `cwd` is accepted for call-site compatibility and ignored: the subprocess
+        form passed every tree path explicitly and never actually changed the
+        child's working directory, so behaviour is identical.
+        """
+        result = run_runtime_in_process(list(args))
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+        return json.loads(result.stdout)
+
+    def run_cli_error(self, *args: str, cwd: Path) -> dict[str, object]:
+        result = run_runtime_in_process(list(args))
+        self.assertEqual(result.returncode, 2, result.stderr or result.stdout)
+        return json.loads(result.stdout)
+
+    def run_git(self, repository: Path, *args: str) -> str:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+        return result.stdout.strip()
+
+    def git_has_head(self, repository: Path) -> bool:
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", "HEAD"],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        return result.returncode == 0
+
+    def write_template(self, path: Path, config: dict[str, object]) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": "terminal-commit"})
+        ET.SubElement(root, "blackboard")
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": "Terminal Commit",
+                "type": "composite",
+                "role": "root",
+                "mode": "sequence",
+                "executor": "main",
+            },
+        )
+        children = ET.SubElement(workflow, "children")
+        ET.SubElement(
+            children,
+            "node",
+            {
+                "template_id": "write-document",
+                "title": "Write document",
+                "type": "task",
+                "role": "document-write",
+                "executor": "main",
+            },
+        )
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
+    def create_terminal_runtime(
+        self,
+        project: Path,
+        work_order_id: str,
+        auto_commit: bool,
+    ) -> tuple[Path, Path, str]:
+        context = project / ".xcoding"
+        context.mkdir(parents=True)
+        if auto_commit:
+            self.run_git(context, "init")
+            self.run_git(context, "config", "user.name", "XC Test")
+            self.run_git(context, "config", "user.email", "xc-test@example.invalid")
+        (context / "xc-orchestration-runtime.json").write_text(
+            json.dumps({"git": {"auto_commit": auto_commit}}) + "\n",
+            encoding="utf-8",
+        )
+        config = core.load_config(context)
+        template = project / "template.xml"
+        self.write_template(template, config)
+        initialized = self.run_cli(
+            "init",
+            "--template",
+            str(template),
+            "--runtime-path",
+            str(context / "work-orders" / work_order_id / "runtime"),
+            "--work-order-id",
+            work_order_id,
+            cwd=project,
+        )
+        tree_path = Path(str(initialized["tree_path"]))
+        node_id = str(self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]["id"])
+        return context, tree_path, node_id
+
+    def test_ordinary_commands_reject_previous_schema_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context, tree_path, _ = self.create_terminal_runtime(
+                project,
+                "previous-schema-rejection",
+                auto_commit=False,
+            )
+            tree = core.parse_xml(tree_path)
+            root = tree.getroot()
+            previous_identity = "run_" + "id"
+            root.set(previous_identity, root.attrib.pop("work_order_id"))
+            for variable in root.findall("./blackboard/var"):
+                if variable.get("key") == "work_order_id":
+                    variable.set("key", previous_identity)
+            core.apply_integrity(root, "runtime", core.load_config(context))
+            core.atomic_write_text(tree_path, core.serialize_xml(root, "runtime"))
+            before = tree_path.read_bytes()
+
+            rejected = self.run_cli_error(
+                "summary",
+                "--tree",
+                str(tree_path),
+                cwd=project,
+            )
+
+            self.assertEqual(rejected["error"]["code"], "legacy_schema_rejected")
+            self.assertEqual(tree_path.read_bytes(), before)
+
+    def test_ordinary_commands_reject_mixed_lifecycle_schema_without_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context, tree_path, _ = self.create_terminal_runtime(
+                project,
+                "mixed-schema-rejection",
+                auto_commit=False,
+            )
+            tree = core.parse_xml(tree_path)
+            root = tree.getroot()
+            previous_key = "run" + ".requires_verification"
+            variable = ET.SubElement(root.find("./blackboard"), "var", {"key": previous_key})
+            variable.text = "true"
+            core.apply_integrity(root, "runtime", core.load_config(context))
+            core.atomic_write_text(tree_path, core.serialize_xml(root, "runtime"))
+            before = tree_path.read_bytes()
+
+            rejected = self.run_cli_error(
+                "summary",
+                "--tree",
+                str(tree_path),
+                cwd=project,
+            )
+
+            self.assertEqual(rejected["error"]["code"], "legacy_schema_rejected")
+            self.assertTrue(
+                any(
+                    str(field).endswith(previous_key)
+                    for field in rejected["error"]["details"]["legacy_fields"]
+                )
+            )
+            self.assertEqual(tree_path.read_bytes(), before)
+
+    def write_conditional_template(self, path: Path, config: dict[str, object], when_policy: str = "") -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": "conditional-group"})
+        ET.SubElement(root, "blackboard")
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": "Conditional Group",
+                "type": "composite",
+                "role": "root",
+                "mode": "sequence",
+                "executor": "main",
+            },
+        )
+        children = ET.SubElement(workflow, "children")
+        ET.SubElement(
+            children,
+            "node",
+            {
+                "template_id": "prepare",
+                "title": "Prepare",
+                "type": "task",
+                "role": "prepare",
+                "executor": "main",
+            },
+        )
+        optional_attributes = {
+            "template_id": "optional-group",
+            "title": "Optional group",
+            "type": "composite",
+            "role": "optional",
+            "mode": "sequence",
+            "executor": "main",
+            "when": "optional.enabled == true",
+        }
+        if when_policy:
+            optional_attributes["when.policy"] = when_policy
+        optional = ET.SubElement(
+            children,
+            "node",
+            optional_attributes,
+        )
+        optional_children = ET.SubElement(optional, "children")
+        ET.SubElement(
+            optional_children,
+            "node",
+            {
+                "template_id": "optional-work",
+                "title": "Optional work",
+                "type": "task",
+                "role": "optional-work",
+                "executor": "main",
+            },
+        )
+        ET.SubElement(
+            children,
+            "node",
+            {
+                "template_id": "finish",
+                "title": "Finish",
+                "type": "task",
+                "role": "finish",
+                "executor": "main",
+            },
+        )
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
+    def write_loop_template(self, path: Path, config: dict[str, object]) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": "latched-loop"})
+        variables = ET.SubElement(root, "blackboard")
+        variable = ET.SubElement(variables, "var", {"key": "review.open_issues"})
+        variable.text = "false"
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": "Latched loop",
+                "type": "composite",
+                "role": "root",
+                "mode": "sequence",
+                "executor": "main",
+            },
+        )
+        workflow_children = ET.SubElement(workflow, "children")
+        loop = ET.SubElement(
+            workflow_children,
+            "node",
+            {
+                "template_id": "review-loop",
+                "title": "Review loop",
+                "type": "loop",
+                "role": "review-loop",
+                "mode": "sequence",
+                "executor": "main",
+                "loop.max_iterations": "2",
+                "loop.continue_when": "review.open_issues == true",
+                "loop.break_when": "review.open_issues == false",
+                "loop.on_limit": "blocked",
+            },
+        )
+        loop_children = ET.SubElement(loop, "children")
+        ET.SubElement(
+            loop_children,
+            "node",
+            {
+                "template_id": "review",
+                "title": "Review",
+                "type": "task",
+                "role": "review",
+                "executor": "main",
+            },
+        )
+        ET.SubElement(
+            loop_children,
+            "node",
+            {
+                "template_id": "revise",
+                "title": "Revise",
+                "type": "task",
+                "role": "revise",
+                "executor": "main",
+                "when": "review.open_issues == true",
+                "when.policy": "latched",
+                "depends_on_template": "local:review",
+            },
+        )
+        deferred = ET.SubElement(
+            loop_children,
+            "node",
+            {
+                "template_id": "deferred",
+                "title": "Deferred branch",
+                "type": "composite",
+                "role": "deferred",
+                "mode": "sequence",
+                "executor": "main",
+                "when": "review.deferred == true",
+                "when.policy": "latched",
+            },
+        )
+        deferred_children = ET.SubElement(deferred, "children")
+        ET.SubElement(
+            deferred_children,
+            "node",
+            {
+                "template_id": "deferred-work",
+                "title": "Deferred work",
+                "type": "task",
+                "role": "deferred-work",
+                "executor": "main",
+            },
+        )
+        ET.SubElement(
+            workflow_children,
+            "node",
+            {
+                "template_id": "finish",
+                "title": "Finish",
+                "type": "task",
+                "role": "finish",
+                "executor": "main",
+            },
+        )
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
+    def write_dynamic_group_template(self, path: Path, config: dict[str, object]) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": "dynamic-group"})
+        ET.SubElement(root, "blackboard")
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": "Dynamic Group",
+                "type": "composite",
+                "role": "root",
+                "mode": "sequence",
+                "executor": "main",
+            },
+        )
+        children = ET.SubElement(workflow, "children")
+        for template_id, title in (("prepare", "Prepare"), ("finish", "Finish")):
+            if template_id == "finish":
+                ET.SubElement(
+                    children,
+                    "node",
+                    {
+                        "template_id": "work-group",
+                        "title": "Work group",
+                        "type": "composite",
+                        "role": "dynamic-group",
+                        "mode": "sequence",
+                        "executor": "main",
+                    },
+                )
+            ET.SubElement(
+                children,
+                "node",
+                {
+                    "template_id": template_id,
+                    "title": title,
+                    "type": "task",
+                    "role": template_id,
+                    "executor": "main",
+                },
+            )
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
+    def write_flow_template(
+        self,
+        path: Path,
+        config: dict[str, object],
+        child_specs: list[dict[str, object]],
+        *,
+        mode: str = "sequence",
+        blackboard: dict[str, str] | None = None,
+    ) -> None:
+        root = ET.Element("orchestration", {"schema_version": "1", "name": path.stem})
+        variables = ET.SubElement(root, "blackboard")
+        for key, value in (blackboard or {}).items():
+            ET.SubElement(variables, "var", {"key": key}).text = value
+        workflow = ET.SubElement(
+            root,
+            "node",
+            {
+                "template_id": "root",
+                "title": path.stem,
+                "type": "composite",
+                "role": "root",
+                "mode": mode,
+                "executor": "main",
+            },
+        )
+        holder = ET.SubElement(workflow, "children")
+
+        def append_node(parent: ET.Element, spec: dict[str, object]) -> None:
+            nested = list(spec.get("children", []))
+            template_id = str(spec["template_id"])
+            attributes = {
+                "template_id": template_id,
+                "title": str(spec.get("title", template_id)),
+                "type": str(spec.get("type", "composite" if nested else "task")),
+                "role": str(spec.get("role", template_id)),
+                "executor": str(spec.get("executor", "main")),
+            }
+            for key, value in spec.items():
+                if key not in {"template_id", "title", "type", "role", "executor", "children"}:
+                    attributes[key] = str(value)
+            if nested and "mode" not in attributes:
+                attributes["mode"] = "sequence"
+            node = ET.SubElement(parent, "node", attributes)
+            if nested:
+                nested_holder = ET.SubElement(node, "children")
+                for child in nested:
+                    append_node(nested_holder, child)
+
+        for child_spec in child_specs:
+            append_node(holder, child_spec)
+        core.apply_integrity(root, "template", config)
+        core.atomic_write_text(path, core.serialize_xml(root, "template"))
+
+    def init_flow(
+        self,
+        project: Path,
+        context: Path,
+        config: dict[str, object],
+        work_order_id: str,
+        child_specs: list[dict[str, object]],
+        *,
+        mode: str = "sequence",
+        blackboard: dict[str, str] | None = None,
+    ) -> Path:
+        template = project / f"{work_order_id}.xml"
+        self.write_flow_template(template, config, child_specs, mode=mode, blackboard=blackboard)
+        initialized = self.run_cli(
+            "init",
+            "--template",
+            str(template),
+            "--runtime-path",
+            str(context / "work-orders" / work_order_id / "runtime"),
+            "--work-order-id",
+            work_order_id,
+            cwd=project,
+        )
+        return Path(str(initialized["tree_path"]))
+
+    def assert_start_not_ready(
+        self,
+        project: Path,
+        tree_path: Path,
+        node_id: str,
+        reason: str,
+    ) -> dict[str, object]:
+        before_summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+        before_node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+        self.assertNotIn(node_id, {node["id"] for node in before_summary["ready"]})
+        rejected = self.run_cli_error("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+        self.assertEqual(rejected["error"]["code"], "node_not_ready")
+        self.assertEqual(rejected["error"]["details"]["reason"], reason)
+        self.assertEqual(rejected["error"]["details"]["status"], before_node["status"])
+        after_summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+        after_node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+        self.assertEqual(after_summary["revision"], before_summary["revision"])
+        self.assertEqual(after_node["status"], before_node["status"])
+        return rejected
+
+    def test_config_accepts_utf8_bom(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_bytes(
+                b'\xef\xbb\xbf{"schema_version":1,"git":{"auto_commit":false}}\n'
+            )
+
+            config = core.load_config(context)
+
+            self.assertFalse(config["git"]["auto_commit"])
+            self.assertEqual(config["_source"], str(config_path))
+
+    def test_config_rejects_unsafe_or_ambiguous_json(self) -> None:
+        cases = (
+            ('{"git":{"auto_commit":false,"auto_commit":true}}', "duplicate object key"),
+            ('{"viewer":{"port":NaN}}', "non-finite number"),
+            ("[]", "configuration root must be an object"),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            for content, expected in cases:
+                with self.subTest(expected=expected):
+                    config_path.write_text(content, encoding="utf-8")
+                    with self.assertRaises(core.ConfigError) as raised:
+                        core.load_config(context)
+                    self.assertIn(expected, str(raised.exception) + str(raised.exception.details))
+
+    def test_config_rejects_legacy_toml_and_dual_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            legacy = context / "xc-orchestration-runtime.toml"
+            legacy.write_text("[git]\nauto_commit = false\n", encoding="utf-8")
+
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(context)
+            self.assertIn("legacy TOML", str(raised.exception))
+
+            current = context / "xc-orchestration-runtime.json"
+            current.write_text('{"git":{"auto_commit":false}}', encoding="utf-8")
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(context)
+            self.assertIn("both JSON and legacy TOML", str(raised.exception))
+
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(config_path=legacy)
+            self.assertIn("must use JSON", str(raised.exception))
+
+    def test_config_accepts_workshop_topology_section(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(
+                json.dumps({"workshop": {"topology": "independent-nested"}}) + "\n",
+                encoding="utf-8",
+            )
+
+            config = core.load_config(context)
+
+            self.assertEqual(config["workshop"]["topology"], "independent-nested")
+            self.assertEqual(config["_source"], str(config_path))
+
+    def test_config_defaults_topology_when_section_absent(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(
+                json.dumps({"schema_version": 1, "git": {"auto_commit": False}}) + "\n",
+                encoding="utf-8",
+            )
+
+            config = core.load_config(context)
+
+            self.assertNotIn("workshop", json.loads(config_path.read_text(encoding="utf-8")))
+            self.assertEqual(config["workshop"]["topology"], core.WORKSHOP_TOPOLOGY_DEFAULT)
+            self.assertEqual(config["workshop"]["topology"], "independent-link")
+
+    def test_config_rejects_unknown_topology_value(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(
+                json.dumps({"workshop": {"topology": "weird"}}) + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(context)
+
+            self.assertIn("workshop.topology must be one of", str(raised.exception))
+
+    def test_same_repo_requires_explicit_auto_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+
+            config_path.write_text(
+                json.dumps({"workshop": {"topology": "same-repo"}}) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaises(core.ConfigError) as raised:
+                core.load_config(context)
+            self.assertIn(
+                "workshop.topology=same-repo requires an explicit git.auto_commit declaration",
+                str(raised.exception),
+            )
+
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "workshop": {"topology": "same-repo"},
+                        "git": {"auto_commit": True, "on_commit_failure": "warn"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            self.assertEqual(config["workshop"]["topology"], "same-repo")
+            self.assertTrue(config["git"]["auto_commit"])
+
+    def test_config_unknown_keys_remain_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            context = Path(temporary) / ".xcoding"
+            context.mkdir()
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "git": {"auto_commit": False},
+                        "future_cli_key": {"nested": "kept"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            config = core.load_config(context)
+
+            self.assertEqual(config["future_cli_key"], {"nested": "kept"})
+            self.assertFalse(config["git"]["auto_commit"])
+
+    def test_atomic_write_retries_transient_replace_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / "orchestration.xml"
+            real_replace = core.os.replace
+            attempts = 0
+
+            def replace_once_locked(source: str, destination: str) -> None:
+                nonlocal attempts
+                attempts += 1
+                if attempts == 1:
+                    raise PermissionError(errno.EACCES, "temporary sharing conflict")
+                real_replace(source, destination)
+
+            with mock.patch.object(core.os, "replace", side_effect=replace_once_locked), mock.patch.object(core.time, "sleep") as sleep:
+                core.atomic_write_text(target, "recovered\n")
+
+            self.assertEqual(attempts, 2)
+            sleep.assert_called_once_with(core.ATOMIC_REPLACE_RETRY_DELAY_SECONDS)
+            self.assertEqual(target.read_text(encoding="utf-8"), "recovered\n")
+
+    def test_blackboard_updated_at_uses_latest_variable_timestamp(self) -> None:
+        root = ET.Element("orchestration")
+        blackboard = ET.SubElement(root, "blackboard")
+        ET.SubElement(blackboard, "var", {"key": "first", "updated_at": "2026-07-27T10:00:00+00:00"}).text = "one"
+        ET.SubElement(blackboard, "var", {"key": "second", "updated_at": "2026-07-27T10:05:00+00:00"}).text = "two"
+        ET.SubElement(blackboard, "var", {"key": "legacy"}).text = "three"
+
+        self.assertEqual(core.blackboard_updated_at(root), "2026-07-27T10:05:00+00:00")
+
+    def test_snapshot_svg_is_complete_parseable_and_escaped(self) -> None:
+        snapshot = {
+            "metadata": {"name": "A & B", "work_order_id": "svg-run", "status": "running"},
+            "root": {
+                "id": "root",
+                "title": "Root <node>",
+                "type": "composite",
+                "role": "root",
+                "status": "running",
+                "children": [
+                    {
+                        "id": "child",
+                        "title": "Child & work",
+                        "type": "task",
+                        "role": "work",
+                        "status": "succeeded",
+                        "children": [],
+                    }
+                ],
+            },
+        }
+
+        rendered = core.render_snapshot_svg(snapshot)
+        parsed = ET.fromstring(rendered)
+
+        self.assertEqual(parsed.tag, "{http://www.w3.org/2000/svg}svg")
+        self.assertEqual(len(parsed.findall(".//{http://www.w3.org/2000/svg}g")), 2)
+        self.assertEqual(len(parsed.findall(".//{http://www.w3.org/2000/svg}path")), 1)
+        self.assertIn("A &amp; B", rendered)
+        self.assertIn("Root &lt;node&gt;", rendered)
+        self.assertEqual(core.runtime_svg_filename("Viewer Run", "fallback"), "viewer-run.svg")
+
+    def test_terminal_checkpoint_rejects_artifact_outside_context(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            self.run_git(context, "init")
+            self.run_git(context, "config", "user.name", "XC Test")
+            self.run_git(context, "config", "user.email", "xc-test@example.invalid")
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(json.dumps({"git": {"auto_commit": True}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            work_order_id = "20260726-1430-outside-artifact"
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / work_order_id / "runtime"),
+                "--work-order-id",
+                work_order_id,
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)
+            node_id = str(ready["ready"][0]["id"])
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            outside_artifact = project / "outside-context.md"
+            outside_artifact.write_text("# Outside context\n", encoding="utf-8")
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(RUNTIME_CLI),
+                    "complete",
+                    "--tree",
+                    str(tree_path),
+                    "--node",
+                    node_id,
+                    "--artifact",
+                    str(outside_artifact),
+                ],
+                cwd=project,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            payload = json.loads(completed.stdout)
+            self.assertEqual(completed.returncode, 2, completed.stderr or completed.stdout)
+            self.assertFalse(payload["ok"])
+            self.assertEqual(payload["error"]["details"]["status"], "persisted_uncommitted")
+            self.assertFalse(self.git_has_head(context))
+            self.assertTrue(outside_artifact.exists())
+            self.assertFalse((tree_path.parent / "terminal-commit.svg").exists())
+
+            node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+            self.assertEqual(node["status"], "running")
+
+    def test_fail_and_block_checkpoint_declared_artifacts_only(self) -> None:
+        for operation, terminal_status in (("fail", "failed"), ("block", "blocked")):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                work_order_id = f"terminal-{operation}-artifacts"
+                context, tree_path, node_id = self.create_terminal_runtime(project, work_order_id, auto_commit=True)
+                self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+
+                artifact_dir = context / "work-orders" / work_order_id / "artifacts" / operation
+                artifact_dir.mkdir(parents=True)
+                artifacts = [artifact_dir / "evidence.md", artifact_dir / "diagnostic.txt"]
+                artifacts[0].write_text("# Evidence\n", encoding="utf-8")
+                artifacts[1].write_text("diagnostic\n", encoding="utf-8")
+                unrelated = context / "unrelated-user-file.md"
+                unrelated.write_text("# Preserve me\n", encoding="utf-8")
+
+                terminal = self.run_cli(
+                    operation,
+                    "--tree",
+                    str(tree_path),
+                    "--node",
+                    node_id,
+                    "--reason",
+                    f"{operation} evidence",
+                    "--artifact",
+                    str(artifacts[0]),
+                    "--artifact",
+                    str(artifacts[1]),
+                    cwd=project,
+                )
+                self.assertEqual(terminal["commit"]["status"], "committed")
+                self.assertEqual(terminal["node"]["status"], terminal_status)
+                self.assertEqual(terminal["node"]["result"]["artifacts"], [str(path) for path in artifacts])
+
+                declared = self.run_cli("artifacts", "--tree", str(tree_path), cwd=project)["artifacts"]
+                self.assertEqual([item["path"] for item in declared], [str(path) for path in artifacts])
+                changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
+                self.assertIn(f"work-orders/{work_order_id}/runtime/orchestration.xml", changed_paths)
+                for artifact in artifacts:
+                    self.assertIn(artifact.relative_to(context).as_posix(), changed_paths)
+                self.assertNotIn("unrelated-user-file.md", changed_paths)
+                self.assertIn("?? unrelated-user-file.md", self.run_git(context, "status", "--short"))
+
+    def test_fail_and_block_without_artifacts_remain_compatible(self) -> None:
+        for operation, terminal_status in (("fail", "failed"), ("block", "blocked")):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                _, tree_path, node_id = self.create_terminal_runtime(
+                    project,
+                    f"legacy-{operation}",
+                    auto_commit=False,
+                )
+                self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+                terminal = self.run_cli(
+                    operation,
+                    "--tree",
+                    str(tree_path),
+                    "--node",
+                    node_id,
+                    "--reason",
+                    f"legacy {operation}",
+                    cwd=project,
+                )
+                self.assertEqual(terminal["commit"]["status"], "disabled")
+                self.assertEqual(terminal["node"]["status"], terminal_status)
+                self.assertNotIn("artifacts", terminal["node"]["result"])
+
+    def test_auto_commit_disabled_records_unvalidated_terminal_artifacts(self) -> None:
+        for operation, terminal_status in (("fail", "failed"), ("block", "blocked")):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                _, tree_path, node_id = self.create_terminal_runtime(
+                    project,
+                    f"disabled-{operation}",
+                    auto_commit=False,
+                )
+                self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+                missing_outside_path = project / "missing-outside.md"
+                terminal = self.run_cli(
+                    operation,
+                    "--tree",
+                    str(tree_path),
+                    "--node",
+                    node_id,
+                    "--reason",
+                    f"disabled {operation}",
+                    "--artifact",
+                    str(missing_outside_path),
+                    cwd=project,
+                )
+                self.assertEqual(terminal["commit"]["status"], "disabled")
+                self.assertEqual(terminal["node"]["status"], terminal_status)
+                self.assertEqual(terminal["node"]["result"]["artifacts"], [str(missing_outside_path)])
+
+    def test_fail_and_block_restore_tree_when_artifact_checkpoint_fails(self) -> None:
+        for operation in ("fail", "block"):
+            for path_kind in ("outside", "missing"):
+                with (
+                    self.subTest(operation=operation, path_kind=path_kind),
+                    tempfile.TemporaryDirectory() as temporary,
+                ):
+                    project = Path(temporary) / "project"
+                    context, tree_path, node_id = self.create_terminal_runtime(
+                        project,
+                        f"rollback-{operation}-{path_kind}",
+                        auto_commit=True,
+                    )
+                    self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+                    before = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                    if path_kind == "outside":
+                        artifact = project / "outside.md"
+                        artifact.write_text("# Outside\n", encoding="utf-8")
+                    else:
+                        artifact = context / "missing.md"
+
+                    rejected = self.run_cli_error(
+                        operation,
+                        "--tree",
+                        str(tree_path),
+                        "--node",
+                        node_id,
+                        "--reason",
+                        f"{path_kind} artifact",
+                        "--artifact",
+                        str(artifact),
+                        cwd=project,
+                    )
+                    self.assertEqual(rejected["error"]["details"]["status"], "persisted_uncommitted")
+                    after = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                    node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+                    self.assertEqual(after["revision"], before["revision"])
+                    self.assertEqual(node["status"], "running")
+                    self.assertNotIn("artifacts", node["result"])
+                    self.assertFalse(self.git_has_head(context))
+
+    def test_rejected_fail_and_block_with_artifact_do_not_mutate_tree(self) -> None:
+        for operation in ("fail", "block"):
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                _, tree_path, node_id = self.create_terminal_runtime(
+                    project,
+                    f"rejected-{operation}",
+                    auto_commit=False,
+                )
+                artifact = project / "unused.md"
+                artifact.write_text("# Unused\n", encoding="utf-8")
+                before = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                self.run_cli_error(
+                    operation,
+                    "--tree",
+                    str(tree_path),
+                    "--node",
+                    node_id,
+                    "--reason",
+                    f"rejected {operation}",
+                    "--artifact",
+                    str(artifact),
+                    cwd=project,
+                )
+                after = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+                self.assertEqual(after["revision"], before["revision"])
+                self.assertEqual(node["status"], "pending")
+                self.assertEqual(node["result"], {})
+
+    def test_retry_failed_preserves_multiple_attempts_and_restores_sequence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            tree_path = self.init_flow(
+                project,
+                context,
+                config,
+                "retry-sequence",
+                [{"template_id": "first"}, {"template_id": "second"}],
+            )
+            first = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            first_id = str(first["id"])
+            artifacts = [project / "attempt-1.md", project / "attempt-2.md"]
+
+            self.run_cli(
+                "start",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--agent",
+                "first-agent",
+                cwd=project,
+            )
+            self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--reason",
+                "first failure",
+                "--artifact",
+                str(artifacts[0]),
+                cwd=project,
+            )
+            retried = self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--reason",
+                "retry after verifier correction",
+                cwd=project,
+            )
+            self.assertEqual(retried["node"]["status"], "pending")
+            self.assertEqual(retried["node"]["attempt"], 2)
+            self.assertEqual(retried["node"]["result"], {})
+            self.assertEqual(retried["archived_attempt"]["number"], 1)
+            self.assertEqual(retried["archived_attempt"]["agent"], "first-agent")
+            self.assertEqual(retried["archived_attempt"]["retry_reason"], "retry after verifier correction")
+            self.assertEqual(retried["archived_attempt"]["result"]["failure_reason"], "first failure")
+            self.assertEqual(retried["archived_attempt"]["result"]["artifacts"], [str(artifacts[0])])
+            self.assertEqual(
+                [node["template_id"] for node in self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]],
+                ["first"],
+            )
+
+            self.run_cli("start", "--tree", str(tree_path), "--node", first_id, "--agent", "second-agent", cwd=project)
+            self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--reason",
+                "second failure",
+                "--artifact",
+                str(artifacts[1]),
+                cwd=project,
+            )
+            self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--reason",
+                "retry after environment repair",
+                cwd=project,
+            )
+            self.run_cli("start", "--tree", str(tree_path), "--node", first_id, "--agent", "third-agent", cwd=project)
+            self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                first_id,
+                "--summary",
+                "third attempt succeeded",
+                cwd=project,
+            )
+
+            node = self.run_cli("show", "--tree", str(tree_path), "--node", first_id, cwd=project)["node"]
+            self.assertEqual(node["status"], "succeeded")
+            self.assertEqual(node["attempt"], 3)
+            self.assertEqual([attempt["number"] for attempt in node["attempts"]], [1, 2])
+            self.assertEqual([attempt["status"] for attempt in node["attempts"]], ["failed", "failed"])
+            self.assertEqual(node["result"]["summary"], "third attempt succeeded")
+            declared = self.run_cli("artifacts", "--tree", str(tree_path), cwd=project)["artifacts"]
+            self.assertEqual(
+                [(item["path"], item["attempt"]) for item in declared],
+                [(str(artifacts[0]), 1), (str(artifacts[1]), 2)],
+            )
+            self.assertEqual(
+                [node["template_id"] for node in self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]],
+                ["second"],
+            )
+
+    def test_retry_failed_rejects_invalid_and_stale_mutations_atomically(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            _, tree_path, node_id = self.create_terminal_runtime(
+                project,
+                "retry-rejections",
+                auto_commit=False,
+            )
+            before = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+            pending = self.run_cli_error(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "not failed",
+                cwd=project,
+            )
+            self.assertEqual(pending["error"]["code"], "invalid_transition")
+            self.assertEqual(
+                self.run_cli("summary", "--tree", str(tree_path), cwd=project)["revision"],
+                before["revision"],
+            )
+
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            failed = self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "failed once",
+                cwd=project,
+            )
+            failed_revision = int(failed["revision"])
+            empty = self.run_cli_error(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "",
+                cwd=project,
+            )
+            self.assertEqual(empty["error"]["code"], "tree_validation_error")
+            self.run_cli("set", "--tree", str(tree_path), "--set", "unrelated=true", cwd=project)
+            stale = self.run_cli_error(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "stale retry",
+                "--expected-revision",
+                str(failed_revision),
+                cwd=project,
+            )
+            self.assertEqual(stale["error"]["code"], "state_conflict")
+            node = self.run_cli("show", "--tree", str(tree_path), "--node", node_id, cwd=project)["node"]
+            self.assertEqual(node["status"], "failed")
+            self.assertEqual(node["attempt"], 1)
+            self.assertEqual(node["attempts"], [])
+            self.assertEqual(node["result"]["failure_reason"], "failed once")
+            self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "valid retry",
+                cwd=project,
+            )
+            tree = core.parse_xml(tree_path)
+            archived = tree.getroot().find(".//attempts/attempt")
+            self.assertIsNotNone(archived)
+            assert archived is not None
+            archived.set("retry_reason", "")
+            core.apply_integrity(tree.getroot(), "runtime", core.load_config(project / ".xcoding"))
+            core.atomic_write_text(tree_path, core.serialize_xml(tree.getroot(), "runtime"))
+            validation_process = subprocess.run(
+                [sys.executable, str(RUNTIME_CLI), "validate", "--tree", str(tree_path)],
+                cwd=project,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            self.assertEqual(validation_process.returncode, 1, validation_process.stderr)
+            validated = json.loads(validation_process.stdout)
+            self.assertFalse(validated["valid"])
+            self.assertTrue(any("missing retry_reason" in error for error in validated["errors"]))
+
+    def test_retry_failed_reapplies_conditions_and_preserves_parallel_work(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            tree_path = self.init_flow(
+                project,
+                context,
+                config,
+                "retry-condition",
+                [
+                    {"template_id": "conditional", "when": "work.enabled == true"},
+                    {"template_id": "independent"},
+                ],
+                mode="parallel",
+                blackboard={"work.enabled": "true"},
+            )
+            ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+            nodes = {str(node["template_id"]): str(node["id"]) for node in ready}
+            self.run_cli("start", "--tree", str(tree_path), "--node", nodes["independent"], cwd=project)
+            self.run_cli("start", "--tree", str(tree_path), "--node", nodes["conditional"], cwd=project)
+            self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                nodes["conditional"],
+                "--reason",
+                "conditional failure",
+                cwd=project,
+            )
+            self.run_cli("set", "--tree", str(tree_path), "--set", "work.enabled=false", cwd=project)
+            failed = self.run_cli(
+                "show",
+                "--tree",
+                str(tree_path),
+                "--node",
+                nodes["conditional"],
+                cwd=project,
+            )["node"]
+            self.assertEqual(failed["status"], "failed")
+
+            retried = self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                nodes["conditional"],
+                "--reason",
+                "retry after condition change",
+                cwd=project,
+            )
+            self.assertEqual(retried["node"]["status"], "skipped")
+            independent = self.run_cli(
+                "show",
+                "--tree",
+                str(tree_path),
+                "--node",
+                nodes["independent"],
+                cwd=project,
+            )["node"]
+            self.assertEqual(independent["status"], "running")
+            self.run_cli("set", "--tree", str(tree_path), "--set", "work.enabled=true", cwd=project)
+            ready_again = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+            self.assertEqual([node["template_id"] for node in ready_again], ["conditional"])
+
+    def test_retry_failed_defers_commit_after_failure_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context, tree_path, node_id = self.create_terminal_runtime(
+                project,
+                "retry-checkpoint",
+                auto_commit=True,
+            )
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            artifact = context / "work-orders" / "retry-checkpoint" / "artifacts" / "failure.md"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text("# Failure\n", encoding="utf-8")
+            failed = self.run_cli(
+                "fail",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "checkpointed failure",
+                "--artifact",
+                str(artifact),
+                cwd=project,
+            )
+            failed_head = self.run_git(context, "rev-parse", "HEAD")
+            self.assertEqual(failed["commit"]["sha"], failed_head)
+
+            retried = self.run_cli(
+                "retry-failed",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--reason",
+                "operator-approved retry",
+                cwd=project,
+            )
+            self.assertEqual(retried["commit"]["status"], "deferred")
+            self.assertEqual(self.run_git(context, "rev-parse", "HEAD"), failed_head)
+            self.assertEqual(retried["archived_attempt"]["result"]["artifacts"], [str(artifact)])
+            declared = self.run_cli("artifacts", "--tree", str(tree_path), cwd=project)["artifacts"]
+            self.assertEqual([(item["path"], item["attempt"]) for item in declared], [(str(artifact), 1)])
+
+    def test_false_conditional_composite_skips_descendants(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_conditional_template(template, config)
+
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "conditional" / "runtime"),
+                "--work-order-id",
+                "conditional",
+                "--var",
+                "optional.enabled=false",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(prepare["template_id"], "prepare")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+
+            optional = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "optional-group",
+                cwd=project,
+            )["nodes"][0]
+            self.assertEqual(optional["status"], "skipped")
+            ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+            self.assertEqual([node["template_id"] for node in ready], ["finish"])
+
+    def test_start_rejects_sequence_condition_and_switch_bypasses(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+
+            sequence_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "sequence-readiness",
+                [
+                    {"template_id": "first"},
+                    {"template_id": "second"},
+                ],
+            )
+            second = self.run_cli(
+                "find",
+                "--tree",
+                str(sequence_tree),
+                "--template-id",
+                "second",
+                cwd=project,
+            )["nodes"][0]
+            sequence_rejection = self.assert_start_not_ready(
+                project,
+                sequence_tree,
+                str(second["id"]),
+                "sequence_predecessor_incomplete",
+            )
+            self.assertEqual(sequence_rejection["error"]["details"]["blocker_status"], "pending")
+
+            revision = int(self.run_cli("summary", "--tree", str(sequence_tree), cwd=project)["revision"])
+            self.run_cli("set", "--tree", str(sequence_tree), "--set", "unrelated.change=true", cwd=project)
+            before_stale = self.run_cli("summary", "--tree", str(sequence_tree), cwd=project)
+            before_second = self.run_cli(
+                "show",
+                "--tree",
+                str(sequence_tree),
+                "--node",
+                str(second["id"]),
+                cwd=project,
+            )["node"]
+            stale = self.run_cli_error(
+                "start",
+                "--tree",
+                str(sequence_tree),
+                "--node",
+                str(second["id"]),
+                "--expected-revision",
+                str(revision),
+                cwd=project,
+            )
+            self.assertEqual(stale["error"]["code"], "state_conflict")
+            after_stale = self.run_cli("summary", "--tree", str(sequence_tree), cwd=project)
+            after_second = self.run_cli(
+                "show",
+                "--tree",
+                str(sequence_tree),
+                "--node",
+                str(second["id"]),
+                cwd=project,
+            )["node"]
+            self.assertEqual(after_stale["revision"], before_stale["revision"])
+            self.assertEqual(after_second["status"], before_second["status"])
+
+            condition_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "condition-readiness",
+                [
+                    {"template_id": "conditional", "when": "work.enabled == true"},
+                    {"template_id": "control"},
+                ],
+                mode="parallel",
+                blackboard={"work.enabled": "false"},
+            )
+            conditional = self.run_cli(
+                "find",
+                "--tree",
+                str(condition_tree),
+                "--template-id",
+                "conditional",
+                cwd=project,
+            )["nodes"][0]
+            self.assert_start_not_ready(project, condition_tree, str(conditional["id"]), "condition_false")
+
+            ancestor_condition_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "ancestor-condition-readiness",
+                [
+                    {
+                        "template_id": "conditional-group",
+                        "when": "group.enabled == true",
+                        "children": [{"template_id": "conditional-child"}],
+                    },
+                    {"template_id": "control"},
+                ],
+                mode="parallel",
+                blackboard={"group.enabled": "false"},
+            )
+            conditional_child = self.run_cli(
+                "find",
+                "--tree",
+                str(ancestor_condition_tree),
+                "--template-id",
+                "conditional-child",
+                cwd=project,
+            )["nodes"][0]
+            self.assert_start_not_ready(
+                project,
+                ancestor_condition_tree,
+                str(conditional_child["id"]),
+                "ancestor_condition_false",
+            )
+
+            switch_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "switch-readiness",
+                [
+                    {
+                        "template_id": "route",
+                        "mode": "switch",
+                        "switch.key": "route.selected",
+                        "children": [
+                            {
+                                "template_id": "selected-case",
+                                "role": "case",
+                                "case.value": "selected",
+                                "children": [{"template_id": "selected-work"}],
+                            },
+                            {
+                                "template_id": "unselected-case",
+                                "role": "case",
+                                "case.value": "unselected",
+                                "children": [{"template_id": "unselected-work"}],
+                            },
+                        ],
+                    },
+                    {"template_id": "control"},
+                ],
+                mode="parallel",
+                blackboard={"route.selected": "selected"},
+            )
+            unselected = self.run_cli(
+                "find",
+                "--tree",
+                str(switch_tree),
+                "--template-id",
+                "unselected-work",
+                cwd=project,
+            )["nodes"][0]
+            self.assert_start_not_ready(project, switch_tree, str(unselected["id"]), "ancestor_skipped")
+
+    def test_start_rejects_failed_blocked_terminal_and_sealed_states(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+
+            for terminal_command, reason in (("fail", "ancestor_failed"), ("block", "ancestor_blocked")):
+                with self.subTest(terminal_command=terminal_command):
+                    tree_path = self.init_flow(
+                        project,
+                        context,
+                        config,
+                        f"{terminal_command}-ancestor",
+                        [
+                            {"template_id": "first"},
+                            {"template_id": "second"},
+                        ],
+                    )
+                    first = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+                    second = self.run_cli(
+                        "find",
+                        "--tree",
+                        str(tree_path),
+                        "--template-id",
+                        "second",
+                        cwd=project,
+                    )["nodes"][0]
+                    self.run_cli("start", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+                    self.run_cli(
+                        terminal_command,
+                        "--tree",
+                        str(tree_path),
+                        "--node",
+                        str(first["id"]),
+                        "--reason",
+                        "test outcome",
+                        cwd=project,
+                    )
+                    self.assert_start_not_ready(project, tree_path, str(second["id"]), reason)
+
+            parallel_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "parallel-readiness",
+                [
+                    {"template_id": "left"},
+                    {"template_id": "right"},
+                ],
+                mode="parallel",
+            )
+            ready = self.run_cli("next", "--tree", str(parallel_tree), cwd=project)["ready"]
+            self.assertEqual({node["template_id"] for node in ready}, {"left", "right"})
+            by_template = {str(node["template_id"]): node for node in ready}
+            self.run_cli("start", "--tree", str(parallel_tree), "--node", str(by_template["left"]["id"]), cwd=project)
+            self.run_cli("start", "--tree", str(parallel_tree), "--node", str(by_template["right"]["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(parallel_tree), "--node", str(by_template["left"]["id"]), cwd=project)
+            self.assert_start_not_ready(project, parallel_tree, str(by_template["left"]["id"]), "node_status")
+
+            sealed_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "sealed-start",
+                [{"template_id": "only"}],
+            )
+            only = self.run_cli("next", "--tree", str(sealed_tree), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(sealed_tree), "--node", str(only["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(sealed_tree), "--node", str(only["id"]), cwd=project)
+            sealed = self.run_cli_error("start", "--tree", str(sealed_tree), "--node", str(only["id"]), cwd=project)
+            self.assertEqual(sealed["error"]["code"], "tree_sealed")
+
+    def test_start_rejects_leaf_and_ancestor_dependency_bypasses(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+
+            leaf_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "leaf-dependency",
+                [
+                    {"template_id": "dependency"},
+                    {"template_id": "dependent", "depends_on_template": "local:dependency"},
+                ],
+                mode="parallel",
+            )
+            leaf_ready = self.run_cli("next", "--tree", str(leaf_tree), cwd=project)["ready"]
+            self.assertEqual([node["template_id"] for node in leaf_ready], ["dependency"])
+            dependent = self.run_cli(
+                "find",
+                "--tree",
+                str(leaf_tree),
+                "--template-id",
+                "dependent",
+                cwd=project,
+            )["nodes"][0]
+            leaf_rejection = self.assert_start_not_ready(
+                project,
+                leaf_tree,
+                str(dependent["id"]),
+                "dependency_incomplete",
+            )
+            self.assertEqual(len(leaf_rejection["error"]["details"]["dependency_ids"]), 1)
+
+            ancestor_tree = self.init_flow(
+                project,
+                context,
+                config,
+                "ancestor-dependency",
+                [
+                    {"template_id": "dependency"},
+                    {
+                        "template_id": "dependent-group",
+                        "depends_on_template": "local:dependency",
+                        "children": [{"template_id": "dependent-child"}],
+                    },
+                ],
+                mode="parallel",
+            )
+            ancestor_ready = self.run_cli("next", "--tree", str(ancestor_tree), cwd=project)["ready"]
+            self.assertEqual([node["template_id"] for node in ancestor_ready], ["dependency"])
+            dependent_child = self.run_cli(
+                "find",
+                "--tree",
+                str(ancestor_tree),
+                "--template-id",
+                "dependent-child",
+                cwd=project,
+            )["nodes"][0]
+            ancestor_rejection = self.assert_start_not_ready(
+                project,
+                ancestor_tree,
+                str(dependent_child["id"]),
+                "ancestor_dependency_incomplete",
+            )
+            self.assertEqual(len(ancestor_rejection["error"]["details"]["dependency_ids"]), 1)
+
+    def test_dynamic_artifact_metadata_and_declared_artifact_query(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            work_order_id = "20260727-1200-artifact-query"
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / work_order_id / "runtime"),
+                "--work-order-id",
+                work_order_id,
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            root = self.run_cli("find", "--tree", str(tree_path), "--template-id", "root", cwd=project)["nodes"][0]
+
+            added = self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                str(root["id"]),
+                "--logical-key",
+                "write-user-report",
+                "--title",
+                "Write user report",
+                "--type",
+                "task",
+                "--executor",
+                "main",
+                "--metadata",
+                "metadata.artifact.audience=user",
+                "--metadata",
+                "metadata.artifact.content_language=work_order.document_language",
+                cwd=project,
+            )
+            self.assertEqual(added["node"]["attributes"]["metadata.artifact.audience"], "user")
+
+            first = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+
+            user_node = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(user_node["logical_key"], "write-user-report")
+            artifact = context / "work-orders" / work_order_id / "artifacts" / "user-report.md"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text("# User report\n", encoding="utf-8")
+            unrelated = context / "work-orders" / work_order_id / "unmanaged.md"
+            unrelated.write_text("# Unmanaged\n", encoding="utf-8")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(user_node["id"]), cwd=project)
+            self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                str(user_node["id"]),
+                "--artifact",
+                str(artifact),
+                cwd=project,
+            )
+
+            queried = self.run_cli("artifacts", "--tree", str(tree_path), "--audience", "user", cwd=project)["artifacts"]
+            self.assertEqual(queried, [{
+                "path": str(artifact),
+                "node_id": str(user_node["id"]),
+                "metadata": {
+                    "metadata.artifact.audience": "user",
+                    "metadata.artifact.content_language": "work_order.document_language",
+                },
+            }])
+
+            invalid = subprocess.run(
+                [
+                    sys.executable,
+                    str(RUNTIME_CLI),
+                    "add-node",
+                    "--tree",
+                    str(tree_path),
+                    "--parent",
+                    str(root["id"]),
+                    "--logical-key",
+                    "invalid-metadata",
+                    "--title",
+                    "Invalid metadata",
+                    "--executor",
+                    "main",
+                    "--metadata",
+                    "artifact.audience=user",
+                ],
+                cwd=project,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            payload = json.loads(invalid.stdout)
+            self.assertEqual(invalid.returncode, 2, invalid.stderr or invalid.stdout)
+            self.assertEqual(payload["error"]["code"], "tree_sealed")
+
+    def test_mutations_serialize_and_reject_stale_revisions(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "revision" / "runtime"),
+                "--work-order-id",
+                "revision",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            first_revision = int(initialized["revision"])
+
+            updated = self.run_cli(
+                "set",
+                "--tree",
+                str(tree_path),
+                "--expected-revision",
+                str(first_revision),
+                "--set",
+                "scope.confirmed=true",
+                cwd=project,
+            )
+            stale = self.run_cli_error(
+                "set",
+                "--tree",
+                str(tree_path),
+                "--expected-revision",
+                str(first_revision),
+                "--set",
+                "scope.stale=true",
+                cwd=project,
+            )
+            self.assertEqual(stale["error"]["code"], "state_conflict")
+
+            commands = [
+                [
+                    sys.executable,
+                    str(RUNTIME_CLI),
+                    "set",
+                    "--tree",
+                    str(tree_path),
+                    "--set",
+                    "parallel.left=true",
+                ],
+                [
+                    sys.executable,
+                    str(RUNTIME_CLI),
+                    "set",
+                    "--tree",
+                    str(tree_path),
+                    "--set",
+                    "parallel.right=true",
+                ],
+            ]
+            processes = [
+                subprocess.Popen(
+                    command,
+                    cwd=project,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                )
+                for command in commands
+            ]
+            for process in processes:
+                stdout, stderr = process.communicate(timeout=15)
+                self.assertEqual(process.returncode, 0, stderr or stdout)
+                self.assertTrue(json.loads(stdout)["ok"])
+
+            summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+            self.assertEqual(summary["blackboard"]["parallel.left"], "true")
+            self.assertEqual(summary["blackboard"]["parallel.right"], "true")
+            self.assertEqual(int(summary["revision"]), int(updated["revision"]) + 2)
+
+    def test_terminal_commands_require_running_nodes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "transition" / "runtime"),
+                "--work-order-id",
+                "transition",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            node_id = str(self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]["id"])
+
+            for command, extra in (
+                ("complete", []),
+                ("fail", ["--reason", "unexpected"]),
+                ("block", ["--reason", "unexpected"]),
+            ):
+                rejected = self.run_cli_error(command, "--tree", str(tree_path), "--node", node_id, *extra, cwd=project)
+                self.assertEqual(rejected["error"]["code"], "invalid_transition")
+
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            self.assertEqual(self.run_cli("summary", "--tree", str(tree_path), cwd=project)["status"], "complete")
+
+    def test_control_metadata_conformance_static_and_dynamic_rejections_are_atomic(self) -> None:
+        fixture = json.loads(CONTROL_METADATA_FIXTURE.read_text(encoding="utf-8"))
+        self.assertEqual(fixture["schema_version"], 1)
+        for case in fixture["cases"]:
+            with self.subTest(case=case["id"], surface="static"), tempfile.TemporaryDirectory() as temporary:
+                project = Path(temporary) / "project"
+                context = project / ".xcoding"
+                context.mkdir(parents=True)
+                config_path = context / "xc-orchestration-runtime.json"
+                config_path.write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+                config = core.load_config(context)
+                template = project / "case.xml"
+                spec = {
+                    "template_id": "case-node",
+                    "type": case["node_type"],
+                    "executor": "main",
+                    **case["metadata"],
+                }
+                if case["node_type"] == "composite":
+                    spec["role"] = "dynamic-group"
+                    spec["mode"] = "sequence"
+                self.write_flow_template(template, config, [spec])
+
+                command = ("validate", "--tree", str(template))
+                if case["valid"]:
+                    validated = self.run_cli(*command, cwd=project)
+                    self.assertTrue(validated["valid"])
+                    runtime_path = context / "work-orders" / case["id"] / "runtime"
+                    self.run_cli(
+                        "init",
+                        "--template",
+                        str(template),
+                        "--runtime-path",
+                        str(runtime_path),
+                        "--work-order-id",
+                        case["id"],
+                        cwd=project,
+                    )
+                else:
+                    rejected = self.run_cli_error(*command, cwd=project)
+                    self.assertEqual(rejected["error"]["code"], "invalid_control_metadata")
+                    actual = [
+                        {"key": item["key"], "code": item["code"]}
+                        for item in rejected["error"]["details"]["violations"]
+                    ]
+                    if "violations" in case:
+                        self.assertEqual(actual, case["violations"])
+                    else:
+                        self.assertEqual(
+                            sorted(set(item["code"] for item in actual)),
+                            sorted(case["violation_codes"]),
+                        )
+                    runtime_path = context / "work-orders" / case["id"] / "runtime"
+                    init_rejected = self.run_cli_error(
+                        "init",
+                        "--template",
+                        str(template),
+                        "--runtime-path",
+                        str(runtime_path),
+                        "--work-order-id",
+                        case["id"],
+                        cwd=project,
+                    )
+                    self.assertEqual(init_rejected["error"]["code"], "invalid_control_metadata")
+                    self.assertFalse((runtime_path / "orchestration.xml").exists())
+
+            if case["valid"]:
+                continue
+            for auto_commit in (False, True):
+                with (
+                    self.subTest(case=case["id"], surface="dynamic", auto_commit=auto_commit),
+                    tempfile.TemporaryDirectory() as temporary,
+                ):
+                    project = Path(temporary) / "project"
+                    context = project / ".xcoding"
+                    context.mkdir(parents=True)
+                    if auto_commit:
+                        self.run_git(context, "init")
+                        self.run_git(context, "config", "user.name", "XC Test")
+                        self.run_git(context, "config", "user.email", "xc-test@example.invalid")
+                    (context / "xc-orchestration-runtime.json").write_text(
+                        json.dumps({"git": {"auto_commit": auto_commit}}) + "\n",
+                        encoding="utf-8",
+                    )
+                    config = core.load_config(context)
+                    tree_path = self.init_flow(
+                        project,
+                        context,
+                        config,
+                        f"dynamic-{case['id']}",
+                        [
+                            {
+                                "template_id": "dynamic",
+                                "type": "composite",
+                                "role": "dynamic-group",
+                                "mode": "sequence",
+                            }
+                        ],
+                    )
+                    group = self.run_cli(
+                        "find",
+                        "--tree",
+                        str(tree_path),
+                        "--template-id",
+                        "dynamic",
+                        cwd=project,
+                    )["nodes"][0]
+                    before_bytes = tree_path.read_bytes()
+                    before_summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                    before_group = self.run_cli(
+                        "show",
+                        "--tree",
+                        str(tree_path),
+                        "--node",
+                        str(group["id"]),
+                        cwd=project,
+                    )["node"]
+                    head_before = (
+                        self.run_git(context, "rev-parse", "HEAD")
+                        if self.git_has_head(context)
+                        else ""
+                    )
+                    args = [
+                        "add-node",
+                        "--tree",
+                        str(tree_path),
+                        "--parent",
+                        str(group["id"]),
+                        "--logical-key",
+                        "candidate",
+                        "--title",
+                        "Candidate",
+                        "--type",
+                        case["node_type"],
+                        "--executor",
+                        "main",
+                    ]
+                    if case["node_type"] == "composite":
+                        args.extend(["--role", "dynamic-group", "--mode", "sequence"])
+                    for key, value in case["metadata"].items():
+                        args.extend(["--metadata", f"{key}={value}"])
+                    rejected = self.run_cli_error(*args, cwd=project)
+                    self.assertEqual(rejected["error"]["code"], "invalid_control_metadata")
+                    after_summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+                    after_group = self.run_cli(
+                        "show",
+                        "--tree",
+                        str(tree_path),
+                        "--node",
+                        str(group["id"]),
+                        cwd=project,
+                    )["node"]
+                    self.assertEqual(tree_path.read_bytes(), before_bytes)
+                    self.assertEqual(after_summary["revision"], before_summary["revision"])
+                    self.assertEqual(after_group["children"], before_group["children"])
+                    self.assertEqual(
+                        self.run_git(context, "rev-parse", "HEAD")
+                        if self.git_has_head(context)
+                        else "",
+                        head_before,
+                    )
+
+    def test_latched_conditions_do_not_reactivate_after_a_shared_value_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+
+            def ready_after_enable(policy: str) -> list[str]:
+                template = project / f"{policy or 'reactive'}.xml"
+                self.write_conditional_template(template, config, policy)
+                initialized = self.run_cli(
+                    "init",
+                    "--template",
+                    str(template),
+                    "--runtime-path",
+                    str(context / "work-orders" / (policy or "reactive") / "runtime"),
+                    "--work-order-id",
+                    policy or "reactive",
+                    "--var",
+                    "optional.enabled=false",
+                    cwd=project,
+                )
+                tree_path = Path(str(initialized["tree_path"]))
+                prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+                self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+                self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+                self.run_cli("set", "--tree", str(tree_path), "--set", "optional.enabled=true", cwd=project)
+                return [
+                    str(node["template_id"])
+                    for node in self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+                ]
+
+            self.assertEqual(ready_after_enable(""), ["optional-work"])
+            self.assertEqual(ready_after_enable("latched"), ["finish"])
+
+            def ready_after_disable(policy: str) -> tuple[list[str], dict[str, object]]:
+                template = project / f"{policy or 'reactive'}-true.xml"
+                self.write_conditional_template(template, config, policy)
+                initialized = self.run_cli(
+                    "init",
+                    "--template",
+                    str(template),
+                    "--runtime-path",
+                    str(context / "work-orders" / f"{policy or 'reactive'}-true" / "runtime"),
+                    "--work-order-id",
+                    f"{policy or 'reactive'}-true",
+                    "--var",
+                    "optional.enabled=true",
+                    cwd=project,
+                )
+                tree_path = Path(str(initialized["tree_path"]))
+                prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+                self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+                self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+                self.run_cli("set", "--tree", str(tree_path), "--set", "optional.enabled=false", cwd=project)
+                group = self.run_cli(
+                    "find",
+                    "--tree",
+                    str(tree_path),
+                    "--template-id",
+                    "optional-group",
+                    cwd=project,
+                )["nodes"][0]
+                ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+                return [str(node["template_id"]) for node in ready], group
+
+            self.assertEqual(ready_after_disable("")[0], ["finish"])
+            latched_ready, latched_group = ready_after_disable("latched")
+            self.assertEqual(latched_ready, ["optional-work"])
+            self.assertEqual(latched_group["attributes"]["when.latched"], "true")
+
+    def test_terminal_loop_latches_each_iteration_and_survives_reload_and_shared_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            template = project / "latched-loop.xml"
+            self.write_loop_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "latched-loop" / "runtime"),
+                "--work-order-id",
+                "latched-loop",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+
+            first_review = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(first_review["id"]), cwd=project)
+            self.run_cli("set", "--tree", str(tree_path), "--set", "review.open_issues=true", cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(first_review["id"]), cwd=project)
+
+            first_revise = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(first_revise["template_id"], "revise")
+            self.assertEqual(first_revise["attributes"]["when.latched"], "true")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(first_revise["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(first_revise["id"]), cwd=project)
+
+            second_review = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(second_review["template_id"], "review")
+            active_loop = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "review-loop",
+                cwd=project,
+            )["nodes"][0]
+            self.assertEqual(active_loop["attributes"]["loop.iteration"], "2")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(second_review["id"]), cwd=project)
+            self.run_cli("set", "--tree", str(tree_path), "--set", "review.open_issues=false", cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(second_review["id"]), cwd=project)
+
+            loop = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "review-loop",
+                cwd=project,
+            )["nodes"][0]
+            revise = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "revise",
+                cwd=project,
+            )["nodes"][0]
+            deferred_work = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "deferred-work",
+                cwd=project,
+            )["nodes"][0]
+            self.assertEqual(loop["status"], "succeeded")
+            self.assertEqual(loop["attributes"]["loop.terminal_status"], "succeeded")
+            self.assertEqual(loop["attributes"]["loop.terminal_reason"], "break")
+            self.assertEqual(loop["attributes"]["loop.terminal_iteration"], "2")
+            self.assertEqual(revise["status"], "skipped")
+            self.assertEqual(revise["attributes"]["when.latched"], "false")
+            self.assertEqual(deferred_work["status"], "skipped")
+            self.assertEqual(deferred_work["attributes"]["skip_reason"], "loop_closed")
+
+            self.run_cli("set", "--tree", str(tree_path), "--set", "review.open_issues=true", cwd=project)
+            for command in ("next", "summary", "next"):
+                result = self.run_cli(command, "--tree", str(tree_path), cwd=project)
+                self.assertEqual([node["template_id"] for node in result["ready"]], ["finish"])
+                self.assertEqual(result["integrity"]["status"], "valid")
+            reloaded_loop = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "review-loop",
+                cwd=project,
+            )["nodes"][0]
+            self.assertEqual(reloaded_loop["status"], "succeeded")
+            self.assertEqual(reloaded_loop["attributes"]["loop.terminal_reason"], "break")
+
+    def test_dynamic_groups_report_waiting_state_and_reject_closed_appends(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "dynamic.xml"
+            self.write_dynamic_group_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "dynamic" / "runtime"),
+                "--work-order-id",
+                "dynamic",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+
+            waiting = self.run_cli("next", "--tree", str(tree_path), cwd=project)
+            self.assertEqual(waiting["ready"], [])
+            self.assertEqual([item["template_id"] for item in waiting["awaiting_dynamic_groups"]], ["work-group"])
+            group_id = str(waiting["awaiting_dynamic_groups"][0]["id"])
+            self.run_cli("close-group", "--tree", str(tree_path), "--group", group_id, cwd=project)
+
+            rejected = self.run_cli_error(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                group_id,
+                "--logical-key",
+                "late-work",
+                "--title",
+                "Late work",
+                "--executor",
+                "main",
+                cwd=project,
+            )
+            self.assertEqual(rejected["error"]["code"], "group_closed")
+            self.assertEqual(
+                [node["template_id"] for node in self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]],
+                ["finish"],
+            )
+
+    def test_group_commands_accept_node_as_an_alias_for_group(self) -> None:
+        """Nine sibling commands spell this --node; these two spelled it --group.
+
+        The inconsistency cost real time because a usage error on the wrong
+        spelling is written to stderr, so a caller filtering stdout for success
+        keys believes the group closed when it did not.
+        """
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8"
+            )
+            config = core.load_config(context)
+            template = project / "alias.xml"
+            self.write_dynamic_group_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "alias" / "runtime"),
+                "--work-order-id",
+                "alias",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            waiting = self.run_cli("next", "--tree", str(tree_path), cwd=project)
+            group_id = str(waiting["awaiting_dynamic_groups"][0]["id"])
+
+            missing = self.run_cli_error("close-group", "--tree", str(tree_path), cwd=project)
+            self.assertIn("--group or --node", str(missing["error"]["message"]))
+
+            conflicting = self.run_cli_error(
+                "close-group",
+                "--tree",
+                str(tree_path),
+                "--group",
+                group_id,
+                "--node",
+                "rt_other",
+                cwd=project,
+            )
+            self.assertIn("different nodes", str(conflicting["error"]["message"]))
+
+            closed = self.run_cli(
+                "close-group", "--tree", str(tree_path), "--node", group_id, cwd=project
+            )
+            self.assertEqual(str(closed["group"]["id"]), group_id)
+            self.assertEqual(str(closed["group"]["attributes"]["dynamic.state"]), "closed")
+
+            reopened = self.run_cli(
+                "reopen-group",
+                "--tree",
+                str(tree_path),
+                "--node",
+                group_id,
+                "--reason",
+                "alias coverage",
+                cwd=project,
+            )
+            self.assertEqual(str(reopened["group"]["attributes"]["dynamic.state"]), "open")
+
+    def test_file_based_parameters_preserve_json_values_verbatim(self) -> None:
+        """A shell that strips quotes corrupts an inline JSON argument silently.
+
+        The damaging shape is a `set` that succeeds with a corrupted value and
+        only fails later at the consuming gate, so the diagnosis starts far from
+        the cause. A file path carries no quoting rules at all.
+        """
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8"
+            )
+            config = core.load_config(context)
+            template = project / "files.xml"
+            self.write_dynamic_group_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "files" / "runtime"),
+                "--work-order-id",
+                "files",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+
+            source_list = '["rt_files__dyn-1__write", "rt_files__dyn-2__review"]'
+            assignments = project / "assignments.txt"
+            # Written with a BOM on purpose: PowerShell 5.1 writes one by
+            # default, and a strict UTF-8 reader would reject the file with the
+            # same opaque error the inline form produced.
+            assignments.write_bytes(
+                "\ufeff".encode("utf-8")
+                + f"work_order.solution_source_ids={source_list}\n\nwork.flag=true\n".encode("utf-8")
+            )
+            applied = self.run_cli(
+                "set", "--tree", str(tree_path), "--set-file", str(assignments), cwd=project
+            )
+            blackboard = applied["blackboard"]
+            self.assertEqual(blackboard["work_order.solution_source_ids"], source_list)
+            self.assertEqual(blackboard["work.flag"], "true")
+
+            combined = self.run_cli(
+                "set",
+                "--tree",
+                str(tree_path),
+                "--set",
+                "work.inline=1",
+                "--set-file",
+                str(assignments),
+                cwd=project,
+            )
+            self.assertEqual(combined["blackboard"]["work.inline"], "1")
+            self.assertEqual(
+                combined["blackboard"]["work_order.solution_source_ids"], source_list
+            )
+
+            empty = self.run_cli_error("set", "--tree", str(tree_path), cwd=project)
+            self.assertIn("--set or --set-file", str(empty["error"]["message"]))
+
+            missing = self.run_cli_error(
+                "set",
+                "--tree",
+                str(tree_path),
+                "--set-file",
+                str(project / "absent.txt"),
+                cwd=project,
+            )
+            self.assertIn("could not read", str(missing["error"]["message"]))
+
+            group_id = str(
+                self.run_cli("next", "--tree", str(tree_path), cwd=project)[
+                    "awaiting_dynamic_groups"
+                ][0]["id"]
+            )
+            metadata = project / "metadata.txt"
+            metadata.write_text(
+                "metadata.artifact.audience=user\n"
+                "metadata.artifact.content_language=zh-CN\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            added = self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                group_id,
+                "--logical-key",
+                "from-file",
+                "--title",
+                "From file",
+                "--executor",
+                "main",
+                "--metadata-file",
+                str(metadata),
+                cwd=project,
+            )
+            attributes = added["node"]["attributes"]
+            self.assertEqual(attributes["metadata.artifact.audience"], "user")
+            self.assertEqual(attributes["metadata.artifact.content_language"], "zh-CN")
+
+    def test_closed_dynamic_group_can_reopen_and_insert_approved_recovery_work(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "dynamic-recovery.xml"
+            self.write_dynamic_group_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "dynamic-recovery" / "runtime"),
+                "--work-order-id",
+                "dynamic-recovery",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            prepare = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", str(prepare["id"]), cwd=project)
+            group_id = str(
+                self.run_cli("next", "--tree", str(tree_path), cwd=project)["awaiting_dynamic_groups"][0]["id"]
+            )
+            original = self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                group_id,
+                "--logical-key",
+                "blocked-work",
+                "--title",
+                "Blocked work",
+                "--executor",
+                "main",
+                cwd=project,
+            )["node"]
+            self.run_cli("close-group", "--tree", str(tree_path), "--group", group_id, cwd=project)
+
+            reopened = self.run_cli(
+                "reopen-group",
+                "--tree",
+                str(tree_path),
+                "--group",
+                group_id,
+                "--reason",
+                "The user approved explicit recovery work.",
+                cwd=project,
+            )
+            self.assertEqual(reopened["group"]["attributes"]["dynamic.state"], "open")
+            self.assertEqual(reopened["group"]["attributes"]["recovery.open"], "true")
+            recovery = self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                group_id,
+                "--before",
+                str(original["id"]),
+                "--logical-key",
+                "approved-recovery",
+                "--title",
+                "Approved recovery",
+                "--role",
+                "recovery",
+                "--executor",
+                "main",
+                cwd=project,
+            )["node"]
+            ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"]
+            self.assertEqual([node["id"] for node in ready], [recovery["id"]])
+
+    def test_successful_trees_require_explicit_reopen_before_new_work(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(json.dumps({"git": {"auto_commit": False}}) + "\n", encoding="utf-8")
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(context / "work-orders" / "sealed" / "runtime"),
+                "--work-order-id",
+                "sealed",
+                cwd=project,
+            )
+            tree_path = Path(str(initialized["tree_path"]))
+            root_id = str(self.run_cli("find", "--tree", str(tree_path), "--template-id", "root", cwd=project)["nodes"][0]["id"])
+            first = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(first["id"]), cwd=project)
+            first_completion = self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                str(first["id"]),
+                cwd=project,
+            )
+            svg_path = Path(str(first_completion["svg_path"]))
+            first_svg = svg_path.read_text(encoding="utf-8")
+
+            sealed = self.run_cli_error("set", "--tree", str(tree_path), "--set", "late.change=true", cwd=project)
+            self.assertEqual(sealed["error"]["code"], "tree_sealed")
+            reopened = self.run_cli(
+                "reopen",
+                "--tree",
+                str(tree_path),
+                "--reason",
+                "The user approved a documented correction.",
+                cwd=project,
+            )
+            self.assertEqual(reopened["epoch"], "1")
+            self.assertEqual(self.run_cli("snapshot", "--tree", str(tree_path), cwd=project)["metadata"]["epoch"], "1")
+            self.run_cli(
+                "add-node",
+                "--tree",
+                str(tree_path),
+                "--parent",
+                root_id,
+                "--logical-key",
+                "approved-correction",
+                "--title",
+                "Approved correction",
+                "--executor",
+                "main",
+                cwd=project,
+            )
+            correction = self.run_cli("next", "--tree", str(tree_path), cwd=project)["ready"][0]
+            self.assertEqual(correction["logical_key"], "approved-correction")
+            self.run_cli("start", "--tree", str(tree_path), "--node", str(correction["id"]), cwd=project)
+            second_completion = self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                str(correction["id"]),
+                cwd=project,
+            )
+            self.assertEqual(Path(str(second_completion["svg_path"])), svg_path)
+            second_svg = svg_path.read_text(encoding="utf-8")
+            self.assertNotEqual(second_svg, first_svg)
+            self.assertIn("Approved correction", second_svg)
+
+    def test_non_terminal_close_group_seals_with_svg_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            self.run_git(context, "init")
+            self.run_git(context, "config", "user.name", "XC Test")
+            self.run_git(context, "config", "user.email", "xc-test@example.invalid")
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": True}}) + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            tree_path = self.init_flow(
+                project,
+                context,
+                config,
+                "close-group-seal",
+                [
+                    {
+                        "template_id": "work-group",
+                        "title": "Work group",
+                        "type": "composite",
+                        "role": "dynamic-group",
+                        "mode": "sequence",
+                    }
+                ],
+            )
+            group = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "work-group",
+                cwd=project,
+            )["nodes"][0]
+
+            closed = self.run_cli(
+                "close-group",
+                "--tree",
+                str(tree_path),
+                "--group",
+                str(group["id"]),
+                cwd=project,
+            )
+
+            svg_path = Path(str(closed["svg_path"]))
+            self.assertEqual(closed["commit"]["status"], "committed")
+            self.assertTrue(svg_path.is_file())
+            self.assertEqual(self.run_cli("summary", "--tree", str(tree_path), cwd=project)["status"], "complete")
+            changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
+            self.assertIn("work-orders/close-group-seal/runtime/orchestration.xml", changed_paths)
+            self.assertIn("work-orders/close-group-seal/runtime/close-group-seal.svg", changed_paths)
+
+    def test_non_terminal_seal_restores_tree_when_svg_render_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            (context / "xc-orchestration-runtime.json").write_text(
+                json.dumps({"git": {"auto_commit": False}}) + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            tree_path = self.init_flow(
+                project,
+                context,
+                config,
+                "close-group-rollback",
+                [
+                    {
+                        "template_id": "work-group",
+                        "title": "Work group",
+                        "type": "composite",
+                        "role": "dynamic-group",
+                        "mode": "sequence",
+                    }
+                ],
+            )
+            group = self.run_cli(
+                "find",
+                "--tree",
+                str(tree_path),
+                "--template-id",
+                "work-group",
+                cwd=project,
+            )["nodes"][0]
+            before = tree_path.read_bytes()
+            args = argparse.Namespace(
+                tree=str(tree_path),
+                config="",
+                expected_revision=None,
+                group=str(group["id"]),
+                _runtime_environment=runtime_cli.RuntimeEnvironment(
+                    MINIMAL_TEMPLATE
+                ),
+            )
+
+            with mock.patch.object(core, "render_snapshot_svg", side_effect=RuntimeError("render failed")):
+                with self.assertRaisesRegex(RuntimeError, "render failed"):
+                    runtime_cli.cmd_close_group(args)
+
+            self.assertEqual(tree_path.read_bytes(), before)
+            self.assertFalse((tree_path.parent / "close-group-rollback.svg").exists())
+            summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+            self.assertEqual(summary["status"], "pending")
+            self.assertEqual(summary["awaiting_dynamic_groups"][0]["state"], "open")
+
+    def test_non_utf8_existing_svg_is_overwritten_or_restored_as_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "success"
+            _, tree_path, node_id = self.create_terminal_runtime(project, "binary-success", auto_commit=False)
+            svg_path = tree_path.parent / "terminal-commit.svg"
+            svg_path.write_bytes(b"\xff\xfeold-sidecar")
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            self.run_cli("complete", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            self.assertTrue(svg_path.read_bytes().startswith(b'<?xml version="1.0"'))
+
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "rollback"
+            _, tree_path, node_id = self.create_terminal_runtime(project, "binary-rollback", auto_commit=True)
+            svg_path = tree_path.parent / "terminal-commit.svg"
+            previous = b"\xff\xfeold-sidecar"
+            svg_path.write_bytes(previous)
+            outside = project / "outside.md"
+            outside.write_text("outside\n", encoding="utf-8")
+            self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            rejected = self.run_cli_error(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--artifact",
+                str(outside),
+                cwd=project,
+            )
+            self.assertEqual(rejected["error"]["details"]["status"], "persisted_uncommitted")
+            self.assertEqual(svg_path.read_bytes(), previous)
+
+    def test_terminal_commit_contains_tree_and_declared_artifact_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            project = Path(temporary) / "project"
+            context = project / ".xcoding"
+            context.mkdir(parents=True)
+            self.run_git(context, "init")
+            self.run_git(context, "config", "user.name", "XC Test")
+            self.run_git(context, "config", "user.email", "xc-test@example.invalid")
+            config_path = context / "xc-orchestration-runtime.json"
+            config_path.write_text(
+                json.dumps(core.DEFAULT_CONFIG, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            config = core.load_config(context)
+            template = project / "template.xml"
+            self.write_template(template, config)
+            work_order_id = "20260726-1430-terminal-commit"
+            runtime_path = context / "work-orders" / work_order_id / "runtime"
+
+            initialized = self.run_cli(
+                "init",
+                "--template",
+                str(template),
+                "--runtime-path",
+                str(runtime_path),
+                "--work-order-id",
+                work_order_id,
+                cwd=project,
+            )
+            self.assertEqual(initialized["status"], "persisted")
+            self.assertEqual(initialized["commit"]["status"], "deferred")
+            tree_path = Path(str(initialized["tree_path"]))
+            self.assertFalse(self.git_has_head(context))
+
+            found = self.run_cli("find", "--tree", str(tree_path), "--template-id", "write-document", cwd=project)
+            self.assertEqual(len(found["nodes"]), 1)
+            self.assertEqual(found["nodes"][0]["title"], "Write document")
+
+            ready = self.run_cli("next", "--tree", str(tree_path), cwd=project)
+            node_id = str(ready["ready"][0]["id"])
+            started = self.run_cli("start", "--tree", str(tree_path), "--node", node_id, cwd=project)
+            self.assertEqual(started["commit"]["status"], "deferred")
+            self.assertFalse(self.git_has_head(context))
+
+            artifact = context / "work-orders" / work_order_id / "artifacts" / "write-document" / "document.md"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_text("# Document\n", encoding="utf-8")
+            unrelated = context / "unrelated-user-file.md"
+            unrelated.write_text("# Preserve me\n", encoding="utf-8")
+
+            completed = self.run_cli(
+                "complete",
+                "--tree",
+                str(tree_path),
+                "--node",
+                node_id,
+                "--summary",
+                "Wrote the document.",
+                "--validation",
+                "passed",
+                "--artifact",
+                str(artifact),
+                cwd=project,
+            )
+            self.assertEqual(completed["status"], "persisted")
+            self.assertEqual(completed["commit"]["status"], "committed")
+            self.assertEqual(completed["commit"]["index_sync"]["status"], "synced")
+            svg_path = Path(str(completed["svg_path"]))
+            self.assertEqual(svg_path, tree_path.parent / "terminal-commit.svg")
+            self.assertTrue(svg_path.is_file())
+            ET.fromstring(svg_path.read_text(encoding="utf-8"))
+            self.assertTrue(self.git_has_head(context))
+            self.assertEqual(self.run_git(context, "rev-list", "--count", "HEAD"), "1")
+
+            changed_paths = self.run_git(context, "show", "--format=", "--name-only", "HEAD").splitlines()
+            self.assertIn(f"work-orders/{work_order_id}/runtime/orchestration.xml", changed_paths)
+            self.assertIn(f"work-orders/{work_order_id}/runtime/terminal-commit.svg", changed_paths)
+            self.assertIn(f"work-orders/{work_order_id}/artifacts/write-document/document.md", changed_paths)
+            self.assertNotIn("unrelated-user-file.md", changed_paths)
+            self.assertIn("?? unrelated-user-file.md", self.run_git(context, "status", "--short"))
+            self.assertEqual(self.run_git(context, "diff", "--cached", "--name-only"), "")
+
+            summary = self.run_cli("summary", "--tree", str(tree_path), cwd=project)
+            self.assertEqual(summary["status"], "complete")
+            self.assertEqual(summary["counts"]["succeeded"], 2)
+
+
+class ViewerServerTests(unittest.TestCase):
+    def write_config(self, directory: Path, idle_shutdown_seconds: int) -> Path:
+        config_path = directory / "viewer.json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "viewer": {
+                        "port": 0,
+                        "watch_interval_seconds": 1,
+                        "heartbeat_seconds": 1,
+                        "idle_shutdown_seconds": idle_shutdown_seconds,
+                    }
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return config_path
+
+    def request_json(self, url: str) -> dict[str, object]:
+        with urllib.request.urlopen(url, timeout=2) as response:
+            self.assertEqual(response.status, 200)
+            return json.loads(response.read().decode("utf-8"))
+
+    def post_json(self, url: str, payload: dict[str, object] | None = None) -> dict[str, object]:
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(payload or {}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=2) as response:
+            self.assertIn(response.status, {200, 201})
+            return json.loads(response.read().decode("utf-8"))
+
+    def is_healthy(self, url: str) -> bool:
+        try:
+            return bool(self.request_json(f"{url}api/health").get("ok"))
+        except (OSError, urllib.error.URLError, ValueError):
+            return False
+
+    def start_test_server(
+        self,
+        root: Path,
+        tree_path: Path | None = None,
+    ) -> tuple[viewer_server.ViewerState, object, threading.Thread, str]:
+        config_path = self.write_config(root, idle_shutdown_seconds=30)
+        config = core.load_config(root, config_path)
+        registry = viewer_server.TreeRegistry(config, [root])
+        if tree_path is not None:
+            registry.register(str(tree_path), add_parent_root=True)
+        state = viewer_server.ViewerState(registry, config)
+        server = viewer_server.create_server("127.0.0.1", 0, state)
+        state.server = server
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        url = f"http://127.0.0.1:{server.server_address[1]}/"
+        return state, server, thread, url
+
+    def write_runtime_tree(self, root: Path, name: str = "viewer-tree") -> Path:
+        config = core.load_config(root, self.write_config(root, idle_shutdown_seconds=30))
+        template = core.parse_xml(MINIMAL_TEMPLATE)
+        tree = core.instantiate_runtime_tree(template, "viewer-run", name, [], config)
+        core.stabilize(tree.getroot())
+        tree_path = root / "runtime" / "orchestration.xml"
+        core.write_managed_tree(
+            tree,
+            tree_path,
+            "runtime",
+            config,
+            "test",
+            commit_on_write=False,
+        )
+        return tree_path
+
+    def stop_background_process(self, pid: int) -> None:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/pid", str(pid), "/t", "/f"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+            return
+        try:
+            os.kill(pid, 15)
+        except ProcessLookupError:
+            return
+
+    def test_readiness_reader_retries_only_transient_access_failures(self) -> None:
+        readiness_path = Path("ready.json")
+        expected = {"ok": True, "url": "http://127.0.0.1:1/", "trees": []}
+        with mock.patch.object(
+            Path,
+            "read_text",
+            side_effect=[
+                FileNotFoundError(errno.ENOENT, "not published yet"),
+                PermissionError(errno.EACCES, "temporary sharing conflict"),
+                json.dumps(expected),
+            ],
+        ):
+            self.assertIsNone(viewer_server.read_readiness(readiness_path))
+            self.assertIsNone(viewer_server.read_readiness(readiness_path))
+            self.assertEqual(viewer_server.read_readiness(readiness_path), expected)
+
+        with mock.patch.object(
+            Path,
+            "read_text",
+            side_effect=OSError(errno.EIO, "persistent read failure"),
+        ):
+            with self.assertRaises(OSError):
+                viewer_server.read_readiness(readiness_path)
+
+    def test_readiness_reader_rejects_malformed_or_non_object_payloads(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            readiness_path = Path(temporary) / "ready.json"
+            for payload in ("{", "[]"):
+                with self.subTest(payload=payload):
+                    readiness_path.write_text(payload, encoding="utf-8")
+                    with self.assertRaises(viewer_server.ViewerLaunchError):
+                        viewer_server.read_readiness(readiness_path)
+
+    def test_background_launch_returns_one_json_result_and_falls_back_from_occupied_port(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, socket.socket(socket.AF_INET, socket.SOCK_STREAM) as occupied:
+            root = Path(temporary)
+            config_path = self.write_config(root, idle_shutdown_seconds=30)
+            occupied.bind(("127.0.0.1", 0))
+            occupied.listen()
+            requested_port = occupied.getsockname()[1]
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(VIEWER_SERVER),
+                    "--no-browser",
+                    "--config",
+                    str(config_path),
+                    "--port",
+                    str(requested_port),
+                ],
+                cwd=REPOSITORY_ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+                timeout=15,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+            self.assertEqual(len(result.stdout.splitlines()), 1)
+            payload = json.loads(result.stdout)
+            try:
+                self.assertTrue(payload["ok"])
+                self.assertEqual(set(payload), {"ok", "mode", "pid", "url", "trees"})
+                self.assertEqual(payload["mode"], "background")
+                self.assertNotEqual(int(payload["url"].rsplit(":", 1)[1].rstrip("/")), requested_port)
+                self.assertTrue(self.is_healthy(str(payload["url"])))
+            finally:
+                self.stop_background_process(int(payload["pid"]))
+
+    def test_background_server_closes_after_configured_idle_period(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config_path = self.write_config(Path(temporary), idle_shutdown_seconds=1)
+            result = subprocess.run(
+                [sys.executable, str(VIEWER_SERVER), "--no-browser", "--config", str(config_path)],
+                cwd=REPOSITORY_ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+                timeout=15,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+            payload = json.loads(result.stdout)
+            url = str(payload["url"])
+            try:
+                self.assertTrue(self.is_healthy(url))
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline and self.is_healthy(url):
+                    time.sleep(0.1)
+                self.assertFalse(self.is_healthy(url))
+            finally:
+                self.stop_background_process(int(payload["pid"]))
+
+    def test_foreground_mode_emits_lifecycle_events_and_serves_health(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config_path = self.write_config(Path(temporary), idle_shutdown_seconds=2)
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(VIEWER_SERVER),
+                    "--foreground",
+                    "--no-browser",
+                    "--config",
+                    str(config_path),
+                ],
+                cwd=REPOSITORY_ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+            )
+            assert process.stdout is not None
+            started = json.loads(process.stdout.readline())
+            self.assertEqual(started["event"], "viewer_started")
+            self.assertTrue(self.is_healthy(str(started["url"])))
+            client = self.post_json(f"{started['url']}api/clients")
+            self.assertTrue(client["client_id"])
+            stdout, stderr = process.communicate(timeout=10)
+            self.assertEqual(process.returncode, 0, stderr)
+            events = [started, *(json.loads(line) for line in stdout.splitlines())]
+            event_names = [event["event"] for event in events]
+            self.assertIn("client_connected", event_names)
+            self.assertIn("client_expired", event_names)
+            self.assertIn("idle_shutdown", event_names)
+            self.assertIn("viewer_stopped", event_names)
+
+    def test_viewer_serves_svg_for_registered_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            tree_path = self.write_runtime_tree(root)
+            state, server, thread, url = self.start_test_server(root, tree_path)
+            try:
+                tree_id = state.registry.list()[0]["tree_id"]
+                with urllib.request.urlopen(f"{url}api/trees/{tree_id}/svg", timeout=2) as response:
+                    rendered = response.read().decode("utf-8")
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.headers.get_content_type(), "image/svg+xml")
+                    self.assertIn('filename="viewer-tree.svg"', response.headers["Content-Disposition"])
+                parsed = ET.fromstring(rendered)
+                self.assertEqual(parsed.tag, "{http://www.w3.org/2000/svg}svg")
+                self.assertEqual(
+                    len(parsed.findall(".//{http://www.w3.org/2000/svg}g")),
+                    sum(1 for _ in core.iter_nodes(core.parse_xml(tree_path).getroot())),
+                )
+            finally:
+                state.request_shutdown()
+                thread.join(timeout=3)
+                server.server_close()
+
+    def test_tree_picker_registers_selected_path_and_handles_cancel(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            selected_root = root / "selected"
+            selected_root.mkdir()
+            tree_path = self.write_runtime_tree(selected_root, "picked-tree")
+            state, server, thread, url = self.start_test_server(root)
+            try:
+                with mock.patch.object(viewer_server, "select_tree_file", return_value=str(tree_path)):
+                    picked = self.post_json(f"{url}api/tree-picker")
+                self.assertTrue(picked["selected"])
+                self.assertEqual(picked["tree"]["path"], str(tree_path.resolve()))
+                self.assertIn(tree_path.parent.resolve(), state.registry.allow_roots)
+
+                with mock.patch.object(viewer_server, "select_tree_file", return_value=None):
+                    canceled = self.post_json(f"{url}api/tree-picker")
+                self.assertFalse(canceled["selected"])
+            finally:
+                state.request_shutdown()
+                thread.join(timeout=3)
+                server.server_close()
+
+    def test_tree_picker_helper_reports_failure_and_serializes_requests(self) -> None:
+        failed = subprocess.CompletedProcess(
+            args=["tree-picker"],
+            returncode=2,
+            stdout='{"ok": false, "error": "no desktop"}\n',
+            stderr="",
+        )
+        with mock.patch.object(viewer_server.subprocess, "run", return_value=failed):
+            with self.assertRaisesRegex(core.RuntimeErrorBase, "unavailable"):
+                viewer_server.select_tree_file()
+
+        canceled = subprocess.CompletedProcess(
+            args=["tree-picker"],
+            returncode=0,
+            stdout='{"ok": true, "selected": false, "path": ""}\n',
+            stderr="",
+        )
+        with (
+            mock.patch.object(viewer_server.os, "name", "nt"),
+            mock.patch.object(viewer_server.subprocess, "run", return_value=canceled) as run_picker_process,
+        ):
+            self.assertIsNone(viewer_server.select_tree_file())
+        self.assertEqual(
+            run_picker_process.call_args.kwargs["creationflags"],
+            getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+
+        active = 0
+        max_active = 0
+        active_lock = threading.Lock()
+
+        def run_picker(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+            nonlocal active, max_active
+            with active_lock:
+                active += 1
+                max_active = max(max_active, active)
+            time.sleep(0.05)
+            with active_lock:
+                active -= 1
+            return subprocess.CompletedProcess(
+                args=["tree-picker"],
+                returncode=0,
+                stdout='{"ok": true, "selected": false, "path": ""}\n',
+                stderr="",
+            )
+
+        results: list[str | None] = []
+        errors: list[str] = []
+
+        def invoke_picker() -> None:
+            try:
+                results.append(viewer_server.select_tree_file())
+            except core.RuntimeErrorBase as exc:
+                errors.append(str(exc))
+
+        with mock.patch.object(viewer_server.subprocess, "run", side_effect=run_picker):
+            threads = [threading.Thread(target=invoke_picker) for _ in range(2)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=2)
+
+        self.assertEqual(max_active, 1)
+        self.assertEqual(results, [None])
+        self.assertEqual(errors, ["a native file selection dialog is already active"])
+
+    def test_tree_picker_rejects_foreign_browser_origin(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state, server, thread, url = self.start_test_server(root)
+            try:
+                with mock.patch.object(viewer_server, "select_tree_file") as picker:
+                    for host, origin in (
+                        (urlparse(url).netloc, "https://example.invalid"),
+                        ("attacker.invalid", "http://attacker.invalid"),
+                    ):
+                        request = urllib.request.Request(
+                            f"{url}api/tree-picker",
+                            data=b"{}",
+                            headers={
+                                "Content-Type": "application/json",
+                                "Host": host,
+                                "Origin": origin,
+                            },
+                            method="POST",
+                        )
+                        with self.assertRaises(urllib.error.HTTPError) as raised:
+                            urllib.request.urlopen(request, timeout=2)
+                        self.assertEqual(raised.exception.code, 403)
+                    picker.assert_not_called()
+            finally:
+                state.request_shutdown()
+                thread.join(timeout=3)
+                server.server_close()
+
+    def test_static_viewer_assets_define_refresh_resize_zoom_picker_and_svg_controls(self) -> None:
+        static_dir = SOURCE_ROOT / "xcoding" / "viewer" / "static"
+        index = (static_dir / "index.html").read_text(encoding="utf-8")
+        app = (static_dir / "app.js").read_text(encoding="utf-8")
+        css = (static_dir / "app.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="server-status-label"', index)
+        self.assertNotIn("graph-pan-handle", index)
+        self.assertIn("function scheduleReconnect()", app)
+        self.assertIn('setConnectionStatus("disconnected")', app)
+        self.assertNotIn("graphPanHandle", app)
+        self.assertIn('id="save-svg-button"', index)
+        self.assertIn('id="pick-tree-button"', index)
+        self.assertIn('class="register-actions"', index)
+        self.assertIn('id="zoom-slider"', index)
+        self.assertIn('id="graph-resize-handle"', index)
+        self.assertIn("const AUTO_REFRESH_MS = 20000", app)
+        self.assertIn("window.setInterval(refreshTrees, AUTO_REFRESH_MS)", app)
+        self.assertIn("function updateTreeSelection()", app)
+        self.assertIn("instance.dataset.treeId = tree.tree_id", app)
+        self.assertIn("updateTreeSelection();", app)
+        self.assertIn('select?.removeAttribute("aria-current")', app)
+        self.assertNotIn('setAttribute("aria-current", String(', app)
+        self.assertIn("const requestId = ++state.snapshotRequestId", app)
+        self.assertIn("treeId !== state.selectedTreeId", app)
+        self.assertIn("elements.zoomSlider.value", app)
+        self.assertIn("function zoomAroundViewportCenter(scale)", app)
+        self.assertIn("function startResizing(event)", app)
+        self.assertIn("/api/tree-picker", app)
+        self.assertIn("/svg`", app)
+        self.assertIn('.server-status[data-connection="connected"]', css)
+        self.assertNotIn(".graph-pan-handle", css)
+        self.assertIn("padding-left: 8px", css)
+        self.assertIn(".register-actions", css)
+        self.assertNotIn("grid-template-columns: minmax(0, 1fr) auto auto", css)
+        self.assertIn("height: clamp(680px, 76vh, 1080px)", css)
+        self.assertIn(".graph-resize-handle", css)
+
+
+if __name__ == "__main__":
+    unittest.main()

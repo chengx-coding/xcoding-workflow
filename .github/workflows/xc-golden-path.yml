@@ -25,7 +25,9 @@ jobs:
       - name: Install (no third-party dependencies)
         run: python -m pip install --disable-pip-version-check -r requirements.txt
       - name: Unit tests
-        run: python -m unittest discover -s tests -v
+        run: python tests/xc_test_runner.py --tier full
+      - name: Test plan integrity
+        run: python tests/xc_test_manifest_check.py
       - name: Version consistency check
         run: python scripts/check_version.py
       - name: Agent export check

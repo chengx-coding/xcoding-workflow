@@ -1,0 +1,613 @@
+{
+  "schema_version": 1,
+  "name": "xcoding-workflow test plan",
+  "description": "Single authority for test clusters, tiers, module membership and path selection. Read by xc_test_runner.py and xc_test_manifest_check.py; tests/support/tiers.py is the only implementation of the selection rules. See the private test-suite architecture design for rationale.",
+  "test_root": "tests",
+  "package_root": ".",
+  "support_modules": [
+    "tests.support.paths",
+    "tests.support.cli",
+    "tests.support.git",
+    "tests.support.runtime",
+    "tests.support.templates",
+    "tests.support.tiers"
+  ],
+  "frozen_paths": [
+    "tests/runtime_cli.py",
+    "tests/viewer_cli.py",
+    "tests/workflow_scenario_harness.py",
+    "tests/test_xc_workflow_governance.py"
+  ],
+  "kernel_modules": [
+    "test_xc_test_support",
+    "test_xc_workflow_governance"
+  ],
+  "resources": [
+    "runtime_cli.py",
+    "viewer_cli.py",
+    "workflow_scenario_harness.py"
+  ],
+  "worker_default": {
+    "formula": "min(6, max(2, os.cpu_count() // 3))",
+    "ceiling": 6,
+    "floor": 2,
+    "override": "--workers N",
+    "measured_basis": "Full-tier wall clock measured on a 20-logical-core Windows machine after the in-process conversions, all runs ok=True with 909 executed tests and measured average concurrency equal to the worker count: 3 workers 743.7 s, 5 workers 641.8 s then 589.7 s, 6 workers 597.5 s. The repeated 5-worker measurements differ by 52 s, so this machine carries roughly +/-8% run-to-run variance and any single figure must be read with that band. The default formula resolves to 5 here. An earlier pre-conversion prototype measured 4 workers 603.4 s, 8 workers 618.5 s and 16 workers 712.9 s with one module failure from a 300 s subprocess timeout, so the ceiling stays well below the count where contention caused a failure."
+  },
+  "clusters": {
+    "runtime": {
+      "directory": "tests/runtime",
+      "domain": "Orchestration runtime state machine: scheduling, transitions, integrity, persistence, subtree archival, restore points, control packets, silent outcome visibility, milestones, work-order mount, resume brief, governance stats, config contract drift",
+      "modules": [
+        "test_xc_orchestration_runtime",
+        "test_xc_archive_subtree",
+        "test_xc_restore_points",
+        "test_xc_control_packet",
+        "test_xc_silent_outcome_visibility",
+        "test_xc_jit_milestone",
+        "test_xc_work_order_mount",
+        "test_xc_open_work_order",
+        "test_xc_resume_brief",
+        "test_xc_governance_stats",
+        "test_config_contract_drift"
+      ],
+      "baseline_seconds": 384.8,
+      "baseline_tests": 154,
+      "coupled_clusters": [
+        "governance"
+      ]
+    },
+    "governance": {
+      "directory": "tests/governance",
+      "domain": "Governance classification, adaptive planning and enforcement, recovery planning, decision registry, fact cache, verification staleness, convention scanning, workshop setup, feature directory, lifecycle templates and disposition, new-feature report, orchestration author, runtime CLI parity and runtime query; plus the private-workshop citation guard",
+      "modules": [
+        "test_xc_adaptive_planning",
+        "test_xc_adaptive_enforcement",
+        "test_xc_adaptive_work_order",
+        "test_xc_work_lifecycle_contract",
+        "test_xc_lifecycle_disposition",
+        "test_xc_recovery_plan",
+        "test_xc_decision_registry",
+        "test_xc_fact_cache",
+        "test_xc_verification_staleness",
+        "test_xc_convention_scanner",
+        "test_xc_workshop_setup",
+        "test_xc_feature",
+        "test_xc_clarify",
+        "test_xc_lifecycle_templates",
+        "test_xc_new_feature_report",
+        "test_xc_orchestration_author",
+        "test_xc_runtime_cli_parity",
+        "test_xc_runtime_query"
+      ],
+      "baseline_seconds": 366.5,
+      "baseline_tests": 262,
+      "notes": "test_xc_workflow_governance lives at the tests root because its path is a governance manifest input; it belongs to this cluster and is listed in kernel_modules instead of here to keep cluster membership unambiguous for path resolution."
+    },
+    "lifecycle": {
+      "directory": "tests/lifecycle",
+      "domain": "Full lifecycle end-to-end including feature adoption and new feature, gate recovery, report group ordering; document evolution end-to-end",
+      "modules": [
+        "test_xc_lifecycle_e2e",
+        "test_xc_document_evolution_e2e"
+      ],
+      "baseline_seconds": 304.1,
+      "baseline_tests": 25
+    },
+    "change_report": {
+      "directory": "tests/change_report",
+      "domain": "xc-change-report coverage: manifest enumeration, baseline capture, validation, protocol and normative-text drift, author commit boundary, human-readable report",
+      "modules": [
+        "test_xc_change_report",
+        "test_xc_change_report_baseline",
+        "test_xc_change_report_enumeration",
+        "test_xc_change_report_validation",
+        "test_xc_change_report_protocol",
+        "test_xc_change_report_flow",
+        "test_xc_author_commit_boundary",
+        "test_xc_human_readable_documents"
+      ],
+      "baseline_seconds": 643.9,
+      "baseline_tests": 230
+    },
+    "documents": {
+      "directory": "tests/documents",
+      "domain": "Document frontmatter and schema, rendering, LF write contract, skill mirror",
+      "modules": [
+        "test_lf_write_contract",
+        "test_xc_document",
+        "test_xc_document_evolution",
+        "test_xc_document_render",
+        "test_xc_frontmatter_yaml",
+        "test_xc_repository_consistency",
+        "test_xc_skill_mirror"
+      ],
+      "baseline_seconds": 25.5,
+      "baseline_tests": 36,
+      "coupled_clusters": [
+        "packaging"
+      ]
+    },
+    "packaging": {
+      "directory": "tests/packaging",
+      "domain": "Packaging, wheel, bundle, CLI entry points, installation, agents export, version consistency, gitignore",
+      "modules": [
+        "test_xc_package_metadata",
+        "test_xc_package_bundle",
+        "test_xc_package_wheel",
+        "test_xc_package_cli",
+        "test_xc_setup_transaction",
+        "test_xc_doctor_report_package",
+        "test_xc_stage1_matrix",
+        "test_install_skills",
+        "test_xc_install_skills_guard",
+        "test_xc_skill_installer",
+        "test_agents_export",
+        "test_xc_version_consistency",
+        "test_ensure_gitignore"
+      ],
+      "baseline_seconds": 158.8,
+      "baseline_tests": 135
+    },
+    "daemon": {
+      "directory": "tests/daemon",
+      "domain": "Daemon protocol, server, lifecycle",
+      "modules": [
+        "test_xc_daemon_protocol",
+        "test_xc_daemon_server",
+        "test_xc_daemon_lifecycle"
+      ],
+      "baseline_seconds": 15.6,
+      "baseline_tests": 20
+    },
+    "viewer": {
+      "directory": "tests/viewer",
+      "domain": "Read-only viewer and local viewer",
+      "modules": [
+        "test_xc_viewer"
+      ],
+      "baseline_seconds": 2.2,
+      "baseline_tests": 5
+    },
+    "delegation": {
+      "directory": "tests/delegation",
+      "domain": "Delegation model, resolver, gateway, CLI, runtime security boundary",
+      "modules": [
+        "test_xc_delegation",
+        "test_xc_delegation_gateway",
+        "test_xc_delegation_cli",
+        "test_xc_runtime_security"
+      ],
+      "baseline_seconds": 40.7,
+      "baseline_tests": 53,
+      "coupled_clusters": [
+        "runtime"
+      ]
+    }
+  },
+  "coupled_modules": {
+    "test_xc_runtime_security": {
+      "cluster": "delegation",
+      "coupled_clusters": [
+        "runtime"
+      ],
+      "reason": "Exercises runtime lock semantics as well as delegation deny-by-default; a runtime-only change must also run the delegation cluster, which the src/xcoding/runtime prefix rule provides."
+    },
+    "test_xc_governance_stats": {
+      "cluster": "runtime",
+      "coupled_clusters": [
+        "governance"
+      ],
+      "reason": "Reads workshop state produced by governance flows."
+    },
+    "test_xc_resume_brief": {
+      "cluster": "runtime",
+      "coupled_clusters": [
+        "governance"
+      ],
+      "reason": "Reads workshop state produced by governance flows."
+    },
+    "test_xc_skill_mirror": {
+      "cluster": "documents",
+      "coupled_clusters": [
+        "packaging"
+      ],
+      "reason": "Checks the generated skill mirror, which the packaging cluster installs."
+    }
+  },
+  "tiers": {
+    "gate": {
+      "target_seconds": 60,
+      "description": "Mandatory guards, cheap in-process logic checks and manifest integrity; run after every change.",
+      "selection": [
+        {
+          "selector": "class",
+          "value": "tests.test_xc_workflow_governance.PrivateWorkshopCitationGuardTests"
+        },
+        {
+          "selector": "test",
+          "value": [
+            "tests.documents.test_lf_write_contract.ProductionWritesPinTheirLineEndings.test_no_production_text_write_relies_on_the_host_default",
+            "tests.documents.test_lf_write_contract.ProductionWritesPinTheirLineEndings.test_the_scan_detects_a_translating_write"
+          ]
+        },
+        {
+          "selector": "manual",
+          "value": [
+            "tests.support.test_xc_test_support",
+            "tests.documents.test_xc_frontmatter_yaml",
+            "tests.packaging.test_xc_version_consistency",
+            "tests.governance.test_xc_lifecycle_disposition",
+            "tests.governance.test_xc_work_lifecycle_contract",
+            "tests.governance.test_xc_runtime_query",
+            "tests.packaging.test_xc_package_metadata",
+            "tests.daemon.test_xc_daemon_protocol",
+            "tests.delegation.test_xc_delegation_gateway"
+          ]
+        }
+      ],
+      "excludes_real_worktree": true,
+      "notes": "A gate-tier test must not open a temporary git repository, a socket, a thread, a real clock wait, or operate on the real repository worktree (manifest checks M5 and M9)."
+    },
+    "focused": {
+      "target_seconds": 240,
+      "description": "Default local iteration command: gate plus the clusters affected by the changed paths plus the support-layer contract tests.",
+      "selection": [
+        {
+          "selector": "union",
+          "value": [
+            "tier:gate",
+            "changed-clusters",
+            "cluster:kernel"
+          ]
+        }
+      ]
+    },
+    "full": {
+      "target_seconds": 600,
+      "description": "Every cluster, run in parallel. Required before merge and in CI.",
+      "selection": [
+        {
+          "selector": "all-clusters"
+        }
+      ]
+    },
+    "release": {
+      "target_seconds": null,
+      "description": "Full plus release-only tests: real-process, real-git, socket, real-clock and real-worktree checks, and the recorded governance measurement replay.",
+      "selection": [
+        {
+          "selector": "union",
+          "value": [
+            "tier:full",
+            "release-only"
+          ]
+        }
+      ]
+    }
+  },
+  "release_only": {
+    "modules": [
+      "test_xc_package_cli",
+      "test_xc_daemon_lifecycle",
+      "test_xc_viewer"
+    ],
+    "tests": [
+      "tests.test_xc_workflow_governance.WorkflowGovernanceFixtureTests.test_public_verify_command_matches_checked_in_measurements"
+    ],
+    "reason": "Process-bound, socket, real-clock or real-worktree behaviour, plus the governance measurement replay that pays 508 runtime CLI subprocesses."
+  },
+  "selection_rules": [
+    {
+      "prefix": "src/xcoding/runtime/",
+      "clusters": [
+        "runtime",
+        "governance",
+        "lifecycle",
+        "change_report"
+      ]
+    },
+    {
+      "prefix": "src/xcoding/delegation/",
+      "clusters": [
+        "delegation",
+        "governance",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "src/xcoding/daemon/",
+      "clusters": [
+        "daemon",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "src/xcoding/viewer/",
+      "clusters": [
+        "viewer",
+        "runtime",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "src/xcoding/bundle/",
+      "clusters": [
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "src/xcoding/",
+      "clusters": [
+        "packaging",
+        "runtime",
+        "delegation"
+      ]
+    },
+    {
+      "prefix": "skills/xc-change-report/",
+      "clusters": [
+        "change_report",
+        "lifecycle",
+        "governance"
+      ]
+    },
+    {
+      "prefix": "skills/xc-document-evolution/",
+      "clusters": [
+        "documents",
+        "change_report",
+        "governance"
+      ]
+    },
+    {
+      "prefix": "skills/xc-document/",
+      "clusters": [
+        "documents",
+        "change_report",
+        "governance"
+      ]
+    },
+    {
+      "prefix": "skills/xc-orchestration-runtime/",
+      "clusters": [
+        "runtime",
+        "lifecycle",
+        "governance"
+      ]
+    },
+    {
+      "prefix": "skills/xc-orchestration-author/",
+      "clusters": [
+        "runtime",
+        "governance",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "skills/xc-orchestration-viewer/",
+      "clusters": [
+        "viewer",
+        "runtime"
+      ]
+    },
+    {
+      "prefix": "skills/xc-work/",
+      "clusters": [
+        "governance",
+        "lifecycle",
+        "packaging",
+        "runtime"
+      ]
+    },
+    {
+      "prefix": "skills/xc-open-work-order/",
+      "clusters": [
+        "governance",
+        "lifecycle",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "skills/xc-workshop-setup/",
+      "clusters": [
+        "governance",
+        "lifecycle",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "skills/xc-feature",
+      "clusters": [
+        "governance",
+        "lifecycle",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "skills/xc-new-feature/",
+      "clusters": [
+        "governance",
+        "lifecycle",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "skills/",
+      "clusters": [
+        "governance",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "agents-src/agents/",
+      "clusters": [
+        "packaging",
+        "delegation"
+      ]
+    },
+    {
+      "prefix": "agents-src/",
+      "clusters": [
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "build_agents.py",
+      "clusters": [
+        "packaging",
+        "documents"
+      ]
+    },
+    {
+      "prefix": "install_skills.py",
+      "clusters": [
+        "packaging",
+        "documents"
+      ]
+    },
+    {
+      "prefix": "build_support/",
+      "clusters": [
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "scripts/",
+      "clusters": [
+        "packaging",
+        "governance"
+      ]
+    },
+    {
+      "prefix": "docs/",
+      "clusters": [
+        "documents",
+        "change_report",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "README.md",
+      "clusters": [
+        "documents",
+        "change_report",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "README.zh-CN.md",
+      "clusters": [
+        "documents",
+        "change_report",
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "pyproject.toml",
+      "clusters": [
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "build-constraints.txt",
+      "clusters": [
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "requirements.txt",
+      "clusters": [
+        "packaging"
+      ]
+    },
+    {
+      "prefix": "tests/",
+      "clusters": [
+        "__all__"
+      ]
+    },
+    {
+      "prefix": ".github/workflows/",
+      "clusters": [],
+      "note": "A workflow edit changes how tests run, not what they verify; the workflow's own effect is verified by the full tier in CI."
+    }
+  ],
+  "global_clusters": [
+    "governance"
+  ],
+  "unmatched_path_policy": "full",
+  "guard_note": "The governance cluster carries a guard whose scope is every tracked file (git ls-files over the whole index), so it is a global addition to every selection. This is the guard's real scope, not conservatism.",
+  "module_weights_seconds": {
+    "test_agents_export": 1.39,
+    "test_config_contract_drift": 0.021,
+    "test_ensure_gitignore": 0.678,
+    "test_install_skills": 7.375,
+    "test_lf_write_contract": 3.279,
+    "test_xc_adaptive_enforcement": 5.588,
+    "test_xc_adaptive_planning": 2.91,
+    "test_xc_adaptive_work_order": 6.856,
+    "test_xc_archive_subtree": 94.085,
+    "test_xc_author_commit_boundary": 31.89,
+    "test_xc_change_report": 356.953,
+    "test_xc_change_report_baseline": 70.478,
+    "test_xc_change_report_enumeration": 54.285,
+    "test_xc_change_report_flow": 0.116,
+    "test_xc_change_report_protocol": 0.037,
+    "test_xc_change_report_validation": 38.721,
+    "test_xc_clarify": 19.862,
+    "test_xc_control_packet": 20.714,
+    "test_xc_convention_scanner": 1.069,
+    "test_xc_daemon_lifecycle": 0.867,
+    "test_xc_daemon_protocol": 0.0,
+    "test_xc_daemon_server": 0.942,
+    "test_xc_decision_registry": 3.08,
+    "test_xc_delegation": 0.489,
+    "test_xc_delegation_cli": 1.682,
+    "test_xc_delegation_gateway": 0.044,
+    "test_xc_doctor_report_package": 1.085,
+    "test_xc_document": 1.357,
+    "test_xc_document_evolution": 0.316,
+    "test_xc_document_evolution_e2e": 32.118,
+    "test_xc_document_render": 0.5,
+    "test_xc_fact_cache": 6.504,
+    "test_xc_feature": 0.582,
+    "test_xc_frontmatter_yaml": 0.022,
+    "test_xc_governance_stats": 23.897,
+    "test_xc_human_readable_documents": 0.001,
+    "test_xc_install_skills_guard": 13.669,
+    "test_xc_jit_milestone": 8.181,
+    "test_xc_lifecycle_disposition": 0.004,
+    "test_xc_lifecycle_e2e": 272.028,
+    "test_xc_lifecycle_templates": 5.155,
+    "test_xc_new_feature_report": 14.57,
+    "test_xc_open_work_order": 2.456,
+    "test_xc_orchestration_author": 13.732,
+    "test_xc_orchestration_runtime": 189.257,
+    "test_xc_package_bundle": 72.471,
+    "test_xc_package_cli": 21.172,
+    "test_xc_package_metadata": 0.008,
+    "test_xc_package_wheel": 35.713,
+    "test_xc_recovery_plan": 0.576,
+    "test_xc_restore_points": 27.349,
+    "test_xc_resume_brief": 30.573,
+    "test_xc_runtime_cli_parity": 0.293,
+    "test_xc_runtime_query": 0.068,
+    "test_xc_runtime_security": 6.993,
+    "test_xc_setup_transaction": 5.863,
+    "test_xc_silent_outcome_visibility": 4.149,
+    "test_xc_skill_installer": 2.944,
+    "test_xc_skill_mirror": 0.485,
+    "test_xc_stage1_matrix": 0.544,
+    "test_xc_verification_staleness": 3.512,
+    "test_xc_version_consistency": 0.068,
+    "test_xc_viewer": 2.213,
+    "test_xc_work_lifecycle_contract": 0.001,
+    "test_xc_work_order_mount": 0.112,
+    "test_xc_workflow_governance": 186.123,
+    "test_xc_workshop_setup": 0.642
+  },
+  "module_weights_source": "measured per-module wall seconds and collected test counts from a full serial baseline profile on a 20-logical-core Windows machine; used only as the sharding cost model",
+  "module_test_counts": {},
+  "expected_collected_tests": 955
+}
