@@ -107,7 +107,7 @@ The current system does not provide:
 - Worker pools, capability matching, or forced worker cancellation.
 - Runtime control signals for breaking loops, skipping siblings, terminating subtrees, or aborting a run.
 - A standalone typed artifact index or artifact storage service.
-- Event sourcing or a runtime event log.
+- Event sourcing or a runtime event log. The core design records an append-only, summary-chained event log as an argued but unselected future direction; adopting it would require its own analysis, alternatives, review, and user gate, and would overturn this non-goal deliberately.
 - Arbitrary persistence formats, a persistence-neutral core, or a remote orchestration service.
 - A writable Viewer or network-exposed dashboard.
 

@@ -102,7 +102,7 @@ hard filesystem-query cancellation 和 durable event 仍不受支持。
 - Worker pool、capability matching 或强制 worker cancellation。
 - 用于中断 loop、跳过同级节点、终止子树或中止运行的 runtime 控制信号。
 - 独立 typed artifact index 或 artifact storage service。
-- Event sourcing 或 runtime event log。
+- Event sourcing 或 runtime event log。核心设计把追加式、摘要链式的事件日志记为已论证但未被选择的方向；要采纳它需要独立的分析、备选、评审与用户门禁，并有意识地推翻这条非目标。
 - 任意持久化格式、持久化中立 core 或远程编排服务。
 - 可写 Viewer 或暴露到网络的 dashboard。
 

@@ -13,7 +13,7 @@
 
 - [架构](concepts/architecture.md)：规范源、生成输出、适配器和所有权边界。
 - [Workshop 与 feature](concepts/workshops-features.md)：work order、独立 workshop 历史和显式 feature 基线。
-- [核心设计](concepts/core-design.md)：XC 核心设计依据什么，以及本概览如何呈现它的五个维度与贯穿其中的义务。
+- [核心设计](concepts/core-design.md)：XC 核心设计依据什么——它的原则、目的与关注点，以及贯穿其中的义务。
 
 ## 工作流
 

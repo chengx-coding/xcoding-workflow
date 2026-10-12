@@ -31,7 +31,7 @@ Temporary scripts, intermediate outputs, and process files belong under `tmp/`, 
 
 A work order may relate to zero, one, or multiple existing features. The common [work lifecycle](../../skills/xc-work/SKILL.md) does not manufacture a feature merely because a change is persistent.
 
-The [core design](core-design.md) overview summarizes the design; it is where this page's subject sits inside the workflow's own frame of reference.
+The [core design](core-design.md) overview summarizes the design; this page's subject — the durable work record, project facts from the bridge, and domain-owned acceptance — is one part of that design rather than a specialization of it.
 
 ## Feature Baselines
 
