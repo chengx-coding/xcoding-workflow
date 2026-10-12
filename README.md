@@ -4,7 +4,7 @@
 
 xcoding-workflow helps coding agents carry work from an initial request to a tested, reviewed result. It works across programming languages, frameworks, and the applications that run coding agents, known here as **Agent hosts**.
 
-Current source candidate version: <!-- xc:version -->0.2.0<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
+Current source candidate version: <!-- xc:version -->0.2.1<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
 
 ## What It Does
 
@@ -63,7 +63,7 @@ The supported distribution is `xcoding-workflow`; `0.1.0` is distributed only as
 For a published release, download the wheel and integrity files from that same release and verify them as described in [Installation](docs/getting-started/installation.md). The following filename illustrates the current, unpublished `0.2.0` source candidate; it is not an available release artifact or evidence of release qualification. Install it only after a candidate wheel has been built and verified for your intended use:
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.2.0-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.2.1-py3-none-any.whl
 xcoding version --json
 ```
 
