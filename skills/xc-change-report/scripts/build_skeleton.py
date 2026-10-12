@@ -50,6 +50,7 @@ from build_manifest import (  # noqa: E402
     file_slug,
     git_show_bytes,
     normalize_code_text,
+    range_is_empty,
     read_bytes,
     redact_line,
     render_code_rows,
@@ -223,9 +224,14 @@ def _code_location(hunk: dict[str, Any]) -> str:
 def _find_diff_hunk(repo: Path, manifest: dict[str, Any], entry: dict[str, Any], hunk: dict[str, Any]) -> list[tuple[str, int, str]]:
     """Recompute the unified-diff rows for a unit whose presentation is `diff`."""
     commit = manifest["baseline"]["commit"]
-    if entry.get("change_kind") == "added":
-        # A whole-file addition has no baseline hunk to align with; the unified-diff
-        # presentation of an added window is a header plus one `+` row per line.
+    # An empty old range means the unit is pure insertion: there is no baseline
+    # text to align a hunk against, so the unified-diff presentation is a header
+    # plus one `+` row per new line. Keying this on the range rather than only on
+    # `change_kind == "added"` also covers a rename whose source path is absent
+    # from the baseline commit -- for example a file copied to a new path, which
+    # exact-content rename pairing can classify as `renamed` while the new path
+    # has no baseline blob to diff.
+    if entry.get("change_kind") == "added" or range_is_empty(hunk["old_range"]):
         from build_manifest import range_length
 
         return ["add"] * range_length(hunk["new_range"])
