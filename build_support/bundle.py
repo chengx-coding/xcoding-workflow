@@ -18,8 +18,8 @@ from typing import Any, Iterable
 
 from build_support.version import validate_version
 
-from src.xcoding.delegation.adapters import parse_adapter_statement
-from src.xcoding.delegation.errors import DelegationError
+from xcoding.delegation.adapters import parse_adapter_statement
+from xcoding.delegation.errors import DelegationError
 
 
 BUNDLE_SCHEMA_VERSION = 1

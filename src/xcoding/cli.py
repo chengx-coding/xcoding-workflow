@@ -6,7 +6,7 @@ import argparse
 import json
 import os
 import sys
-from importlib import metadata, resources
+from importlib import resources
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -156,6 +156,34 @@ def _failure(
             "details": details,
         },
     }
+
+
+def _package_not_found_errors() -> type[BaseException]:
+    """Return `importlib.metadata.PackageNotFoundError`, importing it lazily.
+
+    `importlib.metadata` is the largest single contributor to this module's
+    import time, so it is bound only when the handler is evaluated or when a
+    caller explicitly reads `cli.metadata`. The exception type caught is
+    unchanged.
+    """
+    from importlib import metadata
+
+    return metadata.PackageNotFoundError
+
+
+def __getattr__(name: str):
+    """Serve `xcoding.cli.metadata` without importing it at module scope.
+
+    `importlib.metadata` is the expensive part of this module's import graph, and
+    nothing needs it until a version is actually read. Bound lazily and cached so
+    attribute access and patching behave exactly as a module-scope import would.
+    """
+    if name == "metadata":
+        from importlib import metadata
+
+        globals()["metadata"] = metadata
+        return metadata
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _emit(payload: dict[str, Any]) -> None:
@@ -315,7 +343,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except BundleValidationError as error:
         _emit(_failure(command, error.code, str(error), error.details))
         return EXIT_BUNDLE
-    except metadata.PackageNotFoundError as error:
+    except _package_not_found_errors() as error:
         _emit(
             _failure(
                 command,
