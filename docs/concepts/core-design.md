@@ -44,7 +44,7 @@ Three layers, from what is believed to what is required:
 
 **Four principles** are the decision criteria. **Who owns the work**: a unit of work's durable state belongs to the project, not to one conversation and not to a vendor's store, and a party that took no part must be able to reconstruct it. **Attachment by Skill and CLI, not by plugins**: integrating with an Agent tool needs no per-tool integration layer. **Only what can be checked is written down**: a rule that must hold against an execution not intending to comply has to be a checkable condition on represented state, and where that is impossible the design must say so. **One owner per fact**. **A record must distinguish three states**: done, never examined, and not applicable — an absent conclusion is itself a conclusion.
 
-**Three purposes**, each carrying a sunset clause. A purpose is retired by argument when the condition it depends on stops holding, never by silence — the design previously kept a purpose its own later evidence had overturned. The purposes are: remove the four problems above; remain reliable for a party that did not do the work; and avoid adding work as capability grows, so that growth has to earn itself.
+**Three purposes**, each carrying a sunset clause. A purpose is retired by argument when the condition it depends on stops holding, never by silence, so that an overturned purpose cannot survive as an assumption nobody re-examines. The purposes are: remove the four problems above; remain reliable for a party that did not do the work; and avoid adding work as capability grows, so that growth has to earn itself.
 
 **Four concerns** carry the normative content, and each states its claim, its named invariants, a question for judging a departure, and its state today:
 
