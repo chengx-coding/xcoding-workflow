@@ -79,10 +79,11 @@ Four concerns carry the normative content. Each states what it claims, its named
 **Invariants.**
 
 - **The durable content of one piece of work has exactly one source.** *(Mechanical: a terminal commit checks that declared artifacts fall inside the authorised scope and refuses them if they do not.)*
-- **A durable fact may not be written outside this piece of work.** *(Mechanical.)* The path must fall inside the current workspace.
+- **A durable fact may not be written outside this piece of work.** *(Mechanical, for the delegated path only: a terminal commit that declares an artifact outside the current work area is refused. The path an operator writes directly is not covered by that half.)*
+- **A durable fact written directly by an operator is bound by the same scope.** *(Convention-only: nothing refuses a direct write that falls outside the current work area.)*
 - **A party that took no part must be able to rebuild the record.** *(Convention-only: nothing checks what counts as a successful reconstruction.)*
 - **Completed work records form the project's own historical memory of its work.** *(Convention-only.)* When a later action needs to know whether something was investigated before, what was rejected, or what was departed from, it reads the records the project kept rather than a conversation or a model's memory. Those records therefore need an owner and a form that a later reader can approach by topic. Nothing verifies that the reading happened; the guarantee equals the project keeping the records and actually consulting them.
-- **The runtime's orchestration tree is the single source of progress.** *(Mechanical: a host task list may only be scratch inside a node, and the engine refuses a direct write to a non-leaf node's state.)*
+- **The runtime's orchestration tree is the single source of progress.** *(Mechanical for one half only: a leaf operation that changes state derived from the structure instead of recomputing it is refused. The other half -- that a host-provided task list may only be scratch inside a node -- has nothing that refuses it, so it is convention-only.)*
 - **The durable content of one piece of work is owned by one durable directory, and that is the definition of its workspace.** *(Convention-only: the runtime fixes the directory layout, but nothing refuses a departure from the claim itself.)*
 
 **Judging a departure.** If the original session, Agent, and runtime are all gone, can a party that took no part say what this work was and how far it got, using files alone?
@@ -97,17 +98,17 @@ Four concerns carry the normative content. Each states what it claims, its named
 
 - **Insufficient evidence moves toward the stricter side.** *(Mechanical: of the six admission facts, any that is not an explicit "no" routes to the managed path, and an adapter failure also returns a strict result.)*
 - **Downstream work may not start before upstream work is in place.** *(Mechanical: the delivery packet sets minimum thresholds for source and artifacts and explicitly forbids lowering a threshold to let work through.)*
-- **Structure is owned by the tool and each node is self-contained.** *(Mechanical: what is delivered to an executor excludes the whole tree, its sibling nodes, and the root node, and a missing required input fails to the stricter side.)*
+- **Structure is owned by the tool and each node is self-contained.** *(Mechanical: what is delivered to an executor excludes the whole tree, its sibling nodes, and the root node, and a missing required input fails to the stricter side. Nothing refuses that delivery being handed to an executor other than the one it was prepared for -- that half is convention-only.)*
 - **Derived state may be read but never written.** *(Mechanical: the engine recomputes composite and loop state, and no leaf-node operation can touch it.)*
 - **A terminal commit takes effect together with what it declares.** *(Mechanical: a failed commit rolls back the previous state and reports that files were written but not committed.)*
-- **What did not happen still needs a name.** *(Mechanical: "the key is missing" and "the key says no" must be distinguishable, and empty results have a fixed reason vocabulary.)*
+- **What did not happen still needs a name.** *(Convention-only: the record must distinguish "never written" from "written as no", and an empty result must carry a named reason -- but today that holds on the skip branch only. A guard that tests "not equal" over a never-written key runs the node with no marker, so an unexamined case can be read as a passing one.)*
 - **A complex task establishes its goal first, and the goal is a structured artifact.** *(Default: the goal stage comes before other stages and no guard blocks it, and the entry point turns that group off when a task does not need it. The default is declared in the template that owns the orchestration structure, not in the design, which only requires the default to exist and to not mean "refusing to work".)*
 - **Existing material and project conventions are researched before execution.** *(Convention-only: the discovery record must be consumed and a departure from a declared rule must record its reason, but no key, guard, or check refuses skipping it.)*
 - **Failure, recovery, and degradation are first-class subjects.** *(Convention-only: recovery semantics are carried by their own owner and the discipline that failure is never silently skipped rests on contract text.)*
 
 **Judging a departure.** If this rule were violated, which check would stop it?
 
-**Boundaries and costs.** Two costs dominate. First, facts have to actually be collected: admission facts are not decoration, because any unconfirmed item sends the path to the stricter side, so the fast path exists only when the facts permit it. Second, mechanical enforcement covers only part of this concern: the first six invariants above sit on the managed path and are refused, while the default and the two convention-only invariants have no such gate and are carried by review.
+**Boundaries and costs.** Two costs dominate. First, facts have to actually be collected: admission facts are not decoration, because any unconfirmed item sends the path to the stricter side, so the fast path exists only when the facts permit it. Second, mechanical enforcement covers only part of this concern: the mechanically refused ones sit on the managed path, while the defaulted one and the convention-only ones have no such gate and are carried by review.
 
 ### How the workflow attaches to the outside
 
@@ -115,11 +116,12 @@ Four concerns carry the normative content. Each states what it claims, its named
 
 **Invariants.**
 
-- **The bridge is the only read point for declarative project facts.** *(Mechanical, within the scope of declarative facts; undeclared conventions belong to the bounded channel below.)*
+- **The bridge is the only read point for declarative project facts.** *(Convention-only: the path is declared fixed, but nothing refuses a project that has no bridge, and nothing refuses a read that goes around it. The verifiable boundary is that such a read must be written down as an explicit departure. Within the scope of declarative facts; undeclared conventions belong to the bounded channel below.)*
+- **A read of declarative project facts may happen at the bridge and nowhere else.** *(Convention-only: nothing refuses a read that goes around the bridge.)*
 - **No alternative bridge location may be searched for, and no tool-specific substitute may be introduced.** *(Convention-only, and it is the boundary of that channel.)*
 - **An undeclared convention is read only through one bounded channel.** *(Convention-only: reads have a budget, failing to read fails to the stricter side, and the third authority tier is inference.)*
 - **A generic asset contains no environment-specific fact.** *(Convention-only: nothing refuses a consumer-project fact copied into generic content.)*
-- **Runtime targets are generated from a single source and checked for staleness.** *(Mechanical: the exporter generates targets deterministically, and check mode refuses missing, modified, and extra files.)*
+- **Runtime targets are generated from a single source and checked for staleness.** *(Mechanical: a result in which a generated target cannot be traced to its declared source -- missing, modified, or not generated from that source -- is refused.)*
 - **A declared adapter support level must be true and must have evidence.** *(Convention-only: the format is validated and the content is fixed, but a claim of enforcement is the adapter's own.)*
 - **One Agent tool attaches with capability units and the command-line interface alone.** *(Convention-only: an adapter declaration is a product of assembly and validation, but nothing asserts that no plugin was needed.)*
 
@@ -133,8 +135,9 @@ Four concerns carry the normative content. Each states what it claims, its named
 
 **Invariants.**
 
-- **A capability unit owns its instructions, subtrees, scripts, artifacts and acceptance contract, capability ceiling, and boundary description.** *(Convention-only, with one mechanical half: an incomplete contract fails.)*
-- **A capability unit may be used only through the public parameters its documentation declares.** *(Convention-only: reading another unit's private content is refused, but nothing refuses a use that bypasses the public parameters.)*
+- **A capability unit owns its instructions, subtrees, scripts, artifacts and acceptance contract, capability ceiling, and boundary description.** *(Convention-only.)*
+- **A capability unit's contract must be complete, or the unit does not hold.** *(Mechanical for units that become orchestration nodes: a task leaf handed to an executor without its instructions, its deliverables or its acceptance conditions is refused. A capability package's own contract text is not covered by that half.)*
+- **A capability unit may be used only through the public parameters its documentation declares.** *(Convention-only: nothing refuses a use that bypasses the public parameters.)*
 - **Capabilities divide into core and specialised units with distinct responsibilities.** *(Convention-only.)*
 - **The set may grow, merge, and also shrink.** *(Convention-only: shrinking must first declare its trigger, and where no trigger can be written the intent can only be stated as an expectation. Like the reconstruction guarantee above, its force is text alone.)*
 
