@@ -164,7 +164,7 @@ python skills/xc-work/scripts/validate_adaptive_manifest.py \
   --source-map-json <logical-key-to-terminal-source-map>
 ```
 
-The manifest validator rejects missing, extra, duplicate, stale, failed, blocked, wrong-role, insufficient-artifact, or missing-verification-scope records and returns the exact source and artifact thresholds for the finalizer.
+The manifest validator rejects missing, extra, duplicate, stale, failed, blocked, wrong-role, insufficient-artifact, malformed-artifact, or missing-verification-scope records and returns the exact source and artifact thresholds for the finalizer. It checks planned evidence coverage, not report filenames. The report leaf owns the `xc-change-report` acceptance contract: a produced report requires its HTML and validated manifest; a measured zero-unit result instead declares the coverage manifest or skip-decision artifact and records `work_order.report_skip_reason=zero_analyzable_units`, without manufacturing HTML. The main session checks that disposition before closure. These report-domain obligations are not inferred or verified by generic source cardinality. Receipts created by earlier planner rules must be regenerated through the current planner; existing strict receipt recomputation rejects them.
 
 ## Adaptive Run Operation
 

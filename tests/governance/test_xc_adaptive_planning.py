@@ -20,71 +20,54 @@ import plan_work_policy as policy
 
 
 MINIMAL_PLAN_SNAPSHOT = (
-    '{"schema_version":1,"ok":true,"mode":"change","pace":"fast","c'
-    'apabilities":{"goal_document":false,"analysis":false,"clarific'
-    'ation":false,"solution":false,"approval":false,"split_implemen'
-    'tation":false,"separate_verification":false,"independent_revie'
-    'w":false,"result_document":false,"resumable_recovery":false,"c'
-    'hange_report":true},"implementation_units_min":1,"verification'
-    '_scopes":["focused"],"depth":{"analysis_perspectives":0,"revie'
-    'w_passes":0,"recovery_exercises":0},"optional_depth":{"analysi'
-    's_perspectives":{"floor":0,"value":0,"trimmed":true},"review_p'
-    'asses":{"floor":0,"value":0,"trimmed":true},"recovery_exercise'
-    's":{"floor":0,"value":0,"trimmed":true},"regression_scope":{"f'
-    'loor":["focused"],"value":["focused"],"trimmed":true}},"requir'
-    'ed_nodes":[{"logical_key":"implementation-1","role":"implement'
-    'ation","artifact_min":1,"verification_scope":"focused"},{"logi'
-    'cal_key":"report","role":"report","artifact_min":1,"source_key'
-    's":["work_order.report_baseline"],"required_artifact_name":"change-r'
-    'eport.html"},{"logical_key":"finalize","'
-    'role":"finalizer","artifact_min":0}],"required_provenance":{"g'
-    'oal_document":[],"analysis":[],"clarification":[],"solution":['
-    '],"approval":[],"split_implementation":[],"separate_verificati'
-    'on":[],"independent_review":[],"result_document":[],"resumable'
-    '_recovery":[],"change_report":["mode:change"]},"facts":{"gover'
-    'nance":{"needs_persistence":"yes","material_impact":"yes","dif'
-    'ficult_rollback":"no","crosses_sessions":"no","multiple_actors'
-    '":"no","audit_required":"no"},"bridge_policy":"none","task":{"'
-    'scope":"single-location","clarity":"exact","risk":"low","verif'
-    'ication":"focused","coordination":"single","duration":"single-'
-    'step","audit":"runtime-only"}},"reason_codes":["mode:change","'
-    'task:verification:focused"],"planning_status":"planned","diagn'
-    'ostic":null,"plan_receipt":{"schema_version":1,"request_sha256'
-    '":"0ba415c1d84b1c062757d9d8e908cac628f88c0a2f4c91de36192d87c40'
-    'a2570","bridge_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-    'aaaaaaaaaaaaaaaaaaaaaaaaaa","mode":"change","pace":"fast","cap'
-    'abilities":{"goal_document":false,"analysis":false,"clarificat'
-    'ion":false,"solution":false,"approval":false,"split_implementa'
-    'tion":false,"separate_verification":false,"independent_review"'
-    ':false,"result_document":false,"resumable_recovery":false,"cha'
-    'nge_report":true},"implementation_units_min":1,"verification_s'
-    'copes":["focused"],"depth":{"analysis_perspectives":0,"review_'
-    'passes":0,"recovery_exercises":0},"optional_depth":{"analysis_'
-    'perspectives":{"floor":0,"value":0,"trimmed":true},"review_pas'
-    'ses":{"floor":0,"value":0,"trimmed":true},"recovery_exercises"'
-    ':{"floor":0,"value":0,"trimmed":true},"regression_scope":{"flo'
-    'or":["focused"],"value":["focused"],"trimmed":true}},"required'
-    '_nodes":[{"logical_key":"implementation-1","role":"implementat'
-    'ion","artifact_min":1,"verification_scope":"focused"},{"logica'
-    'l_key":"report","role":"report","artifact_min":1,"source_keys"'
-    ':["work_order.report_baseline"],"required_artifact_name":"change'
-    '-report.html"},{"logical_key":"finalize","ro'
-    'le":"finalizer","artifact_min":0}],"facts":{"governance":{"nee'
-    'ds_persistence":"yes","material_impact":"yes","difficult_rollb'
-    'ack":"no","crosses_sessions":"no","multiple_actors":"no","audi'
-    't_required":"no"},"bridge_policy":"none","task":{"scope":"sing'
-    'le-location","clarity":"exact","risk":"low","verification":"fo'
-    'cused","coordination":"single","duration":"single-step","audit'
-    '":"runtime-only"}},"report_strength":"minimal","plan_id":"007c'
-    '494d41af983c8ed750b040a39539594885c2592840898f37b6da11dbbd4f'
-    '"}'
-    '}'
+    '{"schema_version":1,"ok":true,"mode":"change","pace":"fast","capabilities":{"goa'
+    'l_document":false,"analysis":false,"clarification":false,"solution":false,"appro'
+    'val":false,"split_implementation":false,"separate_verification":false,"independe'
+    'nt_review":false,"result_document":false,"resumable_recovery":false,"change_repo'
+    'rt":true},"implementation_units_min":1,"verification_scopes":["focused"],"depth"'
+    ':{"analysis_perspectives":0,"review_passes":0,"recovery_exercises":0},"optional_'
+    'depth":{"analysis_perspectives":{"floor":0,"value":0,"trimmed":true},"review_pas'
+    'ses":{"floor":0,"value":0,"trimmed":true},"recovery_exercises":{"floor":0,"value'
+    '":0,"trimmed":true},"regression_scope":{"floor":["focused"],"value":["focused"],'
+    '"trimmed":true}},"required_nodes":[{"logical_key":"implementation-1","role":"imp'
+    'lementation","artifact_min":1,"verification_scope":"focused"},{"logical_key":"re'
+    'port","role":"report","artifact_min":1,"source_keys":["work_order.report_baselin'
+    'e"]},{"logical_key":"finalize","role":"finalizer","artifact_min":0}],"required_p'
+    'rovenance":{"goal_document":[],"analysis":[],"clarification":[],"solution":[],"a'
+    'pproval":[],"split_implementation":[],"separate_verification":[],"independent_re'
+    'view":[],"result_document":[],"resumable_recovery":[],"change_report":["mode:cha'
+    'nge"]},"facts":{"governance":{"needs_persistence":"yes","material_impact":"yes",'
+    '"difficult_rollback":"no","crosses_sessions":"no","multiple_actors":"no","audit_'
+    'required":"no"},"bridge_policy":"none","task":{"scope":"single-location","clarit'
+    'y":"exact","risk":"low","verification":"focused","coordination":"single","durati'
+    'on":"single-step","audit":"runtime-only"}},"reason_codes":["mode:change","task:v'
+    'erification:focused"],"planning_status":"planned","diagnostic":null,"plan_receip'
+    't":{"schema_version":1,"request_sha256":"0ba415c1d84b1c062757d9d8e908cac628f88c0'
+    'a2f4c91de36192d87c40a2570","bridge_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaa","mode":"change","pace":"fast","capabilities":{"goa'
+    'l_document":false,"analysis":false,"clarification":false,"solution":false,"appro'
+    'val":false,"split_implementation":false,"separate_verification":false,"independe'
+    'nt_review":false,"result_document":false,"resumable_recovery":false,"change_repo'
+    'rt":true},"implementation_units_min":1,"verification_scopes":["focused"],"depth"'
+    ':{"analysis_perspectives":0,"review_passes":0,"recovery_exercises":0},"optional_'
+    'depth":{"analysis_perspectives":{"floor":0,"value":0,"trimmed":true},"review_pas'
+    'ses":{"floor":0,"value":0,"trimmed":true},"recovery_exercises":{"floor":0,"value'
+    '":0,"trimmed":true},"regression_scope":{"floor":["focused"],"value":["focused"],'
+    '"trimmed":true}},"required_nodes":[{"logical_key":"implementation-1","role":"imp'
+    'lementation","artifact_min":1,"verification_scope":"focused"},{"logical_key":"re'
+    'port","role":"report","artifact_min":1,"source_keys":["work_order.report_baselin'
+    'e"]},{"logical_key":"finalize","role":"finalizer","artifact_min":0}],"facts":{"g'
+    'overnance":{"needs_persistence":"yes","material_impact":"yes","difficult_rollbac'
+    'k":"no","crosses_sessions":"no","multiple_actors":"no","audit_required":"no"},"b'
+    'ridge_policy":"none","task":{"scope":"single-location","clarity":"exact","risk":'
+    '"low","verification":"focused","coordination":"single","duration":"single-step",'
+    '"audit":"runtime-only"}},"report_strength":"minimal","plan_id":"08a9ef886870c515'
+    '0595256593eb0d817e7c676f1c1e7de312605db22cf43e5b"}}'
 )
 
 
-# The two declarations G-18 and G-37 made enforceable, spelled exactly as the
-# solution decision freezes them: the report node names the artifact it must be
-# given, and declares the blackboard key its consumer has to publish.
+# Report filenames belong to the report domain; the generic finalizer retains
+# the report node and its declared baseline source key.
 REPORT_ARTIFACT_NAME = "change-report.html"
 BASELINE_KEY = "work_order.report_baseline"
 # A syntactically well-formed `commit:digest:algorithm` baseline value. The
@@ -385,7 +368,7 @@ class AdaptivePlanningTests(unittest.TestCase):
         self.assertEqual(report_node["role"], "report")
         self.assertEqual(report_node["artifact_min"], 1)
         self.assertEqual(report_node["source_keys"], ["work_order.report_baseline"])
-        self.assertEqual(report_node["required_artifact_name"], REPORT_ARTIFACT_NAME)
+        self.assertNotIn("required_artifact_name", report_node)
         for item in payload["required_nodes"]:
             if item["logical_key"] != "report":
                 self.assertNotIn("source_keys", item)
@@ -889,15 +872,7 @@ class AdaptivePlanningTests(unittest.TestCase):
             self.assertEqual(payload["error"]["code"], "plan_policy_mismatch")
 
     def test_adaptive_manifest_requires_every_planned_source(self) -> None:
-        """Corrected fixture: the report slot delivers the artifact the plan names.
-
-        The fixture previously gave every required node a generic `artifact-N-0` name and
-        published only `work_order.plan_id`, so it asserted acceptance of a manifest in which
-        the report's declared `source_keys` entry was never published — the tolerance G-37
-        removed — and in which the report slot's artifact did not match the
-        `required_artifact_name` G-18 added. Both halves of the fixture now satisfy the plan's
-        own declaration, and every negative assertion is unchanged.
-        """
+        """Every planned source and its declared baseline remain required."""
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
@@ -910,7 +885,7 @@ class AdaptivePlanningTests(unittest.TestCase):
                 for item in receipt["required_nodes"]
                 if item["logical_key"] == "report"
             )
-            self.assertEqual(report_node["required_artifact_name"], REPORT_ARTIFACT_NAME)
+            self.assertNotIn("required_artifact_name", report_node)
             source_map: dict[str, dict[str, object]] = {}
             packet_categories: list[dict[str, object]] = []
             for index, item in enumerate(receipt["required_nodes"]):
@@ -930,10 +905,7 @@ class AdaptivePlanningTests(unittest.TestCase):
                                 "role": item["role"],
                                 "status": "succeeded",
                                 "artifacts": [
-                                    item.get(
-                                        "required_artifact_name",
-                                        f"artifact-{index}-{item_index}",
-                                    )
+                                    f"artifact-{index}-{item_index}"
                                     for item_index in range(item["artifact_min"])
                                 ],
                             }
@@ -992,15 +964,7 @@ class AdaptivePlanningTests(unittest.TestCase):
             self.assertEqual(payload["error"]["code"], "invalid_adaptive_manifest")
 
     def test_adaptive_manifest_accepts_the_planned_report_node(self) -> None:
-        """Corrected fixture: the report node's slot carries the named artifact and the
-        published baseline.
-
-        The report sources were previously named `report-source-N-0` — an artifact name the
-        plan's `report` entry does not declare — and the packet published only
-        `work_order.plan_id`, so acceptance was asserted for a manifest that satisfied neither
-        G-18's artifact identity nor G-37's published-key requirement. The missing-source
-        negative half is unchanged.
-        """
+        """A report leaf may deliver domain evidence without a generic filename constraint."""
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
@@ -1016,14 +980,7 @@ class AdaptivePlanningTests(unittest.TestCase):
                 [item["logical_key"] for item in sources],
                 ["implementation-1", "report"],
             )
-            self.assertEqual(
-                next(
-                    item["required_artifact_name"]
-                    for item in sources
-                    if item["logical_key"] == "report"
-                ),
-                REPORT_ARTIFACT_NAME,
-            )
+            self.assertTrue(all("required_artifact_name" not in item for item in sources))
             source_map: dict[str, dict[str, object]] = {}
             packet_categories: list[dict[str, object]] = []
             for index, item in enumerate(sources):
@@ -1039,10 +996,7 @@ class AdaptivePlanningTests(unittest.TestCase):
                                 "role": item["role"],
                                 "status": "succeeded",
                                 "artifacts": [
-                                    item.get(
-                                        "required_artifact_name",
-                                        f"report-source-{index}-{unit}",
-                                    )
+                                    f"report-source-{index}-{unit}"
                                     for unit in range(item["artifact_min"])
                                 ],
                             }
@@ -1170,62 +1124,61 @@ class AdaptivePlanningTests(unittest.TestCase):
             ],
         )
 
-    def test_report_slot_must_deliver_the_artifact_the_plan_names(self) -> None:
-        """G-18 negative test: the report slot's artifact identity, not its count.
-
-        Against the pre-change validator every packet below exited 0, because the only artifact
-        check was `len(artifacts) < artifact_min`. The decoys are chosen so that a substring,
-        prefix or suffix implementation cannot pass: each one shares characters with
-        `change-report.html` while having a different basename. The positive half covers both
-        path separators, because the runtime projects artifact paths as recorded strings.
-        """
+    def test_report_slot_accepts_domain_evidence_and_rejects_malformed_sources(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
             facts = self.base_facts()
             facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
             receipt = policy.build_plan(facts)["plan_receipt"]
-            report_node = next(
-                item
-                for item in receipt["required_nodes"]
-                if item["logical_key"] == "report"
+            for delivered in ("change-report-manifest.json", REPORT_ARTIFACT_NAME):
+                with self.subTest(delivered=delivered):
+                    source_map, packet = self.report_slot_manifest(
+                        receipt, baseline=BASELINE_VALUE, report_artifacts=[delivered]
+                    )
+                    code, payload = self.validate_manifest(bridge, facts, receipt, source_map, packet)
+                    self.assertEqual(code, 0, payload)
+                    self.assertTrue(payload["ok"])
+            invalid_sources = [
+                {"artifacts": []}, {"artifacts": [None]}, {"artifacts": [1]},
+                {"artifacts": [""]}, {"artifacts": [" "]},
+                {"artifacts": [REPORT_ARTIFACT_NAME, None]},
+                {"artifacts": "change-report-manifest.json"},
+                {"role": "implementation"}, {"status": "failed"},
+                {"status": "blocked"}, {"status": "running"},
+                {"node_id": "wrong"}, {"logical_key": "wrong"},
+            ]
+            for changes in invalid_sources:
+                with self.subTest(changes=changes):
+                    source_map, packet = self.report_slot_manifest(
+                        receipt, baseline=BASELINE_VALUE, report_artifacts=["change-report-manifest.json"]
+                    )
+                    packet["packet"]["source_categories"][1]["sources"][0].update(changes)
+                    code, payload = self.validate_manifest(bridge, facts, receipt, source_map, packet)
+                    self.assertEqual(code, 2, payload)
+                    self.assertEqual(payload["error"]["code"], "invalid_packet_source")
+            source_map, packet = self.report_slot_manifest(
+                receipt, baseline=BASELINE_VALUE, report_artifacts=["change-report-manifest.json"]
             )
-            self.assertEqual(report_node["required_artifact_name"], REPORT_ARTIFACT_NAME)
-            source_map, _ = self.report_slot_manifest(
+            packet["packet"]["source_categories"][1]["sources"] *= 2
+            code, payload = self.validate_manifest(bridge, facts, receipt, source_map, packet)
+            self.assertEqual(code, 2, payload)
+            self.assertEqual(payload["error"]["code"], "invalid_category_cardinality")
+
+    def test_receipt_with_retired_filename_constraint_requires_replanning(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            bridge = Path(temporary) / "WORKFLOW.md"
+            bridge.write_text("# Workflow\n", encoding="utf-8")
+            facts = self.base_facts()
+            facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
+            receipt = policy.build_plan(facts)["plan_receipt"]
+            next(item for item in receipt["required_nodes"] if item["logical_key"] == "report")["required_artifact_name"] = REPORT_ARTIFACT_NAME
+            source_map, packet = self.report_slot_manifest(
                 receipt, baseline=BASELINE_VALUE, report_artifacts=[REPORT_ARTIFACT_NAME]
             )
-            for delivered in (
-                "notes.txt",
-                "change-report.html.bak",
-                "xchange-report.html",
-                "change-report.htm",
-                "C:\\wb\\artifacts\\rt_report\\notes.txt",
-                "/wb/artifacts/rt_report/change-report.html.bak",
-            ):
-                with self.subTest(delivered=delivered):
-                    _, packet = self.report_slot_manifest(
-                        receipt, baseline=BASELINE_VALUE, report_artifacts=[delivered]
-                    )
-                    code, payload = self.validate_manifest(
-                        bridge, facts, receipt, source_map, packet
-                    )
-                    self.assertEqual(code, 2, (delivered, payload))
-                    self.assertEqual(payload["error"]["code"], "report_artifact_mismatch")
-                    self.assertEqual(payload["error"]["keys"], ["report"])
-            for delivered in (
-                REPORT_ARTIFACT_NAME,
-                "C:\\wb\\artifacts\\rt_report\\" + REPORT_ARTIFACT_NAME,
-                "/wb/artifacts/rt_report/" + REPORT_ARTIFACT_NAME,
-            ):
-                with self.subTest(delivered=delivered):
-                    _, packet = self.report_slot_manifest(
-                        receipt, baseline=BASELINE_VALUE, report_artifacts=[delivered]
-                    )
-                    code, payload = self.validate_manifest(
-                        bridge, facts, receipt, source_map, packet
-                    )
-                    self.assertEqual(code, 0, (delivered, payload))
-                    self.assertTrue(payload["ok"])
+            code, payload = self.validate_manifest(bridge, facts, receipt, source_map, packet)
+            self.assertEqual(code, 2, payload)
+            self.assertEqual(payload["error"]["code"], "plan_policy_mismatch")
 
     def test_unpublished_baseline_key_is_refused(self) -> None:
         """G-37 negative test: the report node's declared source key must be non-blank.

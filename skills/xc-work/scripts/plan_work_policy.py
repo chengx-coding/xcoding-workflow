@@ -529,7 +529,6 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         artifact_min: int = 1,
         verification_scope: str = "",
         source_keys: Sequence[str] = (),
-        required_artifact_name: str = "",
     ) -> None:
         item: dict[str, object] = {
             "logical_key": logical_key,
@@ -540,8 +539,6 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
             item["verification_scope"] = verification_scope
         if source_keys:
             item["source_keys"] = list(source_keys)
-        if required_artifact_name:
-            item["required_artifact_name"] = required_artifact_name
         required_nodes.append(item)
 
     if capabilities["goal_document"]:
@@ -579,7 +576,6 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
             "report",
             "report",
             source_keys=("work_order.report_baseline",),
-            required_artifact_name="change-report.html",
         )
     for index in range(depth["review_passes"]):
         add_required(f"review-{index + 1}", "review")

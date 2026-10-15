@@ -26,6 +26,8 @@
 
 最小变更使用一个合并 implementation/focused-verification worker 和 finalizer，共两个可执行叶子节点。只有持久目标、证据综合、实质决策、结果留存或 full audit 需要时，才分别增加顶层文档。更复杂事实按稳定顺序添加 capability：goal、analysis 或 diagnosis、clarification、solution、approval、implementation unit、verification scope、change report、独立 review、result 和 finalization。这个顺序属于 adaptive 路径，在那里是 main-session policy：报告节点被放在独立 review 叶子之前，使评审者读到报告。完整生命周期的顺序由其模板固定，并不是这份列表。
 
+自适应 finalizer 检查每个计划来源的标识、角色、成功状态、声明的产物数量、非空产物路径及所需基线，不要求 HTML 文件名。适用时，报告阶段仍负责生成和验证实际报告；实测可分析单元数为零时，声明覆盖清单或跳过决策证据，并记录 `zero_analyzable_units`。主会话在收尾前核对这一处置。通用来源检查本身不证明报告正确。继续使用早期 plan receipt 前，应通过当前 planner 重新生成。
+
 Worker 发现范围扩大或其他前提时，应在继续修改前 block。主会话可以 reopen group，在被阻塞的直接子节点前插入 re-plan 或 recovery，发布新 plan，再 unblock 原节点继续执行或记录 no-op/rollback 证据。大型任务可以持续增加经过复审的子树，没有全局节点数上限；每个 loop 仍显式有界。
 
 ## 面向人类的文档

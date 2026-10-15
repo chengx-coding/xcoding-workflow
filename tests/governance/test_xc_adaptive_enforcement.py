@@ -353,54 +353,20 @@ class AdaptiveEnforcementTests(unittest.TestCase):
             for key, value in DECLARED_VOCABULARY.items():
                 self.assertEqual(summary["blackboard"][key], value, key)
 
-    def test_report_artifact_name_is_enforced(self) -> None:
-        """G-18: a report slot bound to a non-report artifact must fail.
-
-        Fails pre-change: the negative packet exits 0 today, because only the
-        artifact count was checked.
-        """
+    def test_report_artifact_identity_is_owned_by_the_report_domain(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            bridge, facts, receipt = self.bridge_and_receipt(root)
-            report = next(
-                item
-                for item in receipt["required_nodes"]
-                if item["logical_key"] == "report"
-            )
-            self.assertEqual(
-                report["required_artifact_name"], REPORT_ARTIFACT_NAME
-            )
+            bridge, facts, receipt = self.bridge_and_receipt(Path(temporary))
+            report = next(item for item in receipt["required_nodes"] if item["logical_key"] == "report")
+            self.assertNotIn("required_artifact_name", report)
             source_map = {
                 "implementation-1": {"node_id": "rt_impl"},
                 "report": {"node_id": "rt_report"},
             }
-            code, payload = self.validate(
-                bridge,
-                facts,
-                receipt,
-                source_map,
-                self.report_packet(
-                    receipt, baseline=BASELINE_VALUE, report_artifacts=["notes.txt"]
-                ),
-            )
-            self.assertEqual(code, 2, payload)
-            self.assertEqual(payload["error"]["code"], "report_artifact_mismatch")
-            for delivered in (
-                REPORT_ARTIFACT_NAME,
-                "C:\\wb\\artifacts\\rt_report\\" + REPORT_ARTIFACT_NAME,
-                "/wb/artifacts/rt_report/" + REPORT_ARTIFACT_NAME,
-            ):
+            for delivered in ("change-report-manifest.json", REPORT_ARTIFACT_NAME):
                 with self.subTest(delivered=delivered):
                     code, payload = self.validate(
-                        bridge,
-                        facts,
-                        receipt,
-                        source_map,
-                        self.report_packet(
-                            receipt,
-                            baseline=BASELINE_VALUE,
-                            report_artifacts=[delivered],
-                        ),
+                        bridge, facts, receipt, source_map,
+                        self.report_packet(receipt, baseline=BASELINE_VALUE, report_artifacts=[delivered]),
                     )
                     self.assertEqual(code, 0, payload)
                     self.assertTrue(payload["ok"])

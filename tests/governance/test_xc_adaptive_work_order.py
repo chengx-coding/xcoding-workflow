@@ -140,18 +140,37 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
             self.assertEqual(payload["counts"], {"pending": 2})
 
     def test_minimal_managed_path_has_the_plan_required_leaves(self) -> None:
-        """Corrected fixture: the finalizer publishes the report's declared source key.
+        self.minimal_managed_path(zero_units=False)
 
-        The finalizer previously declared `blackboard_keys=["work_order.plan_id"]` and the tree
-        published no baseline, so the manifest was accepted only because G-37's check did not
-        exist: the plan's `report` node declares `work_order.report_baseline`, and an
-        unpublished declared key is now refused with `missing_required_source_key`. The
-        baseline is published on the live tree and projected into the finalizer's packet, and
-        the packet is asserted to carry it.
+    def test_zero_unit_report_completes_without_html(self) -> None:
+        self.minimal_managed_path(zero_units=True)
+
+    def minimal_managed_path(self, *, zero_units: bool) -> None:
+        """Exercise real runtime sources, manifest validation and finalization.
+
+        The zero-unit branch measures an unchanged Git repository through the report
+        domain before completing its report leaf with only the generated manifest.
         """
         with tempfile.TemporaryDirectory() as temporary:
             tree, workshop = self.environment(Path(temporary))
             group = self.find_group(tree)
+            baseline_value = BASELINE_VALUE
+            if zero_units:
+                business_repo = Path(temporary) / "business-repo"
+                business_repo.mkdir()
+                (business_repo / "sample.py").write_text("VALUE = 1\n", encoding="utf-8", newline="\n")
+                for arguments in (
+                    ["init", "--quiet"], ["add", "sample.py"],
+                    ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "-m", "Initial fixture"],
+                ):
+                    subprocess.run(["git", *arguments], cwd=business_repo, check=True, capture_output=True)
+                report_workbench = workshop / "work-orders" / "adaptive"
+                captured = self.run_json(
+                    ROOT / "skills" / "xc-change-report" / "scripts" / "capture_baseline.py",
+                    "--repo", str(business_repo), "--workbench", str(report_workbench),
+                    "--work-order-id", "20260803-0000-adaptive",
+                )
+                baseline_value = f"{captured['head']}:{captured['expected_digest']}:{captured['algorithm']}"
             artifact = (
                 workshop
                 / "work-orders"
@@ -197,7 +216,7 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 / "work-orders"
                 / "adaptive"
                 / "artifacts"
-                / "change-report.html"
+                / ("change-report-manifest.json" if zero_units else "change-report.html")
             )
             reporter = self.run_json(
                 RUNTIME,
@@ -244,7 +263,7 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--set",
                 "work_order.plan_id=" + "a" * 64,
                 "--set",
-                f"{BASELINE_KEY}={BASELINE_VALUE}",
+                f"{BASELINE_KEY}={baseline_value}",
             )
             finalizer = self.run_json(
                 RUNTIME,
@@ -284,7 +303,7 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--metadata",
                 'metadata.control_packet.blackboard_keys=["work_order.plan_id","'
                 + BASELINE_KEY
-                + '"]',
+                + '","work_order.report_skip_reason","report.path"]',
                 "--metadata",
                 'metadata.completion.required_fields=["summary","validation"]',
             )
@@ -333,10 +352,28 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--agent",
                 "report-author",
             )
-            report_artifact.write_text(
-                "<!doctype html><html lang=\"en\"></html>\n",
-                encoding="utf-8",
-            )
+            if zero_units:
+                measured = self.run_json(
+                    ROOT / "skills" / "xc-change-report" / "scripts" / "build_manifest.py",
+                    "--repo", str(business_repo), "--work-order-id", "20260803-0000-adaptive",
+                    "--baseline-commit", captured["head"],
+                    "--baseline-digest", captured["expected_digest"],
+                    "--tmp-dir", str(report_workbench / "tmp"), "--out", str(report_artifact),
+                )
+                self.assertEqual(measured["units_total"], 0)
+                self.assertFalse(measured["run_required"])
+                self.assertTrue(report_artifact.is_file())
+                self.assertFalse(report_artifact.with_name("change-report.html").exists())
+                self.run_json(
+                    RUNTIME, "set", "--tree", str(tree),
+                    "--set", "work_order.report_skip_reason=zero_analyzable_units",
+                    "--set", "report.path=",
+                )
+            else:
+                report_artifact.write_text(
+                    "<!doctype html><html lang=\"en\"></html>\n",
+                    encoding="utf-8", newline="\n",
+                )
             self.run_json(
                 RUNTIME,
                 "complete",
@@ -345,7 +382,7 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--node",
                 reporter_id,
                 "--summary",
-                "Produced the minimal-strength change report.",
+                "Measured zero analyzable units; HTML skipped." if zero_units else "Produced the minimal-strength change report.",
                 "--validation",
                 "Coverage validation passed.",
                 "--artifact",
@@ -407,11 +444,16 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
             }
             self.assertEqual(
                 projected.get(BASELINE_KEY),
-                BASELINE_VALUE,
+                baseline_value,
                 "the finalizer's projection must carry the published baseline, which is the "
                 "declared source key G-37 requires",
             )
             self.assertEqual(projected.get("work_order.plan_id"), receipt["plan_id"])
+            if zero_units:
+                self.assertEqual(projected["work_order.report_skip_reason"], "zero_analyzable_units")
+                self.assertEqual(projected["report.path"], "")
+                report_source = next(category for category in packet["packet"]["source_categories"] if category["name"] == "plan-report")["sources"][0]
+                self.assertEqual(report_source["artifacts"], [str(report_artifact)])
             manifest = self.run_json(
                 PLANNER_SCRIPTS / "validate_adaptive_manifest.py",
                 "--receipt-json",

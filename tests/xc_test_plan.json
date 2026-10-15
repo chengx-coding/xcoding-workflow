@@ -609,5 +609,5 @@
   },
   "module_weights_source": "measured per-module wall seconds and collected test counts from a full serial baseline profile on a 20-logical-core Windows machine; used only as the sharding cost model",
   "module_test_counts": {},
-  "expected_collected_tests": 955
+  "expected_collected_tests": 957
 }
