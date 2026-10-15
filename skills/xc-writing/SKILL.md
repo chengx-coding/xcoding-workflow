@@ -30,7 +30,7 @@ Let each paragraph develop a connected step in the explanation. Prefer natural v
 Read only the reference needed for the present difficulty:
 
 - [Explanation and argument](references/explanation.md): mechanisms, abstract subjects, evidence, and sustained technical or scientific prose.
-- [Answers and long inputs](references/answers.md): direct questions, mixed source material, appropriate depth, and a self-contained response.
+- [Answers and long inputs](references/answers.md): direct questions, mixed source material, and self-contained status or final explanations drawn from internal records.
 - [Revision and review](references/revision-and-review.md): comparing meanings, resolving ambiguity, and giving grounded findings; includes original examples.
 - [Evidence and limits](references/evidence.md): research basis, attribution, and what readability checks can establish.
 
