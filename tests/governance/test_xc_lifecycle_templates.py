@@ -93,12 +93,12 @@ FROZEN_CALLER_KEYS = {
 # instead of silently shipping an unverified generated file.
 DEDICATED_TEMPLATE_TESTS = {
     "skills/xc-work/assets/jit-milestone-template.xml": (
-        "tests.test_xc_jit_milestone",
+        "tests.runtime.test_xc_jit_milestone",
         "JitMilestoneTests",
         "test_flow_rebuilds_current_template",
     ),
     "skills/xc-work/assets/adaptive-work-order-template.xml": (
-        "tests.test_xc_adaptive_work_order",
+        "tests.governance.test_xc_adaptive_work_order",
         "AdaptiveWorkOrderTests",
         "test_flow_rebuilds_current_template",
     ),

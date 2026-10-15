@@ -29,9 +29,9 @@ These supporting Skills own durable feature, document, and optional knowledge bo
 [Canonical contract](../../../skills/xc-document/SKILL.md)
 
 - **Invoke when:** a workflow creates, renders, or validates a managed workshop, feature, work-order, or node-artifact Markdown document.
-- **Purpose:** define the default human-readable authoring contract and enforce frontmatter, identity, language, audience, association, and provenance.
+- **Purpose:** validate frontmatter, identity, language, audience, association, and provenance, and retain the compatible public entry to the shared [writing method](implementation-and-quality.md).
 - **Public entry:** `validate_document.py` with `document_path` and optional `expected_kind`; also exposes language validation and deterministic template rendering.
-- **Typical usage:** render a template with explicit values, write the body for its intended audience, lead with purpose or outcome before technical depth, apply explicit user authoring requirements, then validate the expected managed document kind.
+- **Typical usage:** render a template with explicit values, pass the request, tagged text/path inputs, audience, fixed language, and authoring requirements through the retained human-readable entry, then validate the expected managed document kind. The writing method has one owner; the compatibility entry does not maintain a second copy.
 - **Boundaries:** it does not author content, approve documents, inspect opaque tree references, store dynamic task state in frontmatter, or claim to mechanically prove semantic readability.
 
 Managed frontmatter uses the package-local bounded YAML subset codec rather

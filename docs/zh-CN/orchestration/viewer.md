@@ -43,7 +43,7 @@ idle shutdown: 120 秒
 
 `xcoding daemon serve` 是独立的本地工具 API。它默认使用端口
 `20669`，要求 process-lifetime bearer token 和精确 Host/Origin 检查，只接受
-启动时传入的 runtime 文件，暴露九个 typed read-only query，并提供有界、不可
+启动时传入的 runtime 文件，暴露十个 typed read-only query，并提供有界、不可
 replay 的 summary SSE。
 
 Viewer 继续作为端口 `20668` 上的 browser interface，拥有自己的 UI、Viewer

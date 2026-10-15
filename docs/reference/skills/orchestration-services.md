@@ -47,7 +47,7 @@ through opaque process-local IDs.
 
 The HTTP surface contains authenticated health/list, one typed query endpoint,
 and bounded non-durable summary SSE. The typed facade permits `next`,
-`summary`, `show`, `control-packet`, `find`, `artifacts`, `snapshot`,
+`summary`, `show`, `control-packet`, `assignment-packet`, `find`, `artifacts`, `snapshot`,
 `integrity-status`, and `validate`. It rejects every mutation command before
 tree access. SSE has no replay, `id`, full snapshot, journal, queue, or browser
 cookie/query-token fallback.

@@ -28,7 +28,9 @@ The canonical agent definitions under `agents-src/agents/` follow one naming rul
 
 Canonical sources are changed before anything derived from them. Skills communicate through Skill names and documented public parameters. One Skill does not reach into another Skill's private references or scripts.
 
-One Skill owns a user-facing rendering surface rather than a managed Markdown document. [`xc-change-report`](../../skills/xc-change-report/SKILL.md) owns the change report: one offline HTML file, the coverage manifest the report is proven against, and the deterministic validator. Its authoring standard stays with the shared human-readable contract in [`xc-document`](../../skills/xc-document/SKILL.md), and its body language follows the work order's fixed document language, so one standard governs every human-facing producer instead of one copy per renderer.
+One Skill owns a user-facing rendering surface rather than a managed Markdown document. [`xc-change-report`](../../skills/xc-change-report/SKILL.md) owns the change report: one offline HTML file, the coverage manifest the report is proven against, and the deterministic validator. Its prose uses the shared method owned by [`xc-writing`](../../skills/xc-writing/SKILL.md); [`xc-document`](../../skills/xc-document/SKILL.md) retains the compatible human-readable entry and managed-document structural validation. The report keeps its HTML-specific requirements and follows the work order's fixed document language. One writing method therefore serves both Markdown and other human-facing formats.
+
+The writing Skill also supports standalone technical answers, explanations, revision, and writing review. It organizes the reader's context and reasoning, then checks facts, conditions, exceptions, and evidence strength. It adds no persistent writing mode, runtime state, or readability score; discovering a Skill does not guarantee that every future reply uses it.
 
 ## Generated Outputs And Adapters
 

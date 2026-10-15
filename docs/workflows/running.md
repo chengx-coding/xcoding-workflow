@@ -30,15 +30,17 @@ If a worker discovers wider scope or another prerequisite, it blocks before furt
 
 ## Human-Readable Documents
 
-Unless the user explicitly requests another format or style, top-level work-order documents, managed project and feature documents, user-facing artifacts, and project documentation delivered by an implementation node follow the [`xc-document`](../../skills/xc-document/SKILL.md) human-readable default.
+Unless the user explicitly requests another format or style, top-level work-order documents, managed project and feature documents, user-facing artifacts, and project documentation delivered by an implementation node use the shared method in [`xc-writing`](../../skills/xc-writing/SKILL.md), reached through the retained [`xc-document`](../../skills/xc-document/SKILL.md) human-readable default entry.
 
 Writers lead with purpose, conclusion, or required reader action, then add technical depth after the reader has context. Necessary terms are explained briefly at first use. Repetition and process narration are removed without dropping material facts, constraints, evidence, risks, compatibility impact, or unresolved decisions.
 
 Callers pass concise explicit requirements through `document.authoring_requirements` before embedding document evolution. Long requirements remain in an input document or artifact. Explicit user requirements override style defaults, but not truth, safety, managed structure, provenance, or mandatory evidence.
 
-The change report is a user-facing artifact delivered as self-contained HTML, not as a managed Markdown document. Its prose follows the same [`xc-document`](../../skills/xc-document/SKILL.md) human-readable default and states only its HTML-specific structure, so one authoring standard governs every human-facing producer.
+The change report is a user-facing artifact delivered as self-contained HTML, not as a managed Markdown document. Its prose uses the same [`xc-writing`](../../skills/xc-writing/SKILL.md) method through the compatible document entry, while the report contract owns HTML-specific structure. Structural validation does not score readability or prove meaning.
 
 Exact commands, identifiers, paths, logs, and machine output remain literal when accuracy requires it. Their surrounding explanation and summary remain human-readable. Internal technical artifacts may retain specialist depth for their intended audience.
+
+Standalone answers and explanations may call the writing Skill directly, with `operation=write`, `revise`, or `review`. Inputs use explicit `{kind: text|path, value: ...}` entries; a path-looking text value is not permission to read a file. User requirements and the fixed document language remain applicable. Writing review supplies a perspective; overall quality findings remain with [`xc-review`](../../skills/xc-review/SKILL.md).
 
 Readability is a semantic review dimension, not a word-count or sentence-length release score. Reviewers check audience fit, progressive disclosure, first-use explanations, concision, and preservation of key information.
 

@@ -2,7 +2,7 @@
 
 **语言：** [English](../../../reference/skills/implementation-and-quality.md) | **简体中文**
 
-这些支撑 Skill 执行获批变更、向人类评审者解释变更，并评估其证据。
+这些支撑 Skill 执行获批变更、向人类评审者解释变更、指导技术写作并评估证据。
 
 ## `xc-change-report`
 
@@ -33,6 +33,16 @@
 - **公开入口：** 必填 `workbench_path`、`work_scope`、`inputs` 和 `artifact_path`。
 - **典型用法：** 阅读节点契约和获批输入，实施最小完整变更，运行局部检查并写入声明的 artifact。自适应 minimal 节点可以在验证不可变 plan receipt 后，把一个 coherent implementation 与 focused verification 合并执行。
 - **主要边界：** 不负责分解或重试，不得顺手覆盖功能基线，只能通过运行时公开命令报告。
+
+## `xc-writing`
+
+[规范契约](../../../../skills/xc-writing/SKILL.md)
+
+- **何时调用：** 起草面向人的技术回答、解释、文档或报告，修订难懂文字，或在保留原意的前提下评审清晰度时。
+- **用途：** 帮助读者理解对象、推理与取舍，同时保留事实、条件、例外、规范强度和不确定性。它统一拥有文档和独立问答的共享写作方法。
+- **公开入口：** 必填 `request`；`operation=write|revise|review` 默认 `write`；可选 `inputs`、`audience` 和 `authoring_requirements`。每个输入对象包含 `kind=text|path` 和非空字符串 `value`，不把裸字符串猜成路径；修订和审阅须有可识别的目标文本。
+- **典型用法：** 提供当前问题或写作任务及原材料，按读者需要组织解释，再据证据核对结果。例如设置 `operation=revise` 并传入 `inputs=[{"kind":"text","value":"草稿仅作者可见。"}]` 可修订所给文字，而不读取文件。审阅只返回有证据的文字发现及局部建议，不修改原文。
+- **主要边界：** 不取代受管文档结构校验、文档生命周期、整体质量评审或调用者授权；材料缺失或含糊时如实报告，不自行编造。用户风格和语言要求适用，命令、证据与关键约束保持准确。不新增持久模式、可读性评分、ISO 符合性声明，也不保证影响所有未来回复或读者。
 
 ## `xc-review`
 

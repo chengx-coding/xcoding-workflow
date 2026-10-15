@@ -2,7 +2,7 @@
 
 **Language:** **English** | [简体中文](../zh-CN/development/versioning.md)
 
-The current source version is <!-- xc:version -->0.2.1<!-- /xc:version -->. It identifies the source candidate; it does not claim that a public release or support evidence exists. The new shortcut exists only in builds containing its implementation; older installations can use `xcoding version --json`, and reinstalling the same historical wheel does not add the capability. Read the [installation contract](../getting-started/installation.md) for supported release boundaries.
+The current source version is <!-- xc:version -->0.2.2<!-- /xc:version -->. It identifies the source candidate; it does not claim that a public release or support evidence exists. The new shortcut exists only in builds containing its implementation; older installations can use `xcoding version --json`, and reinstalling the same historical wheel does not add the capability. Read the [installation contract](../getting-started/installation.md) for supported release boundaries.
 
 ## One Version Source
 
@@ -17,11 +17,11 @@ Every XC iteration records a version assessment, including a justified `no-bump`
 | Disposition | When to recommend it |
 | --- | --- |
 | `no-bump` | No new release identity is needed yet, such as unreleased internal work or documentation/test maintenance with no changed public behavior; record why and what remains pending |
-| `patch` | A release contains backward-compatible bug fixes or compatible maintenance without a new public capability |
-| `minor` | A release adds backward-compatible public capabilities; while below `1.0.0`, also use the next minor version for a breaking public-contract change |
+| `patch` | A bounded, backward-compatible small iteration, including bug fixes, compatible maintenance, or a limited capability addition |
+| `minor` | A broader addition of backward-compatible public capabilities; while below `1.0.0`, also use the next minor version for a breaking public-contract change |
 | `major` | At or above `1.0.0`, a release breaks a documented public contract |
 
-These are SemVer classifications for this project, not compulsory numbering rules for consumer projects. A breaking `0.x` change advances `0.N.P` to `0.(N+1).0`; stable major changes reset the minor and patch numbers, and minor changes reset the patch number. Moving to `1.0.0` is a deliberate maturity and compatibility decision requiring explicit approval, never an automatic consequence of accumulating features. Public CLI behavior, installation or upgrade contracts, packaged Skills and agent contracts, and compatibility promises all contribute to the assessment. Changes to support claims require their own evidence even when the version number is approved.
+These are this project's version classifications with a deliberate patch policy for bounded compatible small iterations, not compulsory numbering rules for consumer projects. A limited new capability does not automatically require a minor increment: assess the scope and compatibility of the whole accumulated change set. Do not infer scope from file count or invent numerical thresholds. A breaking `0.x` change advances `0.N.P` to `0.(N+1).0`; stable major changes reset the minor and patch numbers, and minor changes reset the patch number. Moving to `1.0.0` is a deliberate maturity and compatibility decision requiring explicit approval, never an automatic consequence of accumulating features. Public CLI behavior, installation or upgrade contracts, packaged Skills and agent contracts, and compatibility promises all contribute to the assessment. Changes to support claims require their own evidence even when the version number is approved.
 
 Use the existing solution, result, or node artifact to retain one structured decision:
 

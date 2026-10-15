@@ -2,7 +2,7 @@
 
 **Language:** **English** | [简体中文](../../zh-CN/reference/skills/implementation-and-quality.md)
 
-These supporting Skills execute approved changes, explain them to human reviewers, and assess their evidence.
+These supporting Skills execute approved changes, explain them to human reviewers, guide technical writing, and assess evidence.
 
 ## `xc-change-report`
 
@@ -33,6 +33,16 @@ These supporting Skills execute approved changes, explain them to human reviewer
 - **Public entry:** required `workbench_path`, `work_scope`, `inputs`, and `artifact_path`.
 - **Typical usage:** read the supplied node contract and approved inputs, make the smallest coherent change, run focused checks, and write the declared artifact. An adaptive minimal node may combine one coherent implementation with focused verification after its immutable plan receipt is validated.
 - **Boundaries:** it does not own decomposition or retries, cannot opportunistically overwrite feature baselines, and reports only through the runtime public command.
+
+## `xc-writing`
+
+[Canonical contract](../../../skills/xc-writing/SKILL.md)
+
+- **Invoke when:** drafting a human-facing technical answer, explanation, document, or report; revising difficult prose; or reviewing clarity while preserving meaning.
+- **Purpose:** help readers understand objects, reasoning, and choices while preserving facts, conditions, exceptions, normative strength, and uncertainty. It owns the shared writing method for documents and standalone answers.
+- **Public entry:** required `request`; `operation=write|revise|review` defaults to `write`; optional `inputs`, `audience`, and `authoring_requirements`. Each input is an object with `kind=text|path` and a non-empty string `value`; bare strings are not inferred as paths. Revision and review require identifiable target text.
+- **Typical usage:** give the current question or writing task and source material, adapt the explanation to the reader, then check the result against its evidence. For example, set `operation=revise` and pass `inputs=[{"kind":"text","value":"The draft is visible only to its author."}]` to revise supplied text without reading a file. Review returns evidence-backed writing findings and local suggestions without editing the source.
+- **Boundaries:** it does not replace managed-document structure validation, the document lifecycle, overall quality review, or the caller's authorization. Missing or ambiguous source material is reported rather than invented. User style and language requirements apply; commands, evidence, and material constraints stay exact. It adds no persistent mode, readability score, ISO conformity claim, or guarantee about every future reply or reader.
 
 ## `xc-review`
 

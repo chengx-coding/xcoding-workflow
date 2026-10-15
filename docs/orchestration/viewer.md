@@ -45,7 +45,7 @@ The local Viewer server is an inspection tool, not an orchestration daemon or re
 
 `xcoding daemon serve` is a separate local tool API. It
 defaults to port `20669`, requires a process-lifetime bearer token plus exact
-Host/Origin checks, accepts only runtime files supplied at launch, exposes nine
+Host/Origin checks, accepts only runtime files supplied at launch, exposes ten
 typed read-only queries, and provides bounded, non-replayable summary SSE.
 
 The Viewer remains the browser interface on port `20668`. It owns its UI,

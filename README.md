@@ -4,7 +4,7 @@
 
 xcoding-workflow helps coding agents carry work from an initial request to a tested, reviewed result. It works across programming languages, frameworks, and the applications that run coding agents, known here as **Agent hosts**.
 
-Current source candidate version: <!-- xc:version -->0.2.1<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
+Current source candidate version: <!-- xc:version -->0.2.2<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
 
 ## What It Does
 
@@ -15,6 +15,7 @@ Current source candidate version: <!-- xc:version -->0.2.1<!-- /xc:version -->. 
 - An explicitly adaptive managed work order can start with one combined work leaf and one finalizer, then add documents, analysis, gates, verification, review, and recovery as confirmed facts require.
 - After implementation and verification, a work order that changed analysable code produces a **change report**: one offline HTML file that explains each change, why it exists, the design and trade-offs behind it, and where it sits in the larger flow, together with a mechanical proof that no analysable change unit was left unexplained.
 - The `.xcoding` directory is the project's workflow workspace. It is kept in a separate Git worktree, which is a separate working directory for workflow history, so those records do not mix with source-code history.
+- [`xc-writing`](skills/xc-writing/SKILL.md) guides technical answers, explanations, drafting, revision, and writing review. It preserves evidence and conditions while adapting to the reader; it can be used independently or through the existing document-writing entry.
 - Long-lived product features are managed only when you explicitly create or adopt them. Ordinary maintenance does not create a feature automatically.
 
 ## Choose Direct Or Managed Work
@@ -60,10 +61,10 @@ Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed w
 
 The supported distribution is `xcoding-workflow`; `0.1.0` is distributed only as an immutable GitHub Release. It is not published on PyPI. If the immutable release and its integrity files are not available, there is no supported public installation artifact yet.
 
-For a published release, download the wheel and integrity files from that same release and verify them as described in [Installation](docs/getting-started/installation.md). The following filename illustrates the current, unpublished `0.2.0` source candidate; it is not an available release artifact or evidence of release qualification. Install it only after a candidate wheel has been built and verified for your intended use:
+For a published release, download the wheel and integrity files from that same release and verify them as described in [Installation](docs/getting-started/installation.md). The following filename illustrates the current, unpublished `0.2.2` source candidate; it is not an available release artifact or evidence of release qualification. Install it only after a candidate wheel has been built and verified for your intended use:
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.2.1-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.2.2-py3-none-any.whl
 xcoding version --json
 ```
 
@@ -72,14 +73,14 @@ Builds containing the new shortcut also support `xcoding --version`; existing in
 The installation creates only the `xcoding` command. Configure one or more explicit hosts from the consumer project root; repeated `--host` values form the complete desired host set:
 
 ```console
-xcoding setup --project-root /absolute/path/to/consumer --host codex --host trae
+xcoding setup --project-root /absolute/path/to/consumer --host codex --host trae --json
 ```
 
 Inspect the same plan without writing by adding `--dry-run`. If setup reports an interrupted journal, run explicit recovery; to restore the previous successful generation, run rollback:
 
 ```console
-xcoding setup --project-root /absolute/path/to/consumer --recover
-xcoding setup --project-root /absolute/path/to/consumer --rollback
+xcoding setup --project-root /absolute/path/to/consumer --recover --json
+xcoding setup --project-root /absolute/path/to/consumer --rollback --json
 ```
 
 Setup refuses unmanaged conflicts and drifted managed files instead of overwriting them. XC does not provide `install.ps1`, `install.sh`, a remote-script pipe command, automatic host detection, or a force option. See [Installation](docs/getting-started/installation.md) for host paths, desired-state updates, recovery, rollback, release integrity, and support policy.
@@ -130,6 +131,7 @@ Agent hosts use different invocation syntax. Follow your host's normal Skill syn
 - [Installation](docs/getting-started/installation.md)
 - [Quick start](docs/getting-started/quick-start.md)
 - [Core design](docs/concepts/core-design.md)
+- [Writing and quality Skills](docs/reference/skills/implementation-and-quality.md)
 
 `build_agents.py` is only for developing this repository. It refreshes this checkout's local Skill mirror; it does not install XC into another project.
 

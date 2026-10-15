@@ -30,15 +30,17 @@ Worker 发现范围扩大或其他前提时，应在继续修改前 block。主�
 
 ## 面向人类的文档
 
-除非用户明确要求其他格式或风格，顶层工单文档、受管项目与功能文档、面向用户的 artifact，以及实现节点通过工单交付的项目文档，都遵循 [`xc-document`](../../../skills/xc-document/SKILL.md) 的人类可读默认规则。
+除非用户明确要求其他格式或风格，顶层工单文档、受管项目与功能文档、面向用户的 artifact，以及实现节点通过工单交付的项目文档，都使用 [`xc-writing`](../../../skills/xc-writing/SKILL.md) 的共享方法，并通过 [`xc-document`](../../../skills/xc-document/SKILL.md) 保留的人类可读默认入口取得指导。
 
 写作者先说明目的、结论或读者需要采取的行动，再在读者获得上下文后展开技术细节。必要术语在第一次出现时简短解释。删除重复内容和无助于理解的过程叙述，但保留关键事实、约束、证据、风险、兼容性影响和未决事项。
 
 调用方在嵌入文档演进子树前，通过 `document.authoring_requirements` 传入简短的明确要求。较长要求保存在输入文档或 artifact 中。用户明确要求优先于默认写作风格，但不能覆盖真实性、安全、受管结构、来源记录或必要证据。
 
-变更报告是以自包含 HTML 交付的面向用户 artifact，不是受管 Markdown 文档。它的正文遵循同一套 [`xc-document`](../../../skills/xc-document/SKILL.md) 人类可读默认规则，只声明 HTML 特有的结构，因此所有面向人类的产出都由同一套撰写标准约束。
+变更报告是以自包含 HTML 交付的面向用户 artifact，不是受管 Markdown 文档。它的正文通过兼容文档入口使用同一套 [`xc-writing`](../../../skills/xc-writing/SKILL.md) 方法，HTML 特有结构仍由报告契约拥有。结构校验不评定可读性分数，也不证明语义正确。
 
 命令、标识符、路径、日志和机器输出在需要精确引用时保持原样；其周围的解释和摘要仍应易读。内部技术 artifact 可以根据预期受众保留较高的专业密度。
+
+独立问答与解释可以直接调用写作 Skill，使用 `operation=write`、`revise` 或 `review`。输入显式标注为 `{kind: text|path, value: ...}`；看起来像路径的文字不构成读取文件的授权。用户要求和固定文档语言仍适用。文字审阅提供一种视角，整体质量发现仍由 [`xc-review`](../../../skills/xc-review/SKILL.md) 负责。
 
 可读性属于语义复审维度，不使用词数或句长作为发布评分。复审者检查受众匹配、渐进展开、术语首次解释、简洁性和关键信息完整性。
 
@@ -62,7 +64,7 @@ Packet 只包含 target 叶子契约、已声明的来源结果字段与 artifac
 
 ## Skill 内部 Worker 委派
 
-选择加入该机制的 subagent 叶节点必须声明恰好五个 `metadata.worker_profile.*` 值：schema version、所属 Skill、profile ID、security mode 与 context bindings。节点拥有的 `metadata.delegation.authorization` 是另一份独立能力上限；它不是 profile 内容，调用方也不能放宽它。Authoring 与 runtime 校验都会拒绝不完整 profile、未知成员、未声明的 context 选择或格式错误的授权。
+选择加入该机制的 subagent 叶节点必须声明恰好五个 `metadata.worker_profile.*` 值：schema version、所属 Skill、profile ID、security mode 与 context bindings。这里的 schema version 属于运行时 assignment 协议；Skill 内部的源 profile 只接受当前格式，根节点没有版本字段。节点拥有的 `metadata.delegation.authorization` 是另一份独立能力上限；它不是 profile 内容，调用方也不能放宽它。Authoring 与 runtime 校验都会拒绝不完整 profile、未知成员、未声明的 context 选择或格式错误的授权。
 
 节点 `start` 后，主会话请求 `assignment-packet --node <id> --attempt <n>`。该只读 wrapper 包含精确的运行中 node packet、profile reference、target contract、最小化 control packet 与确定性关联 digest；它不包含 tree path、兄弟或未来节点、完整 blackboard、restore 状态、bearer material 或 mutation authority。所属 Skill 把 wrapper 中精确的 node/profile 成员交给 `xcoding delegate prepare`，并且只 dispatch 由此生成的 authoritative envelope。
 

@@ -4,7 +4,7 @@
 
 xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审查的结果。它不绑定特定编程语言、框架或运行编码 Agent 的应用；本文把这类应用称为 **Agent 宿主**。
 
-当前源码候选版本：<!-- xc:version -->0.2.1<!-- /xc:version -->. [版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
+当前源码候选版本：<!-- xc:version -->0.2.2<!-- /xc:version -->. [版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
 
 ## 它能做什么
 
@@ -14,6 +14,7 @@ xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审�
 - 显式选择自适应受管工单时，可以从一个合并工作叶子节点和一个 finalizer 开始，再根据已确认事实增加文档、分析、门禁、验证、审查与恢复。
 - 在实现与验证之后，改动了可分析代码的工单会产出一份**变更报告**：一个离线 HTML 文件，逐条说明改了什么、为什么存在、背后的设计与权衡，以及它处于更大流程的哪一环，并附上机械证明，说明没有可分析变更单元被漏掉。
 - 项目中的 `.xcoding` 目录是工作流专用空间。它使用独立的 Git 工作树，也就是专门保存工作流历史的独立工作目录，避免把这些记录混入源码提交历史。
+- [`xc-writing`](skills/xc-writing/SKILL.md) 指导技术问答、解释、起草、修订和文字审阅，在适应读者的同时保留证据与条件；既可独立使用，也可通过现有文档写作入口使用。
 - 只有在你明确创建或接管时，长期维护的产品功能才会成为受管功能。普通维护不会自动创建功能。
 
 ## 选择直接或受管工作
@@ -59,10 +60,10 @@ python skills/xc-work/scripts/classify.py [事实参数]
 
 受支持的 distribution 是 `xcoding-workflow`；`0.1.0` 只通过不可变 GitHub Release 分发，不发布到 PyPI。如果不可变 release 及其完整性文件尚不可用，就还没有受支持的公开安装产物。
 
-对于已经发布的 release，应从该 release 下载 wheel 和完整性文件，并按[安装](docs/zh-CN/getting-started/installation.md)中的说明校验。以下文件名仅示意当前尚未发布的 `0.2.1` 源码候选，不表示发行产物已经可用或已获得发行资格。只有在候选 wheel 完成构建并针对预期用途验证后，才安装它：
+对于已经发布的 release，应从该 release 下载 wheel 和完整性文件，并按[安装](docs/zh-CN/getting-started/installation.md)中的说明校验。以下文件名仅示意当前尚未发布的 `0.2.2` 源码候选，不表示发行产物已经可用或已获得发行资格。只有在候选 wheel 完成构建并针对预期用途验证后，才安装它：
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.2.1-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.2.2-py3-none-any.whl
 xcoding version --json
 ```
 
@@ -71,14 +72,14 @@ xcoding version --json
 安装结果只提供 `xcoding` 命令。在消费项目根目录为一个或多个显式宿主执行设置；重复的 `--host` 值共同构成完整 desired host set：
 
 ```console
-xcoding setup --project-root /absolute/path/to/consumer --host codex --host trae
+xcoding setup --project-root /absolute/path/to/consumer --host codex --host trae --json
 ```
 
 追加 `--dry-run` 可以在零写入情况下检查同一计划。Setup 报告中断 journal 时，应显式恢复；需要还原上一份成功 generation 时，执行 rollback：
 
 ```console
-xcoding setup --project-root /absolute/path/to/consumer --recover
-xcoding setup --project-root /absolute/path/to/consumer --rollback
+xcoding setup --project-root /absolute/path/to/consumer --recover --json
+xcoding setup --project-root /absolute/path/to/consumer --rollback --json
 ```
 
 Setup 会拒绝未纳管冲突和已漂移的受管文件，不会覆盖它们。XC 不提供 `install.ps1`、`install.sh`、远程脚本 pipe 命令、自动宿主检测或 force 选项。宿主路径、desired-state 更新、恢复、回滚、release 完整性和支持政策详见[安装](docs/zh-CN/getting-started/installation.md)。
@@ -129,6 +130,7 @@ New-Item -ItemType Junction -Path (Join-Path $ProjectRoot ".xcoding") -Target (J
 - [安装](docs/zh-CN/getting-started/installation.md)
 - [快速开始](docs/zh-CN/getting-started/quick-start.md)
 - [核心设计](docs/zh-CN/concepts/core-design.md)
+- [写作与质量 Skill](docs/zh-CN/reference/skills/implementation-and-quality.md)
 
 `build_agents.py` 只用于开发本仓库。它刷新当前检出中的本地 Skill 镜像，不会把 XC 安装到其他项目。
 

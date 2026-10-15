@@ -28,7 +28,9 @@ XC 是一套可移植、由 Skill 驱动的编码工作流。它覆盖发现、�
 
 任何派生产物都必须在规范源修改之后更新。Skill 之间只通过 Skill 名称和已记录的公开参数通信，一个 Skill 不会读取另一个 Skill 的私有 reference 或脚本。
 
-有一个 Skill 拥有面向用户的渲染面，而不是受管 Markdown 文档。[`xc-change-report`](../../../skills/xc-change-report/SKILL.md) 拥有变更报告：单个离线 HTML 文件、用于证明该报告的覆盖清单，以及确定性校验器。其撰写标准留在 [`xc-document`](../../../skills/xc-document/SKILL.md) 的共享人类可读契约中，正文语言则遵循 work order 固定的文档语言，因此所有面向人类的产出由同一套标准约束，而不是每个渲染器各存一份。
+有一个 Skill 拥有面向用户的渲染面，而不是受管 Markdown 文档。[`xc-change-report`](../../../skills/xc-change-report/SKILL.md) 拥有变更报告：单个离线 HTML 文件、用于证明该报告的覆盖清单，以及确定性校验器。正文使用 [`xc-writing`](../../../skills/xc-writing/SKILL.md) 拥有的共享写作方法；[`xc-document`](../../../skills/xc-document/SKILL.md) 保留兼容的人类可读入口及受管文档结构校验。报告保留 HTML 特有要求，并使用工单固定的文档语言，使 Markdown 和其他面向人的格式使用同一套写作方法。
+
+写作 Skill 也可独立用于技术问答、解释、修订和文字审阅。它组织读者需要的上下文和推理，再核对事实、条件、例外和证据强度，不增加持久文体模式、运行时状态或可读性分数。发现某个 Skill 不代表此后每次回复都会应用它。
 
 ## 生成输出与适配器
 

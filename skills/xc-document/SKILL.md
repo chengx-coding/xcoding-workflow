@@ -111,31 +111,13 @@ levels, 4,096 nodes, 16 KiB per scalar, and 4,096 decimal digits per integer.
 
 ## Default Human-Readable Authoring
 
-Unless the user supplies explicit authoring requirements, managed documents intended for human use follow this default:
+This public entry delegates writing guidance to `xc-writing`, the single owner of the shared method for human-facing prose, including non-Markdown artifacts. Invoke that Skill by its public name and parameters; do not copy its method or read its private resources from another Skill.
 
-1. Lead with the document's purpose, conclusion, or required reader action.
-2. Establish reader context before specialized terminology, interfaces, fields, or implementation details.
-3. Explain necessary terms briefly at first use.
-4. Remove repetition and process narration that does not help understanding or decisions.
-5. Preserve material facts, constraints, evidence, risks, compatibility impact, and unresolved decisions.
-6. Match technical depth to the intended audience while remaining accurate and professional.
+Map the caller's task to `xc-writing operation=write` for drafting, `operation=revise` for an explicit revision, or `operation=review` for read-only writing assessment. Pass the purpose or question as `request`, the known readership as `audience`, and existing text and evidence as tagged `inputs`: `{"kind":"text","value":"..."}` for supplied content and `{"kind":"path","value":"..."}` for an authorized file read. Identify the revision or review target separately from supporting evidence. Pass fixed content language, format constraints, and explicit user requirements through `authoring_requirements`.
 
-Explicit user requirements for format, tone, length, terminology density, or audience override these style defaults. They do not override truthfulness, safety, required frontmatter or document structure, provenance, or mandatory evidence.
+Explicit user requirements override conflicting style defaults, while truthfulness, safety, required document structure, provenance, mandatory evidence, and literal accuracy remain binding. Preserve exact commands, identifiers, paths, logs, and machine output where required. Internal technical artifacts may retain specialist density for their audience. The caller still owns content and delivery; this entry does not grant permission to modify an input file.
 
-Preserve exact commands, identifiers, paths, logs, and machine output when literal accuracy matters. Apply the default to their surrounding explanation and summary. Internal technical artifacts may retain specialist density for their intended audience, but should still open with a concise, comprehensible summary.
-
-This is an authoring and semantic-review contract. `validate_document.py` does not claim to score or mechanically prove readability.
-
-### Alignment with ISO 24495-1
-
-The six rules above are this project's concrete expression of the plain-language principles in ISO 24495-1. A document satisfies them when it is:
-
-- **Relevant** — the reader gets what they need and nothing they do not; rule 1 and rule 4 carry this.
-- **Findable** — the reader can locate the part they need without reading everything; rule 1 (lead with the conclusion) and rule 2 (context before detail) carry this.
-- **Understandable** — the reader can grasp the content on first reading; rule 3 (explain terms at first use) and rule 6 (match depth to audience) carry this.
-- **Usable** — the reader can act on it; rule 5 (preserve material facts, risks and unresolved decisions) carries this.
-
-These four principles are the shared standard for every human-facing artifact this workflow produces, including artifacts that are not managed Markdown documents such as the change report HTML. A Skill that produces a human-facing artifact states only its deltas from this section and cites it by name; it does not restate these rules, so that one standard governs every producer.
+Pure structural validation and template rendering do not invoke writing. `validate_document.py` does not claim to score or mechanically prove readability. Skills producing human-facing artifacts may continue to cite this public default and state only their format-specific additions; the writing method remains owned by `xc-writing`.
 
 ## Content Language and Audience
 

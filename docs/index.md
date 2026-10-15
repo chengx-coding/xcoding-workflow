@@ -6,7 +6,7 @@ This is the canonical English documentation for xcoding-workflow. The Chinese tr
 
 ## Getting started
 
-- [Installation](getting-started/installation.md): prerequisites, dependency installation, full-replacement installation, and the managed drift-aware alternative.
+- [Installation](getting-started/installation.md): prerequisites, package-owned installation, managed upgrades, recovery, and rollback.
 - [Quick start](getting-started/quick-start.md): create an independent workshop and choose the first managed lifecycle.
 
 ## Concepts
@@ -35,7 +35,7 @@ This is the canonical English documentation for xcoding-workflow. The Chinese tr
 - [Lifecycle entry points](reference/skills/lifecycle-entry-points.md)
 - [Investigation and decisions](reference/skills/investigation-and-decisions.md)
 - [Features, documents, and knowledge](reference/skills/features-documents-and-knowledge.md)
-- [Implementation and quality](reference/skills/implementation-and-quality.md)
+- [Implementation, writing, and quality](reference/skills/implementation-and-quality.md)
 - [Orchestration services](reference/skills/orchestration-services.md)
 
 ## Development

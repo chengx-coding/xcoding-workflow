@@ -45,7 +45,7 @@ Viewer server、picker、lifecycle 和静态资源；`src/xcoding/daemon/` 拥�
 
 HTTP surface 包含经过认证的 health/list、一个 typed query endpoint 和有界、
 非持久的 summary SSE。Typed facade 允许 `next`、`summary`、`show`、
-`control-packet`、`find`、`artifacts`、`snapshot`、`integrity-status` 和
+`control-packet`、`assignment-packet`、`find`、`artifacts`、`snapshot`、`integrity-status` 和
 `validate`，并在 tree access 前拒绝全部 mutation 命令。SSE 不提供 replay、
 `id`、full snapshot、journal、queue 或 browser cookie/query-token fallback。
 

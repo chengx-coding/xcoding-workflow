@@ -5,9 +5,11 @@
 The XC workflow exposes two kinds of Skills:
 
 - **Entry Skills** start or select a lifecycle. Use them when adopting the workflow, opening durable work, creating or adopting a feature, or evolving workflow assets.
-- **Supporting Skills** provide investigation, document, delegation, implementation, change report, quality, feature, knowledge, or orchestration capabilities inside a lifecycle. Call them through the lifecycle that owns the work order unless their contract explicitly provides a standalone operation.
+- **Supporting Skills** provide investigation, document, delegation, implementation, change report, writing, quality, feature, knowledge, or orchestration capabilities inside a lifecycle. Call them through the lifecycle that owns the work order unless their contract explicitly provides a standalone operation.
 
-The canonical contract for each Skill remains its tracked `SKILL.md`. These pages summarize discovery and usage; they do not replace those contracts.
+The catalog covers 24 canonical Skills. The canonical contract for each Skill remains its tracked `SKILL.md`. These pages summarize discovery and usage; they do not replace those contracts.
+
+Standalone writing and technical answers use [`xc-writing`](../../../skills/xc-writing/SKILL.md). The existing human-readable document entry delegates to that same method; structure validation and the managed lifecycle keep their own responsibilities.
 
 ## Catalog
 

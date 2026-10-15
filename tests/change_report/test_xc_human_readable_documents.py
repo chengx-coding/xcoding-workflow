@@ -2,6 +2,7 @@ from __future__ import annotations
 from tests.support.paths import REPO_ROOT  # noqa: E402
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -27,9 +28,21 @@ class HumanReadableDocumentContractTests(unittest.TestCase):
         document_skill = (SKILLS / "xc-document" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("## Default Human-Readable Authoring", document_skill)
-        self.assertIn("Lead with the document's purpose, conclusion, or required reader action", document_skill)
-        self.assertIn("Explicit user requirements", document_skill)
+        self.assertIn("xc-writing", document_skill)
+        self.assertNotIn("### Alignment with ISO 24495-1", document_skill)
         self.assertIn("does not claim to score or mechanically prove readability", document_skill)
+
+        writing_root = SKILLS / "xc-writing"
+        writing_skill = (writing_root / "SKILL.md").read_text(encoding="utf-8")
+        self.assertRegex(writing_skill, r'name:\s*[\"\']?xc-writing')
+        links = re.findall(r"\]\((references/[^)]+)\)", writing_skill)
+        self.assertTrue(links, "mode-specific guidance must be discoverable")
+        for relative in links:
+            target = writing_root / relative.split("#", 1)[0]
+            self.assertTrue(target.is_file(), relative)
+        for owner in ("xc-document", "xc-review", "xc-change-report"):
+            for text in (document_skill, writing_skill):
+                self.assertNotIn(f"{owner}/references/", text)
 
     def test_document_evolution_propagates_requirements_to_write_review_and_revision(self) -> None:
         flow = json.loads(DOCUMENT_FLOW.read_text(encoding="utf-8"))
@@ -50,16 +63,11 @@ class HumanReadableDocumentContractTests(unittest.TestCase):
     def test_review_contract_covers_human_readability_without_mechanical_scoring(self) -> None:
         review_skill = (SKILLS / "xc-review" / "SKILL.md").read_text(encoding="utf-8")
 
-        for phrase in (
-            "audience fit",
-            "purpose or conclusion before detail",
-            "progressive disclosure",
-            "first-use terminology explanations",
-            "concision",
-            "preservation of material facts",
-        ):
-            self.assertIn(phrase, review_skill)
-        self.assertIn("explicit user authoring requirements", review_skill)
+        self.assertIn("xc-writing", review_skill)
+        self.assertRegex(review_skill, r"operation\s*=\s*review")
+        self.assertIn("review_kind", review_skill)
+        self.assertIn("closure condition", review_skill)
+        self.assertNotIn("xc-writing/references/", review_skill)
 
     def test_every_user_facing_artifact_producer_references_the_public_contract(self) -> None:
         producers = (
@@ -80,6 +88,11 @@ class HumanReadableDocumentContractTests(unittest.TestCase):
 
         implementation = (SKILLS / "xc-implementation" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("project documentation delivered through the work order", implementation)
+
+        report_contract = (SKILLS / "xc-change-report" / "references" / "change-report-contract.md").read_text(encoding="utf-8")
+        h39 = report_contract.split("**H39**", 1)[1].split("**H40**", 1)[0]
+        self.assertIn("xc-writing", h39)
+        self.assertIn("xc-document", h39)
 
 
 if __name__ == "__main__":

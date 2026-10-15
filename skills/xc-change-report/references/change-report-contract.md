@@ -312,10 +312,11 @@ vacuous for a unit that declares no change class.
 
 - **H38** The body language is `work_order.document_language`. Code, paths, identifiers,
   commands and machine output stay verbatim and are not translated.
-- **H39** The single source of truth for writing rules is the public `xc-document`
-  "Default Human-Readable Authoring" contract, including the four ISO 24495-1 principles:
-  relevant, findable, understandable, usable. This Skill does not restate them; it cites them,
-  so the two cannot drift apart.
+- **H39** The single owner of the shared writing method is the public `xc-writing`
+  Skill. The public `xc-document` "Default Human-Readable Authoring" contract remains the
+  compatible entry: it maps the writing task, evidence, audience, fixed language, and explicit
+  requirements to that method. This Skill cites the public entry rather than restating the
+  method; report-specific additions remain below.
 - **H40** This Skill declares only its increment over that contract:
   - HTML presentation: section order (H6-H14), class names (H28), anchor rules (H21, H22),
     native-only collapsing (H20);

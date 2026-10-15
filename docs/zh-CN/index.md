@@ -6,7 +6,7 @@
 
 ## 入门
 
-- [安装](getting-started/installation.md)：前置条件、依赖安装、完整替换式安装，以及受管的漂移感知替代方式。
+- [安装](getting-started/installation.md)：前置条件、包提供的安装、受管升级、恢复与回滚。
 - [快速开始](getting-started/quick-start.md)：创建独立 workshop，并选择第一个受管生命周期。
 
 ## 概念
@@ -35,7 +35,7 @@
 - [生命周期入口](reference/skills/lifecycle-entry-points.md)
 - [调查与决策](reference/skills/investigation-and-decisions.md)
 - [Feature、文档与知识](reference/skills/features-documents-and-knowledge.md)
-- [实现与质量](reference/skills/implementation-and-quality.md)
+- [实现、写作与质量](reference/skills/implementation-and-quality.md)
 - [编排服务](reference/skills/orchestration-services.md)
 
 ## 开发
