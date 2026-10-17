@@ -81,7 +81,7 @@
         "test_xc_runtime_query"
       ],
       "baseline_seconds": 366.5,
-      "baseline_tests": 262,
+      "baseline_tests": 263,
       "notes": "test_xc_workflow_governance lives at the tests root because its path is a governance manifest input; it belongs to this cluster and is listed in kernel_modules instead of here to keep cluster membership unambiguous for path resolution."
     },
     "lifecycle": {
@@ -100,6 +100,7 @@
       "modules": [
         "test_xc_change_report",
         "test_xc_change_report_baseline",
+        "test_xc_change_report_capture_scope",
         "test_xc_change_report_enumeration",
         "test_xc_change_report_validation",
         "test_xc_change_report_protocol",
@@ -107,8 +108,8 @@
         "test_xc_author_commit_boundary",
         "test_xc_human_readable_documents"
       ],
-      "baseline_seconds": 643.9,
-      "baseline_tests": 230
+      "baseline_seconds": 743.8,
+      "baseline_tests": 257
     },
     "documents": {
       "directory": "tests/documents",
@@ -551,6 +552,7 @@
     "test_xc_author_commit_boundary": 31.89,
     "test_xc_change_report": 356.953,
     "test_xc_change_report_baseline": 70.478,
+    "test_xc_change_report_capture_scope": 99.074,
     "test_xc_change_report_enumeration": 54.285,
     "test_xc_change_report_flow": 0.116,
     "test_xc_change_report_protocol": 0.037,
@@ -609,5 +611,5 @@
   },
   "module_weights_source": "measured per-module wall seconds and collected test counts from a full serial baseline profile on a 20-logical-core Windows machine; used only as the sharding cost model",
   "module_test_counts": {},
-  "expected_collected_tests": 957
+  "expected_collected_tests": 984
 }

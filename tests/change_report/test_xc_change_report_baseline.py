@@ -112,20 +112,34 @@ def _index_modes(repo: Path) -> dict[str, str]:
     return modes
 
 
-def _independent_c4(repo: Path, paths: list[str]) -> str:
+def _independent_c4(repo: Path, paths: list[str], commit: str) -> str:
     """The coverage protocol's digest, written here from scratch and importing nothing.
 
     This is the oracle the producer is measured against: it shares no code, no constant
-    and no helper with the package.
+    and no helper with the package. Every payload comes from `git cat-file blob`, the same
+    source the capture uses for a clean path, so the oracle itself cannot be perturbed by a
+    filter that spells the worktree differently from the recorded blob.
     """
     payload = bytearray()
     for path in sorted(paths, key=lambda item: item.encode("utf-8")):
-        digest = hashlib.sha256((repo / path).read_bytes()).hexdigest()
+        digest = hashlib.sha256(_git(repo, "cat-file", "blob", f"{commit}:{path}")).hexdigest()
         payload.extend(path.encode("utf-8"))
         payload.extend(b"\x00")
         payload.extend(digest.encode("ascii"))
         payload.extend(b"\n")
     return hashlib.sha256(bytes(payload)).hexdigest()
+
+
+def _independent_c4_bytes(repo: Path, payloads: dict[str, bytes]) -> str:
+    """C4's digest over named payloads, written here from scratch and importing nothing."""
+    records = bytearray()
+    for path in sorted(payloads, key=lambda item: item.encode("utf-8")):
+        digest = hashlib.sha256(payloads[path]).hexdigest()
+        records.extend(path.encode("utf-8"))
+        records.extend(b"\x00")
+        records.extend(digest.encode("ascii"))
+        records.extend(b"\n")
+    return hashlib.sha256(bytes(records)).hexdigest()
 
 
 class BaselineTestCase(unittest.TestCase):
@@ -201,6 +215,27 @@ class BaselineTestCase(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         return json.loads(proc.stdout)
 
+    def verify(self, *extra: str, work_order_id: str = WORK_ORDER_ID) -> subprocess.CompletedProcess[str]:
+        """The `--verify-existing` mode, which recomputes from the record and the commit."""
+        return subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--verify-existing",
+                "--repo",
+                str(self.repo),
+                "--workbench",
+                str(self.workbench),
+                "--work-order-id",
+                work_order_id,
+                *extra,
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            cwd=str(self.root),
+        )
+
     def snapshot_files(self, directory: Path) -> list[str]:
         return sorted(
             (item.relative_to(directory).as_posix() for item in directory.rglob("*") if item.is_file()),
@@ -228,13 +263,17 @@ class CaptureTests(BaselineTestCase):
         self.assertEqual(receipt["head"], self.commit)
         self.assertEqual(receipt["algorithm"], bm.DIGEST_ALGORITHM)
         self.assertEqual(receipt["tracked_files"], len(TRACKED_FILES))
-        self.assertEqual(receipt["copied_files"], len(TRACKED_FILES))
+        # A clean open state has nothing version control cannot reproduce, so the proportional
+        # capture mirrors nothing for tracked paths and the commit supplies every byte.
+        self.assertEqual(receipt["copied_files"], 0)
+        self.assertEqual(receipt["dirty_paths"], [])
+        self.assertEqual(receipt["deleted_paths"], [])
         self.assertEqual(receipt["untracked_files"], len(UNTRACKED_FILES))
         self.assertTrue(receipt["match"])
 
         tracked = _declared_tracked_paths(self.repo)
-        self.assertEqual(receipt["expected_digest"], _independent_c4(self.repo, tracked))
-        self.assertEqual(self.snapshot_files(self.worktree_snapshot), tracked)
+        self.assertEqual(receipt["expected_digest"], _independent_c4(self.repo, tracked, self.commit))
+        self.assertEqual(self.snapshot_files(self.worktree_snapshot), [])
         self.assertEqual(
             self.snapshot_files(self.untracked_snapshot), sorted(UNTRACKED_FILES, key=str)
         )
@@ -242,6 +281,45 @@ class CaptureTests(BaselineTestCase):
         record = json.loads(self.record_path.read_text(encoding="utf-8"))
         self.assertEqual(record["expected_digest"], receipt["expected_digest"])
         self.assertEqual(record["recomputed_digest"], receipt["expected_digest"])
+
+    def test_capture_mirrors_only_the_dirty_tracked_paths(self) -> None:
+        """The proportional rule: only what the baseline commit cannot reproduce is copied."""
+        (self.repo / "src" / "app.py").write_text(
+            "def main():\n    return 7\n", encoding="utf-8"
+        )
+        (self.repo / "README.md").unlink()
+
+        receipt = self.capture()
+
+        self.assertEqual(receipt["tracked_files"], len(TRACKED_FILES))
+        self.assertEqual(receipt["copied_files"], 1)
+        self.assertEqual(receipt["dirty_paths"], ["src/app.py"])
+        self.assertEqual(receipt["deleted_paths"], ["README.md"])
+        # The clean path is in the digest but not in the mirror.
+        self.assertEqual(self.snapshot_files(self.worktree_snapshot), ["src/app.py"])
+        # The published digest is still one digest over the open bytes of every tracked path
+        # that had any, built here independently: the dirty path's worktree bytes and the clean
+        # path's committed bytes. The deleted-at-open path contributes no record on any side --
+        # it had no bytes at open, so an invented empty payload would publish an open state the
+        # worktree never had -- and its absence travels as a name in `deleted_paths` instead.
+        # The clean path is read from the commit on purpose: a git blob holds the content git
+        # recorded, which a clean/smudge filter may spell differently from the worktree file, so
+        # the worktree is not the oracle for it.
+        expected = {
+            "src/app.py": (self.repo / "src" / "app.py").read_bytes(),
+            "src/nested/deep.txt": _git(
+                self.repo, "cat-file", "blob", f"{self.commit}:src/nested/deep.txt"
+            ),
+        }
+        self.assertEqual(
+            receipt["expected_digest"], _independent_c4_bytes(self.repo, expected)
+        )
+
+        proc = self.verify()
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(
+            json.loads(proc.stdout)["recomputed_digest"], receipt["expected_digest"]
+        )
 
     def test_capture_reuses_the_package_digest_construction(self) -> None:
         self.assertIs(cb.digest_from_hashes, bm.digest_from_hashes)
@@ -320,7 +398,15 @@ class CaptureTests(BaselineTestCase):
         self.assertNotEqual(proc.returncode, 0)
         payload = json.loads(proc.stdout)
         self.assertFalse(payload["ok"])
-        self.assertIn("not a git working tree", payload["error"])
+        self.assertIn("baseline_vcs_unavailable", payload["error"])
+        self.assertFalse(
+            self.record_path.exists(),
+            "a fail-closed capture must not write a record",
+        )
+        self.assertFalse(
+            self.worktree_snapshot.exists(),
+            "a fail-closed capture must not materialise a snapshot",
+        )
 
         missing = subprocess.run(
             [
@@ -353,7 +439,7 @@ class CaptureTests(BaselineTestCase):
 
 
 # --------------------------------------------------------------------------------------
-# The verify mode: the same digest, from the recorded snapshot directories only
+# The verify mode: the same digest, from the frozen capture scope plus the commit
 # --------------------------------------------------------------------------------------
 
 
@@ -381,8 +467,9 @@ class VerifyExistingTests(BaselineTestCase):
     def test_verify_existing_reproduces_the_recorded_digest(self) -> None:
         captured = self.capture()
         # The receipt carries the frozen core fields plus the open-state fields the capture
-        # adds: the untracked names, the index modes at open and the capture's own skips. The
-        # core set is still the required one, which the migration check below proves.
+        # adds: the untracked names, the index modes at open, the capture's own skips and the
+        # frozen capture scope. The core set is still the required one, which the migration
+        # check below proves.
         self.assertEqual(
             set(captured) - {"ok", "mode", "record"},
             set(FROZEN_RECORD_FIELDS) | set(cb.RECORD_OPEN_STATE_FIELDS),
@@ -397,9 +484,11 @@ class VerifyExistingTests(BaselineTestCase):
         self.assertEqual(receipt["expected_digest"], captured["expected_digest"])
         self.assertEqual(receipt["recomputed_digest"], captured["expected_digest"])
 
-        # A record that this tool did not write, in the frozen *core* schema: the migration
-        # step adds the three open-state fields a pre-tool record lacks and changes nothing
-        # else, and the record stays verifiable with only the core fields present.
+        # A record that this tool did not write, in the frozen *core* schema, is read as a
+        # full mirror -- the shape every pre-scope capture produced. This repository was clean
+        # at open, so the full-mirror reading is honest: there was nothing to mirror and the
+        # commit supplies every tracked byte, so the core-only record still verifies. That is
+        # the compatibility half of the change: an old record keeps working.
         record = json.loads(self.record_path.read_text(encoding="utf-8"))
         self.assertEqual(
             set(record), set(FROZEN_RECORD_FIELDS) | set(cb.RECORD_OPEN_STATE_FIELDS)
@@ -412,6 +501,8 @@ class VerifyExistingTests(BaselineTestCase):
         self.assertEqual(json.loads(second.stdout)["recomputed_digest"], captured["expected_digest"])
 
     def test_verify_existing_fails_closed(self) -> None:
+        # A dirty open state, so the snapshot is non-empty and every damage below is real.
+        (self.repo / "src" / "app.py").write_text("def main():\n    return 9\n", encoding="utf-8")
         captured = self.capture()
         record_bytes = self.record_path.read_bytes()
 
@@ -423,9 +514,9 @@ class VerifyExistingTests(BaselineTestCase):
         self.assertIn("baseline digest mismatch", json.loads(tampered.stdout)["error"])
         self.assertEqual(self.record_path.read_bytes(), record_bytes)
 
-        # A tracked path is missing from the snapshot.
+        # A path the frozen scope says the snapshot holds is missing from it.
         victim.write_bytes((self.repo / "src" / "app.py").read_bytes())
-        (self.worktree_snapshot / "README.md").unlink()
+        (self.worktree_snapshot / "src" / "app.py").unlink()
         incomplete = self.verify()
         self.assertNotEqual(incomplete.returncode, 0, incomplete.stdout)
         self.assertIn("does not mirror the tracked path set", json.loads(incomplete.stdout)["error"])
@@ -446,6 +537,35 @@ class VerifyExistingTests(BaselineTestCase):
         # and the digest they publish is still the captured digest.
         self.assertEqual(json.loads(record_bytes)["expected_digest"], captured["expected_digest"])
         self.assertTrue(json.loads(record_bytes)["match"])
+
+    def test_a_core_only_record_is_a_full_mirror_scope(self) -> None:
+        """The old-record compatibility path: no frozen scope is read as an unpruned capture.
+
+        A record written before the capture froze its scope carries no `dirty_paths` key. It is
+        still verifiable against the commit, because the digest is unchanged and the commit can
+        supply every path the snapshot does not hold -- which is what keeps an already-recorded
+        work order valid across this change.
+        """
+        (self.repo / "src" / "app.py").write_text("def main():\n    return 8\n", encoding="utf-8")
+        captured = self.capture()
+        self.assertEqual(captured["dirty_paths"], ["src/app.py"])
+
+        record = json.loads(self.record_path.read_text(encoding="utf-8"))
+        # The legacy shape: the frozen scope fields are absent, and the snapshot that happens to
+        # be on disk is the proportional one. Both must still verify.
+        frozen = {field: record[field] for field in FROZEN_RECORD_FIELDS}
+        self.write_record(frozen)
+
+        proc = self.verify()
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(
+            json.loads(proc.stdout)["recomputed_digest"], captured["expected_digest"]
+        )
+
+        # The pruned scope is really absent from that record: the key that would say "only
+        # these paths are expected" is not there.
+        self.assertNotIn("dirty_paths", frozen)
+        self.assertNotIn("deleted_paths", frozen)
 
 
 # --------------------------------------------------------------------------------------
@@ -511,19 +631,23 @@ class CaptureSkipTests(BaselineTestCase):
         receipt = self.capture()
         self.assertTrue(receipt["match"])
         self.assertEqual(receipt["tracked_files"], len(tracked))
-        self.assertEqual(receipt["copied_files"], len(tracked) - 2)
+        # Both odd shapes are byte-less at open, so neither is dirty and the proportional
+        # mirror is legitimately empty: there is nothing about the open state to copy for them.
+        self.assertEqual(receipt["copied_files"], 0)
+        self.assertEqual(receipt["dirty_paths"], [])
+        self.assertEqual(self.snapshot_files(self.worktree_snapshot), [])
+        # A gitlink that was never checked out and a name git spells lossily both have no
+        # readable worktree bytes. They are recorded as absent-at-open names, which is the fact
+        # this capture can prove; neither is invented as a content skip.
         self.assertEqual(
-            self.snapshot_files(self.worktree_snapshot),
-            sorted(set(tracked) - {"vendor-sub", lossy}),
+            sorted(receipt["deleted_paths"]),
+            sorted(["vendor-sub", lossy]),
         )
+        self.assertEqual(receipt["degradations"], [])
 
-        # The skips are named, in the receipt the caller reads and in the record it keeps.
-        degradations = set(receipt["degradations"])
-        self.assertIn("tracked_path_unreadable:vendor-sub", degradations)
-        self.assertIn(f"tracked_path_unreadable:{lossy}", degradations)
         record = json.loads(self.record_path.read_text(encoding="utf-8"))
-        self.assertEqual(set(record["degradations"]), degradations)
-        # The open state also carries the two facts the manifest cannot recover later: the
+        self.assertEqual(set(record["degradations"]), set(receipt["degradations"]))
+        # The open state also carries the facts the manifest cannot recover later: the
         # untracked names and the index modes at open.
         self.assertEqual(
             record["untracked_paths"],
@@ -531,8 +655,8 @@ class CaptureSkipTests(BaselineTestCase):
         )
         self.assertEqual(record["index_modes"], _index_modes(self.repo))
 
-        # `--verify-existing` reproduces the digest over the captured subset, so the skipped
-        # path does not turn the recorded open state into an unverifiable one.
+        # `--verify-existing` reproduces the digest over the frozen scope plus the commit, so
+        # the byte-less paths do not turn the recorded open state into an unverifiable one.
         proc = subprocess.run(
             [
                 sys.executable,
@@ -555,14 +679,18 @@ class CaptureSkipTests(BaselineTestCase):
 
     def test_a_readable_tracked_path_is_never_skipped(self) -> None:
         """Control: the skip rule is about readability, not a blanket relief for odd shapes."""
-        tracked = _declared_tracked_paths(self.repo)
+        # A dirty tracked path is mirrored, and the mirror is exactly the dirty set.
+        (self.repo / "src" / "app.py").write_text(
+            "def main():\n    return 3\n", encoding="utf-8"
+        )
         receipt = self.capture()
-        self.assertEqual(receipt["copied_files"], len(tracked))
-        self.assertEqual(self.snapshot_files(self.worktree_snapshot), tracked)
+        self.assertEqual(receipt["copied_files"], 1)
+        self.assertEqual(self.snapshot_files(self.worktree_snapshot), ["src/app.py"])
         self.assertEqual(receipt["degradations"], [])
 
-        # A tracked path that is missing from the snapshot while it is still readable in the
-        # worktree keeps failing: the skip rule is about readability, not a blanket relief.
+        # A path the frozen scope says the snapshot holds, but which the snapshot lost while
+        # the worktree still reads it, keeps failing: the skip rule is about readability, not
+        # a blanket relief.
         victim = self.worktree_snapshot / "src" / "app.py"
         payload = victim.read_bytes()
         victim.unlink()
@@ -572,12 +700,13 @@ class CaptureSkipTests(BaselineTestCase):
         victim.write_bytes(payload)
 
         # ... and a snapshot that lost a file whose worktree copy is gone too is still a
-        # failure, because the recorded digest covered that path.
+        # failure at the digest comparison, because the recorded digest covered that path's
+        # mirrored bytes.
         (self.repo / "src" / "app.py").unlink()
         victim.unlink()
         proc = self.run_verify()
         self.assertNotEqual(proc.returncode, 0, proc.stdout)
-        self.assertIn("does not match the snapshot", json.loads(proc.stdout)["error"])
+        self.assertIn("does not mirror the tracked path set", json.loads(proc.stdout)["error"])
         victim.write_bytes(payload)
         (self.repo / "src" / "app.py").write_bytes(payload)
 
@@ -602,17 +731,18 @@ class CaptureSkipTests(BaselineTestCase):
 
 
 # --------------------------------------------------------------------------------------
-# The open-state record's schema: the three added facts, and the thirteen that stay
+# The open-state record's schema: the added facts, and the thirteen core fields that stay
 # required. The documents that describe the record must state both halves, because a reader
 # told only about the addition cannot tell whether an already-frozen record is still legal.
 # --------------------------------------------------------------------------------------
 
 PROTOCOL = SKILL_ROOT / "references" / "coverage-protocol.md"
 SKILL_PAGE = SKILL_ROOT / "SKILL.md"
-# The capture paragraph of the package page, and the two clauses that state the record's
+# The capture paragraph of the package page and the two clauses that state the record's
 # contents. Each entry is the span, bounded by the token that follows it in that document, and
 # the fields that span is the named home of. C4a is where the untracked names belong, C4b where
-# the index modes and the capture's skips do, and the package page states all three.
+# the index modes, the capture's skips and the frozen capture scope do, and the package page
+# states every one of them.
 RECORD_SCHEMA_SPANS = (
     (
         "SKILL.md capture paragraph",
@@ -633,10 +763,10 @@ RECORD_SCHEMA_SPANS = (
         PROTOCOL,
         "**C4b**",
         "**C5**",
-        ("index_modes", "degradations"),
+        ("index_modes", "degradations", "dirty_paths", "deleted_paths"),
     ),
 )
-# The three fields' homes, as a set: every added fact is described by at least one of the three
+# The added fields' homes, as a set: every added fact is described by at least one of the three
 # spans, so a field cannot be declared in the schema and left undescribed.
 _DESCRIBED_FIELDS = {field for _, _, _, _, fields in RECORD_SCHEMA_SPANS for field in fields}
 assert _DESCRIBED_FIELDS == set(cb.RECORD_OPEN_STATE_FIELDS), (
@@ -717,7 +847,12 @@ class SnapshotDirectoryDefaultTests(BaselineTestCase):
         )
 
     def test_an_explicit_directory_wins_over_the_record(self) -> None:
-        """A caller that names a directory is pointing the rebuild at it, record or not."""
+        """A caller that names a directory is pointing the rebuild at it, record or not.
+
+        The empty directory is an honest capture scope too: the freeze says only the dirty set
+        belongs in the mirror, and this one holds nothing -- which is exactly what the record's
+        scope says, so it reads `complete` rather than `empty`.
+        """
         self.capture_and_edit_a_tracked_path()
         elsewhere = self.root / "elsewhere"
         elsewhere.mkdir()
@@ -725,7 +860,17 @@ class SnapshotDirectoryDefaultTests(BaselineTestCase):
         named = self.build(elsewhere, self.untracked_snapshot)
 
         self.assertEqual(named["baseline"]["worktree_snapshot"]["path"], str(elsewhere))
-        self.assertEqual(named["baseline"]["worktree_snapshot"]["state"], "empty")
+        self.assertEqual(named["baseline"]["worktree_snapshot"]["state"], "complete")
+        self.assertEqual(named["baseline"]["worktree_snapshot"]["captured_paths"], 0)
+
+        # ... and a directory that holds a path the scope does not claim is `incomplete`, not
+        # `complete`: the scope is a set, not a count.
+        (elsewhere / "stray.txt").write_text("not in scope\n", encoding="utf-8")
+        stray = self.build(elsewhere, self.untracked_snapshot)
+        self.assertEqual(stray["baseline"]["worktree_snapshot"]["state"], "incomplete")
+        self.assertIn(
+            bm.WORKTREE_SNAPSHOT_DEGRADATIONS["incomplete"], stray["degradations"]
+        )
 
 
 class CapturedAtDefaultTests(BaselineTestCase):
@@ -784,25 +929,31 @@ class CapturedAtDefaultTests(BaselineTestCase):
 
 
 class OpenStateRecordSchemaTests(BaselineTestCase):
-    """Three added facts, thirteen still required: both halves of the record's schema.
+    """The added facts, and the thirteen core fields that stay required.
 
-    The addition is deliberate rather than incidental, and it is the only way the defects it
-    closes could be named: the untracked names at open are what let a path that was untracked at
-    open and has since left the worktree be named instead of dropped; the index modes at open are
-    the only evidence that separates a mode-only change made before the open from one made after
-    it; and the capture's own skips need somewhere to be named without blocking the work order at
-    open. So the fields are asserted to exist *and* to be described, while the core set is
-    asserted to be unchanged and still sufficient, which is what keeps a frozen record legal.
+    The additions are deliberate rather than incidental, and they are the only way the defects
+    they close could be named: the untracked names at open are what let a path that was untracked
+    at open and has since left the worktree be named instead of dropped; the index modes at open
+    are the only evidence that separates a mode-only change made before the open from one made
+    after it; the capture's own skips need somewhere to be named without blocking the work order
+    at open; and the frozen capture scope -- the dirty-at-open names and the deleted-at-open
+    names -- is what keeps a proportional mirror distinguishable from a damaged one. So the
+    fields are asserted to exist *and* to be described, while the core set is asserted to be
+    unchanged and still sufficient, which is what keeps a frozen record legal.
     """
 
-    def test_the_record_carries_the_three_facts_without_dropping_a_core_field(self) -> None:
+    def test_the_record_carries_the_added_facts_without_dropping_a_core_field(self) -> None:
+        # A dirty, a deleted and an untracked path at open, so every added fact is populated
+        # rather than declared-only.
+        (self.repo / "src" / "app.py").write_text("def main():\n    return 5\n", encoding="utf-8")
+        (self.repo / "README.md").unlink()
         self.capture()
         record = json.loads(self.record_path.read_text(encoding="utf-8"))
 
         self.assertEqual(
             set(record),
             set(FROZEN_RECORD_FIELDS) | set(cb.RECORD_OPEN_STATE_FIELDS),
-            "the record is the frozen core set plus exactly the three added facts",
+            "the record is the frozen core set plus exactly the added facts",
         )
         self.assertEqual(
             sorted(set(FROZEN_RECORD_FIELDS) & set(cb.RECORD_OPEN_STATE_FIELDS)),
@@ -810,7 +961,7 @@ class OpenStateRecordSchemaTests(BaselineTestCase):
             "an added fact must not also be a core field: the two sets are a partition",
         )
 
-        # The three facts are populated, not declared-only. The index modes are read from git
+        # The added facts are populated, not declared-only. The index modes are read from git
         # rather than from the tool, so the comparison is independent of the producer.
         self.assertEqual(
             record["untracked_paths"],
@@ -819,6 +970,8 @@ class OpenStateRecordSchemaTests(BaselineTestCase):
         self.assertEqual(record["index_modes"], _index_modes(self.repo))
         self.assertNotEqual(record["index_modes"], {})
         self.assertEqual(record["degradations"], [])
+        self.assertEqual(record["dirty_paths"], ["src/app.py"])
+        self.assertEqual(record["deleted_paths"], ["README.md"])
 
     def test_a_record_with_only_the_thirteen_core_fields_still_loads(self) -> None:
         """The compatibility half: the addition does not invalidate an already-frozen record.

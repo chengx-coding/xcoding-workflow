@@ -12,6 +12,16 @@ from validate_plan_receipt import validate_receipt
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
+# The one declared source key whose publication is conditional. The preparation contract captures
+# the baseline only when the resolved report commitment `work_order.requires_report` is true, so
+# demanding a non-empty `work_order.report_baseline` unconditionally would demand a capture the
+# preparation step is forbidden to perform -- a mutation-mode work order can resolve to no report
+# (`report.default=never`, or an explicit user waiver). The condition is the same resolved
+# commitment, read from the same blackboard the capture read it from, and only an explicit
+# `false` excuses the key: the commitment's declared default is `true`, so an absent or empty
+# value selects the report and must never be read as a waiver.
+CONDITIONAL_SOURCE_KEYS = {"work_order.report_baseline": "work_order.requires_report"}
+
 
 def emit(payload: dict[str, object]) -> None:
     print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
@@ -193,8 +203,16 @@ def main() -> int:
         ):
             return fail("invalid_verification_binding", [key])
         for source_key in item.get("source_keys", []):
-            if not blackboard_values.get(source_key, "").strip():
-                return fail("missing_required_source_key", [source_key])
+            if blackboard_values.get(source_key, "").strip():
+                continue
+            condition_key = CONDITIONAL_SOURCE_KEYS.get(source_key, "")
+            if condition_key and blackboard_values.get(condition_key, "").strip() == "false":
+                # The report obligation was explicitly waived, so no capture happened and no
+                # baseline record exists. The report leaf's own contract still requires one for
+                # every report it produces (`baseline_record_missing`), which is the guard that
+                # this conditional acceptance moves the demand to.
+                continue
+            return fail("missing_required_source_key", [source_key])
         source_ids.append(node_id)
         artifact_min += int(item["artifact_min"])
     if len(source_ids) != len(set(source_ids)):

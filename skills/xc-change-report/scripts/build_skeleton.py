@@ -1341,6 +1341,22 @@ def render_report_info(manifest: dict[str, Any], analysis: dict[str, Any], gener
     )
     baseline = manifest["baseline"]
     strength = manifest["strength"]
+    snapshot = baseline.get("worktree_snapshot", {})
+    snapshot = snapshot if isinstance(snapshot, dict) else {}
+    # H14: the capture scope is a reader-visible fact, not a manifest-only one. It is what lets
+    # a reader tell a proportional snapshot (the commit already held every clean byte) from a
+    # broken one, so the scope the manifest published is rendered here and V5 asserts it.
+    scope = str(snapshot.get("scope", "") or "")
+    captured = snapshot.get("captured_paths")
+    # The scope carries the id V5 reads, so the check asserts the value the manifest published
+    # rather than a word that the strength row could satisfy by coincidence.
+    scope_html = (
+        f'<dt>Baseline capture scope</dt><dd id="baseline-capture-scope">{escape(scope)}'
+        + (f" ({escape(str(captured))} captured path(s))" if captured is not None else "")
+        + "</dd>"
+        if scope
+        else ""
+    )
     degradations = manifest.get("degradations", [])
     degradation_html = (
         "<h3>Degradations</h3><ul>"
@@ -1365,7 +1381,8 @@ def render_report_info(manifest: dict[str, Any], analysis: dict[str, Any], gener
         f"<dt>Baseline commit</dt><dd><code>{escape(baseline['commit'])}</code></dd>"
         f"<dt>Baseline worktree digest</dt><dd><code>{escape(baseline['worktree_digest'])}</code>"
         f" ({escape(baseline['algorithm'])})</dd>"
-        f"<dt>Head digest</dt><dd><code>{escape(manifest['head']['digest'])}</code> "
+        + scope_html
+        + f"<dt>Head digest</dt><dd><code>{escape(manifest['head']['digest'])}</code> "
         f"({escape(manifest['head']['algorithm'])})</dd>"
         f"<dt>Enumeration</dt><dd><code>{escape(manifest['enumeration']['version'])}</code></dd>"
         f"<dt>Strength</dt><dd>{escape(strength['selected'])}"

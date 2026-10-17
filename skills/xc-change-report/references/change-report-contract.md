@@ -35,7 +35,7 @@ inserted after H6 and before H7; H6-H14 are not renumbered (their addresses are 
 | H11 | `section-diagrams` | macro / cross-unit diagrams only (purpose map, system-level before/after); unit-level detail diagrams are inlined in their unit, not here (FR-VIS-4) |
 | H12 | `section-verification` | referenced verification commands, results, residual risk |
 | H13 | `section-glossary` | every proper noun used in the body, explained once |
-| H14 | `section-report-info` | generation time, manifest hash, baseline, rounds, skips, degradations |
+| H14 | `section-report-info` | generation time, manifest hash, baseline, the baseline capture scope, rounds, skips, degradations |
 
 The visual order is top-down (macro to detail): overview, purposes, the macro before/after
 (`section-process-position`), then the scannable `section-change-map` index, then the per-unit

@@ -66,10 +66,15 @@ from build_manifest import (  # noqa: E402
     ENUMERATION_VERSION,
     SYMBOL_ONLY_RE,
     ManifestError,
+    GitBlobStore,
     decode_content,
     digest_from_hashes,
     head_digest,
+    manifest_capture_scope,
     normalize_code_text,
+    open_state_hashes,
+    open_state_roles,
+    OPEN_STATE_SNAPSHOT,
     read_bytes,
     recorded_paths,
     run_git,
@@ -405,6 +410,12 @@ def _check_declared_snapshot(
     `None` for a snapshot whose contract has no state field. An unavailable snapshot is legal —
     a failed capture degrades instead of jamming a work order — but only when the manifest says
     which degradation applies. An available snapshot must exist and must hold captured paths.
+
+    The worktree snapshot's content requirement is now the worktree snapshot's own **capture
+    scope**: `captured_paths` is how many paths it declared it would hold, and a clean open
+    state correctly declares zero. A snapshot that declares paths and holds none fails here,
+    which is the old "a zero-file capture must not claim to be healthy" rule applied to the
+    count the manifest publishes instead of to the tracked set it no longer mirrors.
     """
     available = snapshot.get("available")
     if not isinstance(available, bool):
@@ -445,16 +456,21 @@ def _check_declared_snapshot(
             f"baseline.{label}.available is true but its directory does not exist: {directory}",
         )
         return
-    # The content requirement belongs to the worktree snapshot, which owes the tracked path set of
-    # the baseline commit: that is exactly the state a zero-file capture must not be able to
-    # claim. The untracked snapshot owes the untracked path set at open, which is legitimately
-    # empty on a clean tree, so existence is its whole contract.
-    if states is not None and not snapshot_paths(directory):
-        checker.fail(
-            "V1",
-            f"baseline.{label}.available is true but its directory holds no captured path: "
-            f"{directory}",
-        )
+    # The content requirement belongs to the worktree snapshot and is stated by the snapshot's
+    # own capture scope: an empty mirror is correct when the open state was clean (nothing was
+    # dirty, so the commit already held every tracked byte), and it is a broken capture when the
+    # snapshot declared paths it does not hold. A manifest that does not publish the scope
+    # keeps the old reading, where the snapshot owed the whole tracked set.
+    if states is not None:
+        declared_captured = snapshot.get("captured_paths")
+        holds_nothing = not snapshot_paths(directory)
+        # `captured_paths` absent is an older manifest that owed the whole tracked set.
+        if holds_nothing and (declared_captured is None or int(declared_captured) > 0):
+            checker.fail(
+                "V1",
+                f"baseline.{label}.available is true but its directory holds no captured "
+                f"path: {directory}",
+            )
 
 
 def check_v1(checker: Checker, manifest: dict[str, Any], work_order_id: str) -> dict[str, int]:
@@ -865,6 +881,25 @@ def check_v5(checker: Checker, index: HtmlIndex, manifest: dict[str, Any], manif
     commit = str(manifest.get("baseline", {}).get("commit", ""))
     if commit and commit not in info_text:
         checker.fail("V5", "the report information section must state the baseline commit")
+    # H14 requires the baseline capture scope, and it is judged mechanically here: a manifest
+    # that publishes the scope it read must have it rendered in the section, because that
+    # element is what lets a reader tell a proportional snapshot from a broken one. The check
+    # reads the labelled element the builder writes rather than the section's whole text, so a
+    # strength value that happens to spell the same word cannot satisfy it. A manifest that
+    # publishes no scope (an older manifest) owes nothing.
+    snapshot_info = manifest.get("baseline", {}).get("worktree_snapshot", {})
+    capture_scope = ""
+    if isinstance(snapshot_info, dict):
+        capture_scope = str(snapshot_info.get("scope", "") or "").strip()
+    if capture_scope:
+        declared = index.by_id("baseline-capture-scope")
+        declared_text = index.text_of(declared).strip() if declared is not None else ""
+        if not declared_text.startswith(capture_scope):
+            checker.fail(
+                "V5",
+                "the report information section must state the baseline capture scope "
+                f"{capture_scope!r}",
+            )
     rounds = body_rows(index, "round-table")
     if not rounds:
         checker.fail("V5", "the round record table (#round-table) must contain at least one row")
@@ -2107,15 +2142,28 @@ def check_v14(
 
 
 def check_v15(checker: Checker, manifest: dict[str, Any], repo: Path) -> dict[str, Any]:
-    """A3-3 (G-03): recompute C4's baseline digest from the recorded worktree snapshot.
+    """A3-3 (G-03): recompute C4's baseline digest from the frozen capture scope plus git.
 
     V1 can prove the baseline identity is well-formed and that the manifest tells one consistent
     story about the snapshot; only a recomputation proves the digest is the digest of those
     bytes. The construction is the package's own: `sha256(path-nul-contenthash-lf/v1)` over the
-    tracked path list of `baseline.commit`, hashing each path's recorded snapshot bytes. A
-    snapshot that is not available is the C4a "not recomputable" case: it is reported as a note
-    and left to the recorded degradation, because a failed capture must degrade rather than jam
-    the work order.
+    tracked path list of `baseline.commit`, hashing each path from the source its **role** in the
+    capture scope names. That role map is defined once, in `build_manifest.open_state_roles` and
+    `build_manifest.open_state_hashes`, and shared with the capture, its `--verify-existing` mode
+    and the manifest's baseline side; this check reads the same map from the manifest's published
+    scope instead of deriving the classification a second time, which is how a deleted-at-open or
+    an unopenable path used to be hashed from the commit by this check alone while the capture
+    had hashed it as something else. The proportional capture changed only the **source** of the
+    bytes: the snapshot holds the dirty-at-open paths and the baseline commit holds the rest. An
+    unpruned manifest keeps the pre-proportional reading, in which the snapshot owes every
+    tracked path.
+
+    A snapshot that is not available is the C4a "not recomputable" case: it is reported as a
+    note and left to the recorded degradation, because a failed capture must degrade rather
+    than jam the work order. A commit that can no longer supply a clean path is *not* a note:
+    the snapshot deliberately did not copy those bytes, so the missing half is a failure with
+    the named degradation `baseline_worktree_snapshot_commit_unavailable`, which is how a
+    reviewer reads that this proof's baseline is partial.
     """
     baseline = manifest.get("baseline")
     if not isinstance(baseline, dict):
@@ -2141,19 +2189,41 @@ def check_v15(checker: Checker, manifest: dict[str, Any], repo: Path) -> dict[st
     commit = str(baseline.get("commit", ""))
     declared = str(baseline.get("worktree_digest", ""))
     try:
-        tracked = sorted(tracked_paths(repo, commit), key=sort_key)
+        tree = tree_entries(repo, commit)
+        tracked = sorted(tree, key=sort_key)
     except ManifestError as exc:
-        checker.fail("V15", f"the baseline commit cannot be enumerated: {exc}")
+        checker.fail(
+            "V15",
+            f"baseline_worktree_snapshot_commit_unavailable: the baseline commit {commit} "
+            f"cannot be enumerated, so the clean-path half of the proportional snapshot is "
+            f"gone and the C4 digest is not recomputable ({exc})",
+        )
         return {"status": "failed"}
 
-    pairs: list[tuple[str, str]] = []
-    missing: list[str] = []
-    for path in tracked:
-        payload = snapshot_bytes(directory, path)
-        if payload is None:
-            missing.append(path)
-            continue
-        pairs.append((path, sha256_hex(payload)))
+    # The frozen scope, read through the one role map the package defines: `dirty_paths` is the
+    # published captured set for a proportional manifest, and a manifest that published no
+    # proportional scope is the legacy full mirror (or the consent opt-in), whose snapshot owes
+    # the whole tracked set -- the pre-proportional reading C4b keeps for that shape. A path the
+    # record names as unopenable at open is omitted on every side instead of being hashed from
+    # the commit, which is the half of the classification V15 used to re-derive and get wrong.
+    proportional = "scope" in snapshot and str(snapshot.get("scope", "")) == "proportional"
+    scope = manifest_capture_scope(snapshot, manifest.get("degradations", []) or [])
+    roles = open_state_roles(tracked, scope)
+    commit_oids = {path: str(entry.get("sha", "")) for path, entry in tree.items()}
+    # The clean half is recomputed from the object database by the blob ids the commit's tree
+    # already resolved, through one batched reader: `git show <commit>:<path>` resolves its
+    # argument as a worktree spelling, which the host path limit defeats on a path whose bytes
+    # the commit holds intact, and it costs a process per tracked path.
+    blobs = GitBlobStore(repo)
+    try:
+        pairs, missing, commit_short = open_state_hashes(
+            repo, commit, directory, roles, blobs=blobs, oids=commit_oids
+        )
+    finally:
+        blobs.close()
+    from_snapshot = sum(
+        1 for path, _ in pairs if roles[path] == OPEN_STATE_SNAPSHOT
+    )
     if missing:
         shown = ", ".join(missing[:5])
         checker.fail(
@@ -2161,6 +2231,15 @@ def check_v15(checker: Checker, manifest: dict[str, Any], repo: Path) -> dict[st
             f"the baseline worktree snapshot is incomplete: {len(missing)} of "
             f"{len(tracked)} tracked paths have no captured file under {directory} "
             f"({shown})",
+        )
+    if commit_short:
+        shown = ", ".join(commit_short[:5])
+        checker.fail(
+            "V15",
+            "baseline_worktree_snapshot_commit_unavailable: the baseline commit "
+            f"{commit} can no longer supply {len(commit_short)} clean path(s) whose open "
+            f"bytes the proportional snapshot deliberately did not copy ({shown}); the C4 "
+            "digest is not recomputable from this snapshot plus this commit",
         )
     extra = sorted(set(snapshot_paths(directory)) - set(tracked), key=sort_key)
     if extra:
@@ -2170,18 +2249,20 @@ def check_v15(checker: Checker, manifest: dict[str, Any], repo: Path) -> dict[st
             f"at {commit}: {', '.join(extra[:5])}",
         )
     recomputed = digest_from_hashes(pairs)
-    if not missing and not extra and recomputed != declared:
+    if not missing and not commit_short and not extra and recomputed != declared:
         checker.fail(
             "V15",
-            f"the baseline worktree digest is not reproducible from {directory}: "
-            f"baseline.worktree_digest is {declared!r}, the snapshot recomputes to "
-            f"{recomputed!r}",
+            f"the baseline worktree digest is not reproducible from {directory} plus the "
+            f"baseline commit: baseline.worktree_digest is {declared!r}, the snapshot "
+            f"recomputes to {recomputed!r}",
         )
     return {
         "status": "checked",
         "recomputed_digest": recomputed,
         "tracked_paths": len(tracked),
-        "captured_paths": len(pairs),
+        "snapshot_paths": from_snapshot,
+        "commit_paths": len(pairs) - from_snapshot,
+        "scope": "proportional" if proportional else "full",
     }
 
 

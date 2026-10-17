@@ -120,8 +120,13 @@ class AdaptiveEnforcementTests(unittest.TestCase):
         baseline: str | None,
         report_artifacts: list[str],
         report_source: dict[str, object] | None = None,
+        requires_report: str | None = None,
     ) -> dict[str, object]:
         blackboard = [{"key": "work_order.plan_id", "value": receipt["plan_id"]}]
+        if requires_report is not None:
+            blackboard.append(
+                {"key": "work_order.requires_report", "value": requires_report}
+            )
         if baseline is not None:
             blackboard.append({"key": BASELINE_KEY, "value": baseline})
         source = report_source or {
@@ -608,6 +613,64 @@ class AdaptiveEnforcementTests(unittest.TestCase):
             self.assertEqual(code, 0, payload)
             self.assertTrue(payload["ok"])
             self.assertEqual(payload["min_sources"], 2)
+
+    def test_the_report_baseline_source_key_follows_the_resolved_commitment(self) -> None:
+        """F5: the declared key is enforced against the commitment that gates the capture.
+
+        The planner enables the `change_report` capability from the mode, so a mutation-mode plan
+        always declares the report node and its `work_order.report_baseline` source key. The
+        preparation contract performs that capture only when the resolved report commitment is
+        true, so the enforcement reads the same resolved value: an explicit `false` commitment
+        waives the key, while `true` and an unwritten (default `true`) commitment still require
+        it. The report leaf's own `baseline_record_missing` contract keeps the demand for every
+        report that is actually produced.
+        """
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            bridge, facts, receipt = self.bridge_and_receipt(root)
+            self.assertEqual(facts["mode"], "change")
+            report = next(
+                item
+                for item in receipt["required_nodes"]
+                if item["logical_key"] == "report"
+            )
+            self.assertEqual(report["source_keys"], [BASELINE_KEY])
+            source_map = {
+                "implementation-1": {"node_id": "rt_impl"},
+                "report": {"node_id": "rt_report"},
+            }
+            cases = (
+                (None, None, 2, "unwritten commitment defaults to a required report"),
+                ("", None, 2, "an empty commitment is not a waiver"),
+                ("true", None, 2, "a committed report owes the captured baseline"),
+                ("false", None, 0, "an explicit waiver forbids the capture"),
+                ("false", "", 0, "a waived report owes no baseline value"),
+                ("false", BASELINE_VALUE, 0, "a waiver never rejects a published value"),
+                ("true", BASELINE_VALUE, 0, "a committed report validates with its baseline"),
+            )
+            for commitment, baseline, expected, label in cases:
+                with self.subTest(commitment=commitment, baseline=baseline, case=label):
+                    code, payload = self.validate(
+                        bridge,
+                        facts,
+                        receipt,
+                        source_map,
+                        self.report_packet(
+                            receipt,
+                            baseline=baseline,
+                            report_artifacts=[REPORT_ARTIFACT_NAME],
+                            requires_report=commitment,
+                        ),
+                    )
+                    if expected == 0:
+                        self.assertEqual(code, 0, payload)
+                        self.assertTrue(payload["ok"], payload)
+                        continue
+                    self.assertEqual(code, expected, payload)
+                    self.assertEqual(
+                        payload["error"]["code"], "missing_required_source_key"
+                    )
+                    self.assertEqual(payload["error"]["keys"], [BASELINE_KEY])
 
     def test_adaptive_spec_rebuilds_the_tracked_template(self) -> None:
         """U7's template-rebuild obligation: the tracked XML is generated output.

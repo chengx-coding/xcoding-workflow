@@ -1025,5 +1025,129 @@ class PlaceholderScopeTests(ScratchRoot):
         self.assertEqual(vr.unsubstituted_placeholders(index), ["{{LEFTOVER}}"])
 
 
+class ReportInfoScopeTests(ScratchRoot):
+    """F6/H14: the baseline capture scope is rendered in the report and asserted by V5.
+
+    The contract requires the capture scope in `section-report-info` and states that H14 is
+    judged mechanically. Before this repair the sentence was a promise nothing produced: the
+    skeleton rendered every other baseline fact, and V5 asserted only the commit, so a report
+    could pass while omitting exactly the element that tells a proportional snapshot from a
+    broken one. Each test fails against the pre-repair pair and passes after it.
+    """
+
+    BASELINE = "VALUE = 1\n"
+    HEAD = "VALUE = 2\n"
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.repo = _init_repo(self.root)
+        source = self.repo / "src" / "values.py"
+        source.parent.mkdir()
+        source.write_bytes(self.BASELINE.encode("utf-8"))
+        self.commit = _commit(self.repo, "baseline")
+
+        # The open state is mirrored faithfully, so the manifest is a healthy baseline and the
+        # only question these tests ask is whether the scope reaches the page.
+        self.snapshot = self.root / "baseline-worktree"
+        (self.snapshot / "src").mkdir(parents=True)
+        (self.snapshot / "src" / "values.py").write_bytes(self.BASELINE.encode("utf-8"))
+        self.untracked = self.root / "baseline-untracked"
+        self.untracked.mkdir()
+        source.write_bytes(self.HEAD.encode("utf-8"))
+
+        self.manifest_path = self.root / "change-report-manifest.json"
+        self.manifest = self.build_manifest()
+        self.write_manifest()
+
+    def build_manifest(self) -> dict[str, Any]:
+        digest = bm.digest_from_hashes(
+            [
+                (
+                    "src/values.py",
+                    bm.sha256_hex((self.snapshot / "src" / "values.py").read_bytes()),
+                )
+            ]
+        )
+        return bm.build_manifest(
+            repo_path=self.repo,
+            work_order_id=WORK_ORDER_ID,
+            baseline_commit=self.commit,
+            baseline_digest=digest,
+            baseline_algorithm=bm.DIGEST_ALGORITHM,
+            baseline_worktree_dir=self.snapshot,
+            baseline_untracked_dir=self.untracked,
+            tmp_dir=self.root / "tmp",
+            captured_at="2026-09-15T17:45:00Z",
+            generated_at="2026-09-15T18:00:00Z",
+            strength="standard",
+        )
+
+    def write_manifest(self) -> None:
+        self.manifest_path.write_bytes(
+            (json.dumps(self.manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        )
+
+    def render(self) -> str:
+        page_path = self.root / "change-report.html"
+        code = bs.main(
+            [
+                "--repo",
+                str(self.repo),
+                "--manifest",
+                str(self.manifest_path),
+                "--out",
+                str(page_path),
+                "--generated-at",
+                "2026-09-15T18:00:00Z",
+                "--tmp-dir",
+                str(self.root / "tmp"),
+            ]
+        )
+        self.assertEqual(code, 0, "the builder must accept this change set")
+        return page_path.read_text(encoding="utf-8")
+
+    def check_v5(self, page: str) -> vr.Checker:
+        checker = vr.Checker()
+        vr.check_v5(checker, index_page(page), self.manifest, self.manifest_path.read_bytes())
+        return checker
+
+    def test_v5_requires_the_published_capture_scope_in_the_page(self) -> None:
+        page = self.render()
+        scope = str(self.manifest["baseline"]["worktree_snapshot"]["scope"])
+        self.assertTrue(scope, "the manifest must publish a scope, or this check proves nothing")
+        self.assertIn(f'id="baseline-capture-scope"', page)
+        declared = index_page(page).by_id("baseline-capture-scope")
+        self.assertIsNotNone(declared)
+        self.assertTrue(index_page(page).text_of(declared).startswith(scope))
+
+        checker = self.check_v5(page)
+        self.assertTrue(checker.ok, checker.errors)
+
+        # Non-vacuity: a page whose scope element names a different scope than the manifest
+        # published fails, and the message names the expected value. The section still contains
+        # the words around it, so a check reading the whole section text would pass this page.
+        tampered = page.replace(
+            'id="baseline-capture-scope">' + scope,
+            'id="baseline-capture-scope">not-the-published-scope',
+            1,
+        )
+        self.assertNotEqual(tampered, page, "the scope element must be present to tamper with")
+        tampered_checker = self.check_v5(tampered)
+        self.assertFalse(tampered_checker.ok)
+        self.assertEqual(error_ids(tampered_checker), {"V5"})
+        self.assertIn(scope, messages_for(tampered_checker, "V5")[0])
+
+    def test_a_manifest_without_a_scope_owes_no_scope_element(self) -> None:
+        """The older-manifest direction: nothing published, so nothing is demanded."""
+        self.manifest["baseline"]["worktree_snapshot"].pop("scope")
+        self.write_manifest()
+
+        page = self.render()
+
+        self.assertNotIn('id="baseline-capture-scope"', page)
+        checker = self.check_v5(page)
+        self.assertTrue(checker.ok, checker.errors)
+
+
 if __name__ == "__main__":
     unittest.main()

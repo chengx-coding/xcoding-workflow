@@ -220,14 +220,64 @@ class ScratchCase(unittest.TestCase):
             destination.write_bytes((self.repo / relative).read_bytes())
 
     def mirror_open_state(self) -> None:
-        """The faithful C4b shape: tracked paths only, as they are on disk right now."""
+        """The faithful C4b shape: the dirty-at-open tracked paths, plus the scope record.
+
+        The proportional capture mirrors only what the baseline commit cannot reproduce, and
+        freezes that capture scope in the open-state record. A fixture that mirrors every
+        tracked path would claim a scope the record does not declare, so the mirror and the
+        record are produced together here.
+        """
         self.worktree_snapshot.mkdir(parents=True, exist_ok=True)
         self.untracked_snapshot.mkdir(parents=True, exist_ok=True)
-        self.mirror(self.tracked_paths("HEAD"), self.worktree_snapshot)
-        self.mirror(
-            decode_paths(git(self.repo, "ls-files", "--others", "--exclude-standard", "-z")),
-            self.untracked_snapshot,
+        dirty: list[str] = []
+        for relative in self.tracked_paths("HEAD"):
+            payload = (self.repo / relative).read_bytes()
+            origin = subprocess.run(
+                ["git", "show", f"HEAD:{relative}"], cwd=str(self.repo), capture_output=True
+            )
+            if origin.returncode != 0 or origin.stdout != payload:
+                dirty.append(relative)
+                self.mirror([relative], self.worktree_snapshot)
+        untracked = decode_paths(
+            git(self.repo, "ls-files", "--others", "--exclude-standard", "-z")
         )
+        self.mirror(untracked, self.untracked_snapshot)
+        self.write_open_state_record({"dirty_paths": dirty, "deleted_paths": []})
+
+    def write_open_state_record(self, extra: dict[str, Any]) -> None:
+        """Write the open-state record the builder reads, with the capture scope frozen."""
+        record_path = self.workbench / "tmp" / "baseline-open-state.json"
+        record_path.parent.mkdir(parents=True, exist_ok=True)
+        record_path.write_text(
+            json.dumps(
+                {
+                    "kind": "open-state-content-snapshot",
+                    "work_order_id": WORK_ORDER_ID,
+                    "captured_at": "2026-09-15T16:13:18Z",
+                    "head": self.commit_of_head(),
+                    "algorithm": bm.DIGEST_ALGORITHM,
+                    "tracked_files": len(self.tracked_paths("HEAD")),
+                    "copied_files": len(extra.get("dirty_paths", [])),
+                    "untracked_files": 0,
+                    "untracked_paths": [],
+                    "index_modes": index_modes(self.repo),
+                    "expected_digest": "",
+                    "recomputed_digest": "",
+                    "match": False,
+                    "worktree_snapshot": str(self.worktree_snapshot),
+                    "untracked_snapshot": str(self.untracked_snapshot),
+                    "degradations": [],
+                    **extra,
+                },
+                ensure_ascii=True,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def commit_of_head(self) -> str:
+        return git(self.repo, "rev-parse", "HEAD").decode().strip()
 
     def capture(self, *extra: str) -> dict[str, Any]:
         """Run the real capture tool, because the open state it records is what the builder reads."""
@@ -428,12 +478,13 @@ class PathFidelityTests(ScratchCase):
 
 
 # --------------------------------------------------------------------------------------
-# G-07: a capture mirrors every tracked path, and the manifest reads it as complete
+# G-07: a capture mirrors only what the commit cannot reproduce, and the manifest reads the
+# frozen scope as complete
 # --------------------------------------------------------------------------------------
 
 
 class CaptureCoverageTests(ScratchCase):
-    def test_capture_mirrors_every_tracked_path(self) -> None:
+    def test_capture_mirrors_only_the_dirty_tracked_paths(self) -> None:
         self.write("README.md", "# capture coverage\n")
         self.write("src/app.py", "def main():\n    return 0\n")
         self.write("src/nested/deep.txt", "nested\n")
@@ -465,10 +516,12 @@ class CaptureCoverageTests(ScratchCase):
 
         tracked = self.tracked_paths(commit)
         captured = bm.snapshot_paths(self.worktree_snapshot)
-        self.assertEqual(captured, tracked)
-        self.assertEqual(len(captured), len(tracked))
+        # A clean open state has nothing version control cannot reproduce, so the mirror is
+        # legitimately empty and the commit supplies every tracked byte.
+        self.assertEqual(captured, [])
         self.assertEqual(receipt["tracked_files"], len(tracked))
-        self.assertEqual(receipt["copied_files"], len(tracked))
+        self.assertEqual(receipt["copied_files"], 0)
+        self.assertEqual(receipt["dirty_paths"], [])
 
         manifest = self.build(
             commit,
@@ -476,9 +529,44 @@ class CaptureCoverageTests(ScratchCase):
             untracked_dir=self.untracked_snapshot,
         )
         documented = manifest["baseline"]["worktree_snapshot"]
+        # An empty mirror is *complete*, not empty-and-unusable: the snapshot holds exactly the
+        # recorded capture scope, and the commit holds the rest.
         self.assertEqual(documented["state"], "complete")
         self.assertTrue(documented["available"])
+        self.assertEqual(documented["scope"], "proportional")
+        self.assertEqual(documented["captured_paths"], 0)
         self.assertEqual(manifest["degradations"], [])
+
+    def test_capture_mirrors_the_dirty_set_and_records_the_rest(self) -> None:
+        self.write("src/app.py", "def main():\n    return 0\n")
+        self.write("src/other.py", "def other():\n    return 1\n")
+        self.write("src/gone.py", "value = 1\n")
+        commit = self.commit_all()
+        # Dirty, deleted and untracked at open: the three shapes a proportional capture has to
+        # tell apart.
+        self.write("src/app.py", "def main():\n    return 42\n")
+        (self.repo / "src" / "gone.py").unlink()
+        self.write("notes/open.md", "untracked at open\n")
+        dirty_bytes = (self.repo / "src" / "app.py").read_bytes()
+
+        receipt = self.capture()
+        self.assertEqual(receipt["tracked_files"], 3)
+        self.assertEqual(receipt["copied_files"], 1)
+        self.assertEqual(receipt["dirty_paths"], ["src/app.py"])
+        self.assertEqual(receipt["deleted_paths"], ["src/gone.py"])
+        self.assertEqual(receipt["untracked_paths"], ["notes/open.md"])
+        self.assertTrue(receipt["match"])
+        self.assertEqual(bm.snapshot_paths(self.worktree_snapshot), ["src/app.py"])
+        self.assertEqual((self.worktree_snapshot / "src" / "app.py").read_bytes(), dirty_bytes)
+
+        # The published digest is still one digest over every tracked path's open bytes.
+        manifest = self.build(commit)
+        entries = self.by_path(manifest)
+        self.assertEqual(entries["src/app.py"]["baseline_source"], "commit")
+        # B is the mirrored dirty content, so the pre-existing edit is separated from nothing
+        # this work order did -- the path is present with its own row.
+        self.assertIn("src/app.py", entries)
+        self.assertIn("src/gone.py", entries)
 
 
 # --------------------------------------------------------------------------------------

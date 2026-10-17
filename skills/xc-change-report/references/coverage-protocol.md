@@ -94,8 +94,24 @@ The six steps run in this order:
   algorithm name: sha256(path-nul-contenthash-lf/v1)
   ```
 
-  Recompute it with the baseline worktree checked out, or with the recorded snapshot
-  directory. `baseline.commit` must be a resolvable commit id.
+  The digest **value** is unchanged and stays computed over the open-state bytes of every
+  tracked path that had any. What C4b fixes is where a third party reads those bytes: the recorded snapshot
+  directory supplies a **dirty-at-open** path (the worktree diverged from the commit, so the
+  commit does not hold those bytes) and `baseline.commit` supplies a **clean** path (the
+  worktree never diverged, so its open bytes *are* the committed bytes). A third party can
+  therefore still recompute the digest without checking the commit out, but it needs the
+  baseline commit's objects as well as the snapshot directory: the snapshot alone is no longer
+  sufficient, because a clean path's bytes were deliberately not copied. `baseline.commit` must
+  be a resolvable commit id, and that is now a real precondition of recomputation rather than
+  only an identity.
+  A tracked path with **no readable open-state bytes** -- absent from the worktree at open, or
+  present but unopenable -- contributes no record to the digest on any side, and the record names
+  it (`deleted_paths`, or a `tracked_path_unreadable:<path>` note). That is the
+  pre-proportional rule for a byte-less path, and it is **one definition**: C4b's role map
+  decides which paths the digest hashes and where each path's bytes come from, and the capture,
+  its `--verify-existing` mode, the manifest's baseline side and V15 all read that one map
+  instead of re-deriving the classification, so no recomputation hashes a byte-less path from the
+  commit and publishes a baseline the record did not.
 - **C4a** Baseline content for paths that were untracked at open time is kept under
   `<workbench>/tmp/baseline-untracked/`, mirrored by relative path, with the directory, file
   count and digest algorithm recorded in `baseline.untracked_snapshot`. `tmp/` is neither an
@@ -109,58 +125,156 @@ The six steps run in this order:
   in the index, and the directory that held it may be gone, so `untracked_snapshot_path_lost:`
   can name it only if the record kept the name. That field is an addition to the record's schema
   and not a replacement of it: the thirteen core fields named above stay the required set, the
-  three open-state facts stay optional, and a record that carries only the core set still loads
+  open-state facts stay optional, and a record that carries only the core set still loads
   and still verifies.
 - **C4b** The **worktree snapshot** has a fixed path and a fixed content set. It lives at
   `<workbench>/tmp/baseline-worktree/` (the capture tool's `--baseline-worktree-dir` overrides the
-  location, and the open-state record carries the location actually used), and it mirrors **every
-  tracked path of `baseline.commit`**, by repository-relative path, holding that path's bytes as
-  they were in the worktree when the work order opened, and nothing else. This directory is the
-  recomputation source C4's "with the recorded snapshot directory" clause names: C4's digest is
-  recomputable from that directory alone, without checking the commit out and without a second
-  capture. The open-state record also carries `index_modes`, the index mode of every path at open.
+  location, and the open-state record carries the location actually used), and it holds **only
+  the tracked paths of `baseline.commit` whose worktree bytes at open differed from that
+  commit's bytes** -- the **dirty-at-open** set -- each by repository-relative path and each
+  holding that path's bytes as they were in the worktree when the work order opened, and nothing
+  else. Everything version control can already reproduce is deliberately **not** captured: a
+  clean tracked path's open bytes are its committed bytes, so the snapshot omits them and the
+  recomputation reads them from the commit. The readers that enumerate the **whole tracked set**
+  -- the capture's digest self-check, `--verify-existing` and V15 -- read those bytes **keyed by
+  the object id** the commit's tree already resolves for the path (`tree_entries`) and
+  **batched** through one `git cat-file --batch` process, never spelled as
+  `git show <commit>:<path>`: a `git show` argument is resolved as a *worktree* spelling, so a
+  checkout whose combined path length crosses the host's path limit makes that read fail on a
+  path whose bytes the object database holds intact, and it costs one process per tracked path.
+  Those three therefore share one byte reader and cannot take a different route to the same
+  bytes.
+  The manifest's **baseline-content** reads are **not** converted, and that is a recorded,
+  pre-existing limit of this protocol rather than a property of the reader above:
+  `build_manifest.py` still spells `git show <baseline_commit>:<path>` for a candidate path's
+  baseline bytes -- the value it routes into `B` as `baseline_bytes_for`'s fallback -- and for the
+  baseline text a unit compares against, and `build_skeleton.py` still spells it for a unit's
+  old-line text. The baseline commit's own code reads those paths identically, so this change
+  neither introduced nor worsened the exposure. Its measured consequence: a *changed* path whose
+  `commit:path` spell crosses the host path limit is published as `change_kind: added` with the
+  worktree bytes standing in for the baseline side (`origin_sha256`, `baseline_sha256` and
+  `source_sha256` all the head bytes), and V15 still reports `checked`, because that path has a
+  row and the C4 digest itself is unaffected. This clause therefore does **not** promise that
+  every read of repository content is keyed by object id; converting those readers is deferred
+  work, and until it lands the affected path class is a named limit rather than a closed gap.
+  The capture records the dirty-at-open names in the
+  open-state record as `dirty_paths`; that list is the snapshot's frozen capture scope and the
+  only thing that keeps "clean at open" distinguishable from "the mirror was pruned". A tracked
+  path that was **absent** from the worktree at open is a deletion-at-open fact, not a snapshot
+  degradation: the capture records its name in `deleted_paths` and mirrors nothing for it, and
+  the path contributes no record to the digest, because it had no bytes on any side.
+  The open-state record also carries `index_modes`, the index mode of every path at open.
   It is the only evidence that can separate a mode-only change made before the open from one made
   after it: the bytes are identical on all three sides, the baseline commit records only its own
   committed mode, and the executable bit lives in the index alone, so without the open mode a
   `mode_change` row is charged to the work order unconditionally and additionally carries
   `mode_provenance_unknown:`, whose presence is the honest statement that the evidence is missing.
   It carries `degradations` as well: a tracked or untracked path the capture could not open is
-  skipped and **named** there instead of blocking the work order at open, and each such name is
-  merged into the manifest's own degradation list so the review sees it.
-  **These three fields are an addition to the record's schema, not a replacement of it**: the
+  skipped and **named** there instead of blocking the work order at open, each such name is
+  merged into the manifest's own degradation list so the review sees it, and a skipped *tracked*
+  path is omitted from the digest on every side by the same role map that omits a
+  deleted-at-open path.
+  **These fields are an addition to the record's schema, not a replacement of it**: the
   thirteen core fields stay the required set, a record that carries only them still loads and
-  still verifies, and every one of the three exists because a defect could not be named without
-  it.
-  Availability is decided by **content, not by a directory test**. The manifest records
-  `baseline.worktree_snapshot.state` as exactly one of four values, and
-  `baseline.worktree_snapshot.available` is true only for `complete`:
+  still verifies, and every one of the added fields exists because a defect could not be named
+  without it.
+  A record with **no** `dirty_paths` field is read as an **unpruned** capture: it is the shape an
+  older capture produced -- the shape every record written before the scope was frozen has -- so
+  nothing may be inferred about which paths it was allowed to omit. The manifest records it as
+  scope `full`, and its availability is decided by the digest comparison rather than by a
+  captured-set test. A full copy authorised by C4c's consent opt-in is **not** that shape: it
+  freezes `dirty_paths` listing every path it mirrored.
+  Availability is decided by **content, not by a directory test**, and the content it is decided
+  against is the **capture scope**. The manifest records `baseline.worktree_snapshot.state` as
+  exactly one of four values, and `baseline.worktree_snapshot.available` is true only for
+  `complete`:
   1. `absent` - the directory does not exist; degradation `baseline_worktree_snapshot_missing`,
      the state C4a already describes as "not recomputable";
-  2. `empty` - the directory exists and holds no captured path; degradation
-     `baseline_worktree_snapshot_empty`;
-  3. `incomplete` - the directory exists and holds at least one tracked path but not all of them;
-     degradation `baseline_worktree_snapshot_incomplete`;
-  4. `complete` - the captured path set equals the tracked path set of `baseline.commit`; no
-     degradation, `available: true`.
+  2. `empty` - the directory exists, holds no captured path, and the recorded capture scope says
+     it should have held at least one; degradation `baseline_worktree_snapshot_empty`;
+  3. `incomplete` - the directory exists and its path set is neither the recorded capture scope
+     nor a subset of it; degradation `baseline_worktree_snapshot_incomplete`;
+  4. `complete` - the captured path set **equals the recorded capture scope**: the dirty-at-open
+     paths for a proportional capture, or the tracked path set of `baseline.commit` for an
+     unpruned one. No degradation, `available: true`. A clean open state is legitimately
+     `complete` with an empty directory, because the commit already held every tracked byte and
+     the scope says nothing needed mirroring.
+  The manifest also publishes the scope it read -- `baseline.worktree_snapshot.scope`
+  (`proportional` or `full`), `captured_paths`, `dirty_paths` and `deleted_paths` -- because a
+  reader who cannot see the scope cannot tell a proportional snapshot from a broken one; that is
+  the fact the mirror's own silence used to hide. `captured_paths` is published from the source
+  that actually knows the count: the frozen capture scope for a proportional record, the mirror's
+  own contents for an unpruned record whose directory is present, and the tracked set of
+  `baseline.commit` only for an unpruned record whose directory is absent altogether. A count
+  taken from a tracked set that could not be enumerated would misdescribe the record, even inside
+  a degraded manifest.
   `provenance_degraded` is true for the first three states and false for the fourth. A
   present-but-empty or present-but-incomplete directory is therefore a recorded degradation and
   never a silent success: it is what makes a pre-existing edit separable, so a capture that
   produced no files must not claim to have produced them.
   When a validator recomputes the C4 digest and cannot, because the worktree snapshot is in one
   of the three unavailable states, it emits the note `baseline_worktree_snapshot_unavailable` and
-  does not fail the run; the note is a degradation of the proof, not a manifest field.
+  does not fail the run; the note is a degradation of the proof, not a manifest field. When the
+  snapshot is available but the baseline commit can no longer supply a clean path's blob -- a
+  history rewrite is the measured cause -- the missing half is named by
+  `baseline_worktree_snapshot_commit_unavailable:<commit>` and the digest check fails with it:
+  the snapshot deliberately did not copy those bytes, so the proof's baseline really is partial
+  and a reviewer must read that instead of a complete report. The name is carried by that
+  failure, not by the manifest: this state still builds a manifest, whose `degradations` list
+  stays empty, so the name reaches a reviewer through V15 and never through the manifest or the
+  report's degradation list.
+  The **whole** clean-path half is a stronger case than one missing blob. A baseline commit that
+  cannot be enumerated at all leaves no tracked set: `units_total` would be a fabricated zero,
+  `run_required` a fabricated `false`, and C18's zero-unit rule would then record the *legal*
+  `zero_analyzable_units` skip, so a work order whose code changed could close with no report and
+  no failing check. `build_manifest.py` therefore **fails closed** on that state, exiting non-zero
+  with the same named string and blaming the baseline commit, and publishes no `run_required`
+  decision from an enumeration that never happened. The two states are never conflated: one
+  missing blob fails V15's digest recomputation on a manifest that is still built; an
+  unenumerable commit is a failure with no manifest.
   The untracked directory keeps its own path, rule and string: `<workbench>/tmp/baseline-untracked/`
   and `baseline_untracked_snapshot_missing` (C4a). The two directories are never merged, and
   neither is a substitute for the other.
+- **C4c** **No version control, or version control that cannot supply the baseline, fails
+  closed.** The class is every way version control can fail to supply the baseline side of a
+  clean tracked path: the directory is not a worktree, `HEAD` does not resolve, or it resolves to
+  a commit the tools cannot read. The capture copies nothing and exits with the one named error
+  `baseline_vcs_unavailable`, carrying the underlying version-control reason; it never falls back
+  to copying content to compensate. The one authorisation for a full tracked-set mirror is the
+  capture command's explicit `--full-tracked-mirror` together with a non-empty
+  `--consent-reference` that names the explicit user decision it carries; without both, nothing
+  is copied, and that opt-in applies to the whole class above rather than to its first member. No
+  configuration file, key or environment variable takes part. A full mirror produced this way
+  records `head` empty, the `consent_reference` it carries, and `dirty_paths` listing **every**
+  path it mirrored, so a reviewer reads what authorised it and what the mirror holds.
+  `--verify-existing` reproduces that record's digest from its own snapshot and consults no
+  version control. Its **downstream limit** is stated where the option is offered: no validated
+  change report can be produced from it, because the manifest build fails closed before any
+  manifest exists. On a directory that is not a worktree at all the build fails outright
+  (`not a git working tree`); on a worktree whose `HEAD` does not resolve the record carries no
+  baseline commit, so the build fails with `baseline_worktree_snapshot_commit_unavailable` and
+  writes **no** manifest -- no `run_required` decision is published from an enumeration that never
+  happened, and V15 never runs on a manifest that does not exist. The mirror is content a human
+  can read; it is not a report baseline.
 - **C5** The baseline is written by the work order's preparation step into
-  `work_order.report_baseline`. A late baseline lets earlier implementation edits escape the
-  change set. The capture tool is the producer: `scripts/capture_baseline.py` writes the open-state
+  `work_order.report_baseline`, and only when that step's resolved report commitment
+  `work_order.requires_report` is `true`: a work order that resolves to no report captures
+  nothing and records its `work_order.report_skip_reason` instead. A late baseline lets earlier
+  implementation edits escape the change set. The capture tool is the producer: `scripts/capture_baseline.py` writes the open-state
   record, and its `--format keys` output is the publishable form of the three flat keys the report
   nodes read (`report.baseline_commit`, `report.baseline_digest`, `report.baseline_algorithm`).
+  Its capture form is proportional by default and its two consent parameters
+  (`--full-tracked-mirror`, `--consent-reference`) are the only way to authorise a full copy
+  (C4c); `--verify-existing` recomputes the recorded digest from the frozen scope plus the
+  baseline commit and re-materialises nothing.
 - **C37** Authorship is decided deterministically. For each tracked path let `O` be the
   baseline commit content, `B` the content on disk when the work order opened and `H` the head
   content:
-  1. write `O`, `B` and `H` as temporary files under `<workbench>/tmp/`;
+  1. write `O`, `B` and `H` as temporary files under `<workbench>/tmp/`. `B` comes from the
+     recorded capture scope: the snapshot's mirrored bytes for a dirty-at-open path, and the
+     baseline commit's own blob for a clean path, whose open bytes never diverged (C4b). A path
+     that was absent from the worktree at open has no `B`, which is the deletion-at-open case
+     C4b records by name;
   2. `git diff --no-index --no-color -U0 -- O B` gives the baseline-side line ranges,
      `git diff --no-index --no-color -U0 -- B H` gives the work-order-side line ranges;
   3. map the baseline-side ranges into head line numbers and intersect them with the work
@@ -384,8 +498,13 @@ coverage time.
      algorithm id `sha256(path-nul-contenthash-lf/v1)`. An empty digest or a corrupted algorithm
      spelling is a field defect, not a provenance claim a later check may assume;
   3. **consistency** - a declared `available: false` has a matching entry in `degradations`,
-     and a declared `available: true` names a directory that exists, is non-empty and is in the
-     C4b `complete` state. The two statements are about the same fact and must agree.
+     and a declared `available: true` names a directory that exists and is in the C4b `complete`
+     state. The two statements are about the same fact and must agree. The snapshot's content
+     requirement is now stated by the scope the manifest publishes: a manifest that declares
+     `captured_paths` greater than zero must hold at least one captured path, and a clean open
+     state legitimately declares zero, because the commit already held every tracked byte. A
+     manifest that publishes no scope keeps the old reading, in which the snapshot owed the
+     tracked set.
 - **V2 Coverage is complete**: every `analyzable=true` unit anchor exists in the HTML and is
   named by some `data-covers` set.
 - **V3 Nothing out of scope**: the page contains no change section and no `data-covers` anchor
@@ -452,17 +571,29 @@ coverage time.
   misleading verdicts, and agrees with the blackboard's `report.accuracy_open_issues`. V14 runs
   at the **final** stage, not at coverage time: the coverage step runs before the review loop,
   when the verdict file does not exist yet.
-- **V15 Baseline content is recomputed**: recompute C4's digest from the recorded worktree
-  snapshot directory with the same `digest_from_hashes` construction the builder uses
-  (`sha256(path-nul-contenthash-lf/v1)` over the tracked path list of `baseline.commit`, hashing
-  each path's recorded snapshot bytes), and compare it with `baseline.worktree_digest`. A
-  mismatch is a failure and names both digests and the directory. When the snapshot is in one of
-  C4b's three unavailable states the check reports `not_recomputable` with the reason
+- **V15 Baseline content is recomputed**: recompute C4's digest with the same
+  `digest_from_hashes` construction the builder uses (`sha256(path-nul-contenthash-lf/v1)` over
+  the tracked path list of `baseline.commit`), and compare it with
+  `baseline.worktree_digest`. The byte sources are the frozen capture scope's: each captured path
+  is hashed from the snapshot directory, and every other tracked path is hashed from its
+  `baseline.commit` blob, because a clean path's open bytes are its committed bytes (C4b). A path
+  the record names as absent at open or as unopenable at open is omitted on every side, through
+  the same role map the capture used, so this check cannot hash a byte-less path the capture did
+  not hash. A
+  manifest that publishes no scope keeps the old single-source reading, in which the snapshot
+  owes every tracked path. Any difference in the recomputed digest is a failure and names both
+  digests, the directory and the commit. When the snapshot is in one of C4b's unavailable states
+  the check reports `not_recomputable` with the reason
   `baseline_worktree_snapshot_unavailable`, the state, and that state's degradation string,
   instead of failing - which preserves C4a's semantics: a degraded capture is legal, and a
   validator that refused it would leave a work order whose snapshot was lost with no repair
   route. A snapshot that claims `available: true` while its directory is missing fails V15
-  rather than degrading. V15 runs at both stages.
+  rather than degrading, and a path the frozen scope says the snapshot holds but which is absent
+  from it fails as an incomplete snapshot. When the snapshot is available but the baseline commit
+  can no longer supply a clean path's blob, V15 fails with
+  `baseline_worktree_snapshot_commit_unavailable`: the snapshot deliberately did not copy those
+  bytes, so the proof's baseline is partial and must not be read as complete. V15 runs at both
+  stages.
 - **V16 Enumeration is complete**: recompute the enumeration independently of the manifest's own
   numbers, with `git diff --no-renames --name-status -z <baseline_commit> --`, `git ls-files -s`
   and `git ls-files --others --exclude-standard -z`, and fail when a path a source reports as
@@ -516,8 +647,13 @@ the refresh entry point; the same finding at `validate-coverage` fails that node
 | URL text is excused outside a code block | V7 | the failure stands when the match is outside the exclusion zone |
 | A diagram type is unsupported, the render mode mismatches, geometry is out of range, or a golden fixture differs | V8 | the diagram id and the reason; no guessing, no downgrade |
 | The report is stale | V9 | declared and measured digests; routed to the refresh edge at `validate-final`; a node failure at `validate-coverage` |
-| The baseline digest does not match the recorded snapshot | V15 | both digests and the snapshot directory |
-| The recorded snapshot is unavailable, empty or incomplete | V15 plus the C4b degradation | the note `baseline_worktree_snapshot_unavailable` or the state's degradation string; never a silent pass |
+| The baseline digest does not match the recorded snapshot plus the baseline commit | V15 | both digests, the snapshot directory and the commit |
+| The recorded snapshot is unavailable, or holds neither the capture scope nor a superset of it | V15 plus the C4b degradation | the note `baseline_worktree_snapshot_unavailable` or the state's degradation string; never a silent pass |
+| The baseline commit can no longer supply the clean-path bytes the proportional snapshot deliberately did not copy | V15 | `baseline_worktree_snapshot_commit_unavailable:` with the commit and the paths; the proof is reported as partial, never as complete |
+| The baseline commit cannot be enumerated at all, so neither the C4 digest's tracked set nor the change set exists | `build_manifest.py` (fail-closed, before any `run_required` is published) | the same named string with the commit and the underlying reason, exit non-zero; `run_required=false` is never published from an enumeration that never happened, so the zero-unit rule cannot turn it into a legal `zero_analyzable_units` skip |
+| A clean path's blob is read through a worktree spelling (`git show <commit>:<path>`) and the host path limit defeats it on a path whose bytes the object database holds | the whole-tracked-set readers named in C4b | the capture's digest self-check, `--verify-existing` and V15 read it by the blob id `tree_entries` already resolved and batched through one `git cat-file --batch`, so those three cannot take a different route to the same bytes; the manifest's baseline-content reads and the skeleton's old-line read still spell `commit:path`, the pre-existing limit C4b records, whose measured effect is a long changed path published as `change_kind: added` with the head bytes as its origin and V15 still `checked` |
+| The capture ran where no version control can supply the baseline side | the capture command (fail-closed, before anything is written) | the named error `baseline_vcs_unavailable` with the underlying reason; the class covers a non-worktree, an unresolvable `HEAD` and an unreadable commit, and nothing is copied unless `--full-tracked-mirror` carries a non-empty `--consent-reference` |
+| A tracked path with no readable open-state bytes -- absent at open, or present but unopenable -- is hashed from the commit by a recomputation while the capture omitted it | the one role map (`open_state_roles`/`open_state_hashes`, C4b) read by the capture, its `--verify-existing` mode, the manifest's baseline side and V15 | the path is omitted on every side and named in the record (`deleted_paths`, or `tracked_path_unreadable:<path>`), and the manifest publishes the empty hash as its `baseline_sha256`, never the commit's blob |
 | The baseline identity is empty or its algorithm is a corrupted spelling | V1 (content tier) | the field and the rejected value |
 | A path one of the three independent git sources reports as *changed* is missing from `files[]` and no recorded-path degradation names it (`path_unreadable:` or `untracked_snapshot_path_lost:`); an index entry the baseline commit already records at that same mode and object is not a change and owes no row, and neither is an untracked path the recorded untracked snapshot already holds. The third source is the untracked enumeration `git ls-files --others --exclude-standard -z` | V16 | the dropped path and the command that reported it |
 | A gate outcome is declared without a route, or routed without being declared | V12 | declared and routed sets |
@@ -557,6 +693,7 @@ a claim that the values are calibrated.
 | `report-review-loop.loop.max_iterations` | `3` | `assets/change-report-flow.json` | O5: the accuracy review bound, with `loop.on_limit = blocked` | retained at the design value for the same reason; this is the loop whose exhaustion produced that incident |
 | `V12.loop_bound_literal` | `3` | `validate_report.py` | V12's independent expectation of both loop bounds | retained deliberately: the validator's copy is what makes a silent divergence between the spec, the generated template and the check impossible, so it is not derived from the artefact it validates |
 | `MAX_CHECK_MESSAGE_CHARS` | `400` | `validate_report.py` | the diagnostic cap on any one check message (V11's repair hint included) | retained at the design value; it is a diagnostic bound and gates no acceptance, and 400 characters keep the check id, the unit number and the reason inside the surviving head |
+| `BASELINE_SNAPSHOT_COMMIT_UNAVAILABLE` | `baseline_worktree_snapshot_commit_unavailable` | `build_manifest.py` | V15's failure when the baseline commit can no longer supply one clean path's bytes -- carried by that failure and never by the manifest's `degradations` list, which stays empty in that state -- and the fail-closed build failure when the commit cannot be enumerated at all | introduced by the proportional-capture change, with evidence: 5 of 39 recorded work orders in one workshop already had an unresolvable baseline commit, and the proportional snapshot makes that commit a source rather than only an identity, so the loss had to be named instead of silent. The unenumerable-commit half is a **failure**, not a degradation: it leaves no tracked set, so a published `run_required=false` would be a fabricated zero-unit result that C18's rule turns into a legal skip |
 
 **The comparison defect this record names.** V14's wrong-verdict gate was an **exact-equality**
 test (`wrong != MAX_WRONG`) while `MAX_MISLEADING` was already a ceiling (`misleading >
@@ -726,7 +863,15 @@ explicitly excluded.
 - **C26** The real strength of the proof is the recomputability of V1-V16: any third party can
   rerun the same validator against the same worktree, baseline and HTML and reach the same
   conclusion without trusting the model that produced them. V10 and V11 raise "analysis exists"
-  to "analysis is bound to the code it cites"; binding is still not correctness.
+  to "analysis is bound to the code it cites"; binding is still not correctness. One boundary of
+  that recomputability is now stated rather than implied: the proportional capture does **not**
+  let a third party recompute the C4 baseline digest from the snapshot directory alone, because a
+  clean path's open bytes were deliberately left in the baseline commit. The baseline commit's
+  objects are a real precondition, and a history rewrite that removes them makes the baseline
+  unrecomputable for the clean paths -- reported as
+  `baseline_worktree_snapshot_commit_unavailable` and never as a complete proof. Where the
+  pre-existing/dirty boundary is what a reader needs, the same precondition applies: the snapshot
+  shows which paths were dirty, and the commit is what shows what they were dirty *from*.
 - **C27** The validator emits an independently checkable summary - unit, anchor, field presence
   and length, hash recomputation and token-hit count - instead of only an `ok`. The accuracy
   verdicts stay out of the receipt and live in `change-report-verdicts.json`, recomputed by V14

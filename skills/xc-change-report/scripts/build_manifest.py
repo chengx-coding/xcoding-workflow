@@ -241,6 +241,18 @@ TRACKED_PATH_UNREADABLE = "tracked_path_unreadable"
 UNTRACKED_PATH_UNREADABLE = "untracked_path_unreadable"
 BASELINE_RECORD_UNREADABLE = "baseline_record_unreadable"
 BASELINE_RECORD_UNSELECTED = "baseline_record_unselected"
+# The name of the capture-scope loss. The proportional mirror keeps a clean path's open bytes in
+# the baseline commit instead of copying them, which makes the commit a real precondition of
+# C4 recomputation rather than a mere identity. When the commit can no longer supply those
+# clean-path bytes -- a history rewrite is the measured cause -- the missing half is named by
+# V15's digest-recomputation failure and by the fail-closed `ManifestError` raised in
+# `build_manifest` when the commit cannot be enumerated at all; never by
+# `manifest["degradations"]`, which stays empty in that state, so a reviewer reads "this proof's
+# baseline is partial" through the failure instead of through a manifest field. The symbol is
+# kept rather than inlined as that literal because it is the shared name: the committed
+# regression test asserts on it, and the constant table in `references/coverage-protocol.md`
+# names it as the name this file owns.
+BASELINE_SNAPSHOT_COMMIT_UNAVAILABLE = "baseline_worktree_snapshot_commit_unavailable"
 # The per-path reasons the validator accepts as "the manifest recorded this path even
 # though it could not enumerate it" (V16's third source).
 RECORDED_PATH_REASONS = (PATH_UNREADABLE, UNTRACKED_SNAPSHOT_PATH_LOST)
@@ -806,19 +818,110 @@ def tree_entries(repo: Path, commit: str) -> dict[str, dict[str, str]]:
     return entries
 
 
+class GitBlobStore:
+    """Read many blobs by object id through **one** `git cat-file --batch` process.
+
+    `git cat-file blob <oid>` and `git show <commit>:<path>` are separate processes per call,
+    and the path spelling a `git show` argument carries is resolved as a *worktree* spelling:
+    once the combined length of the repository path, the object name and the relative path
+    crosses the host's path limit, git cannot stat it and the read fails on a path whose bytes
+    the object database holds. Reads are therefore keyed by the object id the caller already
+    has -- from `tree_entries` or `index_entries` -- and batched, which makes the cost per path
+    a line of text on a live pipe instead of a process spawn. Slurping stdout is safe here
+    because the request is written and its reply is read before the next request, so the two
+    pipes are never both full.
+
+    A missing object is `None` (the caller decides what that means); any other failure is
+    `None` as well, because both readers this replaces returned `None` for every kind of read
+    failure and their callers already name the consequence.
+    """
+
+    def __init__(self, repo: Path) -> None:
+        self._repo = repo
+        self._proc: subprocess.Popen[bytes] | None = None
+        self._cache: dict[str, bytes | None] = {}
+
+    def _start(self) -> subprocess.Popen[bytes]:
+        if self._proc is None:
+            self._proc = subprocess.Popen(
+                _git_command(["cat-file", "--batch"]),
+                cwd=str(self._repo),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+        return self._proc
+
+    def get(self, object_id: str) -> bytes | None:
+        """The blob's bytes, cached; `None` when the object is absent or not a readable blob."""
+        if not object_id:
+            return None
+        if object_id in self._cache:
+            return self._cache[object_id]
+        payload = self._read(object_id)
+        self._cache[object_id] = payload
+        return payload
+
+    def _read(self, object_id: str) -> bytes | None:
+        proc = self._start()
+        stdin = proc.stdin
+        stdout = proc.stdout
+        try:
+            if stdin is None or stdout is None:
+                return None
+            stdin.write(object_id.encode("ascii", "replace") + b"\n")
+            stdin.flush()
+            header = stdout.readline()
+            if not header:
+                return None
+            fields = header.decode("utf-8", "replace").rstrip("\n").rsplit(" ", 2)
+            if len(fields) != 3 or fields[1] != "blob":
+                return None
+            length = int(fields[2])
+            payload = stdout.read(length)
+            if payload is None or len(payload) != length:
+                return None
+            stdout.read(1)
+            return payload
+        except (BrokenPipeError, OSError, ValueError):
+            return None
+
+    def close(self) -> None:
+        proc, self._proc = self._proc, None
+        if proc is None:
+            return
+        try:
+            if proc.stdin is not None:
+                proc.stdin.close()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=10)
+        except (subprocess.TimeoutExpired, OSError):
+            proc.kill()
+        finally:
+            if proc.stdout is not None:
+                proc.stdout.close()
+
+
 def blob_bytes(repo: Path, object_id: str) -> bytes | None:
-    """Read a blob from the object database, never through the worktree path (C14a)."""
+    """Read one blob from the object database, never through the worktree path (C14a)."""
     if not object_id:
         return None
-    proc = subprocess.run(
-        _git_command(["cat-file", "blob", object_id]), cwd=str(repo), capture_output=True
-    )
-    if proc.returncode != 0:
-        return None
-    return proc.stdout
+    store = GitBlobStore(repo)
+    try:
+        return store.get(object_id)
+    finally:
+        store.close()
 
 
 def git_show_bytes(repo: Path, commit: str, path: str) -> bytes | None:
+    """Read one `commit:path` blob by worktree spelling.
+
+    Kept for the callers that hold only a path and for the regression test that pins this
+    reader's own limit; the digest path never uses it, because its argument is the one the
+    host path limit defeats.
+    """
     proc = subprocess.run(
         _git_command(["show", f"{commit}:{path}"]), cwd=str(repo), capture_output=True
     )
@@ -838,6 +941,171 @@ def snapshot_bytes(directory: Path | None, path: str) -> bytes | None:
     if directory is None or not directory.is_dir():
         return None
     return read_bytes(directory / Path(path))
+
+
+# The role of one tracked path in the C4 baseline digest. There is exactly **one** definition
+# of the digest's input set and of the bytes each path contributes, and it is this role map:
+# the capture publishes a scope, and `capture_open_state`, `verify_open_state`, the manifest's
+# baseline side and the validator's V15 all read the roles back through `open_state_roles`
+# instead of deciding the classification a second time. Two derivations of one rule is the
+# defect this exists to prevent: the deleted-at-open and the present-but-unopenable classes were
+# each classified independently by a producer and by a recomputation, and the two disagreed.
+OPEN_STATE_SNAPSHOT = "snapshot"
+OPEN_STATE_COMMIT = "commit"
+OPEN_STATE_OMITTED = "omitted"
+
+
+def open_state_scope(
+    dirty: Iterable[str] | None = None,
+    deleted: Iterable[str] = (),
+    skipped: Iterable[str] = (),
+) -> dict[str, Any]:
+    """The one scope shape `open_state_roles` reads, built from the three recorded facts.
+
+    `dirty` is the captured-at-open set, or `None` for a record that froze none: the legacy
+    full mirror and the explicit no-version-control opt-in. `None` is not "nothing was dirty".
+    It means no captured set was recorded, so the snapshot is the only source of open bytes and
+    every tracked path is expected there -- the pre-proportional single source. A caller that
+    holds a better answer, such as the snapshot's own contents, passes that set instead.
+    """
+    return {
+        "dirty": None if dirty is None else {str(item) for item in dirty if str(item)},
+        "deleted": {str(item) for item in deleted if str(item)},
+        "skipped": {str(item) for item in skipped if str(item)},
+    }
+
+
+def open_state_roles(
+    tracked: Iterable[str], scope: dict[str, Any] | None
+) -> dict[str, str]:
+    """`path -> role` for every tracked path: the C4 digest's one input-set definition.
+
+    A tracked path the record names as absent from the worktree at open, or as present but
+    unopenable, has no readable open-state bytes on any side. It is therefore **omitted** from
+    the digest rather than hashed as an invented empty payload, which is what the capture did
+    with a byte-less path before the scope existed and what keeps the digest's value semantics
+    unchanged for those paths. Every other path is a `snapshot` path (the mirror holds its open
+    bytes) or a `commit` path (its open bytes never diverged from the baseline commit's blob).
+    A path named in both an omitted set and the captured set is omitted: an omitted path has no
+    bytes for either side to read.
+
+    `scope["dirty"]` is the captured set, and `None` there means the record froze none: every
+    tracked path is then a `snapshot` path, which is the single-source reading an unpruned
+    record gets. It is never read as "no path is a snapshot path", which would silently move a
+    legacy mirror's `B` side onto the commit.
+    """
+    source = scope or {}
+    raw_dirty = source.get("dirty")
+    captured = None if raw_dirty is None else {str(item) for item in raw_dirty or ()}
+    deleted = {str(item) for item in source.get("deleted", ()) or ()}
+    skipped = {str(item) for item in source.get("skipped", ()) or ()}
+    roles: dict[str, str] = {}
+    for path in tracked:
+        if path in deleted or path in skipped:
+            roles[path] = OPEN_STATE_OMITTED
+        elif captured is None or path in captured:
+            roles[path] = OPEN_STATE_SNAPSHOT
+        else:
+            roles[path] = OPEN_STATE_COMMIT
+    return roles
+
+
+def open_state_hashes(
+    repo: Path,
+    commit: str,
+    directory: Path | None,
+    roles: dict[str, str],
+    blobs: GitBlobStore | None = None,
+    oids: dict[str, str] | None = None,
+) -> tuple[list[tuple[str, str]], list[str], list[str]]:
+    """C4's digest records for one role map, from the two byte sources C4b fixes.
+
+    Returns `(pairs, missing, commit_short)`. `pairs` holds one `(path, sha256)` record per
+    hashed path in the protocol's UTF-8 byte order and is what `digest_from_hashes` turns into
+    the digest. `missing` names a path the scope says the snapshot holds whose mirrored bytes
+    are not there, and `commit_short` names a clean path whose baseline-commit blob the commit
+    can no longer supply; neither is ever hashed as empty, because an empty hash is how a
+    damaged snapshot or a rewritten history would pass as intact. `repo` and `commit` are never
+    read when the map holds no `commit` role, which is the commit-less consent capture of C4c.
+
+    A `commit` path is read from the **object database by object id**, never through the
+    worktree spelling `git show <commit>:<path>` uses: `oids` is the `path -> blob id` map the
+    caller already holds from `tree_entries`, and `blobs` is the batched reader that turns those
+    ids into bytes without a process per path. Both are optional so that this function stays
+    callable with only the two things C4 names; a caller that supplies neither falls back to the
+    worktree-spelling read, which is correct wherever the host path limit is not in play.
+    """
+    pairs: list[tuple[str, str]] = []
+    missing: list[str] = []
+    commit_short: list[str] = []
+    object_ids = oids if oids is not None else {}
+    for path in sorted(roles, key=sort_key):
+        role = roles[path]
+        if role == OPEN_STATE_OMITTED:
+            continue
+        if role == OPEN_STATE_SNAPSHOT:
+            payload = snapshot_bytes(directory, path)
+            if payload is None:
+                missing.append(path)
+                continue
+        else:
+            if oids is not None or blobs is not None:
+                object_id = object_ids.get(path, "")
+                payload = blobs.get(object_id) if blobs is not None else blob_bytes(repo, object_id)
+            else:
+                payload = git_show_bytes(repo, commit, path)
+            if payload is None:
+                commit_short.append(path)
+                continue
+        pairs.append((path, sha256_hex(payload)))
+    return pairs, missing, commit_short
+
+
+def manifest_capture_scope(
+    snapshot: dict[str, Any] | None,
+    degradations: Iterable[str],
+) -> dict[str, Any]:
+    """The scope a manifest published, in the one shape `open_state_roles` reads.
+
+    A manifest that declares `scope: proportional` publishes the captured set itself. A manifest
+    that does not is the legacy full mirror (or the consent opt-in), whose snapshot owes the
+    whole tracked set: that is the pre-proportional reading C4b keeps for exactly that shape, and
+    the `None` captured set is how `open_state_roles` states it. The unopenable-at-open names
+    come from the run's own `tracked_path_unreadable:` notes, which are the only record of a path
+    whose bytes existed but could not be read.
+    """
+    source = snapshot or {}
+    skipped = recorded_paths((TRACKED_PATH_UNREADABLE,), list(degradations or []))
+    proportional = "scope" in source and str(source.get("scope", "")) == "proportional"
+    if proportional:
+        return open_state_scope(
+            source.get("dirty_paths", []) or [],
+            source.get("deleted_paths", []) or [],
+            skipped,
+        )
+    return open_state_scope(None, source.get("deleted_paths", []) or [], skipped)
+
+
+def baseline_bytes_for(
+    directory: Path | None,
+    path: str,
+    role: str,
+    fallback: bytes | None,
+) -> bytes | None:
+    """The open-state content (`B`) of one tracked path, from its digest role (C4b/C37).
+
+    `B` follows the same classification the digest uses. A snapshot path's `B` is its mirrored
+    bytes; a clean path's `B` is the baseline commit's blob, which the caller has already read
+    and routes in as `fallback`; and an omitted path -- absent from the worktree at open, or
+    present but unopenable -- has no open-state content at all, so its `B` stays unknown. The
+    commit's blob is deliberately **not** substituted there: it would publish the commit's
+    content as the work order's opening content for a path the worktree did not hold.
+    """
+    if role == OPEN_STATE_SNAPSHOT:
+        return snapshot_bytes(directory, path)
+    if role == OPEN_STATE_OMITTED:
+        return None
+    return fallback
 
 
 def snapshot_dir(manifest: dict[str, Any]) -> Path | None:
@@ -893,6 +1161,30 @@ def record_degradations(record: dict[str, Any] | None) -> list[str]:
     return [str(item) for item in raw if str(item)]
 
 
+def record_capture_scope(record: dict[str, Any] | None) -> dict[str, Any]:
+    """The capture scope the open-state record froze, in the shape `open_state_roles` reads.
+
+    A record with no `dirty_paths` field is not a capture that found nothing dirty: it is an
+    older capture that mirrored every tracked path, so its captured set is unknown and `dirty`
+    comes back `None` for the caller that can see the snapshot to supply. The manifest keeps the
+    two apart, because the first is a proportional snapshot whose clean half lives in the
+    baseline commit and the second is the legacy full mirror (or the explicit opt-in for a tree
+    with no version control); the distinction is the presence of the key, never its contents.
+    The capture's own `tracked_path_unreadable:` notes are its only statement of the paths whose
+    bytes existed but could not be read, so they are read back here as the third scope fact
+    instead of being re-derived by each consumer.
+    """
+    source = record or {}
+    skipped = recorded_paths((TRACKED_PATH_UNREADABLE,), record_degradations(source))
+    if "dirty_paths" not in source:
+        return open_state_scope(None, [], skipped)
+    return open_state_scope(
+        source.get("dirty_paths", []) or [],
+        source.get("deleted_paths", []) or [],
+        skipped,
+    )
+
+
 def record_snapshot_dirs(record: dict[str, Any] | None) -> tuple[Path | None, Path | None]:
     """The two snapshot directories the capture recorded, in record order (C4a/C4b).
 
@@ -931,21 +1223,35 @@ def snapshot_paths(directory: Path | None) -> list[str]:
     )
 
 
-def worktree_snapshot_state(directory: Path | None, tracked: set[str]) -> str:
+def worktree_snapshot_state(
+    directory: Path | None,
+    tracked: set[str],
+    opened_dirty: set[str] | None = None,
+) -> str:
     """The worktree snapshot's C4b state: availability is decided by content (G-02).
 
     A directory test answers "is there a directory", not "is the baseline recomputable". The
-    state is `complete` only when the captured path set equals the tracked path set of the
-    baseline commit -- which is also the set C4's digest is defined over -- so a present but
-    empty or partial capture is a recorded degradation instead of a silent success.
+    state is `complete` only when the snapshot holds **exactly the capture scope the record
+    froze** -- the dirty-at-open paths -- and the baseline commit supplies the rest. That is
+    what makes a clean open state a healthy snapshot holding nothing: the commit already held
+    every tracked byte, so there was nothing to mirror and nothing is missing. `empty` keeps
+    its own meaning of "the snapshot holds no captured path", and it is a degradation only
+    when the scope says paths should have been captured.
+
+    `opened_dirty` is the frozen scope, or `None` for a record that never pruned. An unpruned
+    record is the legacy full mirror (or the full-copy opt-in): there the captured set must
+    equal the tracked set of `baseline.commit`, which is also the set C4's digest is defined
+    over, so a present but partial capture is a recorded degradation instead of a silent
+    success.
     """
     if directory is None or not directory.is_dir():
         return "absent"
     captured = set(snapshot_paths(directory))
+    expected = tracked if opened_dirty is None else opened_dirty
+    if captured == expected:
+        return "complete"
     if not captured:
         return "empty"
-    if captured == tracked:
-        return "complete"
     return "incomplete"
 
 
@@ -1498,11 +1804,32 @@ def build_manifest(
     baseline_record: Path | None = None,
 ) -> dict[str, Any]:
     repo = resolve_repo(repo_path)
-    require_commit(repo, baseline_commit)
 
-    committed = tracked_paths(repo, baseline_commit)
-    commit_modes = tree_entries(repo, baseline_commit)
-    tracked_changes = name_status(repo, baseline_commit)
+    # The baseline commit is now a real precondition, not a mere identity: a clean path's open
+    # bytes live in it and nowhere else, so a commit that no longer resolves removes the half of
+    # the baseline the snapshot deliberately did not copy. The manifest **fails closed** on that
+    # state and never publishes a run-required decision from it: with no commit there is no
+    # tracked set to enumerate, so `units_total` would be a fabricated zero, `run_required` would
+    # be a fabricated `false`, and the package's own zero-unit rule would turn that into the
+    # legal `zero_analyzable_units` skip -- a work order whose code changed closing with no
+    # report and no failing check. The two states stay distinct, and neither one reaches
+    # `degradations`: a commit that *resolves* but can no longer supply a single clean path's
+    # blob is named by V15's digest-recomputation failure
+    # (`baseline_worktree_snapshot_commit_unavailable:<commit>`) on a manifest that is still built
+    # with an empty `degradations` list, while a commit that cannot be enumerated at all stops the
+    # manifest here, before anything is serialised, with the name in the raised error.
+    try:
+        committed = tracked_paths(repo, baseline_commit)
+        commit_modes = tree_entries(repo, baseline_commit)
+        tracked_changes = name_status(repo, baseline_commit)
+    except ManifestError as exc:
+        raise ManifestError(
+            "baseline_worktree_snapshot_commit_unavailable: the baseline commit "
+            f"{baseline_commit} cannot be enumerated, so the tracked set the C4 digest and the "
+            "change-set enumeration are both defined over does not exist and no manifest can be "
+            f"built from it; the report node fails here instead of publishing run_required=false "
+            f"({exc})"
+        ) from exc
     untracked = untracked_paths(repo)
     index = index_entries(repo)
     export_ignored = export_ignore_patterns(repo)
@@ -1516,6 +1843,17 @@ def build_manifest(
     opened_untracked = record_untracked_paths(record)
     opened_modes = record_index_modes(record)
     opened_degradations = record_degradations(record)
+    # The capture scope the record froze: the dirty-at-open set the snapshot is expected to
+    # hold, the deleted-at-open names and the paths the capture could not open. An absent
+    # `dirty_paths` key means an unpruned record, which is read as a full mirror -- the legacy
+    # shape and the explicit no-version-control opt-in. The test is the *presence* of the key
+    # and never its contents: a proportional record whose dirty set is empty is a real scope,
+    # and reading it as "no scope" would demand a full mirror of a clean tree.
+    opened_scope = record_capture_scope(record)
+    opened_dirty = opened_scope["dirty"]
+    # The roles the digest uses decide the `B` side of the alignment as well, so the manifest
+    # cannot publish one baseline content for a path and a digest that read another (C4b/C37).
+    opened_roles = open_state_roles(committed, opened_scope)
     # The two directories are required in practice and the record already names them, so a
     # caller that passes neither gets the recorded ones instead of a silently unaligned
     # baseline. An explicit argument always wins: it is how a caller points a rebuild at a
@@ -1534,9 +1872,23 @@ def build_manifest(
 
     # C4b: availability is decided by content, not by a directory test, so a present but
     # empty or partial capture degrades instead of passing as a healthy baseline.
-    snapshot_state = worktree_snapshot_state(baseline_worktree_dir, committed)
+    snapshot_state = worktree_snapshot_state(baseline_worktree_dir, committed, opened_dirty)
     worktree_available = snapshot_state == "complete"
     untracked_available = bool(baseline_untracked_dir and baseline_untracked_dir.is_dir())
+    # R4: `captured_paths` is what the snapshot is *expected to hold*, so it is published from
+    # the source that actually knows it. For a proportional record that is the frozen scope. For
+    # an unpruned record -- the legacy full mirror, which froze no scope -- it is the mirror's
+    # own contents when that directory is there to be read, and the tracked set of
+    # `baseline.commit` only as the last resort of a mirror that is absent altogether. Publishing
+    # the tracked-set count for a mirror that exists and holds something else (the measured R4
+    # case: `scope: full`, `captured_paths: 0`, `state: incomplete` while the mirror held the
+    # whole tracked set) misdescribes the record, even inside a degraded manifest.
+    if opened_dirty is not None:
+        captured_paths = len(opened_dirty)
+    elif baseline_worktree_dir is not None and baseline_worktree_dir.is_dir():
+        captured_paths = len(snapshot_paths(baseline_worktree_dir))
+    else:
+        captured_paths = len(committed)
     degradations: list[str] = list(record_notes)
     if not worktree_available:
         degradations.append(WORKTREE_SNAPSHOT_DEGRADATIONS[snapshot_state])
@@ -1599,10 +1951,18 @@ def build_manifest(
             if in_commit:
                 commit_bytes = git_show_bytes(repo, baseline_commit, path)
                 baseline_source = "commit"
-                # No usable opening snapshot for this path means B is unknown, and the C37
-                # three-point alignment is impossible: it fails closed as pre-existing with
-                # the reason recorded, instead of being charged to the work order.
-                baseline_bytes = snapshot_bytes(baseline_worktree_dir, path)
+                # C4b's hybrid `B`: the snapshot holds the dirty-at-open paths and the commit
+                # supplies the clean ones, because a clean path's open bytes *are* its
+                # committed bytes. The path's own digest role decides which, so a path with no
+                # readable open bytes -- deleted at open, or unopenable then -- keeps `B`
+                # unknown instead of being published with the commit's content. An unpruned
+                # record keeps the old single source.
+                baseline_bytes = baseline_bytes_for(
+                    baseline_worktree_dir,
+                    path,
+                    opened_roles.get(path, OPEN_STATE_COMMIT),
+                    commit_bytes,
+                )
             else:
                 baseline_source = "untracked_snapshot"
                 baseline_bytes = (
@@ -1847,6 +2207,24 @@ def build_manifest(
                     "state": snapshot_state,
                     "available": worktree_available,
                     "algorithm": DIGEST_ALGORITHM,
+                    # The capture scope is published, not implied. `captured_paths` is what the
+                    # snapshot is expected to hold -- the dirty-at-open paths -- and it is what
+                    # makes a proportional snapshot distinguishable from a broken one: without
+                    # it a reader cannot tell "clean at open, so an empty mirror is correct"
+                    # from "the mirror lost its files", and C4 recomputation cannot know which
+                    # paths the commit must supply.
+                    "captured_paths": captured_paths,
+                    "scope": (
+                        "proportional"
+                        if opened_dirty is not None
+                        else "full"
+                    ),
+                    "dirty_paths": sorted(opened_dirty, key=sort_key) if opened_dirty is not None else [],
+                    "deleted_paths": (
+                        sorted(opened_scope["deleted"], key=sort_key)
+                        if "deleted" in opened_scope
+                        else []
+                    ),
                 },
                 "untracked_snapshot": {
                     "path": str(baseline_untracked_dir) if baseline_untracked_dir else "",
@@ -1979,6 +2357,10 @@ def main(argv: list[str] | None = None) -> int:
                 "strength": manifest["strength"]["selected"],
                 "strength_upgrade_reason": manifest["strength"]["upgrade_reason"],
                 "worktree_snapshot_state": manifest["baseline"]["worktree_snapshot"]["state"],
+                "worktree_snapshot_scope": manifest["baseline"]["worktree_snapshot"]["scope"],
+                "worktree_snapshot_captured_paths": manifest["baseline"]["worktree_snapshot"][
+                    "captured_paths"
+                ],
                 "degradations": manifest["degradations"],
             },
             ensure_ascii=True,

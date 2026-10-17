@@ -97,8 +97,9 @@ implementation path, and the rework segment must be followed by the refresh sequ
   - Scope: the commit recorded once when the work order opened.
 - `baseline_worktree_dir`, `baseline_untracked_dir` - `path`; required in practice
   - Scope: the opening worktree snapshot and the untracked-file snapshot under the
-    workbench `tmp/` directory. They are what makes pre-existing edits separable and what
-    keeps a deletion of a never-tracked file recomputable.
+    workbench `tmp/` directory. The worktree snapshot holds only the dirty-at-open tracked
+    paths, so together with the baseline commit it is what makes pre-existing edits separable;
+    the untracked snapshot is what keeps a deletion of a never-tracked file recomputable.
 - `language` - `string`; required
   - Scope: `work_order.document_language`. It is the language of the report body; code,
     paths, identifiers, commands and machine output stay verbatim.
@@ -125,6 +126,7 @@ take a script path from the caller.
 ```text
 python scripts/capture_baseline.py --repo R --workbench W --work-order-id I
        [--baseline-worktree-dir T] [--baseline-untracked-dir U] [--format json|keys]
+       [--full-tracked-mirror --consent-reference REF]
 python scripts/capture_baseline.py --verify-existing --repo R --workbench W --work-order-id I
        [--baseline-worktree-dir T] [--baseline-untracked-dir U] [--format json|keys]
 
@@ -147,26 +149,57 @@ python scripts/render_diagram.py --spec diagram.json --out diagram.html
 ```
 
 `capture_baseline.py` runs **once**, when the work order opens and before the first mutating
-leaf. Its capture form mirrors every tracked path into `--baseline-worktree-dir` (default
-`<workbench>/tmp/baseline-worktree`), mirrors the paths that were untracked at open into
-`--baseline-untracked-dir` (default `<workbench>/tmp/baseline-untracked`), and writes the
-open-state record `<workbench>/tmp/baseline-open-state.json`; `--format keys` prints the
-publishable blackboard lines. The record carries three facts no later step can recover, and each
-exists because a defect could not be named without it: `untracked_paths`, the names that were
-untracked at open, so a path that was untracked at open and has since left the worktree can still
-be named by `untracked_snapshot_path_lost:`; `index_modes`, the index mode of every path at open,
-which is the only evidence that separates a mode-only change made before the open from one made
-after it; and `degradations`, the names of the tracked and untracked paths the capture could not
-open, which are skipped and named rather than blocking the work order at open. That is an
+leaf. Its capture form mirrors only what version control cannot reproduce: the tracked paths
+whose worktree bytes differ from the recorded baseline commit's bytes (the **dirty-at-open**
+set) into `--baseline-worktree-dir` (default `<workbench>/tmp/baseline-worktree`), and the paths
+that were untracked at open into `--baseline-untracked-dir` (default
+`<workbench>/tmp/baseline-untracked`). A clean tracked path is **not copied**: its open bytes are
+its committed bytes, so the baseline commit already holds them. A tracked path **absent** from
+the worktree at open, and a tracked path whose bytes exist but cannot be opened, are recorded as
+names, because a byte-less path is a fact and not a missing byte; neither contributes a record to
+the digest. It then writes the open-state record `<workbench>/tmp/baseline-open-state.json`;
+`--format keys` prints the publishable blackboard lines. The published digest keeps exactly its
+old value semantics - one `sha256(path-nul-contenthash-lf/v1)` digest over the open-state bytes of
+every tracked path that had any - so a previously recorded work order stays valid; only the
+recomputation source is hybrid, and the digest's input set and each path's byte source are one
+shared definition that the capture, its verification mode, the manifest and the validator all
+read.
+
+The record carries the facts no later step can recover, and each exists because a defect could
+not be named without it: `untracked_paths`, the names that were untracked at open, so a path that
+was untracked at open and has since left the worktree can still be named by
+`untracked_snapshot_path_lost:`; `index_modes`, the index mode of every path at open, which is
+the only evidence that separates a mode-only change made before the open from one made after it;
+`degradations`, the names of the tracked and untracked paths the capture could not open, which
+are skipped and named rather than blocking the work order at open; and the frozen capture scope,
+`dirty_paths` (the mirror's expected contents) and `deleted_paths` (the tracked paths that were
+absent at open). The scope is what keeps "clean at open" distinguishable from "the mirror was
+pruned", and it is what lets a later step recompute the digest from the snapshot plus the commit
+instead of assuming the snapshot mirrors every tracked path. That is an
 addition to the record's schema, not a replacement of it: the thirteen core fields remain the
-required set, the three open-state facts stay optional, and a record that carries only the core
-set still loads and still verifies. Its `--verify-existing` form re-materialises nothing: it
-recomputes
-the C4 digest from the two recorded directories, compares it with the record's `expected_digest`
-selected by `--work-order-id`, and fails closed when they differ, when the record is missing
-(`baseline_record_missing`) or when the record does not carry that work order id
-(`baseline_record_unselected`). Both directory parameters are the two snapshot parameters this
-package declares, and they are what C4b and C4a fix.
+required set, the added facts stay optional, a record that carries only the core set still loads
+and still verifies, and such a record is read as an **unpruned** capture (scope `full`).
+
+Its `--verify-existing` form re-materialises nothing: it recomputes the C4 digest from the
+recorded scope - snapshot bytes for a dirty path, baseline-commit blobs for a clean path, and no
+record at all for a path the record names as absent or unopenable at open - compares it with the
+record's `expected_digest` selected by `--work-order-id`, and fails closed
+when they differ, when the record is missing (`baseline_record_missing`) or when the record does
+not carry that work order id (`baseline_record_unselected`). A record that holds no commit (the
+consent-carrying full copy) is verified from its own snapshot and consults no version control.
+Both directory parameters are the two snapshot parameters this package declares, and they are
+what C4b and C4a fix.
+
+Where no version control can supply the baseline side - it is not a worktree, `HEAD` does not
+resolve, or it resolves to a commit this tool cannot read - the capture **fails closed**: it
+copies nothing and exits with the named error `baseline_vcs_unavailable`, carrying the underlying
+version-control reason. The single authorisation for a full tracked-set mirror is
+`--full-tracked-mirror` together with a non-empty `--consent-reference` naming the explicit user
+decision it carries; without both, nothing is copied. No configuration file, key or environment
+variable takes part, and the reference is recorded in the open-state record so a reviewer reads
+what authorised the copy. That record's limit is stated where the option is offered: it is a
+content mirror for a tree with no baseline commit, so `--verify-existing` reproduces its digest
+but no validated change report can be produced from it.
 
 `--tmp-dir` is the workbench `tmp/` directory and H4/C37 require it: the baseline snapshots,
 the C37 `O`/`B`/`H` no-index scratch files and the skeleton's intermediate diff inputs must all
@@ -345,5 +378,27 @@ State these limits wherever the report's guarantees are described; do not soften
 - The completion-check receipt is an unsigned caller self-report. Any structurally matching
   receipt is accepted, so the receipt alone proves nothing: the proof is the recomputation a
   third party can repeat against the same worktree, baseline and HTML.
+- The proportional baseline snapshot holds only the dirty-at-open tracked paths, so the C4
+  digest is **not** recomputable from the snapshot directory alone: a third party also needs the
+  baseline commit's objects, which is where a clean path's open bytes live. Those bytes are read
+  by the object id the commit's tree resolves and batched through one `git cat-file --batch`,
+  never through a `git show <commit>:<path>` worktree spelling, so a checkout whose path length
+  crosses the host's path limit captures and verifies like any other. The manifest's own
+  baseline-content reads - a candidate path's row, not the digest - are separate and not yet
+  converted: they still spell `commit:path`, which C4b records as a pre-existing limit with its
+  measured consequence, and converting those readers is deferred work. The commit's
+  availability is therefore a real precondition of the proof, and when a history rewrite removes
+  it the clean-path side is gone - reported as
+  `baseline_worktree_snapshot_commit_unavailable`, never as a complete report. A commit that
+  cannot be enumerated at all is the stronger case: the manifest fails closed rather than
+  publishing `run_required=false` from an enumeration that never happened, so the zero-unit rule
+  cannot turn it into a legal skip. The same precondition bounds the pre-existing/dirty
+  boundary: the snapshot shows *which* paths were dirty, and only the commit shows what they were
+  dirty from.
+- A tracked path with no readable open-state bytes at open - absent from the worktree, or present
+  but unopenable - is omitted from the digest on every side and named in the record
+  (`deleted_paths`, or `tracked_path_unreadable:<path>`). Its `files[].baseline_sha256` is
+  therefore the empty hash and never the baseline commit's blob, and a manifest whose provenance
+  alignment needs that path's opening content records the exclusion rather than inventing it.
 - One report covers one work order. There is no delivery-level aggregate report; the result
   document carries the pointers to the reports of the sibling work orders.

@@ -1072,6 +1072,7 @@ class ContractInventoryTests(unittest.TestCase):
             "baseline_worktree_snapshot_missing",
             "baseline_untracked_snapshot_missing",
             "baseline_worktree_snapshot_unavailable",
+            "baseline_worktree_snapshot_commit_unavailable",
             "**V15",
             "**V16",
             "**C4b**",
