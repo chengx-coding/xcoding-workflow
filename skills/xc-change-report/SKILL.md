@@ -20,13 +20,22 @@ writes the explanation.** Section order, table rows, anchors, code blocks and di
 rendering are mechanical and script-generated; the prose of each analysis field is written
 by the author and bound to the code by recomputation.
 
+## Element layer
+
+The report's spine is the architectural element: one to seven elements, each with a six-part
+profile (`role`, `before`, `after`, `why`, `contract`, `refs`), an element map derived from the
+elements' declared relations, and every analysable unit bound to an element or to the explicit
+`mechanical`/`unassigned` bucket. The overview carries a three-answer brief (worst case,
+rollback, unverified). Hunk-level units stay the analysis unit and the coverage proof, but they
+are grouped under their element and folded as the detail layer.
+
 ## Optional design-to-implementation layer
 
-An analysis may provide `design.topics` when a change has a real feature-level question that is
-hard to understand from the existing overview, purposes, and unit sections alone. Topics are
-rendered inside `section-process-position` and link to existing purpose, unit, diagram, and
-verification anchors. They do not replace the existing overview/process-position fields, create a
-second report, or require a fixed number of charts. Minimal reports remain valid without design.
+An analysis may provide `design.topics` when a change has a real decision-level question that is
+hard to understand from the overview, the element profiles and the unit sections alone. Topics
+are rendered inside `section-elements` and link to existing element, unit, diagram, and
+verification anchors. They do not replace the element profiles, create a second report, or
+require a fixed number of charts. Minimal reports remain valid without design.
 
 Design evidence uses typed in-page refs: intent (`approved|planned|unknown`), implementation
 (`observed|planned|unknown`), verification (`passed|planned|unknown`), and inference
@@ -234,12 +243,13 @@ same string values.
 ## Contract
 
 The four reference documents are normative:
-- `references/change-report-contract.md` - H1-H42 (page structure, anchors, class names,
-  offline self-containment, language) and A1-A21 (per-unit analysis content: A1-A15 fields,
-  the A16 purpose and A17 related-code-refs layer, and the A18-A20 analysis-depth layer -
-  change class, design dimensions, structured depth blocks, and the A21 prefer-diagrams authoring/review default), plus the A13 threshold constants,
-  the V17-V23 purpose-layer, analysis-depth and diagram-placement validation, the A21 prefer-diagrams default, the strength matrix and the strength
-  constants' calibration record.
+- `references/change-report-contract.md` - H1-H50 (page structure, anchors, class names,
+  offline self-containment, language) and A1-A30 (per-unit analysis content: A1-A15 fields,
+  A17 related-code refs, the A22 brief, the A25-A30 architectural-element layer, and the
+  A18-A21 analysis-depth layer - change class, design dimensions, structured depth blocks,
+  and the prefer-diagrams authoring/review default), plus the A13 threshold constants, the
+  V17-V37 element-layer, analysis-depth and diagram-placement validation, the strength
+  matrix and the strength constants' calibration record. A16 (the purpose layer) is retired.
 - `references/analysis-depth.md` - the change taxonomy (A18) x design-dimension (A19) matrix,
   the three-state answer discipline, the A20 depth blocks, the strength-matrix interaction, and
   the honest capability boundary, distilled from ADR / design-doc / code-review / SemVer / C4 /
@@ -249,10 +259,11 @@ The four reference documents are normative:
   refresh, sensitive and non-decodable content, the lifecycle coverage disposition, the
   calibration record of the acceptance-gating constants) plus the O1-O9 orchestration contract,
   the V1-V16 failure table and the normalisation rule.
-- `references/diagram-spec.md` - D1-D23 (diagram grammar, the two render modes, trigger
-  conditions, geometry constants, the prefer-diagrams mechanisms: D20 non-blocking suitability
-  advisory, D21 depth-block diagram derivation, D22 the optional sequence SVG carrier, D23 the
-  inline-unit vs macro-region diagram placement and page-wide numbering).
+- `references/diagram-spec.md` - D1-D27 (diagram grammar, the two render modes, six types,
+  trigger conditions, geometry constants, the prefer-diagrams mechanisms: D20 non-blocking
+  suitability advisory, D21 depth-block diagram derivation, D22 the optional sequence SVG
+  carrier, D23 the inline-unit vs macro-region diagram placement and page-wide numbering, and
+  D24-D27 the component carrier and the derived element map).
 
 The report is a user-facing artefact, so its prose follows the
 public `xc-document` human-readable authoring default and the work order's document
@@ -364,6 +375,12 @@ State these limits wherever the report's guarantees are described; do not soften
 
 - The validator proves that the analysis **exists, is complete and is bound to the code it
   cites**. Hash recomputation (V10) and token intersection (V11) check binding, not meaning.
+- The element layer (V17/V18, V33-V37) proves that elements exist, that each carries its six
+  parts, that every unit is bound, and that the before and after states differ. It cannot prove
+  that the element division is the right one: a report that puts every unit in one element and
+  writes six plausible paragraphs passes every check. That boundary is deliberate and is tested
+  by the reverse case; only the accuracy review (and the human gate, when open) can report a bad
+  division.
 - "The explanation is correct" is judged by the accuracy review worker, not by a script. The
   worker reads the repository, the diff and the report; it can find an explanation that
   contradicts the code, and it cannot find code that contradicts the requirements.

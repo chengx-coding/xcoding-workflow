@@ -62,16 +62,32 @@ PLACEHOLDER_TOKENS = (
 )
 SYMBOL_ONLY_RE = re.compile(r"^[^\w]+$", re.UNICODE)
 
-# Purpose-driven narrative layer (A16/A17). These are analysis-layer constants only: the
-# purpose/theme/related-code narrative never enters the manifest, which stays pure coverage
-# evidence (C6/V1/V16). A unit's `purpose` field is optional for backward compatibility with
-# analysis JSON written before this layer existed.
-MIN_PURPOSE_CHARS = 20
-# Closed enumeration for the relation of an embedded `report-code-context` block (A17/V20).
+# Related-code layer (A17). Closed enumeration for the relation of an embedded
+# `report-code-context` block (V20).
 RELATION_TYPES = ("caller", "callee", "data-structure", "contract")
-# Purpose tag colour cycle: a 1-based purpose index maps to the CSS `--purpose-N` variable.
-# At most six distinct purposes get a dedicated colour; beyond six the cycle repeats.
-PURPOSE_COLOR_CYCLE = 6
+
+# Architectural-element layer (A22, A25-A30; V17/V18/V33-V37). Analysis-layer constants only:
+# the element profiles, the L1 brief and each unit's element binding never enter the manifest,
+# which stays pure coverage evidence (C6/V1/V16). The purpose layer this replaces is retired
+# (A16): a `purposes` key is still tolerated in an analysis JSON but is never rendered.
+ELEMENT_KINDS = ("component", "behaviour", "data", "contract")
+MIN_ELEMENTS = 1
+MAX_ELEMENTS = 7
+# The six parts of one element profile, in the fixed reading order H49/V35 pin.
+ELEMENT_PARTS = ("role", "before", "after", "why", "contract", "refs")
+MIN_ELEMENT_PART_CHARS = 60
+# The two reserved bindings a unit may carry instead of an element id (A28/A29).
+MECHANICAL_BUCKET = "mechanical"
+UNASSIGNED_BUCKET = "unassigned"
+ELEMENT_BUCKETS = (MECHANICAL_BUCKET, UNASSIGNED_BUCKET)
+# An element id is an anchor fragment, so it carries no whitespace, quote, angle bracket or '#'.
+ELEMENT_ID_RE = re.compile(r"^[^\s#\"'<>]+$")
+
+# The L1 brief (A22): three risk answers in the overview, required at every strength.
+BRIEF_PARTS = ("worst_case", "rollback", "unverified")
+MIN_BRIEF_ANSWER_CHARS = 60
+MIN_BRIEF_TOTAL_CHARS = 240
+MAX_BRIEF_TOTAL_CHARS = 1200
 
 # Analysis-depth layer (A18/A19/A20, V21/V22). Analysis-layer constants only: the change
 # class, the design-dimension answers and the structured depth blocks never enter the
@@ -283,8 +299,8 @@ PROVENANCE_VALUES = ("work_order", "pre_existing")
 PRESENTATIONS = ("snippet", "diff")
 
 # Diagram contract (D9, D14-D17).
-DIAGRAM_TYPES = ("flow", "sequence", "class", "er", "state")
-SVG_RENDER_TYPES = ("flow", "state")
+DIAGRAM_TYPES = ("flow", "sequence", "class", "er", "state", "component")
+SVG_RENDER_TYPES = ("flow", "state", "component")
 TABLE_RENDER_TYPES = ("sequence", "class", "er")
 MAX_TEXT_NODE_CHARS = 40
 MAX_SVG_CANVAS_WIDTH = 1400
@@ -293,6 +309,9 @@ MIN_SVG_FONT_SIZE = 11
 SVG_FONT_SIZE = 12
 SVG_NODE_WIDTH = 220
 SVG_NODE_HEIGHT = 46
+# Component carrier (D24-D27): the flow box height plus one text line each for the interfaces
+# the component provides and the interfaces it requires.
+COMPONENT_NODE_HEIGHT = SVG_NODE_HEIGHT + 2 * SVG_FONT_SIZE + 10
 SVG_NODE_GAP = 40
 SVG_LAYER_GAP = 90
 SVG_MARGIN = 24
@@ -399,8 +418,7 @@ CODE_EXCLUSION_CLASSES = (
 
 SECTION_IDS = (
     "section-overview",
-    "section-purposes",
-    "section-process-position",
+    "section-elements",
     "section-change-map",
     "section-units",
     "section-related-code",

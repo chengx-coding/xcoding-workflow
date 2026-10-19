@@ -26,23 +26,21 @@ inserted after H6 and before H7; H6-H14 are not renumbered (their addresses are 
 
 | H | Section id | Content |
 |---|---|---|
-| H6 | `section-overview` | executive summary: top what/why/impact, metadata badges, reading guide |
-| **H42** | `section-purposes` | the macro purposes the change serves: one concept card per purpose (title, theme, narrative, unit anchors), linking to the purpose-map diagram |
-| H8 | `section-process-position` | where the change sits in the wider flow, before/after (the macro system picture, shown before the detailed index) |
+| H6 | `section-overview` | executive summary: top what/why/impact, the three-answer brief (H50), metadata badges, reading guide |
+| **H42** | `section-elements` | the architectural-element layer: the derived element map, the element index, and one six-part profile per element (H49); the optional design topics render here too |
+| **H8** | *retired* | `section-process-position` is no longer a section; its narrative is the element section's lead, and the macro before/after is carried by the element profiles |
 | H7 | `section-change-map` | the change map and the exclusion table (the scannable index into the detail) |
-| H9 | `section-units` | one section per analysable change unit, including that unit's inline diagrams (FR-VIS-4) |
+| H9 | `section-units` | one section per analysable change unit, grouped under its element and folded (D3), including that unit's inline diagrams (FR-VIS-4) |
 | H10 | `section-related-code` | unchanged code quoted to explain context |
-| H11 | `section-diagrams` | macro / cross-unit diagrams only (purpose map, system-level before/after); unit-level detail diagrams are inlined in their unit, not here (FR-VIS-4) |
+| H11 | `section-diagrams` | macro / cross-unit diagrams only; the element map and unit-level diagrams are rendered elsewhere (FR-VIS-4, H48) |
 | H12 | `section-verification` | referenced verification commands, results, residual risk |
 | H13 | `section-glossary` | every proper noun used in the body, explained once |
-| H14 | `section-report-info` | generation time, manifest hash, baseline, the baseline capture scope, rounds, skips, degradations |
+| H14 | `section-report-info` | generation time, manifest hash, baseline, the baseline capture scope, rounds, skips, degradations, element and bucket counts, and the human-confirmation status |
 
-The visual order is top-down (macro to detail): overview, purposes, the macro before/after
-(`section-process-position`), then the scannable `section-change-map` index, then the per-unit
-deep dive. The H numbers are stable ids, not positions: `section-process-position` (H8) is
-rendered before `section-change-map` (H7) so the report reads macro first, and the single source
-of the physical order is `SECTION_IDS` in `scripts/build_manifest.py`, which the renderer, the
-table of contents and V5 all consume.
+The visual order is top-down (macro to detail): overview, the element map and profiles, then the
+scannable `section-change-map` index, then the per-element unit detail. The H numbers are stable
+ids, not positions, and the single source of the physical order is `SECTION_IDS` in
+`scripts/build_manifest.py`, which the renderer, the table of contents and V5 all consume.
 
 H6-H12 and H14 are judged mechanically (V5). The completeness of H13 and the writing quality
 of H6-H12 are human review items; no script decides whether a term was really explained.
@@ -50,13 +48,14 @@ of H6-H12 are human review items; no script decides whether a term was really ex
 ## Change map
 
 - **H15** One row per analysable change unit.
-- **H16** Seven columns, in this order: repository-relative path, change kind, purpose tag,
+- **H16** Seven columns, in this order: repository-relative path, change kind, element tag,
   unit number, first 12 hex characters of the manifest content hash, code location, link to
-  the unit's analysis section. The purpose tag (A16) is the unit's purpose id; a unit with no
-  purpose renders an empty tag cell. The code location is `<path>:<start>-<end>` taken from
-  `new_range`, or from `old_range` for a unit whose content side is the old side (a pure
-  deletion). V5 asserts both the row count and that the code-location column is non-empty;
-  V18 asserts the purpose tag matches the unit's declared purpose.
+  the unit's analysis section. The element tag (A26) is the unit's element id or reserved
+  bucket name; a unit with no binding renders an empty tag cell. The code location is
+  `<path>:<start>-<end>` taken from `new_range`, or from `old_range` for a unit whose content
+  side is the old side (a pure deletion). V5 asserts both the row count and that the
+  code-location column is non-empty; V18 asserts the element tag matches the unit's declared
+  binding.
 - **H17** The change-map row count equals the manifest's `units_total`. Excluded files are
   not counted here and do not appear; the equation performs no subtraction.
 - **H18** Excluded entries have their own table with path, category and reason per row, plus
@@ -65,10 +64,10 @@ of H6-H12 are human review items; no script decides whether a term was really ex
 
 ## Table of contents and anchors
 
-- **H19** The left sidebar is a fixed three-level table of contents: section, then purpose
-  group, then change unit, collapsible. Section level is always visible; purpose groups group
-  units by purpose without reordering the globally monotonic unit anchors. V20 asserts every
-  section, purpose group and unit target exists with no dangling or extra unit.
+- **H19** The left sidebar is a fixed three-level table of contents: section, then element
+  group, then change unit, collapsible. Section level is always visible; element groups group
+  units by element without reordering the globally monotonic unit anchors. V19 asserts every
+  unit target exists with no dangling or extra unit; V18 asserts every element entry resolves.
 - **H20** Collapsing uses native HTML (`<details>`/`<summary>`) and CSS only. No JavaScript.
 - **H21** Every analysable unit has the stable anchor `#unit-<unit_index>`, where
   `<unit_index>` is the manifest's globally monotonic unit number, not a per-file restart and
@@ -77,10 +76,10 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   it, replace `/`, `\`, `.` and every non-alphanumeric character with `-`, then collapse runs
   of `-`. The model never writes an anchor by hand.
 - **H23** Cross-references inside the page use in-page anchors. Every unit section carries a
-  previous/next change navigation, a breadcrumb and a "back to purpose" link to its H42
-  purpose card (`#purpose-<purpose_id>`). prev/next still follow the global unit order across
-  purpose groups, never truncating at a group boundary. V18 asserts the bidirectional
-  purpose-to-unit and unit-to-purpose links are not dangling.
+  previous/next change navigation, a breadcrumb and a "back to element" link to its H42 element
+  profile (`#element-<element_id>`). prev/next still follow the document order across element
+  groups, never truncating at a group boundary. V18 asserts the bidirectional element-to-unit
+  and unit-to-element links are not dangling.
 - **H24** Table-of-contents entries and anchors are validated: every table-of-contents target
   exists, every manifest anchor exists in the page, and no unit section exists outside the
   manifest.
@@ -127,17 +126,52 @@ of H6-H12 are human review items; no script decides whether a term was really ex
   analysable unit is covered, that the verdict vocabulary is respected and that the
   thresholds hold. It cannot check whether a verdict is right, and the three statements are
   never merged.
-- **A16** `purpose` ties a unit to the macro purpose it serves: `{"id": "p1",
-  "title": "…"}`, linking to the H42 card `#purpose-<id>`. The title narrative is at least
-  `MIN_PURPOSE_CHARS = 20` non-whitespace characters. `purpose` is optional (analysis JSON
-  written before this layer exists still loads); it does **not** participate in the V11 token
-  intersection. V17 enforces purpose integrity and V18 enforces the purpose tag in the
-  change map.
+- **A16** *Retired.* The purpose layer (`analysis.purposes`, a per-unit `purpose` tag and the
+  `section-purposes` cards) is replaced by the architectural-element layer (A25-A30). The
+  `purposes` key is still tolerated in an analysis JSON so older input loads, but it is never
+  rendered and it gates no check.
 - **A17** `related_code_refs` lists unchanged code quoted inside the unit as one or more
   `report-code-context` blocks: `{"path", "lines", "note", "relation_type", "code"}`.
   `relation_type` is a closed enumeration `caller | callee | data-structure | contract`.
   These blocks never participate in V10; V20 enforces their `data-path`/`data-lines` and
   relation type.
+
+## Architectural-element layer (A22, A25-A30)
+
+The element layer is the report's spine: it answers "which system element changed, and how did
+it work before and after", which neither the whole-change summary nor one diff hunk can answer.
+`references/analysis-depth.md` explains how to divide a change into elements; the items below
+are the contract increment the scripts enforce.
+
+- **A22** `brief` is the three-answer L1 brief rendered in the overview: `worst_case`,
+  `rollback` and `unverified`. It is required at every strength. Each answer is at least
+  `MIN_BRIEF_ANSWER_CHARS = 60` non-whitespace characters, the three answers together are
+  between `MIN_BRIEF_TOTAL_CHARS = 240` and `MAX_BRIEF_TOTAL_CHARS = 1200`, and no answer may
+  be a placeholder. H50 fixes its rendering (`data-brief-part`).
+- **A25** `elements` is a list of one to `MAX_ELEMENTS = 7` architectural elements. Every item
+  carries the eight profile keys `id`, `name`, `kind`, `role`, `before`, `after`, `why`,
+  `contract`; `kind` is a member of `ELEMENT_KINDS` (`component`, `behaviour`, `data`,
+  `contract`). An element id is an anchor fragment: no whitespace, quote, angle bracket or `#`.
+  An optional `relations` list is A30.
+- **A26** Every analysable unit carries `element_ref`: either a declared element id, or one of
+  the two reserved buckets `mechanical` and `unassigned`. The unit's `element_ref` is the
+  single binding; an element never repeats the unit list, and the renderer derives
+  element-to-unit links from it.
+- **A27** The `before`, `after`, `why` and `contract` parts are each at least
+  `MIN_ELEMENT_PART_CHARS = 60` non-whitespace characters, and `before` and `after` must differ
+  after normalisation (lowercase, punctuation and whitespace removed). A rewrite of the same
+  sentence is not a before/after comparison.
+- **A28** Purely mechanical changes (version strings, formatting, comment spelling) never become
+  elements. They bind to `element_ref: "mechanical"`; the count is rendered in the report
+  information section.
+- **A29** Tests and fixtures never become elements of their own. They bind to the element they
+  verify; a test that cannot be attributed uses `element_ref: "unassigned"` and the count is
+  rendered in the report information section.
+- **A30** `relations` is an optional list of `{"from", "to", "label"}` on an element. `from`
+  and `to` must be declared element ids and `label` is the interface or dependency the edge
+  carries; the direction reads "`from` requires the interface `label` that `to` provides". The
+  builder derives the L1 component map from these relations (D27). A relation naming an
+  undeclared element is ignored: the builder never invents a component.
 
 ## Analysis-depth layer (A18-A20)
 
@@ -222,10 +256,19 @@ vacuous for a unit that declares no change class.
   deletions) always use the snippet presentation, because dropping their rows would normalise
   to nothing.
 - **H28** The class names are contract: `report-code`, `report-code-changed`,
-  `report-code-context`, `report-diff-add`, `report-diff-del`, `report-anchor`. The purpose
-  layer adds `report-meta-badges`, `report-purpose-card`, `report-purpose-tag`,
-  `report-purpose-badge`, `report-quick-index`, `report-unit-head`, `report-unit-summary`,
-  `report-unit-context`, `report-breadcrumb`, `report-back-to-purpose`. The presentation
+  `report-code-context`, `report-diff-add`, `report-diff-del`, `report-anchor`. The element
+  layer (A25-A30) adds `report-meta-badges`, `report-brief`/`report-brief-item` (the A22 brief,
+  carrying `data-brief-part`), `report-elements-lead`, `report-element-map` (the derived
+  component map's wrapper), `report-element-index` (the element list),
+  `report-element`/`report-element-head`/`report-element-anchor`/`report-element-kind`
+  (one profile per element, carrying `data-element` and `data-element-kind`),
+  `report-element-part` (one per H49 part, carrying `data-element-part`),
+  `report-element-tag`/`report-element-badge` (the element tag in the change map and the quick
+  index), `report-unit-group`/`report-unit-group-count` (the element grouping of the units),
+  `report-unit-detail` (the native `<details>` that folds a unit's detail, D3),
+  `report-back-to-element`, `report-element-context`, `report-quick-index`, `report-unit-head`,
+  `report-unit-summary`, `report-unit-context` and `report-breadcrumb`. The retired purpose
+  classes are no longer emitted. The presentation
   rebuild adds, for readability only, `report-stat-grid`/`report-stat` (the mechanical
   overview key-figure strip), `report-summary-block`/`report-kind-bar`/`report-kind-legend`
   (the mechanical change-kind distribution derived from the manifest), `report-unit-fields`
@@ -333,17 +376,19 @@ vacuous for a unit that declares no change class.
 ## Optional design-topic layer
 
 - **H43** `analysis.design` is optional. Its absence is the legacy path and does not change the
-  fixed section order, minimal strength, or V1-V23 behavior. When present, it is rendered inside
-  H8 (`section-process-position`) as a reader-question index before the change map; it never
-  creates a second top-level report or a second macro before/after narrative.
-- **H44** Existing `overview` and `process_position` fields remain the sole macro narrative
+  fixed section order, minimal strength, or V17-V37 behavior. When present, it is rendered inside
+  H42 (`section-elements`) after the element profiles, as the decision record of the element
+  map; it never creates a second top-level report or a second macro before/after narrative.
+- **H44** The `overview` fields and the element profiles remain the sole macro narrative
   authority. A design topic may link to those rendered anchors and add a concise decision or
   boundary, but it must not require authors to repeat the overview fields.
 - **H45** A topic has a unique `id`, visible non-empty `title` and `summary`, a display-only
   `kind` (`behavior`, `architecture`, `data`, `state`, `tradeoff`, or `risk`), optional
-  `current`/`target`/`decision`, and optional `purpose_refs`, `unit_refs`, `diagram_refs` and
+  `current`/`target`/`decision`, and optional `element_refs`, `unit_refs`, `diagram_refs` and
   `evidence`. `behavior`, `architecture`, `data` and `state` topics require current and target;
-  tradeoff and risk topics may omit them only with a visible reason.
+  tradeoff and risk topics may omit them only with a visible reason. `purpose_refs` is retired
+  with the purpose layer (A16); a topic that still carries it must move those references to
+  `element_refs`.
 - **H46** Topic `unit_refs` are the only author source for topic-to-unit relations. The builder
   derives unit-to-topic backlinks and the topic index; an analysable unit may link to multiple
   topics without duplicating its code or analysis.
@@ -352,21 +397,30 @@ vacuous for a unit that declares no change class.
   `verification` accepts `passed|planned|unknown`, and `inference` accepts `unknown|planned`.
   Planned, unknown and inference evidence carries a visible reason. A filename or bare source
   range is not an evidence closure.
-- **H48** Diagram rendering has one canonical owner (`topic`, `unit`, or `macro`) and exactly
-  one `<figure>`, while references may be many-to-many and render backlinks only. The materialized
-  diagram registry includes author and derived unit diagrams, so a topic may reference a derived
-  id without copying its specification. Unclaimed macro figures retain H11 ownership.
+- **H48** Diagram rendering has one canonical owner (`topic`, `unit`, `element-map`, or `macro`)
+  and exactly one `<figure>`, while references may be many-to-many and render backlinks only. The
+  materialized diagram registry includes author and derived unit diagrams, so a topic may
+  reference a derived id without copying its specification. The derived element map renders
+  inside H42 and is never rendered a second time in H11.
+- **H49** Each element profile renders its six parts as `data-element-part` blocks in the fixed
+  order `what/role`, `before`, `after`, `why`, `contract`, `refs`. V35 checks the order and V17
+  checks presence.
+- **H50** The overview renders the A22 brief as three `data-brief-part` blocks
+  (`worst_case`, `rollback`, `unverified`), each with a visible answer; V37 checks the content
+  thresholds.
 
-## Purpose-layer and analysis-depth validation
+## Element-layer and analysis-depth validation
 
-- **V17** Purpose integrity: when a unit carries an A16 purpose, H42 must render a purpose
-  card for every referenced purpose, every purpose card references at least one real unit,
-  and every unit purpose resolves to an existing card. When no unit has a purpose the check
-  is vacuous (backward compatible).
-- **V18** Cross-reference closure: the change-map purpose tag for each unit equals that
-  unit's declared purpose id; the purpose-card-to-unit, unit-to-purpose and related-code
-  links are not dangling.
-- **V19** Three-level TOC completeness: every section, purpose group and unit target in the
+- **V17** Element profile completeness (A25/H49): H42 renders at least one
+  `report-element`; every profile has a visible name, a legal `data-element-kind`, all six
+  `data-element-part` blocks and non-empty text in each, and its `refs` part links at least one
+  real analysable unit.
+- **V18** Element cross-reference closure: the change-map element cell for each unit equals the
+  unit section's `data-element`; every element profile's unit links are units that declare that
+  element; every unit that declares an element (outside the reserved buckets) finds a rendered
+  profile; the back-to-element links and the table-of-contents element entries are not
+  dangling; and the related-code links are not dangling.
+- **V19** Three-level TOC completeness: every section, element group and unit target in the
   TOC exists, and no unit is listed twice or omitted.
 - **V20** Context block validity: every `report-code-context` block carries non-empty
   `data-path` and `data-lines`, its `relation_type` is in the closed enumeration, and the
@@ -394,7 +448,7 @@ vacuous for a unit that declares no change class.
 - **V24** Design-topic shape: when `analysis.design` is present, every topic has a unique valid
   id, a visible title and summary, a supported display kind, and the required current/target
   fields for its kind. Minimal reports without design remain valid without this check.
-- **V25** Design reference closure: purpose, unit, diagram and evidence refs resolve to rendered
+- **V25** Design reference closure: element, unit, diagram and evidence refs resolve to rendered
   in-page anchors or the materialized diagram registry. Evidence kind/status combinations follow
   H47, and planned/unknown/inference entries carry a visible reason.
 - **V26** Design navigation and ownership: every topic appears in the design index, every topic
@@ -406,6 +460,30 @@ vacuous for a unit that declares no change class.
   accuracy-open flag and enter the same bounded revision loop as unit findings. Per-unit V14
   coverage remains unchanged.
 
+- **V33** Element identity and count (A25): the report renders between `MIN_ELEMENTS = 1` and
+  `MAX_ELEMENTS = 7` element profiles; every id is unique and usable as an anchor fragment;
+  every `kind` is a member of `ELEMENT_KINDS`; and the element count rendered in the report
+  information section equals the number of profiles.
+- **V34** Unit-to-element closure (A26/A28/A29): every analysable manifest unit has a section
+  carrying a non-empty `data-element`; a value is either a rendered element id or one of the
+  reserved buckets; and the mechanical and unassigned counts in the report information section
+  equal the units that declare those buckets. An unbound unit fails.
+- **V35** Reading order (H49): `section-elements` renders before `section-units`, and every
+  element profile renders its six parts in the fixed order `role, before, after, why, contract,
+  refs`. Presence is V17's job; this check owns the order.
+- **V36** Before/after quality (A27): `before`, `after`, `why` and `contract` each carry at
+  least `MIN_ELEMENT_PART_CHARS = 60` non-whitespace characters, and `before` and `after`
+  differ after normalisation (lowercase, punctuation and whitespace removed). The check proves
+  a contrast exists, never that it is correct.
+- **V37** Brief completeness (A22/H50): the overview renders all three `data-brief-part`
+  answers; each carries at least `MIN_BRIEF_ANSWER_CHARS = 60` non-whitespace characters, the
+  three together stay between `MIN_BRIEF_TOTAL_CHARS = 240` and `MAX_BRIEF_TOTAL_CHARS = 1200`,
+  and no answer is a placeholder.
+- **V14** also accepts an optional `element_findings[]` in the accuracy artifact: a finding
+  names a rendered element id, carries a verdict from `VERDICTS`, requires a reason when the
+  verdict is `wrong` or `misleading`, and a non-accurate element finding sets
+  `report.accuracy_open_issues` exactly like a unit or topic finding.
+
 ## Strength matrix
 
 The level is fixed by confirmed facts, never by task length or wording, and is written to
@@ -413,8 +491,8 @@ The level is fixed by confirmed facts, never by task length or wording, and is w
 
 | Level | Facts | Mandatory | Optional | Human gate |
 |---|---|---|---|---|
-| `minimal` | `mode in {change, repair, maintenance}`, `risk=low`, `audit=runtime-only`, measured `units_total <= MAX_UNITS_MINIMAL = 5` | coverage manifest, change map, the H42 purpose section, one A1-A8 section per unit, verbatim code blocks, V1-V13 plus V15-V16, offline check, accuracy review | diagrams, related code, glossary | closed by default; opened only on explicit user request |
-| `standard` | every other confirmed fact set | all of `minimal`, plus the diagrams required by D1-D6, related-code references (A11), and -- for every unit that declares a `change_class` -- its `REQUIRED_DIMENSIONS` design dimensions (A19, three-state) | glossary, depth blocks (A20) | closed by default; opened only on explicit user request |
+| `minimal` | `mode in {change, repair, maintenance}`, `risk=low`, `audit=runtime-only`, measured `units_total <= MAX_UNITS_MINIMAL = 5` | coverage manifest, change map, the H42 element section and its profiles, the A22 brief, one A1-A8 section per unit, verbatim code blocks, V1-V18 plus V33-V37, offline check, accuracy review | diagrams, related code, glossary | closed by default; opened only on explicit user request |
+| `standard` | every other confirmed fact set | all of `minimal`, plus the diagrams required by D1-D6, the component element map (D27), related-code references (A11), and -- for every unit that declares a `change_class` -- its `REQUIRED_DIMENSIONS` design dimensions (A19, three-state) | glossary, depth blocks (A20) | closed by default; opened only on explicit user request |
 | `full` | `risk=high`, or `audit in {result, full}`, or explicit user request | all of `standard`, plus the glossary, per-unit alternative comparison, and the depth blocks (A20) a unit's change class triggers (e.g. `function` -> call relations, `member-var` -> lifecycle, `control-flow`/`signature`/`data-schema` -> before/after) | none | closed by default; opened only on explicit user request |
 
 The design-topic layer is optional at every level. A minimal report never requires it. When a
@@ -470,10 +548,11 @@ different steps, and only the validator judges.
   "language": "en",
   "title": "…", "subtitle": "…",
   "overview": {"what_changed": "…", "why": "…", "impact": "…", "reading_guide": "…"},
-  "process_position": {"narrative": "…", "before": "…", "after": "…"},
+  "brief": {"worst_case": "…", "rollback": "…", "unverified": "…"},
+  "process_position": {"narrative": "…"},
   "design": {"topics": [{"id": "grant-path", "title": "…", "kind": "behavior",
                "summary": "…", "current": "…", "target": "…", "decision": "…",
-               "purpose_refs": ["p1"], "unit_refs": [1],
+               "element_refs": ["e1"], "unit_refs": [1],
                "diagram_refs": ["diagram-1"],
                "evidence": [{"kind": "implementation", "status": "observed",
                               "ref": "#unit-1"}]}]},
@@ -483,12 +562,13 @@ different steps, and only the validator judges.
   "diagrams": [{"id": "diagram-1", "type": "flow", "render_mode": "svg", "…": "…"}],
   "rounds": [{"round": 1, "refresh_reason": "initial", "scope": "…",
               "manifest_sha256": "…", "at": "…", "sections": "…"}],
-  "report_info": {"gate_note": "…", "skip_note": "…"},
-  "purposes": [{"id": "p1", "title": "…", "theme": "…", "narrative": "…",
-                  "unit_refs": [1, 2]}],
+  "report_info": {"gate_note": "…", "skip_note": "…", "human_confirmation": "none"},
+  "elements": [{"id": "e1", "name": "Task dispatch", "kind": "behaviour",
+                 "role": "…", "before": "…", "after": "…", "why": "…", "contract": "…",
+                 "relations": [{"from": "e1", "to": "e2", "label": "IBaseline"}]}],
   "related_code": [{"path": "src/x.py", "lines": "10-20", "note": "…",
                     "relation_type": "caller", "code": "…"}],
-  "units": {"1": {"purpose": {"id": "p1", "title": "…"},
+  "units": {"1": {"element_ref": "e1",
                  "related_code_refs": [{"path": "src/x.py", "lines": "10-20",
                                         "note": "…", "relation_type": "caller", "code": "…"}],
                  "fields": {"what": "…", "why": "…", "design": "…", "tradeoffs": "…",

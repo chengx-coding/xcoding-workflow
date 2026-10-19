@@ -1,0 +1,16 @@
+{
+  "id": "diagram-component-fixture",
+  "type": "component",
+  "render_mode": "svg",
+  "title": "Component fixture",
+  "summary": "Three components and the interfaces they provide and require.",
+  "components": [
+    {"id": "c1", "label": "Collector", "kind": "component", "provides": ["IBaseline"], "requires": []},
+    {"id": "c2", "label": "Integrity check", "kind": "behaviour", "provides": ["IVerdict"], "requires": ["IBaseline"]},
+    {"id": "c3", "label": "Renderer", "kind": "component", "provides": [], "requires": ["IVerdict"]}
+  ],
+  "connectors": [
+    {"from": "c1", "to": "c2", "label": "IBaseline"},
+    {"from": "c2", "to": "c3", "label": "IVerdict"}
+  ]
+}

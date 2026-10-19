@@ -3,7 +3,7 @@
 Grammar and rendering contract for the report's diagrams. Specifications are embedded in the
 report; no diagram source file (`.mmd`, `.puml`, `.svg`) is ever written next to it.
 
-## Two carriers, five types
+## Two carriers, six types
 
 The renderer is deliberately tiered rather than uniformly capable. A fixed-geometry layered
 layout is enough for a flow or a state machine; sequence, class and ER diagrams need label
@@ -17,9 +17,10 @@ implement.
 | `sequence` | deterministic HTML table (participants x ordered messages) | none; the table promises message order and correct participants only | structured carrier exists, participants and messages resolve, cell length cap, non-empty content |
 | `class` | deterministic HTML table (types x members x relations) | none; the table does not promise an inheritance layout | the same |
 | `er` | deterministic HTML table (entities x fields x keys x relations) | none | the same |
+| `component` | inline SVG (layered, taller boxes) | yes, D24-D27 | type, component references, interface lists, render success, geometry, golden fixture |
 
-`render_mode` is `svg` for `flow` and `state`, `table` for `sequence`, `class` and `er`. A
-mismatch is a validation failure, not a silent downgrade.
+`render_mode` is `svg` for `flow`, `state` and `component`, `table` for `sequence`, `class`
+and `er`. A mismatch is a validation failure, not a silent downgrade.
 
 ## Trigger conditions
 
@@ -48,9 +49,11 @@ present is well-formed and truthful about its carrier.
   exception, and its predicate is mechanical (H36): any script whose `type` is not
   `application/json` fails, and an allowed JSON block must have an id of the form
   `diagram-spec-N` and no attribute other than `type` and `id`.
-- **D9** Exactly five types are supported: `flow`, `sequence`, `class`, `er`, `state`. A sixth
-  type is an error: no guessing, no degradation. "Supported" means "has a defined carrier", not
-  "drawn as SVG": the layered `svg` mode accepts `flow` and `state`, and `sequence` has an optional dedicated `svg` carrier (D22) in addition to its default table.
+- **D9** Exactly six types are supported: `flow`, `sequence`, `class`, `er`, `state`,
+  `component`. A seventh type is an error: no guessing, no degradation. "Supported" means
+  "has a defined carrier", not "drawn as SVG": the layered `svg` mode accepts `flow`, `state`
+  and `component`, and `sequence` has an optional dedicated `svg` carrier (D22) in addition to
+  its default table.
 - **D10** The SVG renderer uses a layered layout and emits pure SVG (`<rect>`, `<path>`,
   `<text>`, `<line>`). All coordinates sit on the integer grid, and the same specification
   always renders to the same bytes. Text escaping uses the standard library's HTML escaping.
@@ -89,7 +92,7 @@ present is well-formed and truthful about its carrier.
   review item. The renderer draws no geometry for these three types and never accepts "degrade
   to a bad SVG" as an outcome.
 - **D19** A purpose-traceability diagram reuses the `flow` carrier and its layered SVG
-  geometry (no new diagram type; D9 stays at exactly five types). Its nodes carry an
+  geometry; it predates the `component` carrier and stays a `flow` diagram. Its nodes carry an
   optional `kind` of `purpose`, `theme` or `unit`, placed on explicit `layer` values
   `0`/`1`/`2`. The renderer colours each node purely by `kind`: `purpose` uses the accent
   primary, `theme` the accent secondary, and `unit` a neutral surface. Edges may run
@@ -128,8 +131,7 @@ automatic derivation, and an optional real-SVG carrier - never with a "no diagra
   default at `standard`/`full` and skipped at `minimal`; a block opts out with
   `derive_diagram: false`. The derived specs coexist with the tables, are embedded like any other
   diagram, and are re-rendered and checked by V8 exactly like a hand-written flow spec. They reuse
-  the `flow` carrier, so D9 stays at five types and no new golden fixture is required on the
-  production path.
+  the `flow` carrier, so they add no carrier and no golden fixture on the production path.
 - **D22** Optional `sequence` SVG carrier (dual carrier). `sequence` remains a table by default
   (`render_mode: "table"`, D18 unchanged, existing fixture and tests unchanged). A spec may select
   `render_mode: "svg"` to render a deterministic inline sequence diagram instead: participants are
@@ -147,7 +149,7 @@ automatic derivation, and an optional real-SVG carrier - never with a "no diagra
   `-unit-<N>` and it renders **inline inside that unit's `#unit-N` block**, next to the depth
   block it explains (wrapped in `report-unit-diagram`), never collected into the trailing macro
   section. An author diagram in `analysis["diagrams"]` is **macro / cross-unit** by default (a
-  purpose map, a system-level before/after) and renders in `section-diagrams`; an author diagram
+  element map, a system-level before/after) and renders in `section-diagrams`; an author diagram
   may opt into a unit by carrying a `"unit": N` field. The `diagram-spec-N` script-block numbers
   are assigned by one page-wide counter in document order across the inline unit diagrams and the
   macro section, so every `diagram-spec-N` id is unique and monotonic. V8 is unchanged (it matches
@@ -217,3 +219,30 @@ Each of the three table types renders a `<figure>` containing an accessibility `
 
 An empty or unresolvable structure is an error. The renderer sorts nothing inside these
 carriers: their order is the specification's order, so the rendered table is reproducible.
+
+## The component carrier (D24-D27)
+
+The architectural-element map needs a carrier that states which element provides an interface and
+which element requires it; `flow` shows only that one box points at another. `component` is that
+carrier, and it is the sixth type D9 permits.
+
+- **D24** The specification is `components` plus `connectors`. A component is
+  `{"id", "label", "kind", "provides": [...], "requires": [...]}`; `kind` is display-only and the
+  two interface lists are optional. A connector is `{"from", "to", "label"}` where `label` names
+  the interface the connector is assembled through. Both endpoints must be declared components.
+- **D25** Geometry reuses the flow layout and D14-D17: the same node width and gap constants, a
+  taller box that carries the name plus one line each for provided and required interfaces, the
+  same canvas cap and pagination, the same font floor, and a golden fixture. The carrier promises
+  components, their interface lists and their connectors; it does not promise UML port glyphs.
+  Connector routing reuses the flow layout, so in a cyclic component graph a back edge may
+  cross a box or leave the canvas; no node or edge is dropped and the topology stays
+  readable, which is the accepted cost of reusing the flow geometry.
+- **D26** Validation: the type and render mode must match, component ids must be unique and
+  non-empty, every component needs a label, every interface entry must be a non-empty string,
+  and every connector endpoint must resolve. Rendering is deterministic and compared with
+  `tests/change_report/fixtures/diagrams/component-golden.svg`.
+- **D27** The L1 element map is derived, not authored: for each element the builder fills
+  `provides` with the labels of the relations whose target is that element and `requires` with the
+  labels of the relations whose source is that element, and turns the relations themselves into
+  connectors. Elements without relations derive no map; the index and the six-part profiles still
+  carry the layer.

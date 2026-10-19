@@ -512,7 +512,7 @@ coverage time.
 - **V4 Analysis has substance**: all eight fields exist per unit section, are non-empty, meet
   the A13 threshold and carry no placeholder. V4 guarantees non-blank text only; it does not
   guarantee that the text is correct or even related to the code - V10 and V11 do that.
-- **V5 Structure is compliant**: the ten sections exist in order, the change map has
+- **V5 Structure is compliant**: the nine sections exist in order, the change map has
   `units_total` body rows with seven columns and a non-empty code location, the exclusion table
   has `excluded_total + pre_existing_total` body rows with valid categories, no template
   placeholder survives in the page's own text (the rule is scoped with the same H37a
@@ -685,6 +685,11 @@ a claim that the values are calibrated.
 | `MAX_ADDED_UNIT_LINES` | `400` | `build_manifest.py` | C31: the largest added or deleted file that stays one unit | retained at the design value; the window is a reading-size choice, not a measurement |
 | `ADDED_UNIT_BLOCK_LINES` | `200` | `build_manifest.py` | C31: the block size a large added or deleted file is cut into | retained at the design value; the cut points are a built-in rule, so the number is a readability floor, not a model decision |
 | `MAX_UNIT_LINES_SNIPPET` | `60` | `build_manifest.py` | H27: above this the unit uses the unified-diff presentation instead of the after-state snippet | retained at the design value; the alternative presentation is equally recomputable, so the constant trades page length against reading ease |
+| `MAX_ELEMENTS` | `7` | `build_manifest.py` | the element-layer ceiling V33 enforces | retained at the design value: beyond seven entries the L1 map degrades into a table of contents, and the layer exists to stop the reader counting. No report corpus exists to locate the point where that happens, so the value is a design choice |
+| `MIN_ELEMENT_PART_CHARS` | `60` | `build_manifest.py` | A27/V36: the minimum non-whitespace length of an element's `before`, `after`, `why` and `contract` parts | retained at the design value; it is a floor against blanks and one-line placeholders, not a sufficiency measure |
+| `MIN_BRIEF_ANSWER_CHARS` | `60` | `build_manifest.py` | A22/V37: the minimum non-whitespace length of each L1 brief answer | retained at the design value; three short answers are the point of a brief, and this floor only rejects a non-answer |
+| `MIN_BRIEF_TOTAL_CHARS` | `240` | `build_manifest.py` | A22/V37: the minimum total length of the three brief answers | same basis; it keeps the three answers from each being a single clause |
+| `MAX_BRIEF_TOTAL_CHARS` | `1200` | `build_manifest.py` | A22/V37: the maximum total length of the three brief answers | retained at the design value; above it the "brief" is a second overview, which is the repetition the layer removes |
 | `MIN_FIELD_CHARS` | `40` | `build_manifest.py` | A13: the minimum non-blank length of each of the eight analysis fields | retained at the design value; it prevents blanks and claims nothing about sufficiency |
 | `PLACEHOLDER_TOKENS` | `9 tokens (todo, tbd, fixme, n/a, xxx, placeholder, lorem ipsum, 待补充, 待定)` | `build_manifest.py` | A13: a field made of, or containing, one of these standalone tokens fails | retained at the design value; the list covers the placeholder vocabulary observed in this repository, and the two Chinese entries keep the rule valid in a non-English document language |
 | `SYMBOL_ONLY_RE` | `^[^\w]+$` | `build_manifest.py` | A13: a field with no word content fails | retained at the design value; it is the third floor of the same threshold |

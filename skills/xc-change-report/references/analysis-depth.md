@@ -30,6 +30,62 @@ on the same answer set:
 
 The report turns that consensus into a per-unit, per-change-class checklist.
 
+## The architectural element is the spine; the hunk is the detail
+
+The per-unit analysis below is necessary but insufficient. A diff hunk's boundary is decided by
+the diff algorithm, not by a mechanism a reader can learn: one mechanism may span several hunks,
+and one hunk may contain two unrelated edits. A whole-change summary is too coarse for the same
+reason. The report therefore has three levels, and the middle one - the **architectural element**
+(C4's "building block") - is the layer a reader actually reasons with:
+
+1. the L1 brief and the element map (what changed, what the boxes are, how they connect);
+2. the per-element six-part profile (how each box worked, how it works now, why it had to
+   change, what it promises);
+3. the per-unit detail, grouped under its element and folded (A1-A8 and the analysis-depth
+   layer).
+
+### How to divide a change into elements
+
+An element is a coherent part of the system that this change altered: a runtime component, a
+behaviour, a data structure, or a contract. Three questions decide whether two changes belong
+to the same element:
+
+- **the same state** - do they read or write the same stored state, and does corrupting it break
+  both?
+- **the same invariants** - do they enforce or rely on the same set of rules that must hold?
+- **the same callers** - does the same set of callers depend on them, so a change to one forces
+  a change to the other?
+
+If two changes share none of the three, they are different elements. Use one to seven elements
+(`MIN_ELEMENTS`/`MAX_ELEMENTS`): beyond seven the map becomes a table of contents and the reader
+is counting again, which is the failure the layer exists to remove. A single-element change is
+legitimate; the map is then just the profile.
+
+Only behaviour-bearing change belongs in an element. Version strings, formatting and comment
+spelling are **mechanical** (A28) and bind to the `mechanical` bucket. Tests and fixtures never
+become elements of their own (A29): they bind to the element they verify, or to `unassigned`
+when no element can own them. Both buckets are counted in the report information section, so a
+report that parks most of its units there is visible to a reader even though it validates.
+
+### The six-part profile, and why the order is fixed
+
+`role -> before -> after -> why -> contract -> refs` is the reader's question order: what is
+this box, how did it work, how does it work now, why did it have to change, what must not break,
+and where do I look next. The two mechanism parts must be written at the **same abstraction
+level** and must actually differ (`V36`); a rewrite of the same sentence is not a before/after
+comparison. `contract` is the part that makes the report safe to act on: it states the promise,
+the invariants and what is now forbidden.
+
+### What the layer can and cannot prove
+
+The validator proves that elements exist, that each carries the six parts, that every unit is
+bound, that the parts are long enough and that before and after differ. It cannot prove that the
+division is **right**. A report that puts every unit in one element and writes six plausible
+paragraphs passes every check: this is the layer's honest boundary, and the accuracy review
+(including its optional `element_findings`) is the only place that can report it. The reverse
+case - a well-structured report with an absurd division still passing - is a deliberate test,
+because a check that failed it would be judging quality it cannot see.
+
 ## The six-layer skeleton (every change answers these)
 
 Every analysable change, regardless of class, is explained across six layers. The class-specific
@@ -172,9 +228,13 @@ boundary, not an oversight.
 
 The analysis-depth layer thickens content; it changes no mechanical check.
 
+Every strength requires the A22 brief and the A25-A30 element layer: they are the report's
+spine, not a thickness option. What changes with the tier is the per-unit depth below.
+
 - `minimal` — does not require `change_class`, `design_dimensions`, or `depth_blocks`.
 - `standard` — a unit that declares a `change_class` must address that class's
-  `REQUIRED_DIMENSIONS` (three-state).
+  `REQUIRED_DIMENSIONS` (three-state), and the element map is derived from the declared
+  relations.
 - `full` — additionally provides the depth blocks a class's changes trigger (a `function`'s call
   relations, a `member-var`'s lifecycle, a `control-flow`/`data-schema`/`signature` before/after)
   and the alternatives dimension.

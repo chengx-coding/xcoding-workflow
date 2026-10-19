@@ -206,6 +206,41 @@ def unit_pairs(manifest: dict[str, Any]) -> list[tuple[dict[str, Any], dict[str,
     return pairs
 
 
+def element_profile(
+    identifier: str,
+    name: str,
+    kind: str = "component",
+    before: str | None = None,
+    after: str | None = None,
+) -> dict[str, Any]:
+    """A structurally valid element profile (A25/A27) for the element-layer tests."""
+    return {
+        "id": identifier,
+        "name": name,
+        "kind": kind,
+        "role": f"{name} is the fixture element that carries the change units of this report.",
+        "before": before
+        or (
+            f"{name} reported each change unit on its own without a shared element layer, so a "
+            "reader had to assemble the mechanism from separate diff hunks."
+        ),
+        "after": after
+        or (
+            f"{name} now groups each change unit under the element it changes and states the "
+            "former and the current mechanism before the unit detail is read."
+        ),
+        "why": (
+            f"{name} had no layer between the whole change and one diff hunk, so a mechanism that "
+            "spans files could not be described at the level a reviewer reasons about."
+        ),
+        "contract": (
+            f"{name} keeps every unit anchor, the coverage proof and the single self-contained "
+            "page; it adds a binding and a six-part profile and removes no unit."
+        ),
+        "relations": [],
+    }
+
+
 def make_analysis(
     manifest: dict[str, Any],
     repo: Path,
@@ -239,11 +274,48 @@ def make_analysis(
             )
         units[index] = {"fields": fields, "covers": [hunk["anchor"]]}
 
+    indices = [hunk["unit_index"] for _, hunk in unit_pairs(manifest)]
+    for index in indices:
+        # Every unit is bound to the fixture's single architectural element unless a caller
+        # overrides the whole unit entry; an override that names an element keeps it.
+        units.setdefault(str(index), {})
+        if isinstance(units[str(index)], dict):
+            units[str(index)].setdefault("element_ref", "e1")
+
     analysis: dict[str, Any] = {
         "language": "en",
         "title": "Change report: fixture work order",
         "subtitle": "Fixture report for the xc-change-report test suite.",
         "units": units,
+        "elements": [
+            {
+                "id": "e1",
+                "name": "Fixture reader path",
+                "kind": "behaviour",
+                "role": "The fixture path that carries every analysable unit of this change.",
+                "before": "The reader path reported each change unit on its own, without a shared "
+                "system element that the units belonged to, so a reader had to assemble the "
+                "mechanism from the diff hunks one at a time.",
+                "after": "The reader path groups each change unit under the architectural element "
+                "it changes, and that element states its former and current mechanism before the "
+                "unit detail is read.",
+                "why": "Without an element layer the report had only two granularities, the whole "
+                "change and one diff hunk, so a cross-file mechanism could not be described at "
+                "the level a reviewer reasons about.",
+                "contract": "The element keeps every unit anchor, the coverage proof, and the "
+                "single self-contained page; it adds a binding and a six-part profile and never "
+                "removes a unit or a hash.",
+                "relations": [],
+            }
+        ],
+        "brief": {
+            "worst_case": "The fixture change misreports one unit as belonging to the element "
+            "while its code actually belongs to another, so a reader trusts a wrong map.",
+            "rollback": "Revert the single commit that carries the change set; the report is a "
+            "generated artefact and the manifest is rebuilt from the baseline commit at open.",
+            "unverified": "The fixture proves the mechanism, not production behaviour: it does "
+            "not exercise a real repository, real review, or a long-lived change set.",
+        },
         "overview": {
             "what_changed": "The fixture change set modifies tracked files and adds new ones.",
             "why": "The test suite needs a deterministic change set with exclusions and renames.",
@@ -573,25 +645,15 @@ class ReportCase(unittest.TestCase):
         report_path.write_bytes((page if page is not None else self.page).encode("utf-8"))
         return report_path, manifest_path
 
-    def build_purpose_page(self, name: str) -> tuple[Path, int]:
-        """Render a report that carries the full purpose layer (H42/A16/A17/D19)."""
+    def build_element_page(
+        self, name: str, elements: list[dict[str, Any]] | None = None
+    ) -> tuple[Path, int]:
+        """Render a report that carries the full element layer (H42/A25-A30)."""
         analysis = json.loads(json.dumps(self.analysis))
         indices = [hunk["unit_index"] for entry, hunk in unit_pairs(self.manifest)]
         first = indices[0]
-        analysis["purposes"] = [
-            {
-                "id": "p1",
-                "title": "Extend the reader navigation path",
-                "theme": "platform",
-                "narrative": "The change makes the reader path show the purpose of each unit.",
-                "unit_refs": indices,
-            }
-        ]
-        for index in indices:
-            analysis["units"][str(index)]["purpose"] = {
-                "id": "p1",
-                "title": "Extend the reader navigation path",
-            }
+        if elements is not None:
+            analysis["elements"] = elements
         analysis["units"][str(first)]["related_code_refs"] = [
             {
                 "path": "src/app.py",
@@ -601,20 +663,6 @@ class ReportCase(unittest.TestCase):
                 "code": "def caller(): pass",
             }
         ]
-        analysis["diagrams"].append(
-            {
-                "id": "diagram-purpose-map",
-                "type": "flow",
-                "render_mode": "svg",
-                "title": "Purpose traceability",
-                "summary": "Purpose to units.",
-                "nodes": [
-                    {"id": "p1", "label": "Extend reader path", "layer": 0, "kind": "purpose"},
-                    {"id": "u1", "label": f"unit {first}", "layer": 2, "kind": "unit"},
-                ],
-                "edges": [{"from": "p1", "to": "u1", "label": "covers"}],
-            }
-        )
         out = self.case_dir(name) / "change-report.html"
         render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
         return out, first
@@ -804,24 +852,20 @@ class PositiveReportTests(ReportCase):
         payload = self.validate()
         self.assertNotIn("V7", error_ids(payload))
 
-    def test_purpose_layer_renders_and_validates(self) -> None:
+    def test_element_layer_renders_and_validates(self) -> None:
         analysis = json.loads(json.dumps(self.analysis))
         indices = [hunk["unit_index"] for entry, hunk in unit_pairs(self.manifest)]
-        first = indices[0]
-        analysis["purposes"] = [
-            {
-                "id": "p1",
-                "title": "Extend the reader navigation path",
-                "theme": "platform",
-                "narrative": "The change makes the reader path show the purpose of each unit.",
-                "unit_refs": indices,
-            }
+        first, second = indices[0], indices[1]
+        analysis["elements"] = [
+            element_profile("e1", "Reader path"),
+            element_profile("e2", "Coverage proof", "behaviour"),
         ]
-        for index in indices:
-            analysis["units"][str(index)]["purpose"] = {
-                "id": "p1",
-                "title": "Extend the reader navigation path",
-            }
+        analysis["elements"][0]["relations"] = [
+            {"from": "e1", "to": "e2", "label": "coverage evidence"}
+        ]
+        analysis["units"][str(first)]["element_ref"] = "e1"
+        for index in indices[1:]:
+            analysis["units"][str(index)]["element_ref"] = "e2"
         analysis["units"][str(first)]["related_code_refs"] = [
             {
                 "path": "src/app.py",
@@ -831,28 +875,116 @@ class PositiveReportTests(ReportCase):
                 "code": "def caller(): pass",
             }
         ]
-        analysis["diagrams"].append(
-            {
-                "id": "diagram-purpose-map",
-                "type": "flow",
-                "render_mode": "svg",
-                "title": "Purpose traceability",
-                "summary": "Purpose to units.",
-                "nodes": [
-                    {"id": "p1", "label": "Extend reader path", "layer": 0, "kind": "purpose"},
-                    {"id": "u1", "label": f"unit {first}", "layer": 2, "kind": "unit"},
-                ],
-                "edges": [{"from": "p1", "to": "u1", "label": "covers"}],
-            }
-        )
-        out = self.case_dir("purpose-layer") / "change-report.html"
+        out = self.case_dir("element-layer") / "change-report.html"
         page = render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
-        self.assertIn('id="section-purposes"', page)
-        self.assertIn("report-purpose-card", page)
-        self.assertIn('data-purpose="p1"', page)
-        self.assertIn("diagram-node-purpose", page)
+        self.assertIn('id="section-elements"', page)
+        self.assertIn("report-element", page)
+        self.assertIn('data-element="e1"', page)
+        self.assertIn('data-element-part="before"', page)
+        self.assertIn('id="diagram-element-map"', page)
+        self.assertIn('data-diagram-type="component"', page)
+        self.assertIn('data-element="e2"', page)
+        self.assertIn("report-element-index", page)
         payload = self.validate(report=out)
         self.assertTrue(payload["ok"], payload["errors"])
+
+    def test_mechanical_and_unassigned_buckets_are_counted(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        indices = [hunk["unit_index"] for entry, hunk in unit_pairs(self.manifest)]
+        analysis["units"][str(indices[0])]["element_ref"] = "mechanical"
+        analysis["units"][str(indices[1])]["element_ref"] = "unassigned"
+        for index in indices[2:]:
+            analysis["units"][str(index)]["element_ref"] = "e1"
+        out = self.case_dir("buckets") / "change-report.html"
+        page = render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        self.assertIn('data-element="mechanical"', page)
+        self.assertIn('data-report-count="mechanical">1<', page)
+        self.assertIn('data-report-count="unassigned">1<', page)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+
+    def test_element_map_states_provides_and_requires(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        indices = [hunk["unit_index"] for entry, hunk in unit_pairs(self.manifest)]
+        analysis["elements"] = [
+            element_profile("e1", "Reader path"),
+            element_profile("e2", "Coverage proof"),
+        ]
+        analysis["elements"][0]["relations"] = [
+            {"from": "e1", "to": "e2", "label": "coverage evidence"}
+        ]
+        for index in indices:
+            analysis["units"][str(index)]["element_ref"] = "e1"
+        analysis["units"][str(indices[-1])]["element_ref"] = "e2"
+        out = self.case_dir("map-orientation") / "change-report.html"
+        page = render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        # D27: the relation direction is "from requires the interface that to provides".
+        self.assertIn("requires: coverage evidence", page)
+        self.assertIn("provides: coverage evidence", page)
+        self.assertIn('data-diagram-type="component"', page)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+
+
+    def test_prev_next_follows_grouped_document_order(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        indices = [hunk["unit_index"] for entry, hunk in unit_pairs(self.manifest)]
+        analysis["elements"] = [
+            element_profile("e1", "Reader path"),
+            element_profile("e2", "Coverage proof"),
+        ]
+        # Interleave the elements so the rendered order cannot coincide with the numeric order:
+        # every odd unit belongs to e1 and every even unit to e2.
+        for index in indices:
+            analysis["units"][str(index)]["element_ref"] = "e1" if index % 2 == 1 else "e2"
+        out = self.case_dir("nav-order") / "change-report.html"
+        page = render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        order = re.findall(r'<article class="report-unit" id="unit-(\d+)"', page)
+        self.assertGreater(len(order), 3)
+        odds = [str(index) for index in indices if index % 2 == 1]
+        evens = [str(index) for index in indices if index % 2 == 0]
+        self.assertEqual(order, odds + evens, "units render grouped by element")
+        for earlier, later in zip(order, order[1:]):
+            start = page.index(f'id="unit-{later}"')
+            following = page.find('<article class="report-unit"', start + 1)
+            segment = page[start: following if following != -1 else len(page)]
+            self.assertIn(f'href="#unit-{earlier}"', segment)
+        first_segment = page[page.index(f'id="unit-{order[0]}"'):page.index(f'id="unit-{order[1]}"')]
+        self.assertIn("previous change: none", first_segment)
+
+
+    def test_v37_placeholder_matching_respects_word_boundaries(self) -> None:
+        long_text = (
+            "The replacement keeps the todolist ordering intact for every caller and does not "
+            "change the value semantics of the fixture at all, so the answer is well formed."
+        )
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["brief"]["worst_case"] = long_text
+        out = self.case_dir("v37-boundary") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+
+        analysis["brief"]["worst_case"] = (
+            "The replacement is todo, which is a placeholder and not an answer, so this brief "
+            "must be rejected by the validator even though it is long enough to pass the floor."
+        )
+        out2 = self.case_dir("v37-placeholder") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out2)
+        payload2 = self.validate(report=out2)
+        self.assertFalse(payload2["ok"])
+        self.assertIn("V37", error_ids(payload2))
+
+    def test_v37_rejects_a_cjk_placeholder_inside_a_sentence(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["brief"]["unverified"] = (
+            "这一部分尚未核验，待补充：报告没有在真实仓库上运行过完整流程，也没有第二个人复核。"
+        )
+        out = self.case_dir("v37-cjk") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V37", error_ids(payload))
 
     def test_full_strength_requires_a_glossary(self) -> None:
         manifest = json.loads(json.dumps(self.manifest))
@@ -1163,10 +1295,10 @@ class EnumerationRegressionTests(unittest.TestCase):
 
 
 class NegativeCaseTests(ReportCase):
-    def test_negative_v17_missing_purpose_section_fails(self) -> None:
-        report, _ = self.build_purpose_page("nv17")
+    def test_negative_v17_missing_element_section_fails(self) -> None:
+        report, _ = self.build_element_page("nv17")
         page = re.sub(
-            r'<section class="report-section" id="section-purposes">.*?</section>',
+            r'<section class="report-section" id="section-elements">.*?</section>',
             "",
             report.read_text(encoding="utf-8"),
             flags=re.S,
@@ -1176,11 +1308,11 @@ class NegativeCaseTests(ReportCase):
         self.assertFalse(payload["ok"])
         self.assertIn("V17", error_ids(payload))
 
-    def test_negative_v18_mismatched_purpose_tag_fails(self) -> None:
-        report, first = self.build_purpose_page("nv18")
+    def test_negative_v18_mismatched_element_binding_fails(self) -> None:
+        report, first = self.build_element_page("nv18")
         page = report.read_text(encoding="utf-8").replace(
-            f'id="unit-{first}" data-unit="{first}" data-purpose="p1"',
-            f'id="unit-{first}" data-unit="{first}" data-purpose="p2"',
+            f'id="unit-{first}" data-unit="{first}" data-element="e1"',
+            f'id="unit-{first}" data-unit="{first}" data-element="missing-element"',
             1,
         )
         out, manifest = self.mutated("nv18", page=page)
@@ -1189,7 +1321,7 @@ class NegativeCaseTests(ReportCase):
         self.assertIn("V18", error_ids(payload))
 
     def test_negative_v19_missing_toc_unit_fails(self) -> None:
-        report, first = self.build_purpose_page("nv19")
+        report, first = self.build_element_page("nv19")
         page = re.sub(
             rf'<li class="report-toc-unit"><a href="#unit-{first}">.*?</li>',
             "",
@@ -1202,8 +1334,157 @@ class NegativeCaseTests(ReportCase):
         self.assertFalse(payload["ok"])
         self.assertIn("V19", error_ids(payload))
 
+    def test_negative_v33_more_than_seven_elements_fails(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["elements"] = [
+            element_profile(f"e{index}", f"Element {index}") for index in range(1, 9)
+        ]
+        out = self.case_dir("nv33-count") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V33", error_ids(payload))
+
+    def test_negative_v33_duplicate_element_id_fails(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["elements"] = [element_profile("e1", "First"), element_profile("e1", "Second")]
+        out = self.case_dir("nv33-duplicate") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V33", error_ids(payload))
+
+    def test_negative_v33_unknown_element_kind_fails(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["elements"] = [element_profile("e1", "Reader path", "widget")]
+        out = self.case_dir("nv33-kind") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V33", error_ids(payload))
+
+    def test_negative_v34_unbound_unit_fails(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        first = next(hunk["unit_index"] for _, hunk in unit_pairs(self.manifest))
+        analysis["units"][str(first)].pop("element_ref", None)
+        out = self.case_dir("nv34-unbound") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V34", error_ids(payload))
+
+    def test_negative_v34_bucket_count_mismatch_fails(self) -> None:
+        report, _ = self.build_element_page("nv34-bucket")
+        page = report.read_text(encoding="utf-8").replace(
+            'data-report-count="mechanical">0<', 'data-report-count="mechanical">3<', 1
+        )
+        out, manifest = self.mutated("nv34-bucket", page=page)
+        payload = self.validate(report=out, manifest=manifest)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V34", error_ids(payload))
+
+    def test_negative_v35_part_order_fails(self) -> None:
+        report, _ = self.build_element_page("nv35")
+        text = report.read_text(encoding="utf-8")
+        # Swap the declared part names of the first two parts. Every part is still present, so
+        # V17 stays green and only the fixed reading order is broken.
+        swapped = text.replace('data-element-part="role"', 'data-element-part="TEMP"', 1)
+        swapped = swapped.replace('data-element-part="before"', 'data-element-part="role"', 1)
+        swapped = swapped.replace('data-element-part="TEMP"', 'data-element-part="before"', 1)
+        out, manifest = self.mutated("nv35", page=swapped)
+        payload = self.validate(report=out, manifest=manifest)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V35", error_ids(payload))
+
+    def test_negative_v36_identical_before_and_after_fails(self) -> None:
+        same = (
+            "The same mechanism is described twice here so the before and after states are "
+            "textually identical after normalisation and the contrast check must reject it."
+        )
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["elements"] = [element_profile("e1", "Reader path", before=same, after=same)]
+        out = self.case_dir("nv36-same") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V36", error_ids(payload))
+
+    def test_negative_v36_short_before_fails(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["elements"] = [element_profile("e1", "Reader path", before="It was different.")]
+        out = self.case_dir("nv36-short") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V36", error_ids(payload))
+
+    def test_negative_v37_missing_brief_fails(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["brief"] = {}
+        out = self.case_dir("nv37-missing") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V37", error_ids(payload))
+
+    def test_negative_v37_short_brief_fails(self) -> None:
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["brief"] = {
+            "worst_case": "Short.",
+            "rollback": "Short.",
+            "unverified": "Short.",
+        }
+        out = self.case_dir("nv37-short") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V37", error_ids(payload))
+
+    def test_negative_v17_missing_element_part_fails(self) -> None:
+        report, _ = self.build_element_page("nv17b")
+        page = re.sub(
+            r'<div class="report-element-part" data-element-part="why">.*?</div>',
+            "",
+            report.read_text(encoding="utf-8"),
+            count=1,
+            flags=re.S,
+        )
+        out, manifest = self.mutated("nv17b", page=page)
+        payload = self.validate(report=out, manifest=manifest)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V17", error_ids(payload))
+
+    def test_negative_v5_missing_report_info_count_fails(self) -> None:
+        report, _ = self.build_element_page("nv5-count")
+        page = report.read_text(encoding="utf-8").replace(
+            '<span data-report-count="unassigned">0</span>', "", 1
+        )
+        out, manifest = self.mutated("nv5-count", page=page)
+        payload = self.validate(report=out, manifest=manifest)
+        self.assertFalse(payload["ok"])
+        self.assertIn("V5", error_ids(payload))
+
+    def test_negative_v14_element_finding_on_unknown_element_fails(self) -> None:
+        report, _ = self.build_element_page("nv14-element")
+        directory = self.case_dir("nv14-element")
+        verdicts = verdicts_payload(self.manifest)
+        verdicts["element_findings"] = [
+            {
+                "element_id": "missing-element",
+                "verdict": "misleading",
+                "reason": "the division does not match the system",
+            }
+        ]
+        verdicts_path = directory / "change-report-verdicts.json"
+        verdicts_path.write_text(json.dumps(verdicts), encoding="utf-8")
+        payload = self.validate(
+            report=report, stage="final", verdicts=verdicts_path, accuracy="false"
+        )
+        self.assertFalse(payload["ok"])
+        self.assertIn("V14", error_ids(payload))
+
     def test_negative_v20_context_block_missing_path_fails(self) -> None:
-        report, _ = self.build_purpose_page("nv20")
+        report, _ = self.build_element_page("nv20")
         page = report.read_text(encoding="utf-8").replace(
             'data-path="src/app.py"', 'data-path=""', 1
         )
@@ -2020,6 +2301,25 @@ class NegativeCaseTests(ReportCase):
         self.assertEqual(payload["details"]["accuracy"]["wrong"], 0)
         self.assertIn("deletes the manifest", report.read_text(encoding="utf-8"))
 
+    def test_negative_27_reverse_case_a_poor_element_division_still_passes(self) -> None:
+        """Structure, not quality: one element swallowing every unit passes every check.
+
+        This is the element layer's honest boundary. A report may divide a cross-cutting change
+        into a single element and still satisfy V17, V33-V37; only the accuracy review and the
+        human gate can judge whether the division is useful.
+        """
+        analysis = json.loads(json.dumps(self.analysis))
+        analysis["elements"] = [
+            element_profile("e1", "Everything the change touches")
+        ]
+        for value in analysis["units"].values():
+            if isinstance(value, dict):
+                value["element_ref"] = "e1"
+        out = self.case_dir("n27") / "change-report.html"
+        render_report(self.manifest, self.manifest_path, self.harness["repo"], analysis, out)
+        payload = self.validate(report=out)
+        self.assertTrue(payload["ok"], payload["errors"])
+
     def test_negative_28_pre_existing_hunk_without_excluded_fails_v1(self) -> None:
         """V1 is the field-level gate: a pre-existing hunk must carry excluded=true.
 
@@ -2431,18 +2731,25 @@ class AnalysisDepthTests(ReportCase):
 
 class PresentationRebuildTests(AnalysisDepthTests):
     def test_section_order_is_top_down_funnel(self):
-        # The macro system before/after must render before the detailed change-map index.
+        # The element map (macro) must render before the detailed change-map index, and the
+        # change map before the unit detail. SECTION_IDS is the only order source.
         self.assertLess(
-            bm.SECTION_IDS.index("section-process-position"),
+            bm.SECTION_IDS.index("section-elements"),
             bm.SECTION_IDS.index("section-change-map"),
-            "process-position must come before change-map (macro before detail)",
+            "elements must come before change-map (macro before detail)",
         )
-        # SECTION_IDS is the single source; the rendered page follows it.
+        self.assertLess(
+            bm.SECTION_IDS.index("section-change-map"),
+            bm.SECTION_IDS.index("section-units"),
+            "change-map must come before units (index before detail)",
+        )
+        self.assertNotIn("section-process-position", bm.SECTION_IDS)
+        self.assertNotIn("section-purposes", bm.SECTION_IDS)
         analysis, first = self._depth_analysis()
         out = self._render("funnel-order", analysis)
         page = out.read_text(encoding="utf-8")
         self.assertLess(
-            page.index('id="section-process-position"'),
+            page.index('id="section-elements"'),
             page.index('id="section-change-map"'),
             "the rendered section order must match SECTION_IDS",
         )
@@ -2552,6 +2859,64 @@ class DerivedDiagramTests(unittest.TestCase):
         html = rd.render_diagram(spec)
         self.assertIn("\u2026", html)
         self.assertIn(f"<title>{long_text}</title>", html)
+
+
+class ComponentDiagramTests(unittest.TestCase):
+    """D24-D27: the sixth carrier renders components, their interfaces and their connectors."""
+
+    def test_component_diagram_renders_deterministically_and_matches_golden(self) -> None:
+        spec = json.loads((GOLDEN_DIR / "component-spec.json").read_text(encoding="utf-8"))
+        first = rd.render_diagram(spec)
+        self.assertEqual(first, rd.render_diagram(spec))
+        self.assertIn('data-diagram-type="component"', first)
+        self.assertIn('class="diagram-node diagram-node-component"', first)
+        self.assertIn('class="diagram-interface"', first)
+        self.assertIn("provides: IBaseline", first)
+        self.assertIn('class="diagram-edge diagram-connector"', first)
+        golden = (GOLDEN_DIR / "component-golden.svg").read_text(encoding="utf-8").strip()
+        svg = re.search(r"<svg class=\"report-diagram-svg\".*?</svg>", first, re.S)
+        self.assertIsNotNone(svg)
+        self.assertEqual(svg.group(0).strip(), golden)
+
+    def test_component_diagram_rejects_unknown_connector_endpoint(self) -> None:
+        spec = {
+            "id": "d",
+            "type": "component",
+            "render_mode": "svg",
+            "components": [{"id": "c1", "label": "One"}],
+            "connectors": [{"from": "c1", "to": "c2", "label": "I"}],
+        }
+        with self.assertRaises(rd.DiagramError):
+            rd.render_diagram(spec)
+
+    def test_component_diagram_rejects_empty_interface_name(self) -> None:
+        spec = {
+            "id": "d",
+            "type": "component",
+            "render_mode": "svg",
+            "components": [{"id": "c1", "label": "One", "provides": [""]}],
+        }
+        with self.assertRaises(rd.DiagramError):
+            rd.render_diagram(spec)
+
+    def test_component_diagram_requires_matching_render_mode(self) -> None:
+        spec = {"id": "d", "type": "component", "render_mode": "table",
+                "components": [{"id": "c1", "label": "One"}]}
+        with self.assertRaises(rd.DiagramError):
+            rd.render_diagram(spec)
+
+    def test_component_diagram_paginates_within_the_canvas_cap(self) -> None:
+        spec = {
+            "id": "d",
+            "type": "component",
+            "render_mode": "svg",
+            "components": [
+                {"id": f"c{index}", "label": f"Component {index}"} for index in range(1, 15)
+            ],
+        }
+        html = rd.render_diagram(spec)
+        self.assertIn('id="d-page-1"', html)
+        self.assertGreater(html.count("<svg "), 1)
 
 
 class SequenceSvgTests(unittest.TestCase):

@@ -29,10 +29,12 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from build_manifest import (  # noqa: E402
+    COMPONENT_NODE_HEIGHT,
     DIAGRAM_TYPES,
     MAX_SVG_CANVAS_HEIGHT,
     MAX_SVG_CANVAS_WIDTH,
     MAX_TEXT_NODE_CHARS,
+    MIN_SVG_FONT_SIZE,
     SEQ_BOTTOM_MARGIN,
     SEQ_HEADER_HEIGHT,
     SEQ_MESSAGE_GAP,
@@ -290,6 +292,242 @@ def _render_svg_page(
     lines.extend(line_records)
     lines.append("</svg>")
     return "".join(lines)
+
+
+def render_component_pages(spec: dict[str, Any]) -> list[str]:
+    """Render a `component` spec into one or more inline SVG pages (D24-D27).
+
+    A component graph is the `flow` layered layout with taller boxes: each component shows its
+    name, its kind, and the interfaces it provides and requires, and every connector carries
+    the interface it is assembled through. The geometry constants and the canvas cap are the
+    flow ones (D25); pagination is by layer groups and then by column windows, exactly as D15
+    requires, and an edge whose endpoints land on different pages is omitted from the page that
+    misses one. Output is a pure function of the spec, so it is golden-fixture friendly.
+    """
+    diagram_id = str(spec.get("id", "diagram"))
+    components = _normalise_components(spec)
+    known = {item["id"] for item in components}
+    connectors = _normalise_connectors(spec, known)
+    layers = assign_layers(
+        [{"id": item["id"], "layer": item["layer"], "index": item["index"]} for item in components],
+        [{"from": item["from"], "to": item["to"], "label": item["label"]} for item in connectors],
+    )
+    by_layer: dict[int, list[dict[str, Any]]] = {}
+    for item in components:
+        by_layer.setdefault(layers[item["id"]], []).append(item)
+    for layer_items in by_layer.values():
+        layer_items.sort(key=lambda item: item["index"])
+    ordered_layers = sorted(by_layer)
+
+    per_page_columns = max(
+        1, (MAX_SVG_CANVAS_WIDTH - 2 * SVG_MARGIN + SVG_NODE_GAP) // (SVG_NODE_WIDTH + SVG_NODE_GAP)
+    )
+    per_page_layers = max(
+        1,
+        (MAX_SVG_CANVAS_HEIGHT - 2 * SVG_MARGIN + SVG_LAYER_GAP)
+        // (COMPONENT_NODE_HEIGHT + SVG_LAYER_GAP),
+    )
+    widest = max(len(by_layer[layer]) for layer in ordered_layers)
+    column_windows = [
+        list(range(start, min(start + per_page_columns, widest)))
+        for start in range(0, max(1, widest), per_page_columns)
+    ]
+    layer_groups = [
+        ordered_layers[start : start + per_page_layers]
+        for start in range(0, len(ordered_layers), per_page_layers)
+    ]
+
+    pages: list[tuple[list[tuple[int, list[dict[str, Any]]]], int]] = []
+    for window in column_windows:
+        window_set = set(window)
+        for group in layer_groups:
+            rows: list[tuple[int, list[dict[str, Any]]]] = []
+            for layer in group:
+                selected = [
+                    item for position, item in enumerate(by_layer[layer]) if position in window_set
+                ]
+                if selected:
+                    rows.append((layer, selected))
+            if not rows:
+                continue
+            width = (
+                2 * SVG_MARGIN
+                + max(len(row) for _, row in rows) * (SVG_NODE_WIDTH + SVG_NODE_GAP)
+                - SVG_NODE_GAP
+            )
+            pages.append((rows, width))
+
+    if len(pages) == 1:
+        rows, width = pages[0]
+        return [_render_component_page(spec, diagram_id, rows, connectors, width)]
+    return [
+        _render_component_page(spec, f"{diagram_id}-page-{number}", rows, connectors, width)
+        for number, (rows, width) in enumerate(pages, start=1)
+    ]
+
+
+def _render_component_page(
+    spec: dict[str, Any],
+    page_id: str,
+    layer_rows: list[tuple[int, list[dict[str, Any]]]],
+    connectors: list[dict[str, str]],
+    width: int,
+) -> str:
+    positions: dict[str, tuple[int, int]] = {}
+    height = (
+        2 * SVG_MARGIN
+        + len(layer_rows) * COMPONENT_NODE_HEIGHT
+        + max(0, len(layer_rows) - 1) * SVG_LAYER_GAP
+    )
+    for row_index, (_, row_items) in enumerate(layer_rows):
+        y = SVG_MARGIN + row_index * (COMPONENT_NODE_HEIGHT + SVG_LAYER_GAP)
+        for column, item in enumerate(row_items):
+            x = SVG_MARGIN + column * (SVG_NODE_WIDTH + SVG_NODE_GAP)
+            positions[item["id"]] = (x, y)
+
+    records: list[str] = []
+    visible = set(positions)
+    for connector in sorted(connectors, key=lambda item: (item["from"], item["to"], item["label"])):
+        if connector["from"] not in visible or connector["to"] not in visible:
+            continue
+        source_x, source_y = positions[connector["from"]]
+        target_x, target_y = positions[connector["to"]]
+        start = (source_x + SVG_NODE_WIDTH // 2, source_y + COMPONENT_NODE_HEIGHT)
+        end = (target_x + SVG_NODE_WIDTH // 2, target_y)
+        if end[1] > start[1]:
+            path = f"M {start[0]} {start[1]} L {end[0]} {end[1]}"
+        else:
+            mid_y = start[1] + SVG_LAYER_GAP // 2
+            path = f"M {start[0]} {start[1]} L {start[0]} {mid_y} L {end[0]} {mid_y} L {end[0]} {end[1]}"
+        records.append(
+            f'<path class="diagram-edge diagram-connector" d="{path}" '
+            f'marker-end="url(#{page_id}-arrow)" fill="none" />'
+        )
+        if connector["label"]:
+            label, full = truncate_label(connector["label"])
+            label_x = (start[0] + end[0]) // 2
+            label_y = (start[1] + end[1]) // 2
+            records.append(
+                f'<text class="diagram-edge-label" x="{label_x}" y="{label_y}" '
+                f'font-size="{SVG_FONT_SIZE}" text-anchor="middle">'
+                f"<title>{_escape(full)}</title>{_escape(label)}</text>"
+            )
+
+    component_by_id = {item["id"]: item for item in _normalise_components(spec)}
+    for item_id in sorted(positions, key=lambda item: (positions[item][1], positions[item][0])):
+        x, y = positions[item_id]
+        item = component_by_id[item_id]
+        heading = item["label"]
+        if item["kind"]:
+            heading = f"{heading} \u00b7 {item['kind']}"
+        visible_heading, full_heading = truncate_label(heading)
+        records.append(
+            f'<rect class="diagram-node diagram-node-component" x="{x}" y="{y}" '
+            f'width="{SVG_NODE_WIDTH}" height="{COMPONENT_NODE_HEIGHT}" rx="4" />'
+        )
+        records.append(
+            f'<text class="diagram-node-label" x="{x + SVG_NODE_WIDTH // 2}" '
+            f'y="{y + SVG_FONT_SIZE + 6}" font-size="{SVG_FONT_SIZE}" text-anchor="middle">'
+            f"<title>{_escape(full_heading)}</title>{_escape(visible_heading)}</text>"
+        )
+        for row, key, prefix in (
+            (SVG_FONT_SIZE + 6 + SVG_FONT_SIZE, "provides", "provides: "),
+            (SVG_FONT_SIZE + 6 + 2 * SVG_FONT_SIZE, "requires", "requires: "),
+        ):
+            values = item[key]
+            if not values:
+                continue
+            line, full_line = truncate_label(prefix + ", ".join(values))
+            records.append(
+                f'<text class="diagram-interface" x="{x + SVG_NODE_WIDTH // 2}" '
+                f'y="{y + row}" font-size="{max(MIN_SVG_FONT_SIZE, SVG_FONT_SIZE - 1)}" '
+                f'text-anchor="middle"><title>{_escape(full_line)}</title>'
+                f"{_escape(line)}</text>"
+            )
+
+    title, _ = truncate_label(str(spec.get("title", page_id)))
+    summary = str(spec.get("summary", ""))
+    lines: list[str] = [
+        f'<svg class="report-diagram-svg" id="{_escape(page_id)}" '
+        f'width="{int(width)}" height="{int(height)}" '
+        f'viewBox="0 0 {int(width)} {int(height)}" role="img" '
+        f'font-size="{SVG_FONT_SIZE}">',
+        f"<title>{_escape(title)}</title>",
+        f"<desc>{_escape(summary)}</desc>",
+        f'<defs><marker id="{_escape(page_id)}-arrow" viewBox="0 0 10 10" refX="10" refY="5" '
+        f'markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+        f'<path d="M 0 0 L 10 5 L 0 10 z" /></marker></defs>',
+    ]
+    lines.extend(records)
+    lines.append("</svg>")
+    return "".join(lines)
+
+
+def _normalise_components(spec: dict[str, Any]) -> list[dict[str, Any]]:
+    raw = spec.get("components")
+    if not isinstance(raw, list) or not raw:
+        raise DiagramError(f"diagram {spec.get('id', '?')}: 'components' must be a non-empty list")
+    components: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for index, item in enumerate(raw):
+        if not isinstance(item, dict):
+            raise DiagramError(f"diagram {spec.get('id', '?')}: component entries must be objects")
+        component_id = str(item.get("id", "")).strip()
+        label = str(item.get("label", "")).strip()
+        if not component_id:
+            raise DiagramError(f"diagram {spec.get('id', '?')}: component {index} has no id")
+        if not label:
+            raise DiagramError(f"diagram {spec.get('id', '?')}: component {component_id} has no label")
+        if component_id in seen:
+            raise DiagramError(
+                f"diagram {spec.get('id', '?')}: duplicate component id {component_id}"
+            )
+        seen.add(component_id)
+        interfaces: dict[str, list[str]] = {}
+        for key in ("provides", "requires"):
+            values = item.get(key, [])
+            if values is None:
+                values = []
+            if not isinstance(values, list) or any(
+                not str(value).strip() for value in values
+            ):
+                raise DiagramError(
+                    f"diagram {spec.get('id', '?')}: component {component_id} {key} must be a "
+                    "list of non-empty interface names"
+                )
+            interfaces[key] = [str(value) for value in values]
+        components.append(
+            {
+                "id": component_id,
+                "label": label,
+                "kind": str(item.get("kind", "")),
+                "layer": item.get("layer"),
+                "index": index,
+                "provides": interfaces["provides"],
+                "requires": interfaces["requires"],
+            }
+        )
+    return components
+
+
+def _normalise_connectors(spec: dict[str, Any], component_ids: set[str]) -> list[dict[str, str]]:
+    raw = spec.get("connectors", [])
+    if not isinstance(raw, list):
+        raise DiagramError(f"diagram {spec.get('id', '?')}: 'connectors' must be a list")
+    connectors: list[dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            raise DiagramError(f"diagram {spec.get('id', '?')}: connector entries must be objects")
+        source = str(item.get("from", "")).strip()
+        target = str(item.get("to", "")).strip()
+        for reference in (source, target):
+            if reference not in component_ids:
+                raise DiagramError(
+                    f"diagram {spec.get('id', '?')}: connector references unknown component "
+                    f"{reference!r}"
+                )
+        connectors.append({"from": source, "to": target, "label": str(item.get("label", ""))})
+    return connectors
 
 
 def render_sequence_svg(spec: dict[str, Any]) -> str:
@@ -559,11 +797,12 @@ def render_diagram(spec: dict[str, Any]) -> str:
     diagram_id = str(spec.get("id", "diagram"))
     diagram_type = str(spec.get("type"))
     if render_mode == "svg":
-        payload = (
-            render_sequence_svg(spec)
-            if diagram_type == "sequence"
-            else "".join(render_svg_pages(spec))
-        )
+        if diagram_type == "component":
+            payload = "".join(render_component_pages(spec))
+        elif diagram_type == "sequence":
+            payload = render_sequence_svg(spec)
+        else:
+            payload = "".join(render_svg_pages(spec))
     else:
         payload = render_table(spec, diagram_type)
     attrs = [

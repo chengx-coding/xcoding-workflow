@@ -27,23 +27,27 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from build_manifest import (  # noqa: E402
     ANCHOR_CLASS,
+    BRIEF_PARTS,
     CHANGE_CLASSES,
     CODE_BLOCK_CLASS,
     CODE_CONTEXT_CLASS,
     DEPTH_BLOCK_KINDS,
     DEPTH_CHANGE_VOCAB,
     DIMENSION_LABELS,
+    ELEMENT_BUCKETS,
+    ELEMENT_KINDS,
+    ELEMENT_PARTS,
     FIELD_NAMES,
+    MECHANICAL_BUCKET,
     MIN_DIMENSION_CHARS,
     MIN_NA_REASON_CHARS,
     REQUIRED_DIMENSIONS,
     REQUIRED_DIMENSIONS_DEFAULT,
-    MIN_PURPOSE_CHARS,
-    PURPOSE_COLOR_CYCLE,
     RELATION_TYPES,
     SCHEMA_VERSION,
     SECTION_IDS,
     STRENGTHS,
+    UNASSIGNED_BUCKET,
     diff_no_index,
     diff_tracked_path,
     decode_content,
@@ -89,9 +93,8 @@ _TMP_DIR: Path | None = None
 
 DEFAULT_SECTION_TITLES = {
     "overview": "Overview",
-    "purposes": "Purposes and themes",
+    "elements": "Architectural elements",
     "change-map": "Change map",
-    "process-position": "Position in the wider flow",
     "units": "Unit-by-unit analysis",
     "related-code": "Related unchanged code",
     "diagrams": "Diagrams",
@@ -128,12 +131,11 @@ PLACEHOLDERS = (
     "STYLE",
     "TOC",
     "SECTION_OVERVIEW_TITLE",
-    "SECTION_PURPOSES_TITLE",
+    "SECTION_ELEMENTS_TITLE",
     "SECTION_CHANGE_MAP_TITLE",
     "META_BADGES",
-    "PURPOSES",
+    "ELEMENTS",
     "QUICK_INDEX",
-    "SECTION_PROCESS_POSITION_TITLE",
     "SECTION_UNITS_TITLE",
     "SECTION_RELATED_CODE_TITLE",
     "SECTION_DIAGRAMS_TITLE",
@@ -143,7 +145,6 @@ PLACEHOLDERS = (
     "OVERVIEW",
     "CHANGE_MAP",
     "EXCLUSION_TABLE",
-    "PROCESS_POSITION",
     "UNITS",
     "RELATED_CODE",
     "DIAGRAMS",
@@ -354,36 +355,128 @@ def _old_line_text(repo: Path, manifest: dict[str, Any], entry: dict[str, Any], 
 
 
 
-def _purpose_map(analysis: dict[str, Any]) -> dict[int, dict[str, str]]:
-    """Map a unit index to its declared purpose {id, title} (A16). Optional and analysis-layer."""
+# --------------------------------------------------------------------------------------
+# Architectural-element layer (A22, A25-A30; H42/H49/H50)
+# --------------------------------------------------------------------------------------
+
+
+def _element_list(analysis: dict[str, Any]) -> list[dict[str, Any]]:
+    """The declared element profiles, in declaration order (A25)."""
+    elements = analysis.get("elements", [])
+    return [item for item in elements if isinstance(item, dict)] if isinstance(elements, list) else []
+
+
+def _element_id(element: dict[str, Any]) -> str:
+    return str(element.get("id", "")).strip()
+
+
+def _element_name(element: dict[str, Any]) -> str:
+    identifier = _element_id(element)
+    return str(element.get("name", identifier)).strip() or identifier
+
+
+def _unit_element_map(analysis: dict[str, Any]) -> dict[int, str]:
+    """Map a unit index to the element id (or reserved bucket) it declares (A26).
+
+    The unit's `element_ref` is the single author binding: an element never repeats the list.
+    A unit that declares nothing is absent from the map, which V34 reports as unbound.
+    """
     units = analysis.get("units", {}) if isinstance(analysis.get("units"), dict) else {}
-    out: dict[int, dict[str, str]] = {}
+    out: dict[int, str] = {}
     for raw_index, spec in units.items():
         if not isinstance(spec, dict):
             continue
-        purpose = spec.get("purpose")
-        if isinstance(purpose, dict) and str(purpose.get("id", "")).strip():
-            out[int(raw_index)] = {
-                "id": str(purpose["id"]).strip(),
-                "title": str(purpose.get("title", purpose["id"])),
-            }
+        reference = str(spec.get("element_ref", "")).strip()
+        if not reference:
+            continue
+        try:
+            out[int(raw_index)] = reference
+        except (TypeError, ValueError):
+            continue
     return out
 
 
-def _purpose_color(purpose_id: str, purposes: list[dict[str, Any]]) -> str:
-    """Map a purpose id to a --purpose-N CSS variable, cycling at PURPOSE_COLOR_CYCLE."""
-    order = [str(p.get("id", "")) for p in purposes if isinstance(p, dict)]
-    try:
-        position = order.index(purpose_id)
-    except ValueError:
-        position = 0
-    n = (position % PURPOSE_COLOR_CYCLE) + 1
-    return f"var(--purpose-{n})"
+def _element_color(position: int) -> str:
+    """Cycle the semantic palette for an element's badge (never the only signal)."""
+    return f"var(--accent-{position % 6 + 1})"
 
 
-def _purpose_list(analysis: dict[str, Any]) -> list[dict[str, Any]]:
-    purposes = analysis.get("purposes", [])
-    return [p for p in purposes if isinstance(p, dict)] if isinstance(purposes, list) else []
+def _ordered_units(manifest: dict[str, Any]) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """Every analysable unit as (file entry, hunk), ordered by the global unit index."""
+    ordered = [
+        (entry, hunk)
+        for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"]))
+        for hunk in entry["hunks"]
+        if not hunk["excluded"]
+    ]
+    ordered.sort(key=lambda pair: pair[1]["unit_index"])
+    return ordered
+
+
+def _unit_groups(
+    manifest: dict[str, Any], analysis: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Group the analysable units by element (D3: elements are the spine, hunks are detail).
+
+    Group order is the element declaration order, then the two reserved buckets, then the
+    units that declare no binding at all. Inside a group the global unit order is preserved.
+    """
+    mapping = _unit_element_map(analysis)
+    elements = _element_list(analysis)
+    groups: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for position, element in enumerate(elements):
+        identifier = _element_id(element)
+        members = [
+            hunk["unit_index"]
+            for _, hunk in _ordered_units(manifest)
+            if mapping.get(int(hunk["unit_index"])) == identifier
+        ]
+        seen.update(members)
+        groups.append(
+            {
+                "key": identifier,
+                "title": _element_name(element),
+                "kind": str(element.get("kind", "")),
+                "color": _element_color(position),
+                "units": members,
+                "bucket": False,
+            }
+        )
+    for bucket in ELEMENT_BUCKETS:
+        members = [
+            hunk["unit_index"]
+            for _, hunk in _ordered_units(manifest)
+            if mapping.get(int(hunk["unit_index"])) == bucket
+        ]
+        seen.update(members)
+        groups.append(
+            {
+                "key": bucket,
+                "title": bucket.capitalize(),
+                "kind": bucket,
+                "color": "var(--text-muted)",
+                "units": members,
+                "bucket": True,
+            }
+        )
+    unbound = [
+        hunk["unit_index"]
+        for _, hunk in _ordered_units(manifest)
+        if int(hunk["unit_index"]) not in seen
+    ]
+    if unbound:
+        groups.append(
+            {
+                "key": "",
+                "title": "Unbound",
+                "kind": "",
+                "color": "var(--danger)",
+                "units": unbound,
+                "bucket": True,
+            }
+        )
+    return groups
 
 
 def render_meta_badges(manifest: dict[str, Any], analysis: dict[str, Any], generated_at: str) -> str:
@@ -392,6 +485,7 @@ def render_meta_badges(manifest: dict[str, Any], analysis: dict[str, Any], gener
         ("language", str(analysis.get("language", "en"))),
         ("generated", str(generated_at)),
         ("units", str(manifest["units_total"])),
+        ("elements", str(len(_element_list(analysis)))),
     ]
     return "".join(
         f'<span class="report-badge"><span class="report-badge-key">{escape(key)}:</span> '
@@ -400,84 +494,253 @@ def render_meta_badges(manifest: dict[str, Any], analysis: dict[str, Any], gener
     )
 
 
-def render_purposes(manifest: dict[str, Any], analysis: dict[str, Any]) -> str:
-    purposes = _purpose_list(analysis)
-    if not purposes:
-        return '<p class="report-muted">No macro purposes are declared for this change.</p>'
-    index_to_path: dict[int, str] = {}
-    for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"])):
-        for hunk in entry["hunks"]:
-            if not hunk.get("excluded"):
-                index_to_path[int(hunk["unit_index"])] = entry["path"]
-    diagrams = analysis.get("diagrams", []) if isinstance(analysis.get("diagrams"), list) else []
-    has_purpose_diagram = any(
-        isinstance(d, dict) and d.get("id") == "diagram-purpose-map" for d in diagrams
+def render_brief(analysis: dict[str, Any]) -> str:
+    """Render the L1 brief: three risk answers every strength must carry (A22/H50).
+
+    All three items are always emitted, empty or not, so a missing answer is a validator
+    failure (V37) instead of an invisible omission.
+    """
+    brief = analysis.get("brief", {})
+    brief = brief if isinstance(brief, dict) else {}
+    labels = {
+        "worst_case": "Worst case if this ships",
+        "rollback": "How to roll it back",
+        "unverified": "What was not verified",
+    }
+    items = "".join(
+        f'<div class="report-brief-item" data-brief-part="{part}">'
+        f"<h3>{escape(labels[part])}</h3>"
+        f"{paragraph(str(brief.get(part, '')).strip())}</div>"
+        for part in BRIEF_PARTS
     )
-    diagram_link = (
-        '<a class="report-purpose-link" href="#diagram-purpose-map">view traceability diagram &rarr;</a>'
-        if has_purpose_diagram
-        else ""
+    return f'<div class="report-brief">{items}</div>'
+
+
+def _element_map_diagram(analysis: dict[str, Any]) -> dict[str, Any] | None:
+    """Derive the L1 map as a `component` spec from the elements' declared relations (D27).
+
+    A relation `{from, to, label}` means "`from` requires the interface `label` that `to`
+    provides". A relation naming an undeclared element is ignored: the builder never invents
+    a component, and the validator cannot see a relation that produced no node. No relation
+    means no map; the element index and the profiles still carry the layer.
+    """
+    elements = _element_list(analysis)
+    known = {_element_id(element) for element in elements}
+    relations: list[dict[str, str]] = []
+    for element in elements:
+        declared = element.get("relations", [])
+        if not isinstance(declared, list):
+            continue
+        for item in declared:
+            if not isinstance(item, dict):
+                continue
+            source = str(item.get("from", "")).strip()
+            target = str(item.get("to", "")).strip()
+            if source not in known or target not in known or source == target:
+                continue
+            relations.append(
+                {"from": source, "to": target, "label": str(item.get("label", "")).strip()}
+            )
+    if not relations:
+        return None
+    provides: dict[str, list[str]] = {identifier: [] for identifier in known}
+    requires: dict[str, list[str]] = {identifier: [] for identifier in known}
+    for relation in relations:
+        label = relation["label"]
+        if label and label not in requires[relation["from"]]:
+            requires[relation["from"]].append(label)
+        if label and label not in provides[relation["to"]]:
+            provides[relation["to"]].append(label)
+    components = [
+        {
+            "id": _element_id(element),
+            "label": _element_name(element),
+            "kind": str(element.get("kind", "")),
+            "provides": provides[_element_id(element)],
+            "requires": requires[_element_id(element)],
+        }
+        for element in elements
+    ]
+    return {
+        "id": "diagram-element-map",
+        "type": "component",
+        "render_mode": "svg",
+        "title": "Architectural element map",
+        "summary": "How the changed architectural elements depend on each other and on the "
+        "interfaces they provide and require.",
+        "components": components,
+        "connectors": relations,
+    }
+
+
+def render_element_index(elements: list[dict[str, Any]], groups: list[dict[str, Any]]) -> str:
+    """The scannable element list that accompanies the map. One element needs no index."""
+    if len(elements) <= 1:
+        return ""
+    counts = {group["key"]: len(group["units"]) for group in groups}
+    rows = "".join(
+        "<tr>"
+        f'<td><a href="#element-{escape(_element_id(element))}">'
+        f"{escape(_element_name(element))}</a></td>"
+        f"<td>{escape(str(element.get('kind', '')))}</td>"
+        f"<td>{escape(str(element.get('role', '')))}</td>"
+        f"<td>{counts.get(_element_id(element), 0)}</td>"
+        "</tr>"
+        for element in elements
     )
-    cards: list[str] = []
-    for purpose in purposes:
-        pid = str(purpose.get("id", "")).strip()
-        refs = purpose.get("unit_refs", []) or []
-        ref_items = "".join(
-            f'<li><a href="#unit-{int(ref)}">#unit-{int(ref)} '
-            f"{escape(index_to_path.get(int(ref), '?'))}</a></li>"
-            for ref in refs
-            if str(ref).strip().lstrip("-").isdigit()
+    return (
+        '<div class="report-table-scroll">'
+        '<table id="element-index" class="report-element-index"><thead><tr>'
+        "<th>Element</th><th>Kind</th><th>Role</th><th>Units</th>"
+        f"</tr></thead><tbody>{rows}</tbody></table></div>"
+    )
+
+
+ELEMENT_PART_LABELS = {
+    "role": "What it is",
+    "before": "How it worked before",
+    "after": "How it works now",
+    "why": "Why it had to change",
+    "contract": "Promise and boundary",
+    "refs": "Where to look next",
+}
+
+
+def render_element_profile(
+    element: dict[str, Any],
+    analysis: dict[str, Any],
+    index_to_path: dict[int, str],
+    groups: list[dict[str, Any]],
+) -> str:
+    """One element profile: the six parts in the fixed H49 order, then its unit links."""
+    identifier = _element_id(element)
+    kind = str(element.get("kind", "")).strip()
+    position = next(
+        (index for index, item in enumerate(_element_list(analysis)) if _element_id(item) == identifier),
+        0,
+    )
+    color = _element_color(position)
+    parts: list[str] = [
+        f'<article class="report-element" id="element-{escape(identifier)}" '
+        f'data-element="{escape(identifier)}" data-element-kind="{escape(kind)}">'
+        f'<header class="report-element-head">'
+        f'<h3><a class="report-element-anchor" href="#element-{escape(identifier)}">'
+        f"{escape(_element_name(element))}</a></h3>"
+        f'<span class="report-element-kind" style="color:{color}">{escape(kind)}</span>'
+        f"</header>"
+    ]
+    for part in ELEMENT_PARTS:
+        if part == "refs":
+            members = next(
+                (group["units"] for group in groups if group["key"] == identifier), []
+            )
+            links = ", ".join(
+                f'<a href="#unit-{unit}">unit {unit}'
+                f" <code>{escape(index_to_path.get(unit, ''))}</code></a>"
+                for unit in members
+            )
+            body = f"<p>{links}</p>" if links else ""
+        else:
+            body = paragraph(str(element.get(part, "")).strip())
+        parts.append(
+            f'<div class="report-element-part" data-element-part="{part}">'
+            f"<h4>{escape(ELEMENT_PART_LABELS[part])}</h4>{body}</div>"
         )
-        cards.append(
-            f'<article class="report-purpose-card" id="purpose-{escape(pid)}">'
-            f"<h3>{escape(str(purpose.get('title', pid)))}</h3>"
-            f'<div class="report-purpose-theme">{escape(str(purpose.get("theme", "")))}</div>'
-            f'<p class="report-purpose-narrative">{escape(str(purpose.get("narrative", "")))}</p>'
-            f"<ul>{ref_items}</ul>"
-            f"{diagram_link}"
-            f"</article>"
+    parts.append("</article>")
+    return "".join(parts)
+
+
+def render_elements(
+    manifest: dict[str, Any], analysis: dict[str, Any], counter: "Counter | None" = None
+) -> str:
+    """The element section: macro lead, derived map, index, then one profile per element (H42).
+
+    The design-topic layer renders here too, after the profiles: it is the decision record of
+    this map, and its former home (the process-position section) no longer exists.
+    """
+    counter = counter if counter is not None else Counter()
+    elements = _element_list(analysis)
+    groups = _unit_groups(manifest, analysis)
+    index_to_path = {
+        int(hunk["unit_index"]): entry["path"] for entry, hunk in _ordered_units(manifest)
+    }
+    parts: list[str] = []
+    process_position = analysis.get("process_position", {})
+    if isinstance(process_position, dict):
+        narrative = str(process_position.get("narrative", "")).strip()
+        if narrative:
+            parts.append(f'<p class="report-elements-lead">{escape(narrative)}</p>')
+    diagram = _element_map_diagram(analysis)
+    if diagram is not None:
+        parts.append(
+            '<div class="report-element-map">'
+            + _render_diagram_block(diagram, counter, "diagram-element-map")
+            + "</div>"
         )
-    return f'<div class="report-purpose-grid">{"".join(cards)}</div>'
+    if not elements:
+        parts.append(
+            '<p class="report-muted">No architectural elements are declared for this change; '
+            "the change map and the unit sections carry the analysis.</p>"
+        )
+        parts.append(_render_design_topics(analysis, counter))
+        return "".join(parts)
+    parts.append(render_element_index(elements, groups))
+    for element in elements:
+        parts.append(render_element_profile(element, analysis, index_to_path, groups))
+    parts.append(_render_design_topics(analysis, counter))
+    return "".join(parts)
 
 
 def render_quick_index(analysis: dict[str, Any]) -> str:
-    purposes = _purpose_list(analysis)
-    if not purposes:
+    elements = _element_list(analysis)
+    if not elements:
         return '<span class="report-quick-index-label">Quick index:</span>'
     badges = "".join(
-        f'<a class="report-purpose-badge" href="#purpose-{escape(str(p.get("id", "")))}">'
-        f"{escape(str(p.get('title', p.get('id', ''))))}</a>"
-        for p in purposes
+        f'<a class="report-element-badge" href="#element-{escape(_element_id(item))}">'
+        f"{escape(_element_name(item))}</a>"
+        for item in elements
     )
-    return f'<span class="report-quick-index-label">Purposes:</span>{badges}'
+    return f'<span class="report-quick-index-label">Elements:</span>{badges}'
 
 
 def render_change_map(repo: Path, manifest: dict[str, Any], analysis: dict[str, Any]) -> str:
-    pmap = _purpose_map(analysis)
-    purposes = _purpose_list(analysis)
+    mapping = _unit_element_map(analysis)
+    elements = {_element_id(item): item for item in _element_list(analysis)}
     rows: list[str] = []
     for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"])):
         for hunk in entry["hunks"]:
             if hunk["excluded"]:
                 continue
             location = _code_location(hunk)
-            purp = pmap.get(int(hunk["unit_index"]))
-            if purp:
-                color = _purpose_color(purp["id"], purposes)
-                purpose_cell = (
-                    f'<span class="report-purpose-tag" data-purpose="{escape(purp["id"])}" '
-                    f'style="color:{color}">{escape(purp["title"])}</span>'
+            reference = mapping.get(int(hunk["unit_index"]), "")
+            element = elements.get(reference)
+            if element is not None:
+                position = next(
+                    (
+                        index
+                        for index, item in enumerate(_element_list(analysis))
+                        if _element_id(item) == reference
+                    ),
+                    0,
                 )
-                row_purpose = purp["id"]
+                element_cell = (
+                    f'<span class="report-element-tag" data-element="{escape(reference)}" '
+                    f'style="color:{_element_color(position)}">'
+                    f"{escape(_element_name(element))}</span>"
+                )
+            elif reference:
+                element_cell = (
+                    f'<span class="report-element-tag report-element-bucket" '
+                    f'data-element="{escape(reference)}">{escape(reference)}</span>'
+                )
             else:
-                purpose_cell = '<span class="report-muted">&mdash;</span>'
-                row_purpose = ""
+                element_cell = '<span class="report-muted">&mdash;</span>'
             rows.append(
-                f'<tr data-unit="{hunk["unit_index"]}" data-purpose="{escape(row_purpose)}">'
+                f'<tr data-unit="{hunk["unit_index"]}" data-element="{escape(reference)}">'
                 f"<td><code>{escape(entry['path'])}</code></td>"
                 f'<td><span class="report-change-kind report-change-kind-{escape(entry["change_kind"])}">'
                 f"{escape(entry['change_kind'])}</span></td>"
-                f"<td>{purpose_cell}</td>"
+                f"<td>{element_cell}</td>"
                 f'<td><a href="#unit-{hunk["unit_index"]}">{hunk["unit_index"]}</a></td>'
                 f"<td><code>{escape(hunk['content_sha256'][:12])}</code></td>"
                 f"<td><code>{escape(location)}</code></td>"
@@ -487,7 +750,7 @@ def render_change_map(repo: Path, manifest: dict[str, Any], analysis: dict[str, 
     return (
         '<div class="report-table-scroll">'
         '<table id="change-map" class="report-change-map"><thead><tr>'
-        "<th>Path</th><th>Change</th><th>Purpose</th><th>Unit</th><th>Content hash</th>"
+        "<th>Path</th><th>Change</th><th>Element</th><th>Unit</th><th>Content hash</th>"
         "<th>Code location</th><th>Analysis</th>"
         "</tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>"
     )
@@ -540,65 +803,28 @@ def render_exclusion_table(manifest: dict[str, Any]) -> str:
 
 
 def render_toc(manifest: dict[str, Any], titles: dict[str, str], analysis: dict[str, Any]) -> str:
-    pmap = _purpose_map(analysis)
-    purposes = _purpose_list(analysis)
-    purpose_order = [str(p.get("id", "")) for p in purposes]
-    purpose_title = {
-        str(p.get("id", "")): str(p.get("title", p.get("id", ""))) for p in purposes
+    elements = _element_list(analysis)
+    groups = _unit_groups(manifest, analysis)
+    index_to_path = {
+        int(hunk["unit_index"]): entry["path"] for entry, hunk in _ordered_units(manifest)
     }
     parts: list[str] = []
     for section_id in SECTION_IDS:
         key = section_id.replace("section-", "")
         label = escape(titles.get(key, DEFAULT_SECTION_TITLES.get(key, key)))
-        if key == "purposes":
+        if key == "elements":
             items = "".join(
-                f'<li class="report-toc-unit"><a href="#purpose-{escape(pid)}">'
-                f"{escape(purpose_title.get(pid, pid))}</a></li>"
-                for pid in purpose_order
+                f'<li class="report-toc-unit"><a href="#element-{escape(_element_id(item))}">'
+                f"{escape(_element_name(item))}</a></li>"
+                for item in elements
             )
-            parts.append(
-                f'<details open><summary><a href="#{section_id}">{label}</a></summary>'
-                f"<ul>{items}</ul></details>"
+            topics = (
+                analysis.get("design", {}).get("topics", [])
+                if isinstance(analysis.get("design"), dict)
+                else []
             )
-            continue
-        if key == "units":
-            ordered = [
-                (int(hunk["unit_index"]), entry["path"])
-                for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"]))
-                for hunk in entry["hunks"]
-                if not hunk["excluded"]
-            ]
-            ordered.sort(key=lambda item: item[0])
-            groups: dict[str, list[tuple[int, str]]] = {pid: [] for pid in purpose_order}
-            others: list[tuple[int, str]] = []
-            for uid, path in ordered:
-                purp = pmap.get(uid)
-                if purp and purp["id"] in groups:
-                    groups[purp["id"]].append((uid, path))
-                else:
-                    others.append((uid, path))
-            items_html: list[str] = []
-            for pid in purpose_order:
-                items_html.append(f'<li class="report-toc-group">&#9632; {escape(purpose_title.get(pid, pid))}</li>')
-                items_html.extend(
-                    f'<li class="report-toc-unit"><a href="#unit-{uid}">#{uid} {escape(path)}</a></li>'
-                    for uid, path in groups[pid]
-                )
-            if others:
-                items_html.append('<li class="report-toc-group">&#9632; Other</li>')
-                items_html.extend(
-                    f'<li class="report-toc-unit"><a href="#unit-{uid}">#{uid} {escape(path)}</a></li>'
-                    for uid, path in others
-                )
-            parts.append(
-                f'<details open><summary><a href="#{section_id}">{label}</a></summary>'
-                f"<ul>{''.join(items_html)}</ul></details>"
-            )
-            continue
-        if key == "process-position":
-            topics = analysis.get("design", {}).get("topics", []) if isinstance(analysis.get("design"), dict) else []
             topics = topics if isinstance(topics, list) else []
-            topic_items = "".join(
+            items += "".join(
                 f'<li class="report-toc-topic"><a href="#design-topic-{escape(str(topic.get("id", "")))}">'
                 f'{escape(str(topic.get("title", topic.get("id", ""))))}</a></li>'
                 for topic in topics
@@ -606,7 +832,28 @@ def render_toc(manifest: dict[str, Any], titles: dict[str, str], analysis: dict[
             )
             parts.append(
                 f'<details open><summary><a href="#{section_id}">{label}</a></summary>'
-                f'<ul>{topic_items}</ul></details>'
+                f"<ul>{items}</ul></details>"
+            )
+            continue
+        if key == "units":
+            items_html: list[str] = []
+            for group in groups:
+                if not group["units"]:
+                    continue
+                heading = (
+                    f'<a href="#element-{escape(group["key"])}">{escape(group["title"])}</a>'
+                    if not group["bucket"]
+                    else escape(group["title"])
+                )
+                items_html.append(f'<li class="report-toc-group">&#9632; {heading}</li>')
+                items_html.extend(
+                    f'<li class="report-toc-unit"><a href="#unit-{unit}">#{unit} '
+                    f"{escape(index_to_path.get(unit, ''))}</a></li>"
+                    for unit in group["units"]
+                )
+            parts.append(
+                f'<details open><summary><a href="#{section_id}">{label}</a></summary>'
+                f"<ul>{''.join(items_html)}</ul></details>"
             )
             continue
         parts.append(f'<details open><summary><a href="#{section_id}">{label}</a></summary></details>')
@@ -849,219 +1096,224 @@ def render_units(
     repo: Path, manifest: dict[str, Any], analysis: dict[str, Any],
     counter: "Counter | None" = None, derive_diagrams: bool = True,
 ) -> str:
-    # FR-VIS-4: unit-level derived diagrams are rendered inline inside their #unit-N block, so
-    # the shared page-wide counter numbers them before the macro diagrams that follow in
-    # section-diagrams. A missing counter (older callers) still renders, numbering unit diagrams
-    # from 1 locally. `derive_diagrams` is False at the minimal tier, which derives nothing.
+    """Render the unit sections grouped by architectural element (D3/H9).
+
+    The element is the grouping level and the hunk stays the analysis unit: the coverage proof
+    is defined over units, so folding them is a presentation change only. Every unit keeps its
+    own `#unit-N` anchor and its eight fields as descendants of the unit section, so V2/V3/V4/V10
+    still find exactly what they found before.
+    """
     counter = counter if counter is not None else Counter()
     units = analysis.get("units", {}) if isinstance(analysis.get("units"), dict) else {}
-    pmap = _purpose_map(analysis)
     topic_map = _topic_refs_by_unit(analysis)
-    purposes = _purpose_list(analysis)
-    purpose_units: dict[str, list[int]] = {}
-    for uid, purp in pmap.items():
-        purpose_units.setdefault(purp["id"], []).append(int(uid))
-    for gid in purpose_units:
-        purpose_units[gid].sort()
-    ordered: list[tuple[dict[str, Any], dict[str, Any]]] = []
-    for entry in sorted(manifest["files"], key=lambda item: sort_key(item["path"])):
-        for hunk in entry["hunks"]:
-            if not hunk["excluded"]:
-                ordered.append((entry, hunk))
-    ordered.sort(key=lambda pair: pair[1]["unit_index"])
+    groups = _unit_groups(manifest, analysis)
+    ordered = _ordered_units(manifest)
+    by_index = {hunk["unit_index"]: (entry, hunk) for entry, hunk in ordered}
+    # H23: prev/next follows the rendered (element-grouped) order, not the numeric unit order.
+    render_order = [unit for group in groups for unit in group["units"]]
+    positions = {unit: index for index, unit in enumerate(render_order)}
 
     parts: list[str] = []
     anchored_paths: set[str] = set()
-    for position, (entry, hunk) in enumerate(ordered):
-        unit_index = hunk["unit_index"]
-        spec = units.get(str(unit_index), {}) if isinstance(units, dict) else {}
-        if not isinstance(spec, dict):
-            spec = {}
-        covers = spec.get("covers") or [f"#unit-{unit_index}"]
-        covers_attr = ",".join(str(item) for item in covers)
-        purp = pmap.get(int(unit_index))
-        data_purpose = purp["id"] if purp else ""
-        parts.append(
-            f'<article class="report-unit" id="unit-{unit_index}" data-unit="{unit_index}" '
-            f'data-purpose="{escape(data_purpose)}" data-covers="{escape(covers_attr)}">'
+    for group_index, group in enumerate(groups):
+        if not group["units"]:
+            continue
+        heading_name = (
+            escape(group["title"])
+            if group["bucket"]
+            else f'<a href="#element-{escape(group["key"])}">{escape(group["title"])}</a>'
         )
-        if entry["path"] not in anchored_paths:
-            anchored_paths.add(entry["path"])
-            parts.append(
-                f'<span class="report-file-anchor" id="file-{escape(file_slug(entry["path"]))}"></span>'
-            )
-        kind = str(entry["change_kind"])
-        change_class = str(spec.get("change_class", "")).strip()
-        parts.append(
-            f'<header class="report-unit-head">'
-            f'<h3>Unit {unit_index}: <code>{escape(entry["path"])}</code></h3>'
-            f'<span class="report-change-kind report-change-kind-{escape(kind)}">{escape(kind)}</span>'
+        heading_kind = (
+            ""
+            if group["bucket"]
+            else f' <span class="report-element-kind" style="color:{group["color"]}">'
+            f'{escape(group["kind"])}</span>'
         )
-        if change_class:
-            parts.append(
-                f'<span class="report-change-class" data-change-class="{escape(change_class)}">'
-                f"{escape(change_class)}</span>"
-            )
-        if purp:
-            color = _purpose_color(purp["id"], purposes)
-            parts.append(
-                f'<span class="report-purpose-tag" data-purpose="{escape(purp["id"])}" '
-                f'style="color:{color}">{escape(purp["title"])}</span>'
-            )
-        parts.append("</header>")
-        crumb_purpose = purp["title"] if purp else "Other"
         parts.append(
-            f'<p class="report-breadcrumb"><a href="#section-units">Change units</a> / '
-            f"{escape(crumb_purpose)} / "
-            f'<a class="{ANCHOR_CLASS}" href="#unit-{unit_index}">#unit-{unit_index}</a></p>'
+            f'<h3 class="report-unit-group" id="unit-group-{group_index}" '
+            f'data-unit-group="{escape(group["key"])}">{heading_name}{heading_kind}'
+            f'<span class="report-unit-group-count"> {len(group["units"])} unit(s)</span></h3>'
         )
-        if purp:
+        for unit_index in group["units"]:
+            entry, hunk = by_index[unit_index]
+            spec = units.get(str(unit_index), {}) if isinstance(units, dict) else {}
+            if not isinstance(spec, dict):
+                spec = {}
+            covers = spec.get("covers") or [f"#unit-{unit_index}"]
+            covers_attr = ",".join(str(item) for item in covers)
+            reference = str(group["key"])
             parts.append(
-                f'<p><a class="report-back-to-purpose" href="#purpose-{escape(purp["id"])}">'
-                f"&uarr; back to purpose: {escape(purp['title'])}</a></p>"
+                f'<article class="report-unit" id="unit-{unit_index}" data-unit="{unit_index}" '
+                f'data-element="{escape(reference)}" data-covers="{escape(covers_attr)}">'
             )
-        topic_links = topic_map.get(int(unit_index), [])
-        if topic_links:
-            links = ", ".join(
-                f'<a class="report-back-to-topic" href="#design-topic-{escape(str(topic.get("id", "")))}">'
-                f'{escape(str(topic.get("title", topic.get("id", ""))))}</a>'
-                for topic in topic_links
-            )
-            parts.append(f'<p class="report-topic-context">Design topics: {links}</p>')
-        parts.append(
-            f'<p class="report-unit-meta"><a class="{ANCHOR_CLASS}" href="#unit-{unit_index}">'
-            f"#unit-{unit_index}</a> &middot; code location "
-            f"<code>{escape(_code_location(hunk))}</code> &middot; content hash "
-            f"<code>{escape(hunk['content_sha256'][:12])}</code></p>"
-        )
-        if entry.get("analyzed_as") != "work_order":
-            parts.append(
-                f'<p class="report-note">This file was already edited in the worktree when the '
-                f"work order opened (analyzed_as={escape(entry['analyzed_as'])}); the unit above "
-                "covers only the part this work order changed.</p>"
-            )
-        if hunk.get("overlaps_pre_existing"):
-            parts.append(
-                '<p class="report-note">This unit overlaps a region that was already edited '
-                "before the work order opened. The overlapping region is attributed to this "
-                "work order because it touched it.</p>"
-            )
-        if entry.get("encoding_unsupported"):
-            parts.append(
-                '<p class="report-note">This file is not valid UTF-8. The quoted text below was '
-                "decoded with replacement characters; the original bytes are identified by the "
-                "manifest source hash.</p>"
-            )
-        if hunk.get("redacted"):
-            parts.append(
-                '<p class="report-note">Secret-shaped lines in this unit were replaced by '
-                "&lt;&lt;redacted:sha256=...&gt;&gt; markers. The original text is not present in "
-                "this report; the marker keeps the structure recomputable.</p>"
-            )
-        if spec.get("note"):
-            parts.append(f'<p class="report-note">{escape(str(spec["note"]))}</p>')
-        # L1 design lead (A18/A19): a top-down sentence placed BEFORE the code block so the
-        # reader learns the unit's role and motivation before reading the diff. It is optional
-        # and drawn from `design_lead`, falling back to the role/motivation dimension answers.
-        parts.append(render_design_lead(spec))
-        parts.append(render_unit_block(repo, manifest, entry, hunk))
-        fields = spec.get("fields", {}) if isinstance(spec.get("fields"), dict) else {}
-        what_text = str(fields.get("what", "")).strip()
-        if what_text:
-            first_sentence = re.split(r"(?<=[.!?])\s+", what_text, maxsplit=1)[0]
-            parts.append(f'<p class="report-unit-summary">{escape(first_sentence)}</p>')
-        # The eight A1-A8 fields are split for readability only: the four primary fields stay
-        # open, the four secondary ones fold into a native `<details>` so a long unit is not a
-        # wall of text. Every field div keeps its exact `report-unit-field`/`data-field` markup
-        # and stays a descendant of the unit section, so V4 still finds all eight and the A13
-        # threshold is unchanged - this changes presentation, never content.
-        def field_div(field: str) -> str:
-            value = str(fields.get(field, "")).strip()
-            return (
-                f'<div class="report-unit-field" data-field="{field}">'
-                f"<h4>{escape(FIELD_LABELS[field])}</h4>{paragraph(value)}</div>"
-            )
-
-        primary_open = "".join(field_div(field) for field in PRIMARY_FIELDS)
-        secondary = "".join(field_div(field) for field in SECONDARY_FIELDS)
-        parts.append(f'<div class="report-unit-fields">{primary_open}</div>')
-        parts.append(
-            '<details class="report-unit-more"><summary>More analysis '
-            "(trade-offs, alternatives, business process, data and control)</summary>"
-            f'<div class="report-unit-fields">{secondary}</div></details>'
-        )
-        # L2/L3 analysis-depth (A19/A20): the per-class design dimensions and the structured
-        # depth blocks (before/after, lifecycle, call relations). Both bind to this unit and
-        # neither participates in the V10 recomputation (they are context, like related code).
-        parts.append(render_design_dimensions(spec))
-        parts.append(render_depth_blocks(spec, unit_index))
-        # FR-VIS-4: the diagrams derived from THIS unit's depth blocks (call graph, before/after
-        # flow) render right here, inside #unit-N and next to the blocks they explain, rather
-        # than being collected into the trailing section-diagrams. Their `*-unit-N` ids let the
-        # near-content validator bind each figure to this unit.
-        if derive_diagrams:
-            for diagram_spec in unit_diagram_specs(spec, unit_index):
+            if entry["path"] not in anchored_paths:
+                anchored_paths.add(entry["path"])
                 parts.append(
-                    '<div class="report-unit-diagram">'
-                    + _render_diagram_block(diagram_spec, counter, f"diagram-unit-{unit_index}")
+                    f'<span class="report-file-anchor" id="file-{escape(file_slug(entry["path"]))}"></span>'
+                )
+            kind = str(entry["change_kind"])
+            change_class = str(spec.get("change_class", "")).strip()
+            parts.append(
+                f'<header class="report-unit-head">'
+                f'<h3>Unit {unit_index}: <code>{escape(entry["path"])}</code></h3>'
+                f'<span class="report-change-kind report-change-kind-{escape(kind)}">{escape(kind)}</span>'
+            )
+            if change_class:
+                parts.append(
+                    f'<span class="report-change-class" data-change-class="{escape(change_class)}">'
+                    f"{escape(change_class)}</span>"
+                )
+            if not group["bucket"]:
+                parts.append(
+                    f'<span class="report-element-tag" data-element="{escape(reference)}" '
+                    f'style="color:{group["color"]}">{escape(group["title"])}</span>'
+                )
+            parts.append("</header>")
+            fields = spec.get("fields", {}) if isinstance(spec.get("fields"), dict) else {}
+            what_text = str(fields.get("what", "")).strip()
+            if what_text:
+                first_sentence = re.split(r"(?<=[.!?])\s+", what_text, maxsplit=1)[0]
+                parts.append(f'<p class="report-unit-summary">{escape(first_sentence)}</p>')
+            parts.append('<details class="report-unit-detail">')
+            parts.append(f"<summary>Unit {unit_index} detail: code, analysis and diagrams</summary>")
+            parts.append(
+                f'<p class="report-breadcrumb"><a href="#section-units">Change units</a> / '
+                f'{escape(group["title"])} / '
+                f'<a class="{ANCHOR_CLASS}" href="#unit-{unit_index}">#unit-{unit_index}</a></p>'
+            )
+            if not group["bucket"]:
+                parts.append(
+                    f'<p><a class="report-back-to-element" href="#element-{escape(reference)}">'
+                    f"&uarr; back to element: {escape(group['title'])}</a></p>"
+                )
+            topic_links = topic_map.get(int(unit_index), [])
+            if topic_links:
+                links = ", ".join(
+                    f'<a class="report-back-to-topic" href="#design-topic-{escape(str(topic.get("id", "")))}">'
+                    f'{escape(str(topic.get("title", topic.get("id", ""))))}</a>'
+                    for topic in topic_links
+                )
+                parts.append(f'<p class="report-topic-context">Design topics: {links}</p>')
+            parts.append(
+                f'<p class="report-unit-meta"><a class="{ANCHOR_CLASS}" href="#unit-{unit_index}">'
+                f"#unit-{unit_index}</a> &middot; code location "
+                f"<code>{escape(_code_location(hunk))}</code> &middot; content hash "
+                f"<code>{escape(hunk['content_sha256'][:12])}</code></p>"
+            )
+            if entry.get("analyzed_as") != "work_order":
+                parts.append(
+                    f'<p class="report-note">This file was already edited in the worktree when the '
+                    f"work order opened (analyzed_as={escape(entry['analyzed_as'])}); the unit above "
+                    "covers only the part this work order changed.</p>"
+                )
+            if hunk.get("overlaps_pre_existing"):
+                parts.append(
+                    '<p class="report-note">This unit overlaps a region that was already edited '
+                    "before the work order opened. The overlapping region is attributed to this "
+                    "work order because it touched it.</p>"
+                )
+            if entry.get("encoding_unsupported"):
+                parts.append(
+                    '<p class="report-note">This file is not valid UTF-8. The quoted text below was '
+                    "decoded with replacement characters; the original bytes are identified by the "
+                    "manifest source hash.</p>"
+                )
+            if hunk.get("redacted"):
+                parts.append(
+                    '<p class="report-note">Secret-shaped lines in this unit were replaced by '
+                    "&lt;&lt;redacted:sha256=...&gt;&gt; markers. The original text is not present in "
+                    "this report; the marker keeps the structure recomputable.</p>"
+                )
+            if spec.get("note"):
+                parts.append(f'<p class="report-note">{escape(str(spec["note"]))}</p>')
+            parts.append(render_design_lead(spec))
+            parts.append(render_unit_block(repo, manifest, entry, hunk))
+
+            def field_div(field: str) -> str:
+                value = str(fields.get(field, "")).strip()
+                return (
+                    f'<div class="report-unit-field" data-field="{field}">'
+                    f"<h4>{escape(FIELD_LABELS[field])}</h4>{paragraph(value)}</div>"
+                )
+
+            primary_open = "".join(field_div(field) for field in PRIMARY_FIELDS)
+            secondary = "".join(field_div(field) for field in SECONDARY_FIELDS)
+            parts.append(f'<div class="report-unit-fields">{primary_open}</div>')
+            parts.append(
+                '<details class="report-unit-more"><summary>More analysis '
+                "(trade-offs, alternatives, business process, data and control)</summary>"
+                f'<div class="report-unit-fields">{secondary}</div></details>'
+            )
+            parts.append(render_design_dimensions(spec))
+            parts.append(render_depth_blocks(spec, unit_index))
+            if derive_diagrams:
+                for diagram_spec in unit_diagram_specs(spec, unit_index):
+                    parts.append(
+                        '<div class="report-unit-diagram">'
+                        + _render_diagram_block(diagram_spec, counter, f"diagram-unit-{unit_index}")
+                        + "</div>"
+                    )
+            author_unit_diagrams = [
+                diagram
+                for diagram in (
+                    analysis.get("diagrams", [])
+                    if isinstance(analysis.get("diagrams"), list)
+                    else []
+                )
+                if isinstance(diagram, dict)
+                and str(diagram.get("unit", "")) == str(unit_index)
+                and not diagram.get("topic")
+            ]
+            for diagram_spec in author_unit_diagrams:
+                parts.append(
+                    '<div class="report-unit-diagram report-author-unit-diagram">'
+                    + _render_diagram_block(diagram_spec, counter, f"diagram-unit-{unit_index}-author")
                     + "</div>"
                 )
-        author_unit_diagrams = [
-            diagram for diagram in (analysis.get("diagrams", []) if isinstance(analysis.get("diagrams"), list) else [])
-            if isinstance(diagram, dict)
-            and str(diagram.get("unit", "")) == str(unit_index)
-            and not diagram.get("topic")
-        ]
-        for diagram_spec in author_unit_diagrams:
-            parts.append(
-                '<div class="report-unit-diagram report-author-unit-diagram">'
-                + _render_diagram_block(diagram_spec, counter, f"diagram-unit-{unit_index}-author")
-                + "</div>"
-            )
-        refs = spec.get("related_code_refs", [])
-        refs = refs if isinstance(refs, list) else []
-        for ref in refs:
-            if not isinstance(ref, dict):
-                continue
-            rpath = str(ref.get("path", ""))
-            rlines = str(ref.get("lines", ""))
-            rrel = str(ref.get("relation_type", ""))
-            rnote = str(ref.get("note", ""))
-            rcode = str(ref.get("code", ""))
-            rlang = detect_language(rpath)
-            parts.append(
-                f'<div class="report-unit-context">'
-                f"<p>{escape(rrel)}: <code>{escape(rpath)}:{escape(rlines)}</code> "
-                f"{escape(rnote)} "
-                f'<a class="{ANCHOR_CLASS}" href="#section-related-code">see related-code index</a></p>'
-                f'<pre class="{CODE_CONTEXT_CLASS}" data-path="{escape(rpath)}" '
-                f'data-lines="{escape(rlines)}" data-relation-type="{escape(rrel)}">'
-                f"<code>{highlight(rcode, rlang)}</code></pre>"
-                f"</div>"
-            )
-        previous_link = (
-            f'<a href="#unit-{ordered[position - 1][1]["unit_index"]}">&larr; previous change</a>'
-            if position > 0
-            else "<span>previous change: none</span>"
-        )
-        next_link = (
-            f'<a href="#unit-{ordered[position + 1][1]["unit_index"]}">next change &rarr;</a>'
-            if position + 1 < len(ordered)
-            else "<span>next change: none</span>"
-        )
-        purpose_context = ""
-        if purp:
-            grp = purpose_units.get(purp["id"], [])
-            if int(unit_index) in grp:
-                pos = grp.index(int(unit_index)) + 1
-                purpose_context = (
-                    f'<span class="report-purpose-context"> '
-                    f"(unit {pos} of {len(grp)} in {escape(purp['title'])})</span>"
+            refs = spec.get("related_code_refs", [])
+            refs = refs if isinstance(refs, list) else []
+            for ref in refs:
+                if not isinstance(ref, dict):
+                    continue
+                rpath = str(ref.get("path", ""))
+                rlines = str(ref.get("lines", ""))
+                rrel = str(ref.get("relation_type", ""))
+                rnote = str(ref.get("note", ""))
+                rcode = str(ref.get("code", ""))
+                rlang = detect_language(rpath)
+                parts.append(
+                    f'<div class="report-unit-context">'
+                    f"<p>{escape(rrel)}: <code>{escape(rpath)}:{escape(rlines)}</code> "
+                    f"{escape(rnote)} "
+                    f'<a class="{ANCHOR_CLASS}" href="#section-related-code">see related-code index</a></p>'
+                    f'<pre class="{CODE_CONTEXT_CLASS}" data-path="{escape(rpath)}" '
+                    f'data-lines="{escape(rlines)}" data-relation-type="{escape(rrel)}">'
+                    f"<code>{highlight(rcode, rlang)}</code></pre>"
+                    f"</div>"
                 )
-        parts.append(
-            f'<nav class="report-unit-nav">{previous_link}{next_link}{purpose_context}</nav>'
-        )
-        parts.append("</article>")
+            position = positions[int(unit_index)]
+            previous_link = (
+                f'<a href="#unit-{render_order[position - 1]}">&larr; previous change</a>'
+                if position > 0
+                else "<span>previous change: none</span>"
+            )
+            next_link = (
+                f'<a href="#unit-{render_order[position + 1]}">next change &rarr;</a>'
+                if position + 1 < len(render_order)
+                else "<span>next change: none</span>"
+            )
+            group_context = ""
+            if not group["bucket"] and int(unit_index) in group["units"]:
+                group_position = group["units"].index(int(unit_index)) + 1
+                group_context = (
+                    f'<span class="report-element-context"> '
+                    f"(unit {group_position} of {len(group['units'])} in {escape(group['title'])})</span>"
+                )
+            parts.append(
+                f'<nav class="report-unit-nav">{previous_link}{next_link}{group_context}</nav>'
+            )
+            parts.append("</details>")
+            parts.append("</article>")
     return "".join(parts)
 
 
@@ -1275,11 +1527,15 @@ def render_diagrams(analysis: dict[str, Any], counter: "Counter | None" = None) 
         for topic in _design_topics(analysis)
         for ref in (topic.get("diagram_refs", []) if isinstance(topic.get("diagram_refs", []), list) else [])
     }
+    # H48: one canonical render owner per figure. The element map is derived and rendered inside
+    # section-elements, so an author diagram carrying the same id must not render a second time.
+    mapped_ids = {"diagram-element-map"}
     macro = [
         s for s in specs
         if isinstance(s, dict)
         and s.get("unit") is None
         and str(s.get("id", "")) not in topic_ids
+        and str(s.get("id", "")) not in mapped_ids
     ]
     if not macro:
         return '<p class="report-muted">No macro or cross-unit diagram is required by the change features.</p>'
@@ -1369,7 +1625,24 @@ def render_report_info(manifest: dict[str, Any], analysis: dict[str, Any], gener
     notes = notes if isinstance(notes, dict) else {}
     gate_note = str(notes.get("gate_note", "")).strip()
     skip_note = str(notes.get("skip_note", "")).strip()
-    extra = ""
+    mapping = _unit_element_map(analysis)
+    mechanical_units = sum(1 for value in mapping.values() if value == MECHANICAL_BUCKET)
+    unassigned_units = sum(1 for value in mapping.values() if value == UNASSIGNED_BUCKET)
+    element_count = len(_element_list(analysis))
+    # H14/A22 honesty: the report states whether a human confirmed it. "none" is the default
+    # because the human gate is closed by default; a report must never imply review it did not get.
+    confirmation = str(notes.get("human_confirmation", "none")).strip() or "none"
+    if confirmation == "none":
+        confirmation_text = (
+            "This report has not been confirmed by a human reviewer; the accuracy review worker "
+            "and the mechanical checks are the evidence it carries."
+        )
+    else:
+        confirmation_text = f"Human confirmation: {confirmation}."
+    extra = (
+        f'<p data-report-info="human-confirmation" data-human-confirmation="{escape(confirmation)}">'
+        f"{escape(confirmation_text)}</p>"
+    )
     if gate_note:
         extra += f'<p data-report-info="gate">{escape(gate_note)}</p>'
     if skip_note:
@@ -1393,6 +1666,12 @@ def render_report_info(manifest: dict[str, Any], analysis: dict[str, Any], gener
         )
         + "</dd>"
         f"<dt>Units</dt><dd>{manifest['units_total']}</dd>"
+        f'<dt>Architectural elements</dt><dd><span data-report-count="elements">'
+        f"{element_count}</span></dd>"
+        f'<dt>Mechanical units</dt><dd><span data-report-count="mechanical">'
+        f"{mechanical_units}</span></dd>"
+        f'<dt>Unassigned units</dt><dd><span data-report-count="unassigned">'
+        f"{unassigned_units}</span></dd>"
         f"<dt>Excluded files</dt><dd>{manifest['excluded_total']}</dd>"
         f"<dt>Pre-existing exclusions</dt><dd>{manifest['pre_existing_total']}</dd>"
         "</dl>"
@@ -1479,11 +1758,10 @@ def build_report(
         "META_BADGES": render_meta_badges(manifest, analysis, generated_at),
         "TOC": render_toc(manifest, resolved_titles, analysis),
         "OVERVIEW": render_overview(manifest, analysis),
-        "PURPOSES": render_purposes(manifest, analysis),
+        "ELEMENTS": render_elements(manifest, analysis, diagram_counter),
         "CHANGE_MAP": render_kind_summary(manifest) + render_change_map(repo, manifest, analysis),
         "QUICK_INDEX": render_quick_index(analysis),
         "EXCLUSION_TABLE": render_exclusion_table(manifest),
-        "PROCESS_POSITION": render_process_position(analysis, diagram_counter),
         "UNITS": render_units(
             repo, manifest, analysis, diagram_counter, derive_unit_diagrams
         ),
@@ -1522,14 +1800,16 @@ def build_report(
     return page
 
 
-def render_overview_stats(manifest: dict[str, Any]) -> str:
-    """A mechanical key-figure strip derived from the manifest (no model input).
+def render_overview_stats(manifest: dict[str, Any], analysis: dict[str, Any]) -> str:
+    """A mechanical key-figure strip derived from the manifest and the element count.
 
-    The values are a pure function of the coverage manifest, so the strip stays deterministic
-    and adds no external resource. It gives the reader the size of the change before any prose.
+    The values are a pure function of the manifest and the declared elements, so the strip stays
+    deterministic and adds no external resource. It gives the reader the size of the change and
+    the number of architectural elements before any prose.
     """
     stats = [
         ("Units", str(manifest["units_total"])),
+        ("Elements", str(len(_element_list(analysis)))),
         ("Excluded files", str(manifest["excluded_total"])),
         ("Pre-existing", str(manifest["pre_existing_total"])),
         ("Strength", str(manifest["strength"]["selected"])),
@@ -1583,7 +1863,7 @@ def render_kind_summary(manifest: dict[str, Any]) -> str:
 def render_overview(manifest: dict[str, Any], analysis: dict[str, Any]) -> str:
     overview = analysis.get("overview", {})
     overview = overview if isinstance(overview, dict) else {}
-    parts = [render_overview_stats(manifest)]
+    parts = [render_overview_stats(manifest, analysis), render_brief(analysis)]
     for key, label in (
         ("what_changed", "What changed"),
         ("why", "Why it changed"),
@@ -1637,13 +1917,13 @@ def _render_design_topics(
         if isinstance(refs, list) and refs:
             links = ", ".join(f'<a href="#unit-{escape(str(ref))}">unit-{escape(str(ref))}</a>' for ref in refs)
             parts.append(f'<p class="report-topic-units">Implementation units: {links}</p>')
-        purpose_refs = topic.get("purpose_refs", [])
-        if isinstance(purpose_refs, list) and purpose_refs:
+        element_refs = topic.get("element_refs", [])
+        if isinstance(element_refs, list) and element_refs:
             links = ", ".join(
-                f'<a href="#purpose-{escape(str(ref))}">purpose-{escape(str(ref))}</a>'
-                for ref in purpose_refs
+                f'<a href="#element-{escape(str(ref))}">element-{escape(str(ref))}</a>'
+                for ref in element_refs
             )
-            parts.append(f'<p class="report-topic-purposes">Purposes: {links}</p>')
+            parts.append(f'<p class="report-topic-elements">Elements: {links}</p>')
         evidence = topic.get("evidence", [])
         if isinstance(evidence, list) and evidence:
             rows = []
@@ -1679,21 +1959,6 @@ def _render_design_topics(
                 parts.append('<div class="report-design-diagram">' + _render_diagram_block(spec, counter, diagram_id) + '</div>')
                 rendered.add(diagram_id)
         parts.append("</article>")
-    return "".join(parts)
-
-
-def render_process_position(analysis: dict[str, Any], counter: "Counter | None" = None) -> str:
-    data = analysis.get("process_position", {})
-    data = data if isinstance(data, dict) else {}
-    parts = [paragraph(str(data.get("narrative", "")))]
-    before = str(data.get("before", "")).strip()
-    after = str(data.get("after", "")).strip()
-    if before or after:
-        parts.append(
-            '<table id="process-position-table"><thead><tr><th>Before</th><th>After</th></tr>'
-            f"</thead><tbody><tr><td>{escape(before)}</td><td>{escape(after)}</td></tr></tbody></table>"
-        )
-    parts.append(_render_design_topics(analysis, counter))
     return "".join(parts)
 
 

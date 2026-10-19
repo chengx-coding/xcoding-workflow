@@ -26,6 +26,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from build_manifest import (  # noqa: E402
+    BRIEF_PARTS,
     CHANGE_CLASSES,
     CODE_BLOCK_CLASS,
     DIAGRAM_PREFERRED_CLASSES,
@@ -35,20 +36,30 @@ from build_manifest import (  # noqa: E402
     DEPTH_BLOCK_KINDS,
     DEPTH_CHANGE_VOCAB,
     DIMENSION_LABELS,
+    ELEMENT_BUCKETS,
+    ELEMENT_ID_RE,
+    ELEMENT_KINDS,
+    ELEMENT_PARTS,
     EXCLUSION_CATEGORIES,
     FIELD_NAMES,
     GATE_OUTCOME_KEY,
     IDENTIFIER_RE,
+    MAX_BRIEF_TOTAL_CHARS,
+    MAX_ELEMENTS,
     MAX_MISLEADING,
     MAX_TEXT_NODE_CHARS,
     MAX_WRONG,
+    MECHANICAL_BUCKET,
+    MIN_BRIEF_ANSWER_CHARS,
+    MIN_BRIEF_TOTAL_CHARS,
     MIN_DIMENSION_CHARS,
+    MIN_ELEMENT_PART_CHARS,
+    MIN_ELEMENTS,
     MIN_FIELD_CHARS,
     MIN_NA_REASON_CHARS,
     MIN_SVG_FONT_SIZE,
     MAX_SVG_CANVAS_HEIGHT,
     MAX_SVG_CANVAS_WIDTH,
-    MIN_PURPOSE_CHARS,
     PLACEHOLDER_TOKENS,
     RECOVERY_KEY,
     RECORDED_PATH_REASONS,
@@ -61,6 +72,7 @@ from build_manifest import (  # noqa: E402
     SECTION_IDS,
     STRENGTHS,
     TABLE_CELL_CHARS,
+    UNASSIGNED_BUCKET,
     VERDICTS,
     DIAGRAM_TYPES,
     ENUMERATION_VERSION,
@@ -110,6 +122,8 @@ VOID_ELEMENTS = {
     "wbr",
 }
 URL_TEXT_RE = re.compile(r"(?:https?://|(?<![\w:/])//[A-Za-z0-9])")
+# The closed set of human-confirmation statuses the report information section may state.
+CONFIRMATION_VALUES = ("none", "accepted", "accepted-with-followup", "revision-required", "rejected")
 # H37a bounds an exclusion interval with structural boundaries, not with a blanket
 # remainder. These are the block-level containers that cannot sit inside a code block
 # without ending it, so an inner descendant line-box ends the exclusion; a `pre` is the
@@ -878,6 +892,27 @@ def check_v5(checker: Checker, index: HtmlIndex, manifest: dict[str, Any], manif
 
     info = index.by_id("section-report-info")
     info_text = index.text_of(info) if info is not None else ""
+    # H14/A22: the counts and the confirmation status are part of the report's honest state, so
+    # their absence is a V5 failure rather than a silently skipped comparison (the element
+    # checks compare the values only when they are present).
+    for count_key in ("elements", MECHANICAL_BUCKET, UNASSIGNED_BUCKET):
+        if _report_count(index, count_key) is None:
+            checker.fail(
+                "V5", f"the report information section must publish the {count_key!r} count"
+            )
+    confirmations = [
+        element
+        for element in index.elements
+        if element["attrs"].get("data-human-confirmation") is not None
+    ]
+    if not confirmations:
+        checker.fail(
+            "V5", "the report information section must state the human-confirmation status"
+        )
+    else:
+        status = confirmations[0]["attrs"].get("data-human-confirmation", "")
+        if status not in CONFIRMATION_VALUES:
+            checker.fail("V5", f"unknown human-confirmation status {status!r}")
     commit = str(manifest.get("baseline", {}).get("commit", ""))
     if commit and commit not in info_text:
         checker.fail("V5", "the report information section must state the baseline commit")
@@ -2112,7 +2147,50 @@ def check_v14(
             checker.fail("V14", f"topic {topic_id}: a {verdict} finding requires rework_reason")
         topic_wrong += 1 if verdict == "wrong" else 0
         topic_misleading += 1 if verdict == "misleading" else 0
-    recomputed_open = recomputed_open or topic_wrong > 0 or topic_misleading > 0
+    # The element layer's accuracy findings (A25 review): a bad element division passes every
+    # structural check, so the review worker is the only place that can report one. The finding
+    # set is optional and, like topic_findings, feeds the same bounded revision loop.
+    element_wrong = 0
+    element_misleading = 0
+    element_findings = payload.get("element_findings", [])
+    if element_findings is None:
+        element_findings = []
+    if not isinstance(element_findings, list):
+        checker.fail("V14", "element_findings must be a list when present")
+        element_findings = []
+    element_ids = set(_report_element_cards(index)) if index is not None else set()
+    seen_elements: set[str] = set()
+    for finding in element_findings:
+        if not isinstance(finding, dict):
+            checker.fail("V14", "element_findings entries must be objects")
+            continue
+        element_id = str(finding.get("element_id", "")).strip()
+        verdict = finding.get("verdict")
+        reason = str(finding.get("reason", "")).strip()
+        if not element_id:
+            checker.fail("V14", "element finding has no element_id")
+            continue
+        if element_id in seen_elements:
+            checker.fail("V14", f"duplicate element finding for {element_id!r}")
+            continue
+        seen_elements.add(element_id)
+        if element_ids and element_id not in element_ids:
+            checker.fail("V14", f"element finding names unknown element {element_id!r}")
+        if verdict not in VERDICTS:
+            checker.fail(
+                "V14", f"element {element_id}: verdict {verdict!r} is outside {list(VERDICTS)}"
+            )
+        if verdict in {"wrong", "misleading"} and not reason:
+            checker.fail("V14", f"element {element_id}: a {verdict} finding requires a reason")
+        element_wrong += 1 if verdict == "wrong" else 0
+        element_misleading += 1 if verdict == "misleading" else 0
+    recomputed_open = (
+        recomputed_open
+        or topic_wrong > 0
+        or topic_misleading > 0
+        or element_wrong > 0
+        or element_misleading > 0
+    )
     if accuracy_open_issues is None:
         checker.fail(
             "V14", "the blackboard value report.accuracy_open_issues is required at this stage"
@@ -2133,6 +2211,9 @@ def check_v14(
         "topic_findings": len(seen_topics),
         "topic_wrong": topic_wrong,
         "topic_misleading": topic_misleading,
+        "element_findings": len(seen_elements),
+        "element_wrong": element_wrong,
+        "element_misleading": element_misleading,
     }
 
 
@@ -2446,117 +2527,374 @@ def check_v16(checker: Checker, manifest: dict[str, Any], repo: Path) -> dict[st
 
 
 
-def _report_unit_purposes(index: HtmlIndex) -> dict[int, str]:
-    """Map #unit-N to its declared purpose id (empty string when the unit has no purpose)."""
+def _report_unit_elements(index: HtmlIndex) -> dict[int, str]:
+    """Map #unit-N to the element id (or reserved bucket) the unit section declares.
+
+    An empty string means the attribute is present but blank, which V34 rejects; a unit that
+    has no section at all is absent from the map and V2 already reports it.
+    """
     out: dict[int, str] = {}
     for article in index.by_class("report-unit"):
         unit_id = article["attrs"].get("id", "")
-        if unit_id.startswith("unit-"):
-            try:
-                out[int(unit_id[len("unit-"):])] = article["attrs"].get("data-purpose", "")
-            except ValueError:
-                continue
+        if not unit_id.startswith("unit-"):
+            continue
+        try:
+            out[int(unit_id[len("unit-"):])] = article["attrs"].get("data-element", "")
+        except ValueError:
+            continue
     return out
 
 
-def _report_purpose_cards(index: HtmlIndex) -> dict[str, list[int]]:
-    """Map purpose id -> unit indices referenced by that purpose card's own anchors."""
-    out: dict[str, list[int]] = {}
-    for card in index.by_class("report-purpose-card"):
+def _report_element_cards(index: HtmlIndex) -> dict[str, dict[str, Any]]:
+    """Element id -> {card, kind, parts, refs} for every rendered element profile.
+
+    A duplicate id collapses here, which is why V33 counts the rendered cards separately.
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for card in index.by_class("report-element"):
         card_id = card["attrs"].get("id", "")
-        purpose_id = card_id[len("purpose-"):] if card_id.startswith("purpose-") else card_id
+        element_id = card_id[len("element-"):] if card_id.startswith("element-") else card_id
+        parts: list[tuple[str, dict[str, Any]]] = []
         refs: list[int] = []
-        for anchor in index.by_tag("a"):
-            href = anchor["attrs"].get("href", "")
+        for element in index.elements:
+            if not any(ancestor["index"] == card["index"] for ancestor in index.ancestors(element)):
+                continue
+            if "report-element-part" in element["classes"]:
+                parts.append((element["attrs"].get("data-element-part", ""), element))
+            if element["tag"] != "a":
+                continue
+            href = element["attrs"].get("href", "")
             if not href.startswith("#unit-"):
                 continue
-            if any(ancestor["index"] == card["index"] for ancestor in index.ancestors(anchor)):
-                try:
-                    refs.append(int(href[len("#unit-"):]))
-                except ValueError:
-                    pass
-        out[purpose_id] = refs
+            try:
+                refs.append(int(href[len("#unit-"):]))
+            except ValueError:
+                continue
+        out[element_id] = {
+            "card": card,
+            "kind": card["attrs"].get("data-element-kind", ""),
+            "parts": parts,
+            "refs": refs,
+        }
     return out
+
+
+def _element_part_text(index: HtmlIndex, record: dict[str, Any], name: str) -> str:
+    for part_name, element in record["parts"]:
+        if part_name != name:
+            continue
+        # The part heading is renderer text, not authored content: V36's length and before/after
+        # comparison must read the part's own paragraph, or two different headings ("How it
+        # worked before" / "How it works now") would make identical answers look distinct.
+        paragraphs = [
+            child
+            for child in index.by_tag("p")
+            if any(ancestor["index"] == element["index"] for ancestor in index.ancestors(child))
+        ]
+        if paragraphs:
+            return index.text_of(paragraphs[0]).strip()
+        return index.text_of(element).strip()
+    return ""
+
+
+def _normalise_element_text(text: str) -> str:
+    """Comparison form for the before/after pair: no whitespace, no punctuation, lowercase."""
+    return re.sub(r"[^\w]+", "", text, flags=re.UNICODE).lower()
+
+
+def _placeholder_hit(text: str, token: str) -> bool:
+    """Does `text` contain `token` as a standalone placeholder?
+
+    The answer's whitespace is collapsed to single spaces so a multi-word token such as
+    "lorem ipsum" can still match. A single-word ASCII token is matched on word boundaries, so a
+    legitimate identifier such as "todolist" is not rejected as a "todo" placeholder. A token
+    outside ASCII (the Chinese entries of PLACEHOLDER_TOKENS) is matched by containment instead,
+    because a word boundary means nothing between two CJK characters and the placeholder is
+    normally embedded in a Chinese sentence.
+    """
+    normalised = " ".join(text.split()).lower()
+    if " " in token or any(ord(character) > 127 for character in token):
+        return token in normalised
+    return re.search(r"(?<!\w)" + re.escape(token) + r"(?!\w)", normalised) is not None
+
+
+def _report_count(index: HtmlIndex, key: str) -> int | None:
+    for element in index.elements:
+        if element["attrs"].get("data-report-count") == key:
+            try:
+                return int(index.text_of(element).strip())
+            except ValueError:
+                return None
+    return None
 
 
 def check_v17(checker: Checker, index: HtmlIndex) -> None:
-    """Purpose integrity (A16/H42). Vacuous when no unit declares a purpose."""
-    unit_purpose = _report_unit_purposes(index)
-    cards = _report_purpose_cards(index)
-    declared = {purpose for purpose in unit_purpose.values() if purpose}
-    if not declared:
-        return
+    """Element profile completeness (H42/H49): every profile carries all six parts, filled."""
+    cards = _report_element_cards(index)
     if not cards:
-        checker.fail("V17", "units declare purposes but no purpose section cards are present")
+        checker.fail("V17", "the report declares no architectural element profile")
         return
-    known = set(cards)
-    for unit_index, purpose in sorted(unit_purpose.items()):
-        if purpose and purpose not in known:
-            checker.fail(
-                "V17",
-                f"unit {unit_index} declares purpose {purpose!r} which has no purpose card",
-            )
-    for purpose, refs in cards.items():
-        if not refs:
-            checker.fail("V17", f"purpose card {purpose!r} references no analysable unit")
-    # A16: a purpose title is MIN_PURPOSE_CHARS non-whitespace characters or more.
-    for card in index.by_class("report-purpose-card"):
-        pid = card["attrs"].get("id", "")
-        purpose_id = pid[len("purpose-"):] if pid.startswith("purpose-") else pid
-        titles = [
-            e
-            for e in index.by_tag("h3")
-            if any(ancestor["index"] == card["index"] for ancestor in index.ancestors(e))
-        ]
-        if not titles:
+    for element_id, record in sorted(cards.items()):
+        if not element_id:
+            checker.fail("V17", "an element profile carries an empty data-element id")
             continue
-        title_text = re.sub(r"\s+", "", index.text_of(titles[0]))
-        if len(title_text) < MIN_PURPOSE_CHARS:
-            checker.fail(
-                "V17",
-                f"purpose {purpose_id!r} title is {len(title_text)} chars, below "
-                f"MIN_PURPOSE_CHARS={MIN_PURPOSE_CHARS}",
-            )
+        headings = [
+            element
+            for element in index.by_tag("h3")
+            if any(ancestor["index"] == record["card"]["index"] for ancestor in index.ancestors(element))
+        ]
+        if not headings or not index.text_of(headings[0]).strip():
+            checker.fail("V17", f"element {element_id!r} has no visible name")
+        rendered = [name for name, _ in record["parts"]]
+        for part in ELEMENT_PARTS:
+            if part not in rendered:
+                checker.fail("V17", f"element {element_id!r} is missing its {part!r} part")
+                continue
+            if not _element_part_text(index, record, part):
+                checker.fail("V17", f"element {element_id!r} part {part!r} is empty")
+        if not record["refs"]:
+            checker.fail("V17", f"element {element_id!r} references no analysable unit")
 
 
 def check_v18(checker: Checker, index: HtmlIndex) -> None:
-    """Purpose tag in the change map matches the unit's declared purpose (H16/V18)."""
-    unit_purpose = _report_unit_purposes(index)
-    cards = _report_purpose_cards(index)
+    """Element cross-reference closure: change map, unit sections, profiles and TOC agree."""
+    unit_elements = _report_unit_elements(index)
+    cards = _report_element_cards(index)
     map_table = index.by_id("change-map")
-    if map_table is None:
-        return
-    for row in index.by_tag("tr"):
-        if not any(ancestor["index"] == map_table["index"] for ancestor in index.ancestors(row)):
-            continue
-        data_unit = row["attrs"].get("data-unit", "")
-        if not data_unit:
-            continue
-        try:
-            unit_index = int(data_unit)
-        except ValueError:
-            continue
-        row_purpose = row["attrs"].get("data-purpose", "")
-        expected = unit_purpose.get(unit_index, "")
-        if row_purpose != expected:
-            checker.fail(
-                "V18",
-                f"change-map row for unit {unit_index} has purpose {row_purpose!r} but the unit "
-                f"declares {expected!r}",
-            )
-    for purpose, refs in cards.items():
-        for ref in refs:
-            declared_purpose = unit_purpose.get(ref, "")
-            if declared_purpose and declared_purpose != purpose:
+    if map_table is not None:
+        for row in index.by_tag("tr"):
+            if not any(ancestor["index"] == map_table["index"] for ancestor in index.ancestors(row)):
+                continue
+            data_unit = row["attrs"].get("data-unit", "")
+            if not data_unit:
+                continue
+            try:
+                unit_index = int(data_unit)
+            except ValueError:
+                continue
+            row_element = row["attrs"].get("data-element", "")
+            expected = unit_elements.get(unit_index, "")
+            if row_element != expected:
                 checker.fail(
                     "V18",
-                    f"purpose card {purpose!r} lists unit {ref} but that unit declares "
-                    f"{declared_purpose!r}",
+                    f"change-map row for unit {unit_index} declares element {row_element!r} but the "
+                    f"unit section declares {expected!r}",
                 )
-    for link in index.by_class("report-back-to-purpose"):
+    for element_id, record in cards.items():
+        for ref in record["refs"]:
+            declared = unit_elements.get(ref, "")
+            if declared != element_id:
+                checker.fail(
+                    "V18",
+                    f"element profile {element_id!r} lists unit {ref} but that unit declares "
+                    f"{declared!r}",
+                )
+    for element_id, declared in sorted(unit_elements.items()):
+        if not declared or declared in ELEMENT_BUCKETS:
+            continue
+        if declared not in cards:
+            checker.fail(
+                "V18",
+                f"unit {element_id} declares element {declared!r} which has no rendered profile",
+            )
+    for link in index.by_class("report-back-to-element"):
         href = link["attrs"].get("href", "")
-        if href.startswith("#purpose-") and href[len("#purpose-"):] not in cards:
-            checker.fail("V18", f"back-to-purpose link points at missing purpose card {href[len('#purpose-'):]!r}")
+        if href.startswith("#element-") and href[len("#element-"):] not in cards:
+            checker.fail(
+                "V18",
+                f"back-to-element link points at missing element profile {href[len('#element-'):]!r}",
+            )
+    toc = index.by_class("report-toc")
+    if toc:
+        for anchor in index.by_tag("a"):
+            href = anchor["attrs"].get("href", "")
+            if not href.startswith("#element-"):
+                continue
+            if not any(ancestor["index"] == toc[0]["index"] for ancestor in index.ancestors(anchor)):
+                continue
+            if href[len("#element-"):] not in cards:
+                checker.fail(
+                    "V18",
+                    f"table of contents lists element {href[len('#element-'):]!r} which has no profile",
+                )
+
+
+def check_v33(checker: Checker, index: HtmlIndex) -> None:
+    """Element identity and count (A25): 1-7 elements, unique anchor-safe ids, legal kinds."""
+    rendered: list[str] = []
+    for card in index.by_class("report-element"):
+        card_id = card["attrs"].get("id", "")
+        element_id = card_id[len("element-"):] if card_id.startswith("element-") else card_id
+        rendered.append(element_id)
+    if len(rendered) < MIN_ELEMENTS:
+        checker.fail(
+            "V33",
+            f"the report renders {len(rendered)} architectural element(s); at least "
+            f"MIN_ELEMENTS={MIN_ELEMENTS} is required",
+        )
+    if len(rendered) > MAX_ELEMENTS:
+        checker.fail(
+            "V33",
+            f"the report renders {len(rendered)} architectural elements; at most "
+            f"MAX_ELEMENTS={MAX_ELEMENTS} keeps the map readable",
+        )
+    duplicates = sorted({item for item in rendered if rendered.count(item) > 1})
+    if duplicates:
+        checker.fail("V33", f"element ids {duplicates} are rendered more than once")
+    for element_id, record in _report_element_cards(index).items():
+        if not ELEMENT_ID_RE.fullmatch(element_id or ""):
+            checker.fail(
+                "V33",
+                f"element id {element_id!r} is not usable as an anchor fragment "
+                "(no whitespace, quote, angle bracket or '#')",
+            )
+        if record["kind"] not in ELEMENT_KINDS:
+            checker.fail(
+                "V33",
+                f"element {element_id!r} declares kind {record['kind']!r}; expected one of "
+                f"{', '.join(ELEMENT_KINDS)}",
+            )
+    declared = _report_count(index, "elements")
+    if declared is not None and declared != len(rendered):
+        checker.fail(
+            "V33",
+            f"the report information section counts {declared} elements but {len(rendered)} are "
+            "rendered",
+        )
+
+
+def check_v34(checker: Checker, index: HtmlIndex, manifest: dict[str, Any]) -> None:
+    """Unit-to-element closure (A26/A28/A29): every analysable unit is bound or explicitly bucketed."""
+    unit_elements = _report_unit_elements(index)
+    cards = _report_element_cards(index)
+    expected: list[int] = [
+        hunk["unit_index"]
+        for entry in manifest.get("files", [])
+        for hunk in entry.get("hunks", [])
+        if not hunk.get("excluded")
+    ]
+    mechanical = 0
+    unassigned = 0
+    for unit_index in expected:
+        declared = unit_elements.get(unit_index)
+        if declared is None:
+            checker.fail("V34", f"unit {unit_index} has no section carrying its element binding")
+            continue
+        if not declared:
+            checker.fail(
+                "V34",
+                f"unit {unit_index} declares no element binding; bind it to an element or to the "
+                "mechanical/unassigned bucket",
+            )
+            continue
+        if declared == MECHANICAL_BUCKET:
+            mechanical += 1
+            continue
+        if declared == UNASSIGNED_BUCKET:
+            unassigned += 1
+            continue
+        if declared not in cards:
+            checker.fail(
+                "V34",
+                f"unit {unit_index} binds to element {declared!r}, which has no rendered profile",
+            )
+    counted_mechanical = _report_count(index, MECHANICAL_BUCKET)
+    if counted_mechanical is not None and counted_mechanical != mechanical:
+        checker.fail(
+            "V34",
+            f"the report information section counts {counted_mechanical} mechanical unit(s) but "
+            f"{mechanical} declare the mechanical bucket",
+        )
+    counted_unassigned = _report_count(index, UNASSIGNED_BUCKET)
+    if counted_unassigned is not None and counted_unassigned != unassigned:
+        checker.fail(
+            "V34",
+            f"the report information section counts {counted_unassigned} unassigned unit(s) but "
+            f"{unassigned} declare the unassigned bucket",
+        )
+
+
+def check_v35(checker: Checker, index: HtmlIndex) -> None:
+    """Reading order (H49): the element section precedes the units, six parts in fixed order."""
+    elements_section = index.by_id("section-elements")
+    units_section = index.by_id("section-units")
+    if elements_section is not None and units_section is not None:
+        if int(elements_section["start"]) >= int(units_section["start"]):
+            checker.fail("V35", "section-elements must render before section-units")
+    for element_id, record in sorted(_report_element_cards(index).items()):
+        rendered = [name for name, _ in record["parts"]]
+        if rendered != list(ELEMENT_PARTS):
+            checker.fail(
+                "V35",
+                f"element {element_id!r} renders its parts as {rendered}; the fixed order is "
+                f"{list(ELEMENT_PARTS)}",
+            )
+
+
+def check_v36(checker: Checker, index: HtmlIndex) -> None:
+    """Before/after quality (A27): a real contrast, not one sentence rewritten."""
+    for element_id, record in sorted(_report_element_cards(index).items()):
+        for part in ("before", "after", "why", "contract"):
+            text = re.sub(r"\s+", "", _element_part_text(index, record, part))
+            if len(text) < MIN_ELEMENT_PART_CHARS:
+                checker.fail(
+                    "V36",
+                    f"element {element_id!r} part {part!r} has {len(text)} non-whitespace "
+                    f"characters; MIN_ELEMENT_PART_CHARS={MIN_ELEMENT_PART_CHARS}",
+                )
+        before = _normalise_element_text(_element_part_text(index, record, "before"))
+        after = _normalise_element_text(_element_part_text(index, record, "after"))
+        if before and before == after:
+            checker.fail(
+                "V36",
+                f"element {element_id!r} renders the same text as its before and after states",
+            )
+
+
+def check_v37(checker: Checker, index: HtmlIndex) -> None:
+    """The L1 brief (A22/H50): three real risk answers in the overview, at every strength."""
+    items: dict[str, dict[str, Any]] = {}
+    for element in index.elements:
+        part = element["attrs"].get("data-brief-part")
+        if part:
+            items.setdefault(part, element)
+    total = 0
+    for part in BRIEF_PARTS:
+        element = items.get(part)
+        if element is None:
+            checker.fail("V37", f"the overview brief is missing the {part!r} answer")
+            continue
+        paragraphs = [
+            child
+            for child in index.by_tag("p")
+            if any(ancestor["index"] == element["index"] for ancestor in index.ancestors(child))
+        ]
+        text = index.text_of(paragraphs[0]).strip() if paragraphs else ""
+        compact = re.sub(r"\s+", "", text)
+        total += len(compact)
+        if len(compact) < MIN_BRIEF_ANSWER_CHARS:
+            checker.fail(
+                "V37",
+                f"the brief answer {part!r} has {len(compact)} non-whitespace characters; at least "
+                f"MIN_BRIEF_ANSWER_CHARS={MIN_BRIEF_ANSWER_CHARS} is required",
+            )
+        for token in PLACEHOLDER_TOKENS:
+            if _placeholder_hit(text, token):
+                checker.fail("V37", f"the brief answer {part!r} contains the placeholder {token!r}")
+        if SYMBOL_ONLY_RE.fullmatch(compact):
+            checker.fail("V37", f"the brief answer {part!r} carries no word content")
+    if total < MIN_BRIEF_TOTAL_CHARS:
+        checker.fail(
+            "V37",
+            f"the brief carries {total} non-whitespace characters in total; at least "
+            f"MIN_BRIEF_TOTAL_CHARS={MIN_BRIEF_TOTAL_CHARS} is required",
+        )
+    if total > MAX_BRIEF_TOTAL_CHARS:
+        checker.fail(
+            "V37",
+            f"the brief carries {total} non-whitespace characters in total; at most "
+            f"MAX_BRIEF_TOTAL_CHARS={MAX_BRIEF_TOTAL_CHARS} keeps it a brief",
+        )
 
 
 def check_v19(checker: Checker, index: HtmlIndex) -> None:
@@ -2797,11 +3135,7 @@ def check_v24_v26(checker: Checker, index: HtmlIndex) -> None:
         for element in index.by_class("report-unit")
         if element["attrs"].get("id", "").startswith("unit-")
     }
-    purpose_ids = {
-        element["attrs"].get("id", "")[len("purpose-"):]
-        for element in index.by_class("report-purpose-card")
-        if element["attrs"].get("id", "").startswith("purpose-")
-    }
+    element_ids = set(_report_element_cards(index))
     for topic in topics:
         anchor_id = topic["attrs"].get("id", "")
         if not anchor_id.startswith("design-topic-"):
@@ -2843,8 +3177,8 @@ def check_v24_v26(checker: Checker, index: HtmlIndex) -> None:
             target = href[1:]
             if target.startswith("unit-") and target not in unit_ids:
                 checker.fail("V25", f"design topic {topic_id!r} references unknown unit {target!r}")
-            elif target.startswith("purpose-") and target[len("purpose-"):] not in purpose_ids:
-                checker.fail("V25", f"design topic {topic_id!r} references unknown purpose {target!r}")
+            elif target.startswith("element-") and target[len("element-"):] not in element_ids:
+                checker.fail("V25", f"design topic {topic_id!r} references unknown element {target!r}")
             elif index.by_id(target) is None:
                 checker.fail("V25", f"design topic {topic_id!r} has dangling ref {href!r}")
         for item in index.by_class("report-design-evidence"):
@@ -3023,6 +3357,11 @@ def validate(
     check_v18(checker, index)
     check_v19(checker, index)
     check_v20(checker, index)
+    check_v33(checker, index)
+    check_v34(checker, index, manifest)
+    check_v35(checker, index)
+    check_v36(checker, index)
+    check_v37(checker, index)
     check_v21(checker, index, manifest)
     check_v22(checker, index, manifest)
     check_v23(checker, index)
