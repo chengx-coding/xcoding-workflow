@@ -64,6 +64,12 @@ WORKFLOWS = (
         REPOSITORY_ROOT / "skills" / "xc-change-report" / "assets" / "change-report-template.xml",
         "prepare-manifest",
     ),
+    (
+        "debate",
+        REPOSITORY_ROOT / "skills" / "xc-deliberate" / "assets" / "debate-flow.json",
+        REPOSITORY_ROOT / "skills" / "xc-deliberate" / "assets" / "debate-template.xml",
+        "r01-plan",
+    ),
 )
 
 # The thirteen caller-seeded report keys, frozen by name and declared default by section 8 of
@@ -281,7 +287,7 @@ class XcLifecycleTemplateTests(unittest.TestCase):
     def test_every_skill_template_has_a_byte_reproducibility_owner(self) -> None:
         """Every template under `skills/` is rebuilt from its spec and byte-compared.
 
-        The plan requires a byte-reproducibility assertion for every template in the tree. Eight
+        The plan requires a byte-reproducibility assertion for every template in the tree. Nine
         are rows of `WORKFLOWS`; the other two are owned by their own dedicated tests. This test
         makes that coverage mechanical in both directions: an unowned template fails, and a
         named owner whose module does not point its `TEMPLATE` constant at that template or does

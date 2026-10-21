@@ -74,6 +74,7 @@
         "test_xc_workshop_setup",
         "test_xc_feature",
         "test_xc_clarify",
+        "test_xc_deliberate",
         "test_xc_lifecycle_templates",
         "test_xc_new_feature_report",
         "test_xc_orchestration_author",
@@ -611,5 +612,5 @@
   },
   "module_weights_source": "measured per-module wall seconds and collected test counts from a full serial baseline profile on a 20-logical-core Windows machine; used only as the sharding cost model",
   "module_test_counts": {},
-  "expected_collected_tests": 1008
+  "expected_collected_tests": 1018
 }

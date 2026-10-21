@@ -1,0 +1,117 @@
+{
+  "name": "debate",
+  "schema_version": 1,
+  "blackboard": {
+    "debate.number": "",
+    "debate.round": "1",
+    "debate.dir": "",
+    "debate.status": "planned",
+    "debate.scope_document": "",
+    "debate.scope_question": "",
+    "debate.source_sha256": "",
+    "debate.outcome": "pending"
+  },
+  "root": {
+    "template_id": "root",
+    "title": "Deliberation",
+    "type": "composite",
+    "role": "root",
+    "mode": "sequence",
+    "executor": "main",
+    "children": [
+      {
+        "template_id": "rounds",
+        "title": "Debate rounds",
+        "type": "composite",
+        "role": "rounds",
+        "mode": "sequence",
+        "executor": "main",
+        "children": [
+          {
+            "template_id": "r01-plan",
+            "title": "Round 01: record the plan",
+            "type": "task",
+            "role": "deliberation-round-plan",
+            "executor": "main",
+            "instructions": "Record this round's plan before the round starts, using only the user's own words for the scope and the previous round's artifacts. If debate.number is empty, allocate it as one more than the highest existing debate-NN directory under the workbench deliberation artifacts directory; never reuse a number. Record the user's own words for the round verbatim in the plan before anything else. Write index.md and this round's plan as node-artifact documents with audience=user, the source language, and this node's runtime id as node_id. The plan names the participants and their roles, the debate number and round number, this round's artifact paths, the previous round's artifact paths with their SHA-256 values, and any debate topic registered as pending. Publish debate.number, debate.round, debate.dir and debate.status=active. The record rules in references/records.md apply.",
+            "deliverables": "index.md for the debate and rNN-plan.md for this round in the debate directory, with the user's own words recorded verbatim, plus the updated debate blackboard values.",
+            "acceptance": "The user's own words for the round are recorded verbatim before the round starts, the plan carries the allocated number exactly once, lists the previous round's artifacts and digests, and records pending topics without parallelising them."
+          },
+          {
+            "template_id": "r01-debaters",
+            "title": "Round 01: collect rebuttals",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "parallel",
+            "executor": "main"
+          },
+          {
+            "template_id": "r01-summary",
+            "title": "Round 01: summarize independently",
+            "type": "task",
+            "role": "deliberation-round-summary",
+            "executor": "subagent",
+            "instructions": "Summarize this round from this round's raw material only: the user's own words for the round and every rebuttal artifact of the round. Never read an earlier round's summary, and never read a summary an orchestrator wrote. State the round's conclusions and one navigation list: which artifacts this round produced, what each covers, and its exact path. Append nothing to a file another node wrote; write this round's summary file as a node-artifact with audience=user, the source language, and this node's runtime id as node_id.",
+            "deliverables": "rNN-summary.md in the debate directory.",
+            "acceptance": "The summary is produced by an independent subagent, reads no earlier summary, and every artifact of the round is reachable from its navigation list."
+          },
+          {
+            "template_id": "r01-wait",
+            "title": "Round 01: await the user's answer",
+            "type": "gate",
+            "role": "deliberation-round-wait",
+            "executor": "main",
+            "instructions": "Wait for the user. Present the round's summary first and the raw rebuttals after it. Record the answer as one declared outcome and append the user's full reply verbatim to this round's follow-up file. A stop outcome states the only allowed stop reason; whether another round starts or the debate ends is decided after this gate, never before it.",
+            "deliverables": "A recorded round outcome and the user's own words appended to rNN-user-followup.md.",
+            "acceptance": "The round outcome is one of the declared values, the user's reply is recorded without rewriting, and no round is started or ended before the answer exists.",
+            "metadata": {
+              "gate": {
+                "outcomes": "[\"continue\",\"exhausted\",\"cost-accepted\",\"time-up\"]",
+                "decision_required": "true",
+                "outcome_key": "debate.outcome"
+              }
+            }
+          },
+          {
+            "template_id": "rounds-open",
+            "title": "Decide whether another round runs",
+            "type": "composite",
+            "role": "dynamic-group",
+            "mode": "sequence",
+            "executor": "main"
+          }
+        ]
+      },
+      {
+        "template_id": "finalize",
+        "title": "Finalize the conclusion",
+        "type": "task",
+        "role": "deliberation-finalize",
+        "executor": "main",
+        "instructions": "Finalize the debate's conclusion document as the standalone record of what the user decided. The conclusion is not merged into the document it argues about until the merge node runs. Confirm that the user has confirmed the discussion is over; never infer that confirmation. Record debate.status=stopped and make sure the conclusion document names the debate number, the scope document, and the decision the user reached.",
+        "deliverables": "A final conclusion.md for the debate and debate.status=stopped.",
+        "acceptance": "The conclusion is standalone, the user's confirmation of the end is recorded, and nothing has been merged into the scope document yet."
+      },
+      {
+        "template_id": "merge",
+        "title": "Merge the conclusion",
+        "type": "task",
+        "role": "deliberation-merge",
+        "executor": "main",
+        "instructions": "Recompute the scope document's SHA-256 and compare it with debate.source_sha256. On any difference, stop before producing a merged result, show the differing fragment to the user, and let the user judge whether it affects the conclusion; a judgement that it does means no merge, and a judgement that it does not is recorded in the merge record. Merge by moving the conclusion's content into the scope document and aligning its format. Append one merge-record section to the conclusion document that states what was moved, which places changed at paragraph level, why each rewrite happened, and exactly one stop reason line whose value is one of the three allowed values. A later merge of the same debate appends a dated subsection instead of rewriting the earlier one.",
+        "deliverables": "The merged scope document and the appended merge-record section in the conclusion document.",
+        "acceptance": "The hash was compared before any merge, a drift decision exists and is the user's, the merge record accounts for every rewrite, and the stop reason line appears exactly once with an allowed value."
+      },
+      {
+        "template_id": "follow-ups",
+        "title": "Register knock-on effects",
+        "type": "task",
+        "role": "deliberation-follow-ups",
+        "executor": "main",
+        "instructions": "Identify every part of the project the merged conclusion may affect, and append one section to the merge record. Each item carries exactly one follow-up action: handled now, or registered as a pending work-order item with the place it is registered. An item that only names a possible effect is unfinished. Do not create a second record of the debate.",
+        "deliverables": "The knock-on-effects section appended to the merge record.",
+        "acceptance": "Every named effect has one concrete follow-up action or a registered pending item, and no separate artifact was created for it."
+      }
+    ]
+  }
+}

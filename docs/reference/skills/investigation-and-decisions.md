@@ -34,6 +34,16 @@ These supporting Skills gather evidence or resolve decisions before implementati
 - **Typical usage:** embed the clarification template in an existing lifecycle, gather evidence first, record full answers in one session artifact, and hand decisions back to analysis and solution selection.
 - **Boundaries:** it is not a standalone work order and does not replace evidence gathering, review, solution approval, or verification; long content never belongs in the blackboard.
 
+## `xc-deliberate`
+
+[Canonical contract](../../../skills/xc-deliberate/SKILL.md)
+
+- **Invoke when:** the user explicitly asks to debate, stress-test, or be argued against on a named document and sub-question inside an existing managed work order. Only the user enables it; the workflow never decides that a subject needs one.
+- **Purpose:** run a user-led debate in which independent rebuttal workers attack the user's reasoning while the user keeps authorship, then record the rounds and merge the conclusion the user confirmed into the document it argues about.
+- **Public entry:** required `workbench_path`, `scope_document`, `scope_question`, and `instance_id`; optional `inputs` and `rebuttals_per_round` (1-8, default 3).
+- **Typical usage:** publish the scope and the source hash, mount the debate template under a runtime-created container at the position where the debate must happen, then run each round as a plan, parallel rebuttals, an independent summary and one structured user gate; another round or the end is decided after that gate, and every fifth round an independent worker advises on convergence without ending anything.
+- **Boundaries:** it is an embedded subtree, not a work order; it does not replace analysis, clarification, review, implementation or verification; the conclusion stays a separate document until the user confirms the end and the merge; raw round material may live in the workshop and must never be quoted in public documentation.
+
 ## `xc-diagnosis`
 
 [Canonical contract](../../../skills/xc-diagnosis/SKILL.md)
