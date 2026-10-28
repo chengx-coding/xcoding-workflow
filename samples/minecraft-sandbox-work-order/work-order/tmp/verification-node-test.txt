@@ -1,0 +1,36 @@
+✔ screen coordinates map to world cells through the camera (0.7816ms)
+✔ mining is limited to solid blocks within reach (1.0117ms)
+✔ placement requires an empty, reachable, supported cell (0.3059ms)
+✔ placement never overwrites the player (0.2005ms)
+✔ right-clicking a solid block resolves to an empty adjacent cell (0.4079ms)
+✔ gravity lands the player on a solid floor (2.3291ms)
+✔ horizontal collision stops the player at a solid wall (1.9213ms)
+✔ jumping leaves the ground and lands again (0.5618ms)
+✔ a large time delta still resolves floor collision without tunnelling (0.2471ms)
+✔ camera follows the player at the world origin (0.8766ms)
+✔ camera centres on the player in the middle of the world (0.6313ms)
+✔ camera stays inside the world bounds at the far edge (0.1994ms)
+✔ all five block colours are defined for rendering (0.2495ms)
+✔ save and load round-trips world, player and selection (3.3623ms)
+✔ missing, corrupt and unsupported saves are ignored (0.5409ms)
+✔ an unknown selected block falls back to grass (0.7699ms)
+✔ clearState removes the saved payload (0.7057ms)
+✔ terrain generation is deterministic for the same seed (2.4578ms)
+✔ different seeds generate different terrain (1.2245ms)
+✔ the spawn plateau keeps the seed ground line and layers (0.1962ms)
+✔ hills keep grass on top and dirt above stone (0.1202ms)
+✔ terrain contains reachable wood from a tree (0.1048ms)
+✔ config exposes the seed contract (0.44ms)
+✔ createWorld has the configured dimensions and seed (0.5126ms)
+✔ the generated world has a ground line and sky (0.7114ms)
+✔ block access is bounded (0.246ms)
+✔ serialization round-trips blocks and seed (1.3375ms)
+✔ solidity treats air as walkable (0.1749ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 106.2978

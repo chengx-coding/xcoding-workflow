@@ -1,0 +1,3087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#1b2419">
+<title>Blockhollow — a tiny 2D sandbox</title>
+<style>
+  :root {
+    --ink: #f4e7c7;
+    --muted: #c0b293;
+    --faint: #8e846d;
+    --panel: rgba(20, 25, 18, 0.90);
+    --panel-solid: #1e251b;
+    --panel-2: #2b3224;
+    --line: rgba(221, 193, 130, 0.35);
+    --line-bright: #ad8c54;
+    --gold: #f4ce74;
+    --gold-deep: #d8a748;
+    --green: #8bd36b;
+    --red: #ff8877;
+    --blue: #91d5e5;
+    --shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+    --mono: "Cascadia Mono", "Consolas", "Lucida Console", monospace;
+    --sans: "Segoe UI", Tahoma, Verdana, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    overflow: hidden;
+    background: #10160f;
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  canvas#game {
+    position: fixed;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    outline: none;
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  button, input { font: inherit; }
+
+  .hud {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* ---------- Top bar ---------- */
+
+  .topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: start;
+    gap: 10px 16px;
+    padding: 18px 22px;
+  }
+
+  .brand {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.25));
+  }
+
+  .brand-mark {
+    position: relative;
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    border: 2px solid #cbae72;
+    border-radius: 6px;
+    background:
+      linear-gradient(180deg, #6bb447 0 27%, #5a9a3a 27% 35%, #7b5437 35% 100%);
+    box-shadow:
+      inset 3px 3px 0 rgba(255, 255, 255, 0.16),
+      inset -4px -4px 0 rgba(0, 0, 0, 0.22),
+      0 0 0 2px #293126;
+  }
+
+  .brand-mark::before {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 6px;
+    width: 5px;
+    height: 7px;
+    background: #8cd364;
+    box-shadow: 13px 3px 0 #78bf52, 22px 0 0 #6daf4a, 5px 13px 0 #5a9a3e;
+  }
+
+  .brand-mark::after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 25px;
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 231, 173, 0.55);
+    box-shadow: 11px 8px 0 rgba(255, 231, 173, 0.35), 23px 3px 0 rgba(0, 0, 0, 0.22);
+  }
+
+  .brand-copy { min-width: 0; }
+
+  .brand h1 {
+    margin: 0;
+    color: #f8ebca;
+    font-size: clamp(16px, 1.6vw, 22px);
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    text-transform: uppercase;
+    text-shadow: 0 2px 0 #182014, 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+
+  .brand p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .world-meta {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 58px;
+    flex-wrap: wrap;
+  }
+
+  .hud-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 27px;
+    padding: 5px 9px;
+    border: 1px solid rgba(217, 191, 132, 0.27);
+    border-radius: 6px;
+    background: rgba(18, 23, 16, 0.68);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+    backdrop-filter: blur(5px);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  .chip-kicker {
+    color: var(--faint);
+    font-size: 8px;
+    letter-spacing: 0.18em;
+  }
+
+  #seedLabel {
+    color: #e9d9b5;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  .save-dot {
+    flex: 0 0 auto;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 9px rgba(139, 211, 107, 0.8);
+    transition: background 180ms ease, box-shadow 180ms ease;
+  }
+
+  #saveChip[data-state="dirty"] .save-dot {
+    background: var(--gold);
+    box-shadow: 0 0 9px rgba(244, 206, 116, 0.7);
+  }
+
+  #saveChip[data-state="error"] .save-dot {
+    background: var(--red);
+    box-shadow: 0 0 9px rgba(255, 136, 119, 0.6);
+  }
+
+  .top-actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    justify-self: end;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    pointer-events: auto;
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 8px 13px;
+    border: 1px solid rgba(197, 167, 103, 0.55);
+    border-radius: 7px;
+    background: linear-gradient(180deg, rgba(58, 64, 45, 0.94), rgba(31, 38, 27, 0.94));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 6px 18px rgba(0, 0, 0, 0.22);
+    color: #f0e2c2;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+  }
+
+  .button:hover {
+    border-color: var(--gold);
+    background: linear-gradient(180deg, rgba(76, 79, 51, 0.98), rgba(40, 46, 31, 0.98));
+    transform: translateY(-1px);
+  }
+
+  .button:active { transform: translateY(0); }
+
+  .button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .button .button-glyph {
+    color: var(--gold);
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .button.primary {
+    border-color: #d8b76b;
+    background: linear-gradient(180deg, #b98943, #8d642e);
+    color: #fff6de;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .button.primary:hover {
+    border-color: #f4d58a;
+    background: linear-gradient(180deg, #c99b50, #9a7036);
+  }
+
+  .button.ghost {
+    background: rgba(22, 28, 19, 0.78);
+  }
+
+  .button:disabled {
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+  }
+
+  /* ---------- Controls card ---------- */
+
+  .controls-card {
+    position: absolute;
+    left: 22px;
+    bottom: 22px;
+    width: 214px;
+    padding: 13px 14px 12px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: linear-gradient(180deg, rgba(28, 34, 24, 0.82), rgba(17, 22, 16, 0.84));
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+  }
+
+  .controls-card h2 {
+    margin: 0 0 9px;
+    color: var(--gold);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 3px 0;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .keys {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
+  }
+
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 19px;
+    min-height: 19px;
+    padding: 1px 4px;
+    border: 1px solid #b6a273;
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: #e7d9b5;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
+    color: #2b2b20;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .controls-note {
+    margin: 9px 0 0;
+    padding-top: 9px;
+    border-top: 1px solid rgba(217, 191, 132, 0.16);
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 9px;
+    line-height: 1.5;
+  }
+
+  /* ---------- Hotbar ---------- */
+
+  .bottom-dock {
+    position: absolute;
+    left: 50%;
+    bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: min(680px, calc(100vw - 32px));
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .selected-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    padding: 5px 11px 4px;
+    border: 1px solid rgba(221, 193, 130, 0.26);
+    border-radius: 999px;
+    background: rgba(16, 21, 15, 0.72);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(4px);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: transform 140ms ease;
+  }
+
+  .selected-badge .kicker { color: var(--faint); }
+  .selected-badge strong { color: var(--gold); font-size: 10px; letter-spacing: 0.08em; }
+
+  .hotbar {
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #7d6942;
+    border-radius: 13px;
+    background:
+      linear-gradient(180deg, rgba(35, 41, 29, 0.92), rgba(16, 21, 15, 0.94));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 16px 38px rgba(0, 0, 0, 0.34);
+    pointer-events: auto;
+  }
+
+  .slot {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 58px;
+    height: clamp(48px, 6.2vw, 60px);
+    padding: 0;
+    border: 2px solid #4d503d;
+    border-radius: 6px;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.06), transparent 58%),
+      linear-gradient(180deg, #30372a, #23291f);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 130ms ease, border-color 130ms ease, background 130ms ease, box-shadow 130ms ease;
+  }
+
+  .slot:hover {
+    border-color: #a58d5c;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.11), transparent 58%),
+      linear-gradient(180deg, #3a4231, #282f23);
+  }
+
+  .slot:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .slot.selected {
+    border-color: var(--gold);
+    background:
+      radial-gradient(circle at 50% 35%, rgba(244, 206, 116, 0.13), transparent 60%),
+      linear-gradient(180deg, #4c5036, #303728);
+    box-shadow:
+      0 0 0 2px rgba(244, 206, 116, 0.15),
+      0 9px 20px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    transform: translateY(-7px);
+  }
+
+  .slot.selected::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -12px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 6px solid var(--gold);
+    transform: translateX(-50%);
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+  }
+
+  .slot-num {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    color: rgba(243, 229, 200, 0.48);
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .slot-icon {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 61%;
+    height: 61%;
+    transform: translate(-50%, -52%);
+    image-rendering: pixelated;
+    pointer-events: none;
+  }
+
+  .slot-count {
+    position: absolute;
+    right: 4px;
+    bottom: 3px;
+    color: #f7e8c7;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: 0 1px 2px #000, 0 0 3px #000;
+    pointer-events: none;
+  }
+
+  .slot.empty .slot-icon,
+  .slot.empty .slot-count { opacity: 0.38; }
+
+  .slot.empty .slot-count { color: var(--red); }
+
+  .hotbar-hint {
+    padding: 4px 10px;
+    border: 1px solid rgba(221, 193, 130, 0.17);
+    border-radius: 999px;
+    background: rgba(16, 21, 15, 0.55);
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+  }
+
+  .hotbar-hint b { color: #d8c79f; font-weight: 600; }
+
+  /* ---------- Toast ---------- */
+
+  .toast {
+    position: absolute;
+    top: 84px;
+    left: 50%;
+    z-index: 20;
+    max-width: min(440px, calc(100vw - 32px));
+    padding: 8px 13px;
+    border: 1px solid rgba(221, 193, 130, 0.30);
+    border-radius: 6px;
+    background: rgba(18, 23, 16, 0.88);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.26);
+    color: #ecdfc0;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 1.45;
+    text-align: center;
+    transform: translate(-50%, -8px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease, transform 180ms ease;
+    backdrop-filter: blur(6px);
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  .toast.error {
+    border-color: rgba(255, 136, 119, 0.55);
+    color: #ffd5cc;
+  }
+
+  /* ---------- Dialogs ---------- */
+
+  dialog {
+    width: min(540px, calc(100vw - 32px));
+    max-width: none;
+    margin: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+  }
+
+  dialog::backdrop {
+    background: rgba(7, 10, 7, 0.67);
+    backdrop-filter: blur(4px);
+  }
+
+  .panel {
+    position: relative;
+    padding: 25px 26px 21px;
+    border: 2px solid #89734a;
+    border-radius: 13px;
+    background:
+      radial-gradient(circle at 15% 0%, rgba(133, 153, 95, 0.10), transparent 43%),
+      linear-gradient(180deg, #252c20, #191f17);
+    box-shadow: 0 26px 80px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    animation: panel-in 170ms ease-out both;
+  }
+
+  @keyframes panel-in {
+    from { opacity: 0; transform: translateY(9px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .eyebrow {
+    margin: 0 0 9px;
+    color: var(--gold);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .panel h2 {
+    margin: 0;
+    color: #f8ecca;
+    font-size: clamp(23px, 4vw, 31px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+  }
+
+  .lede {
+    margin: 10px 0 20px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .close-x {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgba(221, 193, 130, 0.24);
+    border-radius: 5px;
+    background: rgba(12, 16, 11, 0.35);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .close-x:hover { color: var(--ink); border-color: var(--line-bright); }
+  .close-x:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px 13px;
+    margin: 0 0 17px;
+  }
+
+  .control-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 8px 9px;
+    border: 1px solid rgba(221, 193, 130, 0.13);
+    border-radius: 6px;
+    background: rgba(12, 17, 11, 0.25);
+  }
+
+  .control-item .keys { flex: 0 0 67px; }
+
+  .control-item strong {
+    display: block;
+    color: #ebddbb;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .control-item small {
+    display: block;
+    margin-top: 2px;
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 8px;
+    line-height: 1.3;
+  }
+
+  .tip-box {
+    margin: 0 0 19px;
+    padding: 10px 12px;
+    border-left: 2px solid var(--gold-deep);
+    border-radius: 0 5px 5px 0;
+    background: rgba(190, 148, 73, 0.10);
+    color: #d8c8a6;
+    font-size: 11px;
+    line-height: 1.55;
+  }
+
+  .tip-box b { color: var(--gold); font-weight: 600; }
+
+  .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(221, 193, 130, 0.15);
+  }
+
+  .footer-note {
+    max-width: 230px;
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 9px;
+    line-height: 1.45;
+  }
+
+  .footer-actions {
+    display: flex;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+
+  .field { margin-bottom: 16px; }
+
+  .field label {
+    display: block;
+    margin-bottom: 7px;
+    color: #ddceb0;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .seed-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .seed-row input {
+    min-width: 0;
+    flex: 1 1 auto;
+    height: 43px;
+    padding: 0 12px;
+    border: 1px solid #65563a;
+    border-radius: 6px;
+    outline: none;
+    background: #11160f;
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.28);
+    color: var(--gold);
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .seed-row input:focus {
+    border-color: var(--gold);
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.28), 0 0 0 2px rgba(244, 206, 116, 0.12);
+  }
+
+  .seed-row input.invalid {
+    border-color: var(--red);
+  }
+
+  .field-help {
+    margin: 6px 0 0;
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 9px;
+    line-height: 1.45;
+  }
+
+  .field-error {
+    margin: 6px 0 0;
+    color: var(--red);
+    font-family: var(--mono);
+    font-size: 9px;
+  }
+
+  .notice {
+    margin: 0 0 19px;
+    padding: 9px 11px;
+    border: 1px solid rgba(217, 162, 75, 0.25);
+    border-radius: 5px;
+    background: rgba(162, 106, 35, 0.10);
+    color: #d6bc8d;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .notice strong { color: #f0ce88; }
+
+  noscript {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: #171d14;
+    color: var(--ink);
+    font-family: var(--mono);
+    text-align: center;
+  }
+
+  @media (max-width: 1180px) {
+    .controls-card { display: none; }
+  }
+
+  @media (max-width: 960px) {
+    .topbar { padding: 14px 16px; }
+    .world-meta { padding-left: 0; }
+    .toast { top: 74px; }
+  }
+
+  @media (max-width: 640px) {
+    .topbar { padding: 12px 12px; gap: 8px; }
+    .brand { gap: 9px; }
+    .brand-mark { width: 38px; height: 38px; }
+    .brand-mark::before { transform: scale(0.82); transform-origin: top left; }
+    .brand h1 { font-size: 15px; }
+    .brand p { font-size: 8px; letter-spacing: 0.11em; }
+    .world-meta { gap: 5px; }
+    .hud-chip { min-height: 24px; padding: 4px 7px; font-size: 9px; }
+    .top-actions { gap: 5px; }
+    .button { min-height: 34px; padding: 6px 9px; font-size: 9px; }
+    .button .button-text { display: none; }
+    .button .button-glyph { font-size: 16px; }
+    .hotbar { gap: 4px; padding: 6px; border-width: 2px; }
+    .slot { height: 47px; border-width: 1px; }
+    .slot.selected { transform: translateY(-5px); }
+    .slot-num { font-size: 7px; }
+    .slot-count { font-size: 8px; right: 3px; bottom: 2px; }
+    .slot.selected::before { top: -9px; border-left-width: 4px; border-right-width: 4px; border-bottom-width: 5px; }
+    .hotbar-hint { font-size: 8px; padding: 3px 8px; max-width: calc(100vw - 50px); overflow: hidden; text-overflow: ellipsis; }
+    .bottom-dock { bottom: max(11px, env(safe-area-inset-bottom)); gap: 6px; }
+    .selected-badge { font-size: 8px; padding: 4px 9px; }
+    dialog { width: calc(100vw - 20px); }
+    .panel { padding: 21px 17px 17px; }
+    .control-grid { grid-template-columns: 1fr; gap: 6px; }
+    .control-item { padding: 7px 8px; }
+    .control-item .keys { flex-basis: 64px; }
+    .modal-footer { align-items: flex-start; flex-direction: column; }
+    .footer-note { max-width: none; }
+    .footer-actions { width: 100%; justify-content: flex-end; }
+    .lede { font-size: 12px; margin-bottom: 15px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<canvas id="game" tabindex="-1" aria-label="Blockhollow, a 2D mining and building sandbox. Use A and D to move, W or Space to jump, left-click to mine, right-click to place, and number keys to choose a block."></canvas>
+
+<main class="hud" aria-label="Game interface">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand-copy">
+        <h1>Blockhollow</h1>
+        <p>a tiny world to shape</p>
+      </div>
+    </div>
+
+    <div class="world-meta" aria-label="World information">
+      <div class="hud-chip" title="The number this world grew from">
+        <span class="chip-kicker">SEED</span>
+        <strong id="seedLabel">—</strong>
+      </div>
+      <div class="hud-chip" id="saveChip" data-state="idle" role="status" aria-live="polite">
+        <span class="save-dot" aria-hidden="true"></span>
+        <span id="saveText">Loading</span>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button class="button ghost" id="helpBtn" type="button" aria-haspopup="dialog">
+        <span class="button-glyph" aria-hidden="true">?</span><span class="button-text">Help</span>
+      </button>
+      <button class="button" id="newBtn" type="button" aria-haspopup="dialog">
+        <span class="button-glyph" aria-hidden="true">+</span><span class="button-text">New world</span>
+      </button>
+    </div>
+  </header>
+
+  <aside class="controls-card" aria-label="Controls">
+    <h2>Controls</h2>
+    <div class="control-row"><span>Move</span><span class="keys"><kbd>A</kbd><kbd>D</kbd></span></div>
+    <div class="control-row"><span>Jump</span><span class="keys"><kbd>W</kbd><kbd>Space</kbd></span></div>
+    <div class="control-row"><span>Mine</span><span class="keys"><kbd>LMB</kbd></span></div>
+    <div class="control-row"><span>Build</span><span class="keys"><kbd>RMB</kbd></span></div>
+    <div class="control-row"><span>Select block</span><span class="keys"><kbd>1</kbd>–<kbd>8</kbd></span></div>
+    <p class="controls-note">Listen for the quiet places. The hollow is yours to dig, stack and keep.</p>
+  </aside>
+
+  <div class="bottom-dock">
+    <div class="selected-badge" aria-live="polite">
+      <span class="kicker">Selected</span>
+      <strong id="selectedName">Grass</strong>
+    </div>
+    <div class="hotbar" id="hotbar" role="toolbar" aria-label="Block hotbar"></div>
+    <div class="hotbar-hint"><b>LMB</b> mine &nbsp;·&nbsp; <b>RMB</b> build &nbsp;·&nbsp; <b>WASD</b> move &nbsp;·&nbsp; <b>1–8</b> select</div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</main>
+
+<dialog id="helpDialog" aria-labelledby="helpTitle">
+  <div class="panel">
+    <button class="close-x" type="button" data-close="helpDialog" aria-label="Close help">×</button>
+    <p class="eyebrow">Field notes</p>
+    <h2 id="helpTitle">Make the hollow yours.</h2>
+    <p class="lede">Every world is grown from a single number. Wander, mine, and stack a little shelter — nothing here is urgent. Everything you change is saved in this browser as you play.</p>
+
+    <div class="control-grid">
+      <div class="control-item"><span class="keys"><kbd>A</kbd><kbd>D</kbd></span><div><strong>Move</strong><small>or ← →</small></div></div>
+      <div class="control-item"><span class="keys"><kbd>W</kbd><kbd>SPC</kbd></span><div><strong>Jump</strong><small>or ↑</small></div></div>
+      <div class="control-item"><span class="keys"><kbd>LMB</kbd></span><div><strong>Mine</strong><small>within 6 blocks</small></div></div>
+      <div class="control-item"><span class="keys"><kbd>RMB</kbd></span><div><strong>Build</strong><small>on a block face</small></div></div>
+      <div class="control-item"><span class="keys"><kbd>1</kbd>–<kbd>8</kbd></span><div><strong>Pick block</strong><small>or scroll</small></div></div>
+      <div class="control-item"><span class="keys"><kbd>H</kbd></span><div><strong>Field notes</strong><small>open this page</small></div></div>
+    </div>
+
+    <div class="tip-box"><b>Two useful habits:</b> right-click a block face to place beside it, and try not to wall yourself in. Blocks cannot be placed where you are standing, and bedrock at the bottom of the world is unbreakable.</div>
+
+    <div class="modal-footer">
+      <span class="footer-note">Autosaves locally. No account, no cloud, no way out except digging.</span>
+      <div class="footer-actions">
+        <button class="button primary" type="button" data-close="helpDialog">Back to the hollow</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="newDialog" aria-labelledby="newTitle">
+  <form class="panel" id="newWorldForm" method="dialog">
+    <button class="close-x" type="button" data-close="newDialog" aria-label="Close new world dialog">×</button>
+    <p class="eyebrow">A fresh start</p>
+    <h2 id="newTitle">Unearth a new hollow.</h2>
+    <p class="lede">Choose a seed and the terrain will be grown from it. The same number always makes the same world.</p>
+
+    <div class="field">
+      <label for="seedInput">World seed</label>
+      <div class="seed-row">
+        <input id="seedInput" name="seed" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="20" aria-describedby="seedHelp seedError">
+        <button class="button ghost" id="randomSeedBtn" type="button">Roll</button>
+      </div>
+      <p class="field-help" id="seedHelp">Any whole number, positive or negative. Seeds repeat exactly.</p>
+      <p class="field-error" id="seedError" hidden></p>
+    </div>
+
+    <div class="notice"><strong>This replaces the hollow you are in.</strong> Your current world, buildings and all, will be overwritten in this browser.</div>
+
+    <div class="modal-footer">
+      <span class="footer-note">The game saves to this browser's local storage.</span>
+      <div class="footer-actions">
+        <button class="button ghost" type="button" data-close="newDialog">Keep this one</button>
+        <button class="button primary" type="submit">Grow a world</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<noscript>Blockhollow needs JavaScript enabled to grow its world.</noscript>
+
+<script>
+(() => {
+  "use strict";
+
+  /* -----------------------------------------------------------------------
+     Blockhollow — a small, self-contained 2D sandbox.
+     Controls: A/D or arrows to move, W/Space/Up to jump, left-click to mine,
+     right-click to place, 1–8 (or mouse wheel) to choose a hotbar block.
+     The world and player are autosaved to localStorage.
+     ----------------------------------------------------------------------- */
+
+  // ---------- World and game constants ----------
+
+  const WORLD_W = 224;
+  const WORLD_H = 120;
+  const SAVE_KEY = "blockhollow.world.v1";
+  const SAVE_VERSION = 1;
+  const REACH = 6.0;
+  const PLAYER_W = 0.72;
+  const PLAYER_H = 1.78;
+  const GRAVITY = 38;
+  const MAX_FALL = 25;
+  const MOVE_SPEED = 6.4;
+  const JUMP_SPEED = 12.8;
+  const COYOTE_TIME = 0.105;
+  const JUMP_BUFFER = 0.14;
+  const FIXED_STEP = 1 / 120;
+
+  const B = Object.freeze({
+    AIR: 0,
+    GRASS: 1,
+    DIRT: 2,
+    STONE: 3,
+    WOOD: 4,
+    PLANKS: 5,
+    SAND: 6,
+    LEAVES: 7,
+    GLASS: 8,
+    BEDROCK: 9
+  });
+
+  const BLOCKS = {
+    [B.GRASS]: {
+      name: "Grass",
+      color: "#67b348",
+      particles: ["#5fa943", "#78c454", "#795236", "#8b6040"],
+      palette: ["#5ca83e", "#68b749", "#4f9837", "#74bd52"],
+      dirtPalette: ["#795236", "#6e4a31", "#845b3b", "#65432c"]
+    },
+    [B.DIRT]: {
+      name: "Dirt",
+      color: "#805539",
+      particles: ["#795236", "#8c5e3d", "#69462d"],
+      palette: ["#795236", "#6e4a31", "#845b3b", "#65432c"]
+    },
+    [B.STONE]: {
+      name: "Stone",
+      color: "#7d8589",
+      particles: ["#7a8387", "#929a9d", "#606a6e", "#a8afb0"],
+      palette: ["#767f83", "#828a8e", "#6a7478", "#8e9698"]
+    },
+    [B.WOOD]: {
+      name: "Oak log",
+      color: "#8a603d",
+      particles: ["#7d5737", "#9b6d44", "#684629"],
+      palette: ["#7b5535", "#8d633e", "#6b472b", "#966b43"]
+    },
+    [B.PLANKS]: {
+      name: "Planks",
+      color: "#c09459",
+      particles: ["#bc8f55", "#cf9f60", "#a77d47"],
+      palette: ["#b98b53", "#c89a5d", "#ab7e48", "#d2a267"]
+    },
+    [B.SAND]: {
+      name: "Sand",
+      color: "#dfcc8e",
+      particles: ["#d8c486", "#ead89a", "#c3ae73"],
+      palette: ["#d9c486", "#e5d497", "#ceb87d", "#eedda3"]
+    },
+    [B.LEAVES]: {
+      name: "Leaves",
+      color: "#539c3d",
+      particles: ["#4f9638", "#62ac47", "#3e7d2c", "#72b955"],
+      palette: ["#4b9137", "#58a141", "#3f7d2e", "#65ad4b"]
+    },
+    [B.GLASS]: {
+      name: "Glass",
+      color: "#b6e3e8",
+      particles: ["#b9e5e8", "#d7f7f7", "#84c7cc", "#efffff"],
+      palette: ["#b4e2e6", "#c8eef1", "#9fd5da", "#ddf7f8"]
+    },
+    [B.BEDROCK]: {
+      name: "Bedrock",
+      color: "#42484a",
+      particles: ["#3d4345", "#50575a", "#303638"],
+      palette: ["#3c4244", "#4a5153", "#303638", "#555d5f"],
+      unbreakable: true
+    }
+  };
+
+  const HOTBAR_IDS = [B.GRASS, B.DIRT, B.STONE, B.WOOD, B.PLANKS, B.SAND, B.LEAVES, B.GLASS];
+  const DEFAULT_INVENTORY = {
+    [B.GRASS]: 14,
+    [B.DIRT]: 20,
+    [B.STONE]: 24,
+    [B.WOOD]: 10,
+    [B.PLANKS]: 16,
+    [B.SAND]: 12,
+    [B.LEAVES]: 10,
+    [B.GLASS]: 8
+  };
+
+  const TEXTURE_SIZE = 48;
+  const TEXTURE_VARIANTS = 3;
+
+  // ---------- Cached DOM ----------
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  const ui = {
+    seedLabel: document.getElementById("seedLabel"),
+    saveChip: document.getElementById("saveChip"),
+    saveText: document.getElementById("saveText"),
+    helpBtn: document.getElementById("helpBtn"),
+    newBtn: document.getElementById("newBtn"),
+    hotbar: document.getElementById("hotbar"),
+    selectedName: document.getElementById("selectedName"),
+    toast: document.getElementById("toast"),
+    helpDialog: document.getElementById("helpDialog"),
+    newDialog: document.getElementById("newDialog"),
+    newWorldForm: document.getElementById("newWorldForm"),
+    seedInput: document.getElementById("seedInput"),
+    seedError: document.getElementById("seedError"),
+    randomSeedBtn: document.getElementById("randomSeedBtn")
+  };
+
+  // ---------- Shared state ----------
+
+  const view = { w: 1, h: 1, dpr: 1, tile: 36 };
+  const game = {
+    seed: 0,
+    blocks: null,
+    surface: null,
+    player: {
+      x: 0, y: 0, vx: 0, vy: 0,
+      w: PLAYER_W, h: PLAYER_H,
+      facing: 1, onGround: false
+    },
+    inventory: { ...DEFAULT_INVENTORY },
+    selected: 0,
+    camera: { x: 0, y: 0 },
+    particles: [],
+    hover: null,
+    placement: null,
+    mouse: { x: 0, y: 0, inside: false, left: false },
+    keys: { left: false, right: false },
+    jumpBuffer: 0,
+    coyote: 0,
+    walkPhase: 0,
+    landImpact: 0,
+    stepTimer: 0,
+    mineCooldown: 0,
+    loaded: false,
+    dirty: false,
+    lastSavedAt: 0,
+    lastSavedPos: null,
+    storageFailing: false,
+    toastTimer: 0,
+    wheelAt: 0,
+    lastPlaceToast: 0
+  };
+
+  let saveTimer = null;
+  let tileTextures = null;
+  let wallTextures = null;
+
+  // ---------- Math helpers ----------
+
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const moveToward = (value, target, amount) => {
+    if (value < target) return Math.min(value + amount, target);
+    if (value > target) return Math.max(value - amount, target);
+    return target;
+  };
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function random() {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hash01(x, y, seed) {
+    let h = (seed ^ Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1)) >>> 0;
+    h = Math.imul(h ^ (h >>> 15), 0x85ebca6b) >>> 0;
+    h ^= h >>> 13;
+    h = Math.imul(h, 0xc2b2ae35) >>> 0;
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  }
+
+  function noise1(x, scale, seed) {
+    const p = x / scale;
+    const i = Math.floor(p);
+    const f = p - i;
+    const t = f * f * (3 - 2 * f);
+    return lerp(hash01(i, 0, seed), hash01(i + 1, 0, seed), t);
+  }
+
+  function noise2(x, y, scale, seed) {
+    const px = x / scale;
+    const py = y / scale;
+    const ix = Math.floor(px);
+    const iy = Math.floor(py);
+    const fx = px - ix;
+    const fy = py - iy;
+    const tx = fx * fx * (3 - 2 * fx);
+    const ty = fy * fy * (3 - 2 * fy);
+    const a = hash01(ix, iy, seed);
+    const b = hash01(ix + 1, iy, seed);
+    const c = hash01(ix, iy + 1, seed);
+    const d = hash01(ix + 1, iy + 1, seed);
+    return lerp(lerp(a, b, tx), lerp(c, d, tx), ty);
+  }
+
+  function randomSeed() {
+    if (window.crypto && window.crypto.getRandomValues) {
+      const buffer = new Uint32Array(1);
+      window.crypto.getRandomValues(buffer);
+      return buffer[0];
+    }
+    return Math.floor(Math.random() * 4294967296) >>> 0;
+  }
+
+  function parseSeed(text) {
+    const cleaned = String(text).trim();
+    if (!/^[+-]?\d{1,20}$/.test(cleaned)) return null;
+    try {
+      const wrapped = BigInt(cleaned) % 4294967296n;
+      return Number((wrapped + 4294967296n) % 4294967296n);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function seedText(seed) {
+    return String(seed >>> 0);
+  }
+
+  // ---------- Terrain generation ----------
+
+  function tileIndex(x, y) {
+    return y * WORLD_W + x;
+  }
+
+  function generateWorld(seed) {
+    const blocks = new Uint8Array(WORLD_W * WORLD_H);
+    const surface = new Int16Array(WORLD_W);
+    const s1 = (seed ^ 0x51f15e) >>> 0;
+    const s2 = (seed ^ 0x2c1b3d) >>> 0;
+    const s3 = (seed ^ 0x7a4d91) >>> 0;
+    const s4 = (seed ^ 0x13f29b) >>> 0;
+    const s5 = (seed ^ 0x6e2f47) >>> 0;
+
+    // Rolling surface. A handful of octaves gives hills without hiding the sky.
+    for (let x = 0; x < WORLD_W; x++) {
+      const broad = noise1(x, 47, s1);
+      const middle = noise1(x, 17, s2);
+      const detail = noise1(x, 6.5, s3);
+      let height = Math.round(39 + (broad - 0.5) * 23 + (middle - 0.5) * 9 + (detail - 0.5) * 3);
+      height = clamp(height, 20, 58);
+      surface[x] = height;
+
+      const desertSignal = noise1(x, 58, s4) * 0.68 + noise1(x, 14, s5) * 0.32;
+      const desert = desertSignal > 0.685;
+      const soilDepth = desert ? 4 : 3 + Math.floor(hash01(x, 9, seed) * 4);
+      const topId = desert ? B.SAND : B.GRASS;
+      const soilId = desert ? B.SAND : B.DIRT;
+
+      for (let y = height; y < WORLD_H; y++) {
+        let id;
+        if (y >= WORLD_H - 2) id = B.BEDROCK;
+        else if (y === height) id = topId;
+        else if (y < height + soilDepth) id = soilId;
+        else id = B.STONE;
+        blocks[tileIndex(x, y)] = id;
+      }
+    }
+
+    // Soft caverns from layered value noise.
+    const caveSeedA = (seed ^ 0x9e3a11) >>> 0;
+    const caveSeedB = (seed ^ 0x44d7c3) >>> 0;
+    for (let y = 20; y < WORLD_H - 4; y++) {
+      for (let x = 0; x < WORLD_W; x++) {
+        if (y < surface[x] + 9) continue;
+        const cave = noise2(x, y, 21, caveSeedA) * 0.6 + noise2(x, y, 8, caveSeedB) * 0.4;
+        if (cave > 0.665) blocks[tileIndex(x, y)] = B.AIR;
+      }
+    }
+
+    // Winding tunnels make the underground feel connected rather than spongy.
+    const tunnelRandom = mulberry32((seed ^ 0xc0ffee) >>> 0);
+    for (let tunnel = 0; tunnel < 17; tunnel++) {
+      let x = 5 + tunnelRandom() * (WORLD_W - 10);
+      let y = 58 + tunnelRandom() * 50;
+      let angle = tunnelRandom() * Math.PI * 2;
+      const length = 24 + Math.floor(tunnelRandom() * 68);
+      for (let step = 0; step < length; step++) {
+        const tx = Math.floor(x);
+        const ty = Math.floor(y);
+        if (tx < 2 || tx > WORLD_W - 3 || ty > WORLD_H - 4) break;
+        if (ty < surface[tx] + 8) {
+          y += 0.7;
+          continue;
+        }
+        const radius = 0.8 + tunnelRandom() * 1.65;
+        carveCaveCircle(blocks, surface, x, y, radius);
+        angle += (tunnelRandom() - 0.5) * 0.8;
+        x += Math.cos(angle) * 0.95;
+        y += Math.sin(angle) * 0.55;
+      }
+    }
+
+    // Trees, planted on grass above the caves.
+    const treeRandom = mulberry32((seed ^ 0x7ee5a1) >>> 0);
+    let treeX = 8;
+    while (treeX < WORLD_W - 8) {
+      treeX += 4 + Math.floor(treeRandom() * 8);
+      if (treeX >= WORLD_W - 6) break;
+      const groundY = surface[treeX];
+      if (groundY < 8 || groundY > WORLD_H - 12) continue;
+      if (blocks[tileIndex(treeX, groundY)] !== B.GRASS) continue;
+      if (blocks[tileIndex(treeX, groundY - 1)] !== B.AIR) continue;
+
+      const trunkHeight = 4 + Math.floor(treeRandom() * 4);
+      const topY = groundY - trunkHeight;
+      for (let i = 1; i <= trunkHeight; i++) {
+        blocks[tileIndex(treeX, groundY - i)] = B.WOOD;
+      }
+
+      for (let dy = -2; dy <= 1; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          if (Math.abs(dx) === 2 && (dy === -2 || dy === 1)) continue;
+          if (dx === 0 && dy >= -1) continue;
+          const leafX = treeX + dx;
+          const leafY = topY + dy;
+          if (leafX < 0 || leafX >= WORLD_W || leafY < 0) continue;
+          if (blocks[tileIndex(leafX, leafY)] === B.AIR) {
+            blocks[tileIndex(leafX, leafY)] = B.LEAVES;
+          }
+        }
+      }
+    }
+
+    // The unbreakable floor. A few extra nubs make the bottom feel less flat.
+    for (let x = 0; x < WORLD_W; x++) {
+      blocks[tileIndex(x, WORLD_H - 1)] = B.BEDROCK;
+      blocks[tileIndex(x, WORLD_H - 2)] = B.BEDROCK;
+      if (hash01(x, 3, seed) > 0.76) {
+        blocks[tileIndex(x, WORLD_H - 3)] = B.BEDROCK;
+      }
+    }
+
+    return { blocks, surface };
+  }
+
+  function carveCaveCircle(blocks, surface, cx, cy, radius) {
+    const minX = Math.max(2, Math.floor(cx - radius));
+    const maxX = Math.min(WORLD_W - 3, Math.ceil(cx + radius));
+    const minY = Math.max(1, Math.floor(cy - radius));
+    const maxY = Math.min(WORLD_H - 4, Math.ceil(cy + radius));
+    const rSquared = radius * radius;
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        if (y < surface[x] + 8) continue;
+        const dx = x + 0.5 - cx;
+        const dy = y + 0.5 - cy;
+        if (dx * dx + dy * dy <= rSquared) {
+          blocks[tileIndex(x, y)] = B.AIR;
+        }
+      }
+    }
+  }
+
+  function findSpawn(blocks, surface) {
+    const center = Math.floor(WORLD_W * 0.5);
+    for (let distance = 0; distance < WORLD_W; distance++) {
+      const dirs = distance === 0 ? [0] : [-1, 1];
+      for (const dir of dirs) {
+        const x = center + dir * distance;
+        if (x < 3 || x >= WORLD_W - 3) continue;
+        const groundY = surface[x];
+        if (groundY < 8 || groundY > WORLD_H - 8) continue;
+        const ground = blocks[tileIndex(x, groundY)];
+        if (ground !== B.GRASS && ground !== B.SAND) continue;
+        // Spawn in a small glade: room for the player and a step in either direction.
+        let clear = true;
+        for (let dx = -1; dx <= 1 && clear; dx++) {
+          const nx = x + dx;
+          for (let dy = 1; dy <= 4; dy++) {
+            if (blocks[tileIndex(nx, groundY - dy)] !== B.AIR) {
+              clear = false;
+              break;
+            }
+          }
+        }
+        if (clear) {
+          for (const dx of [-2, 2]) {
+            const nx = x + dx;
+            if (nx >= 0 && nx < WORLD_W && blocks[tileIndex(nx, groundY - 1)] !== B.AIR) {
+              clear = false;
+              break;
+            }
+          }
+        }
+        if (!clear) continue;
+        return {
+          x: x + 0.5 - PLAYER_W / 2,
+          y: groundY - PLAYER_H - 0.0001,
+          onGround: true
+        };
+      }
+    }
+    return {
+      x: WORLD_W * 0.5,
+      y: 30,
+      onGround: false
+    };
+  }
+
+  // ---------- World access ----------
+
+  function getBlock(tx, ty) {
+    if (!game.blocks || tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) return B.AIR;
+    return game.blocks[tileIndex(tx, ty)];
+  }
+
+  function isSolidAt(tx, ty) {
+    if (tx < 0 || tx >= WORLD_W) return true;
+    if (ty < 0 || ty >= WORLD_H) return false;
+    return game.blocks[tileIndex(tx, ty)] !== B.AIR;
+  }
+
+  function intersectsPlayer(tx, ty) {
+    const p = game.player;
+    return tx + 1 > p.x && tx < p.x + p.w && ty + 1 > p.y && ty < p.y + p.h;
+  }
+
+  function hasSolidNeighbour(tx, ty) {
+    return isSolidAt(tx - 1, ty) || isSolidAt(tx + 1, ty) || isSolidAt(tx, ty - 1) || isSolidAt(tx, ty + 1);
+  }
+
+  function playerCenter() {
+    return {
+      x: game.player.x + game.player.w / 2,
+      y: game.player.y + game.player.h / 2
+    };
+  }
+
+  function tileReachDistance(tx, ty) {
+    const center = playerCenter();
+    return Math.hypot(tx + 0.5 - center.x, ty + 0.5 - center.y);
+  }
+
+  // ---------- Texture painting ----------
+
+  function colorAt(palette, random) {
+    return palette[Math.min(palette.length - 1, Math.floor(random() * palette.length))];
+  }
+
+  function createTileTexture(type, variant) {
+    const texture = document.createElement("canvas");
+    texture.width = TEXTURE_SIZE;
+    texture.height = TEXTURE_SIZE;
+    const g = texture.getContext("2d");
+    const rand = mulberry32((type * 2654435761 ^ (variant + 1) * 40503 ^ 0xb10c) >>> 0);
+    const def = BLOCKS[type];
+    const pixel = TEXTURE_SIZE / 16;
+
+    const drawPixel = (x, y, color) => {
+      g.fillStyle = color;
+      g.fillRect(x * pixel, y * pixel, pixel, pixel);
+    };
+
+    if (type === B.GLASS) {
+      g.clearRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+      g.fillStyle = "rgba(143, 219, 227, 0.18)";
+      g.fillRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE);
+      g.fillStyle = "rgba(195, 245, 248, 0.52)";
+      g.fillRect(0, 0, TEXTURE_SIZE, 3);
+      g.fillRect(0, 0, 3, TEXTURE_SIZE);
+      g.fillRect(TEXTURE_SIZE - 3, 0, 3, TEXTURE_SIZE);
+      g.fillRect(0, TEXTURE_SIZE - 3, TEXTURE_SIZE, 3);
+      g.fillStyle = "rgba(236, 255, 255, 0.44)";
+      g.fillRect(pixel * 2, pixel * 3, pixel, pixel * 6);
+      g.fillRect(pixel * 3, pixel * 2, pixel * 4, pixel);
+      g.fillStyle = "rgba(79, 142, 149, 0.36)";
+      g.fillRect(pixel * 11, pixel * 4, pixel * 2, pixel);
+      g.fillRect(pixel * 12, pixel * 5, pixel, pixel * 4);
+      return texture;
+    }
+
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        let color;
+
+        if (type === B.GRASS) {
+          if (y < 4) color = colorAt(def.palette, rand);
+          else if (y === 4 && rand() < 0.52) color = colorAt(def.palette, rand);
+          else color = colorAt(def.dirtPalette, rand);
+        } else if (type === B.LEAVES) {
+          color = colorAt(def.palette, rand);
+        } else if (type === B.WOOD) {
+          const stripe = (x + variant) % 5;
+          color = colorAt(def.palette, rand);
+          if (stripe === 0 || stripe === 3) color = def.palette[2];
+        } else if (type === B.PLANKS) {
+          const board = Math.floor(y / 4);
+          color = def.palette[(board + variant) % def.palette.length];
+          if (y % 4 === 0) color = def.palette[2];
+          if (rand() < 0.12) color = def.palette[3];
+        } else if (type === B.BEDROCK) {
+          color = colorAt(def.palette, rand);
+          if ((x + y + variant) % 7 === 0) color = "#262b2d";
+        } else {
+          color = colorAt(def.palette, rand);
+        }
+
+        drawPixel(x, y, color);
+      }
+    }
+
+    // Small hand-painted details give each material its own silhouette.
+    if (type === B.GRASS) {
+      for (let i = 0; i < 5; i++) {
+        const x = Math.floor(rand() * 15);
+        drawPixel(x, 0, "#8bda63");
+      }
+      for (let i = 0; i < 7; i++) {
+        const x = Math.floor(rand() * 16);
+        const y = 6 + Math.floor(rand() * 9);
+        drawPixel(x, y, rand() > 0.5 ? "#60402a" : "#946844");
+      }
+    } else if (type === B.DIRT) {
+      for (let i = 0; i < 12; i++) {
+        const x = Math.floor(rand() * 16);
+        const y = Math.floor(rand() * 16);
+        drawPixel(x, y, rand() > 0.55 ? "#5e3e28" : "#a0714b");
+      }
+    } else if (type === B.STONE) {
+      for (let i = 0; i < 3; i++) {
+        let x = Math.floor(rand() * 14);
+        let y = 3 + Math.floor(rand() * 9);
+        const length = 2 + Math.floor(rand() * 3);
+        for (let j = 0; j < length; j++) {
+          drawPixel(Math.min(15, x + j), y, "#5a6367");
+          if (j === 1 && rand() > 0.45 && y < 15) drawPixel(x + j, y + 1, "#9ba3a5");
+        }
+      }
+      for (let i = 0; i < 5; i++) {
+        drawPixel(Math.floor(rand() * 16), Math.floor(rand() * 16), "#a4abad");
+      }
+    } else if (type === B.WOOD) {
+      for (let i = 0; i < 4; i++) {
+        const x = 2 + Math.floor(rand() * 12);
+        const y = 3 + Math.floor(rand() * 10);
+        drawPixel(x, y, "#53351f");
+        if (y < 15) drawPixel(x, y + 1, "#a1744c");
+      }
+    } else if (type === B.PLANKS) {
+      for (let y = 4; y < 16; y += 4) {
+        for (let x = 0; x < 16; x++) drawPixel(x, y, "#8d673a");
+      }
+      for (let i = 0; i < 4; i++) {
+        const x = Math.floor(rand() * 14);
+        const y = 1 + Math.floor(rand() * 14);
+        drawPixel(x, y, "#9b7141");
+      }
+    } else if (type === B.SAND) {
+      for (let i = 0; i < 13; i++) {
+        drawPixel(Math.floor(rand() * 16), Math.floor(rand() * 16), rand() > 0.5 ? "#c7b273" : "#f0e0a7");
+      }
+    } else if (type === B.LEAVES) {
+      for (let i = 0; i < 12; i++) {
+        const x = Math.floor(rand() * 16);
+        const y = Math.floor(rand() * 16);
+        if (x > 0 && x < 15 && y > 0 && y < 15) {
+          g.clearRect(x * pixel, y * pixel, pixel, pixel);
+        }
+      }
+      for (let i = 0; i < 8; i++) {
+        drawPixel(Math.floor(rand() * 16), Math.floor(rand() * 16), "#72bc55");
+      }
+    }
+
+    // A soft top-light and bottom-shadow make the blocks read as chunky objects.
+    g.fillStyle = "rgba(255, 255, 255, 0.075)";
+    g.fillRect(0, 0, TEXTURE_SIZE, 2);
+    g.fillRect(0, 0, 2, TEXTURE_SIZE);
+    g.fillStyle = "rgba(0, 0, 0, 0.12)";
+    g.fillRect(0, TEXTURE_SIZE - 2, TEXTURE_SIZE, 2);
+    g.fillRect(TEXTURE_SIZE - 2, 0, 2, TEXTURE_SIZE);
+
+    return texture;
+  }
+
+  function createWallTexture(variant) {
+    const texture = document.createElement("canvas");
+    texture.width = TEXTURE_SIZE;
+    texture.height = TEXTURE_SIZE;
+    const g = texture.getContext("2d");
+    const rand = mulberry32((0x0cae5 + variant * 977) >>> 0);
+    const palette = ["#4a4337", "#554d3e", "#403a30", "#5e5645", "#3a352c"];
+    const pixel = TEXTURE_SIZE / 16;
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        g.fillStyle = colorAt(palette, rand);
+        g.fillRect(x * pixel, y * pixel, pixel, pixel);
+      }
+    }
+    g.strokeStyle = "rgba(15, 16, 14, 0.34)";
+    g.lineWidth = Math.max(1, pixel * 0.75);
+    for (let i = 0; i < 3; i++) {
+      const startX = Math.floor(rand() * 14);
+      const startY = Math.floor(rand() * 14);
+      g.beginPath();
+      g.moveTo(startX * pixel, startY * pixel);
+      g.lineTo((startX + 1 + Math.floor(rand() * 2)) * pixel, (startY + 1) * pixel);
+      g.stroke();
+    }
+    for (let i = 0; i < 5; i++) {
+      g.fillStyle = rand() > 0.55 ? "rgba(96, 87, 68, 0.28)" : "rgba(12, 14, 12, 0.32)";
+      g.fillRect(Math.floor(rand() * 16) * pixel, Math.floor(rand() * 16) * pixel, pixel, pixel);
+    }
+    return texture;
+  }
+
+  function buildTextures() {
+    tileTextures = {};
+    for (const id of Object.keys(BLOCKS).map(Number)) {
+      tileTextures[id] = [];
+      for (let variant = 0; variant < TEXTURE_VARIANTS; variant++) {
+        tileTextures[id].push(createTileTexture(id, variant));
+      }
+    }
+    wallTextures = [createWallTexture(0), createWallTexture(1), createWallTexture(2)];
+  }
+
+  // ---------- Hotbar and persistence UI ----------
+
+  function buildHotbar() {
+    ui.hotbar.innerHTML = "";
+    HOTBAR_IDS.forEach((id, index) => {
+      const def = BLOCKS[id];
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "slot";
+      button.dataset.index = String(index);
+      button.setAttribute("aria-label", `${index + 1}: ${def.name}`);
+      button.innerHTML = `
+        <span class="slot-num" aria-hidden="true">${index + 1}</span>
+        <canvas class="slot-icon" width="${TEXTURE_SIZE}" height="${TEXTURE_SIZE}" aria-hidden="true"></canvas>
+        <span class="slot-count" aria-hidden="true"></span>
+      `;
+      const icon = button.querySelector("canvas");
+      icon.getContext("2d").drawImage(tileTextures[id][0], 0, 0);
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        selectSlot(index);
+        canvas.focus({ preventScroll: true });
+      });
+      ui.hotbar.appendChild(button);
+    });
+    updateHotbar();
+  }
+
+  function updateHotbar() {
+    const slots = ui.hotbar.querySelectorAll(".slot");
+    slots.forEach((slot, index) => {
+      const id = HOTBAR_IDS[index];
+      const count = Math.max(0, Math.floor(game.inventory[id] || 0));
+      slot.classList.toggle("selected", index === game.selected);
+      slot.classList.toggle("empty", count === 0);
+      slot.setAttribute("aria-pressed", index === game.selected ? "true" : "false");
+      slot.setAttribute("aria-label", `${index + 1}: ${BLOCKS[id].name}, ${count} in supply${index === game.selected ? ", selected" : ""}`);
+      const countNode = slot.querySelector(".slot-count");
+      countNode.textContent = count > 99 ? "99+" : String(count);
+    });
+    const selectedId = HOTBAR_IDS[game.selected];
+    ui.selectedName.textContent = BLOCKS[selectedId].name;
+  }
+
+  function selectSlot(index) {
+    if (index < 0 || index >= HOTBAR_IDS.length || index === game.selected) {
+      updateHotbar();
+      return;
+    }
+    game.selected = index;
+    updateHotbar();
+    markDirty();
+  }
+
+  function cycleSlot(direction) {
+    const next = (game.selected + direction + HOTBAR_IDS.length) % HOTBAR_IDS.length;
+    selectSlot(next);
+  }
+
+  function updateSeedLabel() {
+    ui.seedLabel.textContent = seedText(game.seed);
+    document.title = `Blockhollow — seed ${seedText(game.seed)}`;
+  }
+
+  function setSaveStatus(text, state) {
+    ui.saveText.textContent = text;
+    ui.saveChip.dataset.state = state;
+  }
+
+  function markDirty() {
+    if (!game.loaded) return;
+    game.dirty = true;
+    setSaveStatus("Unsaved", "dirty");
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => saveNow(), 900);
+  }
+
+  function encodeBlocks(blocks) {
+    const runs = [];
+    let last = blocks[0];
+    let count = 0;
+    for (let i = 0; i < blocks.length; i++) {
+      const value = blocks[i];
+      if (i !== 0 && value !== last) {
+        runs.push(last + ":" + count);
+        last = value;
+        count = 0;
+      }
+      count++;
+    }
+    runs.push(last + ":" + count);
+    return runs.join(";");
+  }
+
+  function decodeBlocks(encoded, length) {
+    if (typeof encoded !== "string" || !encoded) return null;
+    const result = new Uint8Array(length);
+    let cursor = 0;
+    for (const run of encoded.split(";")) {
+      const split = run.indexOf(":");
+      if (split < 1) return null;
+      const id = Number(run.slice(0, split));
+      const count = Number(run.slice(split + 1));
+      if (!Number.isInteger(id) || id < 0 || id > B.BEDROCK) return null;
+      if (!Number.isInteger(count) || count <= 0 || cursor + count > length) return null;
+      result.fill(id, cursor, cursor + count);
+      cursor += count;
+    }
+    return cursor === length ? result : null;
+  }
+
+  function saveNow() {
+    if (!game.loaded) return false;
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    const payload = {
+      v: SAVE_VERSION,
+      savedAt: Date.now(),
+      seed: game.seed,
+      blocks: encodeBlocks(game.blocks),
+      surface: Array.from(game.surface),
+      player: {
+        x: game.player.x,
+        y: game.player.y,
+        facing: game.player.facing
+      },
+      inventory: game.inventory,
+      selected: game.selected
+    };
+    try {
+      window.localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+      game.dirty = false;
+      game.storageFailing = false;
+      game.lastSavedAt = payload.savedAt;
+      game.lastSavedPos = { x: game.player.x, y: game.player.y };
+      const time = new Date(payload.savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      setSaveStatus("Saved", "saved");
+      ui.saveChip.title = `Autosaved at ${time}`;
+      return true;
+    } catch (error) {
+      const firstFailure = !game.storageFailing;
+      game.storageFailing = true;
+      setSaveStatus("Not saving", "error");
+      ui.saveChip.title = "Local storage is unavailable or full.";
+      if (firstFailure) {
+        showToast("Local saving is unavailable. This browser blocked local storage.", 3600, true);
+      }
+      return false;
+    }
+  }
+
+  function loadSave() {
+    let raw;
+    try {
+      raw = window.localStorage.getItem(SAVE_KEY);
+    } catch (error) {
+      return null;
+    }
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      if (!data || data.v !== SAVE_VERSION) return null;
+      const seed = Number(data.seed);
+      if (!Number.isFinite(seed)) return null;
+      const blocks = decodeBlocks(data.blocks, WORLD_W * WORLD_H);
+      if (!blocks) return null;
+      let surface = null;
+      if (Array.isArray(data.surface) && data.surface.length === WORLD_W) {
+        const valid = data.surface.every((value) => Number.isInteger(value) && value > 0 && value < WORLD_H);
+        if (valid) surface = Int16Array.from(data.surface);
+      }
+      if (!surface) surface = deriveSurface(blocks);
+      return { ...data, seed: seed >>> 0, blocks, surface };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function deriveSurface(blocks) {
+    const surface = new Int16Array(WORLD_W);
+    for (let x = 0; x < WORLD_W; x++) {
+      let found = WORLD_H - 3;
+      for (let y = 0; y < WORLD_H; y++) {
+        if (blocks[tileIndex(x, y)] !== B.AIR) {
+          found = y;
+          break;
+        }
+      }
+      surface[x] = found;
+    }
+    return surface;
+  }
+
+  function applySave(data) {
+    const spawn = findSpawn(data.blocks, data.surface);
+    let px = Number(data.player && data.player.x);
+    let py = Number(data.player && data.player.y);
+    let valid = Number.isFinite(px) && Number.isFinite(py);
+    if (valid) {
+      px = clamp(px, 0, WORLD_W - PLAYER_W);
+      py = clamp(py, 0, WORLD_H - PLAYER_H);
+      if (playerOverlapsSolid(px, py, data.blocks)) valid = false;
+    }
+    if (!valid) {
+      px = spawn.x;
+      py = spawn.y;
+    }
+
+    const inventory = { ...DEFAULT_INVENTORY };
+    if (data.inventory && typeof data.inventory === "object") {
+      for (const id of HOTBAR_IDS) {
+        const value = Number(data.inventory[id]);
+        if (Number.isFinite(value)) inventory[id] = Math.max(0, Math.floor(value));
+      }
+    }
+
+    game.seed = data.seed;
+    game.blocks = data.blocks;
+    game.surface = data.surface;
+    game.player.x = px;
+    game.player.y = py;
+    game.player.vx = 0;
+    game.player.vy = 0;
+    game.player.facing = data.player && data.player.facing < 0 ? -1 : 1;
+    game.player.onGround = false;
+    game.inventory = inventory;
+    game.selected = clamp(Number.isInteger(data.selected) ? data.selected : 0, 0, HOTBAR_IDS.length - 1);
+    game.particles = [];
+    game.hover = null;
+    game.placement = null;
+    game.loaded = true;
+    game.dirty = false;
+    game.lastSavedAt = Number(data.savedAt) || Date.now();
+    game.lastSavedPos = { x: px, y: py };
+    updateSeedLabel();
+    updateHotbar();
+    snapCamera();
+    setSaveStatus("Saved", "saved");
+  }
+
+  function playerOverlapsSolid(x, y, blocks) {
+    const startX = Math.max(0, Math.floor(x));
+    const endX = Math.min(WORLD_W - 1, Math.floor(x + PLAYER_W));
+    const startY = Math.max(0, Math.floor(y));
+    const endY = Math.min(WORLD_H - 1, Math.floor(y + PLAYER_H));
+    for (let ty = startY; ty <= endY; ty++) {
+      for (let tx = startX; tx <= endX; tx++) {
+        if (blocks[tileIndex(tx, ty)] !== B.AIR) {
+          if (tx + 1 > x && tx < x + PLAYER_W && ty + 1 > y && ty < y + PLAYER_H) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // ---------- Starting and restoring worlds ----------
+
+  function startNewWorld(seed) {
+    const generated = generateWorld(seed);
+    const spawn = findSpawn(generated.blocks, generated.surface);
+    game.seed = seed >>> 0;
+    game.blocks = generated.blocks;
+    game.surface = generated.surface;
+    game.player.x = spawn.x;
+    game.player.y = spawn.y;
+    game.player.vx = 0;
+    game.player.vy = 0;
+    game.player.facing = 1;
+    game.player.onGround = spawn.onGround || false;
+    game.inventory = { ...DEFAULT_INVENTORY };
+    game.selected = 0;
+    game.particles = [];
+    game.hover = null;
+    game.placement = null;
+    game.jumpBuffer = 0;
+    game.coyote = 0;
+    game.loaded = true;
+    game.dirty = true;
+    game.storageFailing = false;
+    updateSeedLabel();
+    updateHotbar();
+    snapCamera();
+    saveNow();
+  }
+
+  function restoreOrCreate() {
+    const data = loadSave();
+    if (data) {
+      applySave(data);
+      showToast("Welcome back. Your hollow was restored.");
+      return true;
+    }
+    const seed = randomSeed();
+    startNewWorld(seed);
+    showToast(`A new hollow · seed ${seedText(seed)}`);
+    return false;
+  }
+
+  // ---------- Saving loop ----------
+
+  function autosaveTick() {
+    if (!game.loaded) return;
+    const moved = !game.lastSavedPos ||
+      Math.abs(game.player.x - game.lastSavedPos.x) > 0.35 ||
+      Math.abs(game.player.y - game.lastSavedPos.y) > 0.35;
+    if (game.dirty || moved) saveNow();
+  }
+
+  // ---------- Camera ----------
+
+  function cameraTarget() {
+    const vw = view.w / view.tile;
+    const vh = view.h / view.tile;
+    const lookAhead = clamp(game.player.vx * 0.13, -0.8, 0.8);
+    const x = game.player.x + game.player.w * 0.5 + lookAhead - vw * 0.5;
+    const y = game.player.y + game.player.h * 0.5 + 1.7 - vh * 0.5;
+    const maxX = Math.max(0, WORLD_W - vw);
+    const maxY = Math.max(0, WORLD_H - vh);
+    return {
+      x: clamp(x, 0, maxX),
+      y: clamp(y, 0, maxY)
+    };
+  }
+
+  function snapCamera() {
+    const target = cameraTarget();
+    game.camera.x = target.x;
+    game.camera.y = target.y;
+  }
+
+  function updateCamera(dt) {
+    const target = cameraTarget();
+    const blend = 1 - Math.exp(-7.5 * dt);
+    game.camera.x = lerp(game.camera.x, target.x, blend);
+    game.camera.y = lerp(game.camera.y, target.y, blend);
+    const vw = view.w / view.tile;
+    const vh = view.h / view.tile;
+    game.camera.x = clamp(game.camera.x, 0, Math.max(0, WORLD_W - vw));
+    game.camera.y = clamp(game.camera.y, 0, Math.max(0, WORLD_H - vh));
+  }
+
+  // ---------- Player physics ----------
+
+  function queueJump() {
+    game.jumpBuffer = JUMP_BUFFER;
+  }
+
+  function updatePlayer(dt) {
+    const p = game.player;
+    const dir = (game.keys.right ? 1 : 0) - (game.keys.left ? 1 : 0);
+    const acceleration = p.onGround ? 58 : 31;
+
+    if (dir !== 0) {
+      p.facing = dir;
+      p.vx = moveToward(p.vx, dir * MOVE_SPEED, acceleration * dt);
+    } else {
+      p.vx = moveToward(p.vx, 0, (p.onGround ? 77 : 17) * dt);
+      if (Math.abs(p.vx) < 0.005) p.vx = 0;
+    }
+
+    if (p.onGround) game.coyote = COYOTE_TIME;
+    else game.coyote = Math.max(0, game.coyote - dt);
+
+    if (game.jumpBuffer > 0) {
+      game.jumpBuffer = Math.max(0, game.jumpBuffer - dt);
+      if (game.coyote > 0) {
+        p.vy = -JUMP_SPEED;
+        p.onGround = false;
+        game.coyote = 0;
+        game.jumpBuffer = 0;
+        spawnDust(p.x + p.w / 2, p.y + p.h, 5, "#c6b68d");
+      }
+    }
+
+    p.vy = Math.min(p.vy + GRAVITY * dt, MAX_FALL);
+    movePlayer(dt);
+
+    const movingOnGround = p.onGround && Math.abs(p.vx) > 0.45;
+    game.walkPhase += Math.abs(p.vx) * dt * 2.6;
+    game.stepTimer -= dt;
+    if (movingOnGround && game.stepTimer <= 0) {
+      game.stepTimer = 0.22;
+      spawnDust(p.x + p.w * 0.5, p.y + p.h, 2, "#c7b58f");
+    }
+
+    game.landImpact = Math.max(0, game.landImpact - dt * 4.2);
+    updateCamera(dt);
+  }
+
+  function movePlayer(dt) {
+    const p = game.player;
+
+    p.x += p.vx * dt;
+    if (p.vx > 0) {
+      const tx = Math.floor(p.x + p.w - 0.0001);
+      const fromY = Math.floor(p.y + 0.001);
+      const toY = Math.floor(p.y + p.h - 0.001);
+      for (let ty = fromY; ty <= toY; ty++) {
+        if (isSolidAt(tx, ty)) {
+          p.x = tx - p.w - 0.0001;
+          p.vx = 0;
+          break;
+        }
+      }
+    } else if (p.vx < 0) {
+      const tx = Math.floor(p.x + 0.0001);
+      const fromY = Math.floor(p.y + 0.001);
+      const toY = Math.floor(p.y + p.h - 0.001);
+      for (let ty = fromY; ty <= toY; ty++) {
+        if (isSolidAt(tx, ty)) {
+          p.x = tx + 1 + 0.0001;
+          p.vx = 0;
+          break;
+        }
+      }
+    }
+    p.x = clamp(p.x, 0.0001, WORLD_W - p.w - 0.0001);
+
+    const wasGrounded = p.onGround;
+    const fallSpeed = p.vy;
+    p.y += p.vy * dt;
+    p.onGround = false;
+
+    if (p.vy > 0) {
+      const ty = Math.floor(p.y + p.h - 0.0001);
+      const fromX = Math.floor(p.x + 0.001);
+      const toX = Math.floor(p.x + p.w - 0.001);
+      for (let tx = fromX; tx <= toX; tx++) {
+        if (isSolidAt(tx, ty)) {
+          p.y = ty - p.h - 0.0001;
+          p.vy = 0;
+          p.onGround = true;
+          if (!wasGrounded && fallSpeed > 13) {
+            game.landImpact = Math.min(1, fallSpeed / 26);
+            spawnDust(p.x + p.w / 2, p.y + p.h, 7, "#c9b894");
+          }
+          break;
+        }
+      }
+    } else if (p.vy < 0) {
+      const ty = Math.floor(p.y + 0.0001);
+      const fromX = Math.floor(p.x + 0.001);
+      const toX = Math.floor(p.x + p.w - 0.001);
+      for (let tx = fromX; tx <= toX; tx++) {
+        if (isSolidAt(tx, ty)) {
+          p.y = ty + 1 + 0.0001;
+          p.vy = 0;
+          break;
+        }
+      }
+    }
+
+    if (p.y < 0) {
+      p.y = 0;
+      p.vy = Math.max(0, p.vy);
+    }
+    if (p.y > WORLD_H - p.h) {
+      p.y = WORLD_H - p.h - 0.001;
+      p.vy = 0;
+      p.onGround = true;
+    }
+  }
+
+  // ---------- Particles ----------
+
+  function spawnDust(x, y, count, color) {
+    for (let i = 0; i < count; i++) {
+      const life = 0.25 + Math.random() * 0.32;
+      game.particles.push({
+        x: x + (Math.random() - 0.5) * 0.55,
+        y: y - Math.random() * 0.12,
+        vx: (Math.random() - 0.5) * 2.1,
+        vy: -Math.random() * 1.9,
+        gravity: 8,
+        size: 0.045 + Math.random() * 0.07,
+        color,
+        life,
+        maxLife: life
+      });
+    }
+  }
+
+  function spawnBlockParticles(tx, ty, type) {
+    const def = BLOCKS[type];
+    const palette = def ? def.particles : ["#ffffff"];
+    for (let i = 0; i < 13; i++) {
+      const life = 0.34 + Math.random() * 0.45;
+      game.particles.push({
+        x: tx + 0.18 + Math.random() * 0.64,
+        y: ty + 0.18 + Math.random() * 0.64,
+        vx: (Math.random() - 0.5) * 5.5,
+        vy: -1.2 - Math.random() * 4.5,
+        gravity: 21,
+        size: 0.07 + Math.random() * 0.12,
+        color: palette[Math.floor(Math.random() * palette.length)],
+        life,
+        maxLife: life
+      });
+    }
+  }
+
+  function updateParticles(dt) {
+    let write = 0;
+    for (let read = 0; read < game.particles.length; read++) {
+      const particle = game.particles[read];
+      particle.life -= dt;
+      if (particle.life <= 0) continue;
+      particle.vy += particle.gravity * dt;
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      game.particles[write++] = particle;
+    }
+    game.particles.length = write;
+  }
+
+  // ---------- Interactions ----------
+
+  function isDialogOpen() {
+    return ui.helpDialog.open || ui.newDialog.open;
+  }
+
+  function refreshHover() {
+    if (!game.mouse.inside || isDialogOpen() || !game.loaded) {
+      game.hover = null;
+      game.placement = null;
+      return;
+    }
+    const tx = Math.floor(game.camera.x + game.mouse.x / view.tile);
+    const ty = Math.floor(game.camera.y + game.mouse.y / view.tile);
+    if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) {
+      game.hover = null;
+      game.placement = null;
+      return;
+    }
+    const id = getBlock(tx, ty);
+    const distance = tileReachDistance(tx, ty);
+    const hover = {
+      tx,
+      ty,
+      id,
+      distance,
+      inReach: distance <= REACH
+    };
+    game.hover = hover;
+    game.placement = getPlacementResult(tx, ty, hover).candidate;
+  }
+
+  function getPlacementResult(tx, ty, hover) {
+    const currentHover = hover || game.hover;
+    if (!currentHover) return { reason: "none", candidate: null };
+    if (tx < 0 || tx >= WORLD_W || ty < 0 || ty >= WORLD_H) {
+      return { reason: "outside", candidate: null };
+    }
+
+    const hoveredId = getBlock(tx, ty);
+    let options;
+
+    if (hoveredId === B.AIR) {
+      options = [{ x: tx, y: ty }];
+    } else {
+      // Choose the face under the cursor first, then relax to nearby faces.
+      const pointerWorldX = game.camera.x + game.mouse.x / view.tile;
+      const pointerWorldY = game.camera.y + game.mouse.y / view.tile;
+      const dx = pointerWorldX - (tx + 0.5);
+      const dy = pointerWorldY - (ty + 0.5);
+      const directions = [
+        { x: 0, y: -1 }, { x: 0, y: 1 },
+        { x: -1, y: 0 }, { x: 1, y: 0 }
+      ];
+      let preferred;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        preferred = dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+      } else {
+        preferred = dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+      }
+      directions.sort((a, b) => {
+        const aPreferred = a.x === preferred.x && a.y === preferred.y;
+        const bPreferred = b.x === preferred.x && b.y === preferred.y;
+        if (aPreferred !== bPreferred) return aPreferred ? -1 : 1;
+        return Math.abs(a.x - dx) + Math.abs(a.y - dy) - (Math.abs(b.x - dx) + Math.abs(b.y - dy));
+      });
+      options = directions.map((dir) => ({ x: tx + dir.x, y: ty + dir.y }));
+    }
+
+    let failReason = hoveredId === B.AIR ? "support" : "blocked";
+    for (const option of options) {
+      if (option.x < 0 || option.x >= WORLD_W || option.y < 0 || option.y >= WORLD_H) {
+        failReason = "outside";
+        continue;
+      }
+      if (getBlock(option.x, option.y) !== B.AIR) {
+        continue;
+      }
+      if (!hasSolidNeighbour(option.x, option.y)) {
+        failReason = "support";
+        continue;
+      }
+      if (intersectsPlayer(option.x, option.y)) {
+        failReason = "player";
+        continue;
+      }
+      const distance = tileReachDistance(option.x, option.y);
+      if (distance > REACH) {
+        failReason = "reach";
+        continue;
+      }
+      return { reason: "ok", candidate: option };
+    }
+    if (failReason === "blocked" && currentHover.distance > REACH) failReason = "reach";
+    return { reason: failReason, candidate: null };
+  }
+
+  function mineBlock() {
+    const hover = game.hover;
+    if (!hover || !hover.inReach) {
+      if (hover && !hover.inReach) showToast("That block is out of reach.", 1200);
+      return false;
+    }
+    const id = getBlock(hover.tx, hover.ty);
+    if (id === B.AIR) return false;
+    if (BLOCKS[id].unbreakable) {
+      showToast("Bedrock is unbreakable.", 1500);
+      return false;
+    }
+
+    game.blocks[tileIndex(hover.tx, hover.ty)] = B.AIR;
+    game.inventory[id] = (game.inventory[id] || 0) + 1;
+    spawnBlockParticles(hover.tx, hover.ty, id);
+    updateHotbar();
+    markDirty();
+    refreshHover();
+    return true;
+  }
+
+  function placeBlock() {
+    if (!game.hover) return false;
+    const selectedId = HOTBAR_IDS[game.selected];
+    const result = getPlacementResult(game.hover.tx, game.hover.ty, game.hover);
+
+    if (!result.candidate) {
+      const now = performance.now();
+      if (now - game.lastPlaceToast > 1000) {
+        game.lastPlaceToast = now;
+        const messages = {
+          reach: "That spot is out of reach.",
+          player: "You cannot build inside yourself.",
+          support: "Build against a block face.",
+          outside: "That is beyond the edge of the world.",
+          blocked: "There is no empty space there."
+        };
+        showToast(messages[result.reason] || "You cannot build there.", 1600);
+      }
+      return false;
+    }
+
+    const supply = Math.max(0, Math.floor(game.inventory[selectedId] || 0));
+    if (supply <= 0) {
+      showToast(`Out of ${BLOCKS[selectedId].name} — mine some more.`, 1700);
+      return false;
+    }
+
+    const { x, y } = result.candidate;
+    game.blocks[tileIndex(x, y)] = selectedId;
+    game.inventory[selectedId] = supply - 1;
+    spawnBlockParticles(x, y, selectedId);
+    updateHotbar();
+    markDirty();
+    refreshHover();
+    return true;
+  }
+
+  // ---------- Resize / render setup ----------
+
+  function resizeCanvas() {
+    const width = Math.max(1, window.innerWidth);
+    const height = Math.max(1, window.innerHeight);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    view.w = width;
+    view.h = height;
+    view.dpr = dpr;
+    view.tile = clamp(Math.round(height / 20.5), 30, 46);
+
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = width + "px";
+    canvas.style.height = height + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+
+    if (game.loaded) {
+      snapCamera();
+      refreshHover();
+    }
+  }
+
+  function roundRectPath(g, x, y, w, h, r) {
+    const radius = Math.min(r, w / 2, h / 2);
+    g.beginPath();
+    g.moveTo(x + radius, y);
+    g.arcTo(x + w, y, x + w, y + h, radius);
+    g.arcTo(x + w, y + h, x, y + h, radius);
+    g.arcTo(x, y + h, x, y, radius);
+    g.arcTo(x, y, x + w, y, radius);
+    g.closePath();
+  }
+
+  // ---------- Background painting ----------
+
+  function drawCloud(g, x, y, scale, alpha) {
+    g.save();
+    g.globalAlpha = alpha;
+    const unit = Math.max(6, Math.round(scale * 9));
+    g.fillStyle = "rgba(255, 255, 255, 0.88)";
+    g.fillRect(x, y + unit * 0.55, unit * 4.5, unit * 0.75);
+    g.fillRect(x + unit * 0.65, y + unit * 0.15, unit * 2.0, unit * 0.75);
+    g.fillRect(x + unit * 1.65, y, unit * 1.35, unit * 0.9);
+    g.fillRect(x + unit * 3.25, y + unit * 0.25, unit * 1.35, unit * 0.65);
+    g.fillStyle = "rgba(215, 238, 236, 0.6)";
+    g.fillRect(x + unit * 0.7, y + unit * 1.22, unit * 2.8, unit * 0.32);
+    g.restore();
+  }
+
+  function drawSky(time) {
+    const grad = ctx.createLinearGradient(0, 0, 0, view.h);
+    grad.addColorStop(0, "#66bde2");
+    grad.addColorStop(0.46, "#a8dded");
+    grad.addColorStop(0.75, "#d8e9cf");
+    grad.addColorStop(1, "#edf0d2");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, view.w, view.h);
+
+    const sunX = view.w * 0.79;
+    const sunY = view.h * 0.16;
+    const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, Math.max(120, view.w * 0.18));
+    glow.addColorStop(0, "rgba(255, 245, 188, 0.55)");
+    glow.addColorStop(0.35, "rgba(255, 238, 158, 0.20)");
+    glow.addColorStop(1, "rgba(255, 238, 158, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, view.w, view.h);
+
+    ctx.fillStyle = "#ffedb0";
+    ctx.fillRect(Math.round(sunX - 27), Math.round(sunY - 27), 54, 54);
+    ctx.fillStyle = "#ffe49a";
+    ctx.fillRect(Math.round(sunX - 20), Math.round(sunY - 20), 40, 40);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.36)";
+    ctx.fillRect(Math.round(sunX - 27), Math.round(sunY - 27), 54, 5);
+
+    const cloudSeed = (game.seed ^ 0x7a22b3) >>> 0;
+    const drift = time * 2.1;
+    for (let i = 0; i < 9; i++) {
+      const span = view.w + 420;
+      const baseX = hash01(i, 1, cloudSeed) * span;
+      const y = 65 + hash01(i, 2, cloudSeed) * Math.min(250, view.h * 0.34);
+      const x = ((baseX - game.camera.x * view.tile * 0.05 - drift * (0.45 + hash01(i, 3, cloudSeed))) % span + span) % span - 210;
+      drawCloud(ctx, x, y, 0.65 + hash01(i, 4, cloudSeed) * 0.65, 0.48 + hash01(i, 5, cloudSeed) * 0.25);
+    }
+
+    drawHillLayer("#9eb99b", 0.58, 0.25, 0.11, 0x21ab33);
+    drawHillLayer("#7faaa0", 0.68, 0.18, 0.18, 0x8be201);
+    drawHillLayer("#659586", 0.78, 0.13, 0.26, 0x31d449);
+
+    const haze = ctx.createLinearGradient(0, view.h * 0.45, 0, view.h * 0.8);
+    haze.addColorStop(0, "rgba(232, 245, 224, 0)");
+    haze.addColorStop(1, "rgba(223, 239, 211, 0.38)");
+    ctx.fillStyle = haze;
+    ctx.fillRect(0, view.h * 0.45, view.w, view.h * 0.35);
+  }
+
+  function drawHillLayer(color, screenBase, amplitude, parallax, seedOffset) {
+    const horizon = view.h * screenBase;
+    const step = 28;
+    ctx.beginPath();
+    ctx.moveTo(-step, view.h);
+    for (let sx = -step; sx <= view.w + step; sx += step) {
+      const sample = (sx + game.camera.x * view.tile * parallax) / 230;
+      const bump = noise1(sample, 1.0, (game.seed ^ seedOffset) >>> 0) * 0.62 +
+        noise1(sample, 0.28, (game.seed ^ (seedOffset + 0x991))) * 0.38;
+      const y = horizon - bump * amplitude * view.h;
+      ctx.lineTo(sx, Math.round(y / 7) * 7);
+    }
+    ctx.lineTo(view.w + step, view.h);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function drawUndergroundBackdrop() {
+    const vw = view.w / view.tile;
+    const vh = view.h / view.tile;
+    const fromX = Math.max(0, Math.floor(game.camera.x) - 1);
+    const toX = Math.min(WORLD_W - 1, Math.ceil(game.camera.x + vw) + 1);
+    const fromY = Math.max(0, Math.floor(game.camera.y) - 1);
+    const toY = Math.min(WORLD_H - 1, Math.ceil(game.camera.y + vh) + 1);
+    const gradient = ctx.createLinearGradient(0, 0, 0, view.h);
+    gradient.addColorStop(0, "#4f4334");
+    gradient.addColorStop(0.3, "#3b382d");
+    gradient.addColorStop(0.72, "#2c312a");
+    gradient.addColorStop(1, "#232923");
+
+    for (let tx = fromX; tx <= toX; tx++) {
+      const top = Math.max(0, game.surface[tx]);
+      const screenTop = (top - game.camera.y) * view.tile;
+      if (screenTop >= view.h) continue;
+      const screenX = Math.floor((tx - game.camera.x) * view.tile);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(screenX - 1, Math.floor(screenTop), view.tile + 2, view.h - screenTop);
+    }
+
+    // A dark, cracked wall pattern gives open caves a sense of depth.
+    ctx.save();
+    ctx.globalAlpha = 0.82;
+    for (let ty = fromY; ty <= toY; ty++) {
+      for (let tx = fromX; tx <= toX; tx++) {
+        if (ty < game.surface[tx]) continue;
+        const wall = wallTextures[Math.floor(hash01(tx, ty, game.seed ^ 0x51a7) * wallTextures.length)];
+        const screenX = Math.floor((tx - game.camera.x) * view.tile);
+        const screenY = Math.floor((ty - game.camera.y) * view.tile);
+        ctx.drawImage(wall, screenX - 1, screenY - 1, view.tile + 2, view.tile + 2);
+      }
+    }
+    ctx.restore();
+
+    // A subtle rocky line at the top edge keeps the underground from feeling flat.
+    ctx.fillStyle = "rgba(15, 18, 15, 0.16)";
+    for (let tx = fromX; tx <= toX; tx++) {
+      const screenX = Math.floor((tx - game.camera.x) * view.tile);
+      const screenTop = (game.surface[tx] - game.camera.y) * view.tile;
+      ctx.fillRect(screenX - 1, Math.floor(screenTop), view.tile + 2, 2);
+    }
+  }
+
+  // ---------- World painting ----------
+
+  function drawWorldTiles() {
+    const vw = view.w / view.tile;
+    const vh = view.h / view.tile;
+    const fromX = Math.max(0, Math.floor(game.camera.x) - 1);
+    const toX = Math.min(WORLD_W - 1, Math.ceil(game.camera.x + vw) + 1);
+    const fromY = Math.max(0, Math.floor(game.camera.y) - 1);
+    const toY = Math.min(WORLD_H - 1, Math.ceil(game.camera.y + vh) + 1);
+
+    for (let ty = fromY; ty <= toY; ty++) {
+      for (let tx = fromX; tx <= toX; tx++) {
+        const id = game.blocks[tileIndex(tx, ty)];
+        if (id === B.AIR) continue;
+        const variants = tileTextures[id];
+        const variant = Math.floor(hash01(tx, ty, game.seed ^ 0x1234) * variants.length);
+        const screenX = Math.floor((tx - game.camera.x) * view.tile);
+        const screenY = Math.floor((ty - game.camera.y) * view.tile);
+        ctx.drawImage(variants[variant], screenX - 1, screenY - 1, view.tile + 2, view.tile + 2);
+
+        const depth = ty - game.surface[tx];
+        if (depth > 7) {
+          const shade = Math.min(0.17, (depth - 7) * 0.012);
+          ctx.fillStyle = `rgba(8, 12, 10, ${shade.toFixed(3)})`;
+          ctx.fillRect(screenX, screenY, view.tile + 1, view.tile + 1);
+        }
+      }
+    }
+  }
+
+  function drawCaveDetails() {
+    const vw = view.w / view.tile;
+    const vh = view.h / view.tile;
+    const fromX = Math.max(0, Math.floor(game.camera.x) - 1);
+    const toX = Math.min(WORLD_W - 1, Math.ceil(game.camera.x + vw) + 1);
+    const fromY = Math.max(0, Math.floor(game.camera.y));
+    const toY = Math.min(WORLD_H - 1, Math.ceil(game.camera.y + vh));
+    const pixel = Math.max(1, Math.round(view.tile / 18));
+
+    for (let ty = fromY; ty <= toY; ty++) {
+      for (let tx = fromX; tx <= toX; tx++) {
+        if (ty < game.surface[tx] + 4) continue;
+        if (game.blocks[tileIndex(tx, ty)] !== B.AIR) continue;
+        const roll = hash01(tx, ty, game.seed ^ 0xcafe11);
+        const px = Math.floor((tx - game.camera.x) * view.tile);
+        const py = Math.floor((ty - game.camera.y) * view.tile);
+
+        if (getBlock(tx, ty - 1) !== B.AIR && roll < 0.14) {
+          const length = 2 + Math.floor(hash01(tx, ty, game.seed ^ 0x5a1ac) * 4.5);
+          ctx.fillStyle = "rgba(72, 70, 59, 0.94)";
+          ctx.fillRect(px + Math.round(view.tile * 0.35), py, pixel, pixel * length);
+          ctx.fillRect(px + Math.round(view.tile * 0.47), py, pixel, pixel * (length + 1));
+          ctx.fillRect(px + Math.round(view.tile * 0.58), py, pixel, pixel * (length - 1));
+          ctx.fillStyle = "rgba(151, 142, 115, 0.42)";
+          ctx.fillRect(px + Math.round(view.tile * 0.35), py, pixel, pixel);
+        } else if (getBlock(tx, ty + 1) !== B.AIR && roll > 0.935) {
+          const stemHeight = 1 + Math.floor(hash01(tx, ty, game.seed ^ 0x9f0) * 2);
+          const bottom = py + Math.round(view.tile * 0.86);
+          const cx = px + Math.round(view.tile * 0.48);
+          const glowing = roll > 0.982;
+          if (glowing) {
+            ctx.fillStyle = "rgba(112, 214, 201, 0.09)";
+            ctx.fillRect(cx - Math.round(view.tile * 0.22), bottom - Math.round(view.tile * 0.48), Math.round(view.tile * 0.44), Math.round(view.tile * 0.42));
+          }
+          ctx.fillStyle = "#a4b39f";
+          ctx.fillRect(cx, bottom - stemHeight * pixel - pixel, pixel, stemHeight * pixel);
+          ctx.fillStyle = glowing ? "#9be6d5" : "#d29a73";
+          ctx.fillRect(cx - pixel, bottom - stemHeight * pixel - pixel * 2, pixel * 3, pixel);
+          ctx.fillRect(cx, bottom - stemHeight * pixel - pixel * 3, pixel, pixel);
+        }
+      }
+    }
+  }
+
+  function drawDecorations() {
+    const vw = view.w / view.tile;
+    const fromX = Math.max(0, Math.floor(game.camera.x) - 1);
+    const toX = Math.min(WORLD_W - 1, Math.ceil(game.camera.x + vw) + 1);
+
+    for (let tx = fromX; tx <= toX; tx++) {
+      const groundY = game.surface[tx];
+      if (groundY <= 0) continue;
+      const surfaceId = getBlock(tx, groundY);
+      if (surfaceId !== B.GRASS && surfaceId !== B.SAND) continue;
+      if (getBlock(tx, groundY - 1) !== B.AIR) continue;
+
+      const px = Math.floor((tx - game.camera.x) * view.tile);
+      const py = Math.floor((groundY - game.camera.y) * view.tile);
+      const s = Math.max(2, Math.round(view.tile / 16));
+
+      if (surfaceId === B.SAND) {
+        const sandRoll = hash01(tx, groundY, game.seed ^ 0x5a4d);
+        if (sandRoll > 0.16) continue;
+        if (sandRoll < 0.08) {
+          // Dry brush and a couple of sun-bleached pebbles.
+          ctx.fillStyle = "#9b844f";
+          ctx.fillRect(px + Math.round(view.tile * 0.34), py + Math.round(view.tile * 0.67), s, Math.round(s * 2.6));
+          ctx.fillRect(px + Math.round(view.tile * 0.47), py + Math.round(view.tile * 0.58), s, Math.round(s * 3.2));
+          ctx.fillRect(px + Math.round(view.tile * 0.60), py + Math.round(view.tile * 0.71), s, Math.round(s * 2.1));
+          ctx.fillStyle = "#b39a5f";
+          ctx.fillRect(px + Math.round(view.tile * 0.35), py + Math.round(view.tile * 0.64), s, s);
+          ctx.fillStyle = "#c5ae73";
+          ctx.fillRect(px + Math.round(view.tile * 0.69), py + Math.round(view.tile * 0.82), s * 2, s);
+        } else {
+          ctx.fillStyle = "#b49d66";
+          ctx.fillRect(px + Math.round(view.tile * 0.4), py + Math.round(view.tile * 0.8), s * 2, s);
+          ctx.fillStyle = "#ceb981";
+          ctx.fillRect(px + Math.round(view.tile * 0.42), py + Math.round(view.tile * 0.78), s, s);
+        }
+        continue;
+      }
+
+      const roll = hash01(tx, groundY, game.seed ^ 0xA17E);
+      if (roll > 0.31) continue;
+
+      if (roll < 0.19) {
+        // A little tuft of grass.
+        ctx.fillStyle = "#4f9638";
+        ctx.fillRect(px + Math.round(view.tile * 0.28), py + Math.round(view.tile * 0.72), s, Math.round(s * 2.5));
+        ctx.fillRect(px + Math.round(view.tile * 0.43), py + Math.round(view.tile * 0.62), s, Math.round(s * 3.2));
+        ctx.fillRect(px + Math.round(view.tile * 0.58), py + Math.round(view.tile * 0.76), s, Math.round(s * 2.0));
+        ctx.fillStyle = "#79c356";
+        ctx.fillRect(px + Math.round(view.tile * 0.30), py + Math.round(view.tile * 0.68), s, s);
+      } else {
+        // A tiny flower: stem and a few square petals.
+        const flowerSeed = hash01(tx, 2, game.seed ^ 0xF10A);
+        const color = flowerSeed > 0.72 ? "#fff4bf" : flowerSeed > 0.34 ? "#f4cf6c" : "#e77b64";
+        const cx = px + Math.round(view.tile * 0.48);
+        const bottom = py + Math.round(view.tile * 0.86);
+        ctx.fillStyle = "#4e8e38";
+        ctx.fillRect(cx, bottom - Math.round(s * 4.2), s, Math.round(s * 4.2));
+        ctx.fillStyle = "#5ba442";
+        ctx.fillRect(cx - s, bottom - Math.round(s * 2.4), s, s);
+        ctx.fillStyle = color;
+        ctx.fillRect(cx - s, bottom - Math.round(s * 5.5), s * 3, s);
+        ctx.fillRect(cx, bottom - Math.round(s * 6.4), s, s * 3);
+        ctx.fillStyle = "rgba(72, 59, 34, 0.65)";
+        ctx.fillRect(cx, bottom - Math.round(s * 5.3), s, s);
+      }
+    }
+  }
+
+  function drawParticles() {
+    for (const particle of game.particles) {
+      const alpha = clamp(particle.life / particle.maxLife, 0, 1);
+      const x = (particle.x - game.camera.x) * view.tile;
+      const y = (particle.y - game.camera.y) * view.tile;
+      const size = Math.max(1.5, particle.size * view.tile * 2.1);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = particle.color;
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(size), Math.round(size));
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawPlayerSprite() {
+    const p = game.player;
+    const screenX = (p.x - game.camera.x) * view.tile;
+    const screenY = (p.y - game.camera.y) * view.tile;
+    const width = p.w * view.tile;
+    const height = p.h * view.tile;
+    const footX = screenX + width / 2;
+    const footY = screenY + height;
+    const unit = height / 34;
+    const moving = p.onGround && Math.abs(p.vx) > 0.35;
+    const swing = moving ? Math.sin(game.walkPhase) * 0.58 : 0;
+    const bob = moving ? Math.abs(Math.sin(game.walkPhase)) * unit * 1.2 : 0;
+    const squashX = 1 + game.landImpact * 0.065;
+    const squashY = 1 - game.landImpact * 0.105;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(13, 20, 12, 0.24)";
+    ctx.beginPath();
+    ctx.ellipse(footX, footY - 1, width * 0.52, Math.max(2, unit * 1.5), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(footX, footY - bob);
+    ctx.scale(p.facing * squashX, squashY);
+    ctx.lineWidth = Math.max(1, unit * 0.55);
+    ctx.strokeStyle = "#1c2119";
+    ctx.lineJoin = "miter";
+
+    const drawLeg = (offsetX, rotation) => {
+      ctx.save();
+      ctx.translate(offsetX, -11.2 * unit);
+      ctx.rotate(rotation);
+      ctx.fillStyle = "#3e4664";
+      ctx.fillRect(-1.8 * unit, 0, 3.6 * unit, 8.6 * unit);
+      ctx.strokeRect(-1.8 * unit, 0, 3.6 * unit, 8.6 * unit);
+      ctx.fillStyle = "#252b3a";
+      ctx.fillRect(-2.05 * unit, 6.3 * unit, 4.1 * unit, 4.9 * unit);
+      ctx.strokeRect(-2.05 * unit, 6.3 * unit, 4.1 * unit, 4.9 * unit);
+      ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+      ctx.fillRect(-1.35 * unit, 0.4 * unit, 0.9 * unit, 5.2 * unit);
+      ctx.restore();
+    };
+
+    const drawArm = (offsetX, rotation, skinVisible) => {
+      ctx.save();
+      ctx.translate(offsetX, -21.4 * unit);
+      ctx.rotate(rotation);
+      ctx.fillStyle = "#2c7772";
+      ctx.fillRect(-1.35 * unit, 0, 2.7 * unit, 7.2 * unit);
+      ctx.strokeRect(-1.35 * unit, 0, 2.7 * unit, 7.2 * unit);
+      ctx.fillStyle = skinVisible ? "#d7a376" : "#b98760";
+      ctx.fillRect(-1.35 * unit, 6.9 * unit, 2.7 * unit, 3.5 * unit);
+      ctx.strokeRect(-1.35 * unit, 6.9 * unit, 2.7 * unit, 3.5 * unit);
+      ctx.restore();
+    };
+
+    // Back arm and back leg.
+    drawArm(-4.05 * unit, -swing * 0.72, false);
+    drawLeg(-2.15 * unit, swing * 0.72);
+
+    // Torso, belt and little collar.
+    ctx.fillStyle = "#2f8580";
+    ctx.fillRect(-5.1 * unit, -22.2 * unit, 10.2 * unit, 11.6 * unit);
+    ctx.strokeRect(-5.1 * unit, -22.2 * unit, 10.2 * unit, 11.6 * unit);
+    ctx.fillStyle = "#246c68";
+    ctx.fillRect(-5.1 * unit, -17.9 * unit, 10.2 * unit, 2.1 * unit);
+    ctx.fillStyle = "#c89554";
+    ctx.fillRect(-5.1 * unit, -15.9 * unit, 10.2 * unit, 1.45 * unit);
+    ctx.fillStyle = "#f0d9a0";
+    ctx.fillRect(0.2 * unit, -21.8 * unit, 1.1 * unit, 3.8 * unit);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.10)";
+    ctx.fillRect(-4.4 * unit, -21.5 * unit, 2.1 * unit, 6.2 * unit);
+
+    // Front leg and front arm.
+    drawLeg(2.15 * unit, -swing * 0.72);
+    drawArm(4.05 * unit, swing * 0.72, true);
+
+    // Head and hair.
+    ctx.fillStyle = "#d9a676";
+    ctx.fillRect(-4.55 * unit, -31.7 * unit, 9.1 * unit, 9.3 * unit);
+    ctx.strokeRect(-4.55 * unit, -31.7 * unit, 9.1 * unit, 9.3 * unit);
+    ctx.fillStyle = "#3b2b22";
+    ctx.fillRect(-4.8 * unit, -32.15 * unit, 9.6 * unit, 3.9 * unit);
+    ctx.fillRect(-4.8 * unit, -29.0 * unit, 2.3 * unit, 5.0 * unit);
+    ctx.fillStyle = "#553b2a";
+    ctx.fillRect(-4.55 * unit, -31.1 * unit, 7.8 * unit, 1.15 * unit);
+    ctx.fillStyle = "#f0c49a";
+    ctx.fillRect(2.2 * unit, -27.5 * unit, 1.5 * unit, 1.6 * unit);
+    ctx.fillStyle = "#20241b";
+    ctx.fillRect(2.6 * unit, -27.1 * unit, 1.1 * unit, 1.5 * unit);
+    ctx.fillStyle = "#ba7f5b";
+    ctx.fillRect(1.4 * unit, -24.2 * unit, 2.2 * unit, 0.7 * unit);
+
+    // A small block held in the front hand.
+    const selectedId = HOTBAR_IDS[game.selected];
+    const heldTexture = tileTextures[selectedId][0];
+    const heldSize = 7.2 * unit;
+    ctx.save();
+    ctx.translate(6.1 * unit, -14.2 * unit);
+    ctx.rotate(0.08);
+    ctx.fillStyle = "rgba(14, 18, 13, 0.28)";
+    ctx.fillRect(-heldSize / 2 + 1, -heldSize / 2 + 2, heldSize, heldSize);
+    ctx.drawImage(heldTexture, -heldSize / 2, -heldSize / 2, heldSize, heldSize);
+    ctx.strokeStyle = "#1c2119";
+    ctx.lineWidth = Math.max(1, unit * 0.45);
+    ctx.strokeRect(-heldSize / 2, -heldSize / 2, heldSize, heldSize);
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  function drawTargetOverlay() {
+    if (!game.hover) return;
+    const hover = game.hover;
+    const sx = Math.floor((hover.tx - game.camera.x) * view.tile);
+    const sy = Math.floor((hover.ty - game.camera.y) * view.tile);
+    const isBlock = hover.id !== B.AIR;
+    const reachable = hover.inReach;
+    const outlineColor = !reachable ? "#ff897a" : isBlock ? "#ffe6a1" : "#91df71";
+
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(14, 20, 13, 0.8)";
+    ctx.strokeRect(sx + 0.5, sy + 0.5, view.tile - 1, view.tile - 1);
+    ctx.strokeStyle = outlineColor;
+    ctx.strokeRect(sx + 1.5, sy + 1.5, view.tile - 3, view.tile - 3);
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = outlineColor;
+    ctx.strokeRect(sx + 4.5, sy + 4.5, view.tile - 9, view.tile - 9);
+    ctx.restore();
+
+    const selectedId = HOTBAR_IDS[game.selected];
+    const selectedSupply = Math.max(0, Math.floor(game.inventory[selectedId] || 0));
+    if (game.placement && selectedSupply > 0) {
+      const px = Math.floor((game.placement.x - game.camera.x) * view.tile);
+      const py = Math.floor((game.placement.y - game.camera.y) * view.tile);
+      const texture = tileTextures[selectedId][0];
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.drawImage(texture, px + 2, py + 2, view.tile - 4, view.tile - 4);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "#a7ed85";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.strokeRect(px + 2.5, py + 2.5, view.tile - 5, view.tile - 5);
+      ctx.restore();
+    }
+
+    drawCursorLabel(hover, sx, sy, selectedId, selectedSupply);
+  }
+
+  function drawCursorLabel(hover, sx, sy, selectedId, selectedSupply) {
+    let text;
+    if (!hover.inReach) {
+      text = "Out of reach";
+    } else if (hover.id === B.AIR) {
+      if (game.placement) {
+        text = selectedSupply > 0
+          ? `Place ${BLOCKS[selectedId].name}`
+          : `No ${BLOCKS[selectedId].name} left`;
+      } else {
+        text = "Build against a block";
+      }
+    } else if (BLOCKS[hover.id].unbreakable) {
+      text = "Bedrock · unbreakable";
+    } else {
+      text = `${BLOCKS[hover.id].name} · hold LMB to mine`;
+    }
+
+    ctx.save();
+    ctx.font = '600 11px "Cascadia Mono", Consolas, monospace';
+    const textWidth = ctx.measureText(text).width;
+    const boxWidth = textWidth + 18;
+    const boxHeight = 24;
+    let boxX = sx + view.tile / 2 - boxWidth / 2;
+    let boxY = sy - boxHeight - 9;
+    if (boxY < 8) boxY = sy + view.tile + 8;
+    boxX = clamp(boxX, 8, view.w - boxWidth - 8);
+
+    ctx.fillStyle = "rgba(17, 22, 16, 0.86)";
+    roundRectPath(ctx, boxX, boxY, boxWidth, boxHeight, 5);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(231, 207, 155, 0.28)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = hover.inReach ? "#f4e6c4" : "#ffb2a4";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, boxX + 9, boxY + boxHeight / 2 + 0.5);
+    ctx.restore();
+  }
+
+  function drawVignette() {
+    const gradient = ctx.createRadialGradient(
+      view.w * 0.5, view.h * 0.44, Math.min(view.w, view.h) * 0.18,
+      view.w * 0.5, view.h * 0.5, Math.max(view.w, view.h) * 0.72
+    );
+    gradient.addColorStop(0, "rgba(11, 17, 12, 0)");
+    gradient.addColorStop(0.7, "rgba(9, 14, 10, 0.08)");
+    gradient.addColorStop(1, "rgba(6, 10, 7, 0.31)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, view.w, view.h);
+  }
+
+  // ---------- Main render ----------
+
+  function render(time) {
+    ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+
+    drawSky(time);
+    if (game.loaded) {
+      drawUndergroundBackdrop();
+      drawWorldTiles();
+      drawCaveDetails();
+      drawDecorations();
+      drawParticles();
+      drawPlayerSprite();
+      drawVignette();
+      drawTargetOverlay();
+    } else {
+      ctx.fillStyle = "rgba(15, 20, 14, 0.45)";
+      ctx.fillRect(0, 0, view.w, view.h);
+    }
+  }
+
+  // ---------- Input ----------
+
+  function clearInputs() {
+    game.keys.left = false;
+    game.keys.right = false;
+    game.mouse.left = false;
+    game.jumpBuffer = 0;
+  }
+
+  function openDialog(dialog) {
+    if (dialog.open) return;
+    clearInputs();
+    dialog.showModal();
+    refreshHover();
+  }
+
+  function closeDialog(dialog) {
+    if (dialog.open) dialog.close();
+  }
+
+  function onKeyDown(event) {
+    if (event.target && (event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA")) return;
+
+    if (ui.helpDialog.open) {
+      if (event.code === "KeyH" || event.code === "Escape") {
+        event.preventDefault();
+        ui.helpDialog.close();
+      }
+      return;
+    }
+    if (ui.newDialog.open) return;
+
+    const code = event.code;
+    const isJumpKey = code === "Space" || code === "KeyW" || code === "ArrowUp";
+    const isGameKey = code === "KeyA" || code === "KeyD" || code === "ArrowLeft" || code === "ArrowRight" ||
+      code === "ArrowDown" || isJumpKey;
+
+    if (isGameKey) event.preventDefault();
+
+    if (code === "KeyA" || code === "ArrowLeft") game.keys.left = true;
+    if (code === "KeyD" || code === "ArrowRight") game.keys.right = true;
+    if (isJumpKey && !event.repeat) queueJump();
+
+    if (!event.repeat && /^Digit[1-8]$/.test(code)) {
+      selectSlot(Number(code.slice(5)) - 1);
+    }
+    if (!event.repeat && /^Numpad[1-8]$/.test(code)) {
+      selectSlot(Number(code.slice(6)) - 1);
+    }
+    if (!event.repeat && code === "KeyH") {
+      event.preventDefault();
+      openDialog(ui.helpDialog);
+    }
+  }
+
+  function onKeyUp(event) {
+    const code = event.code;
+    if (code === "KeyA" || code === "ArrowLeft") game.keys.left = false;
+    if (code === "KeyD" || code === "ArrowRight") game.keys.right = false;
+  }
+
+  function updateMousePosition(event) {
+    const rect = canvas.getBoundingClientRect();
+    game.mouse.x = event.clientX - rect.left;
+    game.mouse.y = event.clientY - rect.top;
+    game.mouse.inside = game.mouse.x >= 0 && game.mouse.x < rect.width && game.mouse.y >= 0 && game.mouse.y < rect.height;
+    refreshHover();
+  }
+
+  function onPointerDown(event) {
+    if (isDialogOpen() || !game.loaded) return;
+    updateMousePosition(event);
+    canvas.focus({ preventScroll: true });
+    if (event.button === 0) {
+      game.mouse.left = true;
+      game.mineCooldown = 0.32;
+      mineBlock();
+      event.preventDefault();
+    } else if (event.button === 2) {
+      placeBlock();
+      event.preventDefault();
+    }
+  }
+
+  function onPointerUp(event) {
+    if (event.button === 0) game.mouse.left = false;
+  }
+
+  function onWheel(event) {
+    if (isDialogOpen() || !game.loaded) return;
+    event.preventDefault();
+    const now = performance.now();
+    if (now - game.wheelAt < 75) return;
+    game.wheelAt = now;
+    cycleSlot(event.deltaY > 0 ? 1 : -1);
+  }
+
+  function bindEvents() {
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", clearInputs);
+    window.addEventListener("pagehide", () => saveNow());
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) saveNow();
+    });
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+    canvas.addEventListener("pointermove", updateMousePosition);
+    canvas.addEventListener("pointerleave", () => {
+      game.mouse.inside = false;
+      game.hover = null;
+      game.placement = null;
+    });
+    canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+
+    ui.helpBtn.addEventListener("click", () => openDialog(ui.helpDialog));
+    ui.newBtn.addEventListener("click", () => {
+      clearInputs();
+      ui.seedInput.value = seedText(game.seed);
+      ui.seedInput.classList.remove("invalid");
+      ui.seedError.hidden = true;
+      openDialog(ui.newDialog);
+      window.setTimeout(() => {
+        ui.seedInput.focus();
+        ui.seedInput.select();
+      }, 30);
+    });
+
+    document.querySelectorAll("[data-close]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const dialog = document.getElementById(button.dataset.close);
+        if (dialog) closeDialog(dialog);
+      });
+    });
+
+    [ui.helpDialog, ui.newDialog].forEach((dialog) => {
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+      dialog.addEventListener("close", () => {
+        clearInputs();
+        canvas.focus({ preventScroll: true });
+      });
+    });
+
+    ui.randomSeedBtn.addEventListener("click", () => {
+      ui.seedInput.value = seedText(randomSeed());
+      ui.seedInput.classList.remove("invalid");
+      ui.seedError.hidden = true;
+      ui.seedInput.focus();
+      ui.seedInput.select();
+    });
+
+    ui.seedInput.addEventListener("input", () => {
+      ui.seedInput.classList.remove("invalid");
+      ui.seedError.hidden = true;
+    });
+
+    ui.newWorldForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const parsed = parseSeed(ui.seedInput.value);
+      if (parsed === null) {
+        ui.seedInput.classList.add("invalid");
+        ui.seedError.textContent = "Use a whole number — for example 2048 or -17.";
+        ui.seedError.hidden = false;
+        ui.seedInput.focus();
+        return;
+      }
+      closeDialog(ui.newDialog);
+      startNewWorld(parsed);
+      showToast(`Grown from seed ${seedText(parsed)}.`);
+    });
+
+    ui.hotbar.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        cycleSlot(event.key === "ArrowRight" ? 1 : -1);
+        const slots = ui.hotbar.querySelectorAll(".slot");
+        if (slots[game.selected]) slots[game.selected].focus();
+      }
+    });
+
+    window.setInterval(autosaveTick, 5000);
+    window.addEventListener("beforeunload", () => saveNow());
+  }
+
+  // ---------- Toast ----------
+
+  function showToast(message, duration = 2400, isError = false) {
+    ui.toast.textContent = message;
+    ui.toast.classList.toggle("error", isError);
+    ui.toast.classList.add("show");
+    if (game.toastTimer) clearTimeout(game.toastTimer);
+    game.toastTimer = window.setTimeout(() => {
+      ui.toast.classList.remove("show");
+    }, duration);
+  }
+
+  // ---------- Fixed update loop ----------
+
+  function update(dt) {
+    game.landImpact = Math.max(0, game.landImpact - dt * 0.7);
+    updateParticles(dt);
+    updatePlayer(dt);
+
+    if (game.mouse.left && game.mouse.inside && !isDialogOpen()) {
+      game.mineCooldown -= dt;
+      if (game.mineCooldown <= 0) {
+        mineBlock();
+        game.mineCooldown = 0.17;
+      }
+    }
+    refreshHover();
+  }
+
+  let lastFrame = performance.now();
+  let accumulator = 0;
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const delta = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
+    lastFrame = now;
+
+    if (!isDialogOpen() && game.loaded) {
+      accumulator += delta;
+      let steps = 0;
+      while (accumulator >= FIXED_STEP && steps < 10) {
+        update(FIXED_STEP);
+        accumulator -= FIXED_STEP;
+        steps++;
+      }
+      if (steps >= 10) accumulator = 0;
+    } else {
+      accumulator = 0;
+    }
+
+    refreshHover();
+    render(now / 1000);
+  }
+
+  // ---------- Boot ----------
+
+  function boot() {
+    buildTextures();
+    buildHotbar();
+    bindEvents();
+    resizeCanvas();
+    restoreOrCreate();
+    canvas.focus({ preventScroll: true });
+    requestAnimationFrame(frame);
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

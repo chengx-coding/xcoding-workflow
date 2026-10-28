@@ -6,30 +6,103 @@ xcoding-workflow helps coding agents carry work from an initial request to a tes
 
 Current source candidate version: <!-- xc:version -->0.3.2<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
 
-## What It Does
+## How XC fits together
 
-- XC uses a required `xcoding` CLI package plus workflow modules called
-  **Skills**.
+The workflow is portable text plus one small command line. The agent host supplies the model and tools; the `xc-*` Skills supply the lifecycle and its quality rules; the `xcoding` command owns deterministic state; the project's `.xcoding` workshop keeps the durable record; and the project's own bridge file supplies its commands, language, and constraints.
+
+```mermaid
+flowchart LR
+    subgraph host["Agent host"]
+        agent["Coding agent"]
+    end
+    subgraph workflow["Portable workflow"]
+        skills["xc-* Skills<br/>lifecycle and quality stages"]
+        bridge[".xcoding/WORKFLOW.md<br/>project bridge"]
+    end
+    subgraph engine["xcoding command line"]
+        cli["runtime · viewer · setup"]
+        tree["Managed runtime tree<br/>single progress authority"]
+    end
+    subgraph project["Consumer project"]
+        code["Code · tests · docs"]
+        record[".xcoding workshop<br/>documents · artifacts"]
+    end
+    agent --> skills
+    bridge --> skills
+    skills --> cli
+    cli --> tree
+    tree --> record
+    skills --> code
+    record --> code
+```
+
+The bridge is the only read point for declarative project facts. The workshop is a separate Git repository, so workflow history never mixes with source history. Skills talk to state only through the `xcoding` command line; no Skill parses or edits the runtime tree directly.
+
+## How a managed work order runs
+
+Before changing anything, XC turns the request into a small set of confirmed facts. If the work is local, reversible, and needs no durable record, it can finish as one direct action. Any unanswered or risky fact sends it to a managed work order, where the lifecycle is preserved in a runtime tree rather than in a conversation.
+
+```mermaid
+flowchart TD
+    request["Request"] --> facts{"Facts confirmed safe<br/>for direct work?"}
+    facts -- "all six are no" --> direct["Direct work"]
+    facts -- "yes, unknown, or unreadable" --> managed["Managed work order"]
+    managed --> goal["Goal"] --> analysis["Analysis"] --> solution["Solution"]
+    solution --> gate{"Approval gate"}
+    gate -- "approved" --> implementation["Implementation"]
+    gate -- "rejected or revision" --> recovery["Recovery work"] --> solution
+    implementation --> verification["Verification"]
+    verification -- "fails" --> implementation
+    verification --> report["Change report<br/>when policy requires"]
+    report --> result["Result and evidence"]
+    verification -- "no report due" --> result
+```
+
+The six facts are: whether progress or evidence must be kept for later; whether the work changes shared code, a public contract, user data, permissions, production or infrastructure state, a security boundary, or a release asset; whether a complete one-step rollback is unavailable; whether the work must wait, restart, continue in another session, or depend on an asynchronous result; whether multiple people, agents, or external systems coordinate; and whether a retained review, approval, verification, audit, or commit record is required. Each answer is `yes`, `no`, or `unknown`; only six confirmed `no` answers allow direct work. Project rules may require the managed path even then.
+
+## Who does what at run time
+
+The main session orchestrates; the runtime schedules; a worker executes one node. The worker receives only its own contract and inputs, so a long workflow does not depend on one context holding everything.
+
+```mermaid
+sequenceDiagram
+    participant M as Main session
+    participant R as xcoding runtime
+    participant W as Worker
+    participant U as User
+    U->>M: Request
+    M->>R: Initialize or resume work order
+    R-->>M: Ready node and control packet
+    M->>R: Start node
+    M->>W: One node contract and inputs
+    W->>W: Do the work, write the artifact
+    W->>R: Complete, fail, or block
+    R-->>M: Updated state and next ready node
+    M->>U: Gate question when a human decision is required
+```
+
+## See it work
+
+The [sample work order](samples/minecraft-sandbox-work-order/README.md) is a real, complete run: a seeded consumer project was driven by the DeepSeek Harness command line through the full managed lifecycle to build a playable 2D sandbox. The work order, its documents, its verification evidence and the rendered orchestration tree are all archived in the sample. It also contains one direct run of the same task without XC, with screenshots and an honest comparison.
+
+![The completed sample orchestration tree](samples/minecraft-sandbox-work-order/tree/orchestration-tree.png)
+
+The image is the final orchestration tree of that run, exported from the read-only local viewer. The sample README explains how to read it, including the skipped change-report group and the unreachable branches left pending.
+
+## What it does
+
+- XC uses a required `xcoding` CLI package plus workflow modules called **Skills**.
 - Small, low-risk tasks can be completed directly.
-- Work that needs a plan, review, recovery, or a durable record runs as a **managed work order**. A work order keeps the goal, decisions, progress, and evidence together.
+- Work that needs a plan, review, recovery, or a durable record runs as a **managed work order**. The work order keeps the goal, decisions, progress, and evidence together.
 - An explicitly adaptive managed work order can start with one combined work leaf and one finalizer, then add documents, analysis, gates, verification, review, and recovery as confirmed facts require.
-- After implementation and verification, a work order that changed analysable code produces a **change report**: one offline HTML file that explains each change, why it exists, the design and trade-offs behind it, and where it sits in the larger flow, together with a mechanical proof that no analysable change unit was left unexplained.
-- The `.xcoding` directory is the project's workflow workspace. It is kept in a separate Git worktree, which is a separate working directory for workflow history, so those records do not mix with source-code history.
+- A work order that changed analysable code can produce a **change report**: one offline HTML file that explains each change, the design and trade-offs behind it, and where it sits in the larger flow, together with a mechanical proof that no analysable change unit was left unexplained.
+- The `.xcoding` directory is the project's workflow workspace. It is kept in a separate Git repository, so workflow history does not mix with source-code history.
 - [`xc-writing`](skills/xc-writing/SKILL.md) guides technical answers, explanations, drafting, revision, and writing review. It preserves evidence and conditions while adapting to the reader; it can be used independently or through the existing document-writing entry.
 - Long-lived product features are managed only when you explicitly create or adopt them. Ordinary maintenance does not create a feature automatically.
 
-## Choose Direct Or Managed Work
+## Choose direct or managed work
 
-Before changing anything, XC decides whether the task is safe to finish as a one-off action. It asks six questions:
-
-1. Must progress or evidence be kept for later?
-2. Could the task affect shared code, a public contract, data, permissions, security, infrastructure, or a release?
-3. Is a complete one-step rollback unavailable?
-4. Must the task wait, restart, or continue in another session?
-5. Must multiple people, agents, or external systems coordinate?
-6. Is a retained review, approval, verification, or audit record required?
-
-Each answer is `yes`, `no`, or `unknown`.
+Before changing anything, XC asks the six questions listed above.
 
 - Use **direct work** only when all six answers are confirmed `no`.
 - Use a **managed work order** when any answer is `yes`, `unknown`, or cannot be checked.
@@ -85,7 +158,7 @@ xcoding setup --project-root /absolute/path/to/consumer --rollback --json
 
 Setup refuses unmanaged conflicts and drifted managed files instead of overwriting them. XC does not provide `install.ps1`, `install.sh`, a remote-script pipe command, automatic host detection, or a force option. See [Installation](docs/getting-started/installation.md) for host paths, desired-state updates, recovery, rollback, release integrity, and support policy.
 
-## Create the Workflow Workspace
+## Create the workflow workspace
 
 XC stores plans, progress, decisions, and evidence in `.xcoding`. Keep that directory in a separate Git repository so workflow history does not mix with source-code history.
 
@@ -131,7 +204,9 @@ Agent hosts use different invocation syntax. Follow your host's normal Skill syn
 - [Installation](docs/getting-started/installation.md)
 - [Quick start](docs/getting-started/quick-start.md)
 - [Core design](docs/concepts/core-design.md)
+- [Orchestration overview](docs/orchestration/overview.md)
 - [Writing and quality Skills](docs/reference/skills/implementation-and-quality.md)
+- [Work-order sample](samples/minecraft-sandbox-work-order/README.md)
 
 `build_agents.py` is only for developing this repository. It refreshes this checkout's local Skill mirror; it does not install XC into another project.
 

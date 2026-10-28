@@ -1,0 +1,136 @@
+:root {
+  color-scheme: dark;
+  --ink: #e8eef5;
+  --muted: #9fb0c3;
+  --panel: rgba(8, 14, 22, 0.78);
+  --edge: rgba(232, 238, 245, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #0b1016;
+  color: var(--ink);
+  font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+#app {
+  position: relative;
+  width: min(960px, 100vw);
+  margin: 0 auto;
+  padding-bottom: 70px;
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 960 / 540;
+  background: #7ec8e3;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+#hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  max-width: min(620px, calc(100% - 24px));
+  padding: 8px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel);
+  pointer-events: none;
+}
+
+#hint {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+#selection {
+  margin: 0;
+  color: #7ee0a4;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#hotbar {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--panel);
+  transform: translateX(-50%);
+}
+
+#hotbar .slot {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--edge);
+  border-bottom: 4px solid var(--slot, #9fb0c3);
+  border-radius: 6px;
+  color: var(--ink);
+  font-weight: 600;
+  user-select: none;
+  cursor: pointer;
+}
+
+#hotbar .slot[data-block="grass"] {
+  --slot: #57a05a;
+}
+
+#hotbar .slot[data-block="dirt"] {
+  --slot: #8d6e63;
+}
+
+#hotbar .slot[data-block="stone"] {
+  --slot: #78909c;
+}
+
+#hotbar .slot[data-block="wood"] {
+  --slot: #a1887f;
+}
+
+#hotbar .slot.is-selected {
+  border-color: #7ee0a4;
+  border-bottom-color: #2ecc71;
+  color: #08110c;
+  background: #7ee0a4;
+  box-shadow: 0 0 0 2px rgba(126, 224, 164, 0.35);
+}
+
+#hotbar .slot:focus-visible {
+  outline: 2px solid #7ee0a4;
+  outline-offset: 2px;
+}
+
+#status {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f1c40f;
+}
+
+#status[data-state="ready"] {
+  background: #2ecc71;
+}
+
+#status[data-state="error"] {
+  background: #e74c3c;
+}

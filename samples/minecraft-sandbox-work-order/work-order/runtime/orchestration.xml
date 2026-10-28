@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS RUNTIME TREE THROUGH THE xc-orchestration-runtime SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="implement-minecraft-sandbox" work_order_id="20261028-1731-implement-minecraft-sandbox" status="succeeded" created_at="2026-10-28T09:31:36+00:00" revision="61" artifact_kind="runtime" managed_by_skill="xc-orchestration-runtime" read_policy="runtime-skill-only" updated_at="2026-10-28T09:48:58+00:00" sealed_at="2026-10-28T09:48:58+00:00" sealed_revision="61" sealed_epoch="0">
+  <meta>
+    <access_policy required_skill="xc-orchestration-runtime" read_policy="runtime-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS RUNTIME TREE THROUGH THE xc-orchestration-runtime SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="1c78491179e6d46720d6479ec0dc24fd531e70c9855e53ac34c11fee844a53f2" />
+    <template_instances>
+      <instance id="root" template_name="work-order" template_root_id="root" />
+      <instance id="goal" template_name="document-evolution" template_root_id="root" />
+      <instance id="analysis" template_name="document-evolution" template_root_id="root" />
+      <instance id="solution" template_name="document-evolution" template_root_id="root" />
+      <instance id="result" template_name="document-evolution" template_root_id="root" />
+    </template_instances>
+  </meta>
+  <blackboard>
+    <var key="work_order.has_features" updated_at="2026-10-28T09:32:11+00:00" source="main">false</var>
+    <var key="work_order.document_language" updated_at="2026-10-28T09:32:11+00:00" source="main">en</var>
+    <var key="work_order.requires_analysis" updated_at="2026-10-28T09:32:11+00:00" source="main">true</var>
+    <var key="work_order.requires_clarification" updated_at="2026-10-28T09:32:11+00:00" source="main">false</var>
+    <var key="work_order.requires_solution" updated_at="2026-10-28T09:32:11+00:00" source="main">true</var>
+    <var key="work_order.solution_gate_required" updated_at="2026-10-28T09:32:11+00:00" source="main">true</var>
+    <var key="work_order.solution_gate_outcome" updated_at="2026-10-28T09:36:38+00:00" source="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__approve-work-order-solution">approved</var>
+    <var key="work_order.solution_source_ids" updated_at="2026-10-28T09:36:31+00:00" source="main">["rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__write-document"]</var>
+    <var key="work_order.objective_source_ids" updated_at="2026-10-28T09:48:44+00:00" source="main">["rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__write-document"]</var>
+    <var key="work_order.result_source_ids" updated_at="2026-10-28T09:48:44+00:00" source="main">["rt_work-order-20261028-1731-implement-minecraft-sandbox__result__write-document"]</var>
+    <var key="work_order.requires_implementation" updated_at="2026-10-28T09:32:11+00:00" source="main">true</var>
+    <var key="work_order.requires_verification" updated_at="2026-10-28T09:32:11+00:00" source="main">true</var>
+    <var key="work_order.requires_report" updated_at="2026-10-28T09:32:11+00:00" source="main">false</var>
+    <var key="work_order.report_skip_reason" updated_at="2026-10-28T09:32:11+00:00" source="main">user_waived</var>
+    <var key="work_order.report_baseline" />
+    <var key="report.path" />
+    <var key="report.manifest_path" />
+    <var key="report.baseline_commit" />
+    <var key="report.baseline_digest" />
+    <var key="report.language">en</var>
+    <var key="report.strength">standard</var>
+    <var key="report.gate_required">false</var>
+    <var key="report.gate_outcome">not-run</var>
+    <var key="report.gate_rework_required">false</var>
+    <var key="report.gate_recovery_required">false</var>
+    <var key="report.round">1</var>
+    <var key="report.refresh_count">0</var>
+    <var key="report.refresh_reason">initial</var>
+    <var key="work_order_id" updated_at="2026-10-28T09:31:36+00:00" source="init">20261028-1731-implement-minecraft-sandbox</var>
+    <var key="today" updated_at="2026-10-28T09:31:36+00:00" source="init">2026-10-28</var>
+    <var key="work_order.convention_discovery" updated_at="2026-10-28T09:32:11+00:00" source="main">not-applicable</var>
+    <var key="work_order.convention_discovery_record" updated_at="2026-10-28T09:32:11+00:00" source="main">C:/dev/xcoding-workflow-dev/minecraft-sandbox-workshop/.xcoding/work-orders/20261028-1731-implement-minecraft-sandbox/artifacts/rt_work-order-20261028-1731-implement-minecraft-sandbox__root__prepare-work-order/convention-discovery.md</var>
+    <var key="document.path" updated_at="2026-10-28T09:48:23+00:00" source="main">C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\result.md</var>
+    <var key="document.kind" updated_at="2026-10-28T09:48:23+00:00" source="main">work-order-result</var>
+    <var key="document.template" updated_at="2026-10-28T09:48:23+00:00" source="main">C:\dev\xcoding-workflow-dev\xcoding-workflow\skills\xc-document\assets\templates\work-order-result.md</var>
+    <var key="document.inputs" updated_at="2026-10-28T09:48:23+00:00" source="main">C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\goal.md,C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\analysis.md,C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\solution.md,C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\implementation\implementation.md,C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\verification\verification.md,C:\dev\xcoding-workflow-dev\xcoding-workflow\samples\minecraft-sandbox-work-order\project\README.md</var>
+    <var key="document.contract" updated_at="2026-10-28T09:48:23+00:00" source="main">C:\dev\xcoding-workflow-dev\xcoding-workflow\skills\xc-document\SKILL.md</var>
+    <var key="document.content_language" updated_at="2026-10-28T09:48:23+00:00" source="main">en</var>
+    <var key="document.authoring_requirements" updated_at="2026-10-28T09:48:23+00:00" source="main" />
+    <var key="document.receipt.content_language" updated_at="2026-10-28T09:48:23+00:00" source="main">en</var>
+    <var key="document.receipt.audience" updated_at="2026-10-28T09:48:23+00:00" source="main" />
+    <var key="document.review_required" updated_at="2026-10-28T09:48:23+00:00" source="main">false</var>
+    <var key="document.gate_required" updated_at="2026-10-28T09:48:23+00:00" source="main">false</var>
+    <var key="document.gate_outcome" updated_at="2026-10-28T09:48:23+00:00" source="main">accepted</var>
+    <var key="document.review.open_issues" updated_at="2026-10-28T09:48:23+00:00" source="main">false</var>
+    <var key="implementation.sources.impl-core" updated_at="2026-10-28T09:36:48+00:00" source="main">["rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__write-document","rt_work-order-20261028-1731-implement-minecraft-sandbox__root__approve-work-order-solution"]</var>
+    <var key="verification.sources.verify-acceptance" updated_at="2026-10-28T09:47:36+00:00" source="main">["rt_work-order-20261028-1731-implement-minecraft-sandbox__dyn-1__impl-core"]</var>
+  </blackboard>
+  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__root" template_id="root" origin_template_id="root" origin_instance_id="root" title="Work Order" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+    <children>
+      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__prepare-work-order" template_id="prepare-work-order" origin_template_id="prepare-work-order" origin_instance_id="root" title="Prepare work order" type="task" executor="main" status="succeeded" role="work-order-prepare" started_at="2026-10-28T09:31:58+00:00" agent="main-session" completed_at="2026-10-28T09:32:14+00:00">
+        <instructions>Read the project bridge, open the work order through xc-open-work-order, validate requested feature IDs without creating features, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, and record the requested scope. Write the report commitment work_order.requires_report in this same preparation step, resolved through the report policy rather than from the mode alone: an explicit user instruction first, then the project bridge which may only tighten, then report.default in the workshop configuration, then the built-in default. The shipped code-change-only tier means true for change, repair, and maintenance and false for investigation and review, and true when the mode cannot be confirmed, because an unknown mode is never interpreted as no report needed. Record work_order.report_skip_reason whenever the report is deliberately skipped, and capture work_order.report_baseline once, as the baseline commit, the worktree digest and the digest algorithm, and only when that resolved commitment is true: a work order that resolves to no report captures nothing, and the record keeps its three values and its publishable --format keys form. Where version control is unusable for the repository - it is not a worktree, or no baseline commit is resolvable - the capture fails closed and copies nothing; a full copy is admissible only through the explicit consent opt-in of the capture command, whose reference must name the user's explicit decision obtained through a main-session gate, and no new configuration item exists for it. The commitment, the initial report strength and, when the commitment is true, the baseline record are preparation-phase records, never retrospective notes, and a missing commitment fails this node.</instructions>
+        <deliverables>An authoritative workbench and explicit feature associations.</deliverables>
+        <acceptance>The workbench is independent, feature associations are explicit, work_order.document_language is set before any document write, no unmanaged feature directory was created, and the mode-derived report commitment is written rather than assumed: work_order.requires_report carries the value the resolved report policy produced, every skip records one of the legal work_order.report_skip_reason values (read_only_mode, zero_analyzable_units, user_waived, policy_default), work_order.report_baseline records the baseline commit, the worktree digest and the digest algorithm only when the resolved commitment is true, a capture where version control was unusable failed closed with nothing copied unless the explicit consent opt-in of the capture command carried a reference naming the user's explicit decision, and a missing commitment fails this node.</acceptance>
+        <result>
+          <summary>Work order opened; language en validated; feature_ids=[]; L1 convention discovery not-applicable with record; report waived (requires_report=false, user_waived), no baseline captured; full lifecycle controls enabled.</summary>
+          <artifacts>
+            <artifact path="C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\rt_work-order-20261028-1731-implement-minecraft-sandbox__root__prepare-work-order\convention-discovery.md" />
+          </artifacts>
+          <validation>PASS: opener returned independent workbench; validate_language en ok; L1 scanner status=scanned with no C1/C2 candidates; bridge and root AGENTS.md read; requires_report=false and report_skip_reason=user_waived published.</validation>
+        </result>
+      </node>
+      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__goal-document" template_id="goal-document" origin_template_id="goal-document" origin_instance_id="root" title="Define work order goal" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" dynamic.state="closed">
+        <children>
+          <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__root" template_id="root" origin_template_id="root" origin_instance_id="goal" title="Document Evolution" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+            <children>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__write-document" template_id="write-document" origin_template_id="write-document" origin_instance_id="goal" title="Write or revise document" type="task" executor="subagent" status="succeeded" role="document-write" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" started_at="2026-10-28T09:32:40+00:00" agent="main-session" completed_at="2026-10-28T09:32:48+00:00">
+                <instructions>Read document.path, document.template, document.inputs, document.contract, document.content_language, and document.authoring_requirements from the supplied blackboard and node references. Follow the public xc-document human-readable authoring default unless explicit document.authoring_requirements override its style preferences. Preserve exact commands, identifiers, paths, logs, and machine output where literal accuracy matters. Write or revise the target document immediately, preserve valid frontmatter, and do not read the runtime XML directly.</instructions>
+                <deliverables>The managed document at document.path.</deliverables>
+                <acceptance>The target document exists, follows its domain and human-readable authoring contracts plus explicit user requirements, preserves key information, and has complete YAML frontmatter.</acceptance>
+                <result>
+                  <summary>Wrote goal.md with requested outcome, scope, constraints and acceptance conditions for the offline 2D sandbox.</summary>
+                  <artifacts>
+                    <artifact path="C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\goal.md" />
+                  </artifacts>
+                </result>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__validate-draft" template_id="validate-draft" origin_template_id="validate-draft" origin_instance_id="goal" title="Validate draft document" type="task" executor="tool" status="succeeded" role="document-validate" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" started_at="2026-10-28T09:32:55+00:00" agent="main-session" completed_at="2026-10-28T09:32:55+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind.</instructions>
+                <deliverables>A validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the draft without errors.</acceptance>
+                <result>
+                  <summary>Validated goal.md with xc-document.</summary>
+                  <validation>PASS: xc-document exited 0, ok=true, receipt facts document_kind=work-order-goal content_language=en audience=.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\minecraft-sandbox-workshop\\.xcoding\\work-orders\\20261028-1731-implement-minecraft-sandbox\\goal.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-goal"}}</check>
+                  </checks>
+                </result>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__review-loop" template_id="review-loop" origin_template_id="review-loop" origin_instance_id="goal" title="Review and revise document" type="loop" executor="main" status="skipped" role="document-review-loop" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" when="document.review_required == true" when.policy="latched" loop.iteration="1" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:32:55+00:00">
+                <children>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__review-document" template_id="review-document" origin_template_id="review-document" origin_instance_id="goal" title="Review document" type="task" executor="subagent" status="pending" role="document-review" metadata.artifact.audience="internal" metadata.artifact.content_language="en" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
+                    <instructions>Review document.path against the domain review dimensions, explicit document.authoring_requirements, and the public xc-document human-readable dimensions: audience fit, progressive disclosure, first-use terminology explanations, concision, and preservation of key information. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
+                    <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
+                    <acceptance>The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues.</acceptance>
+                  </node>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__revise-document" template_id="revise-document" origin_template_id="revise-document" origin_instance_id="goal" title="Revise document from review" type="task" executor="subagent" status="pending" role="document-revise" when="document.review.open_issues == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" depends_on="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__review-document">
+                    <instructions>Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.</instructions>
+                    <deliverables>An updated managed document.</deliverables>
+                    <acceptance>Required domain and human-readability findings are resolved or explicitly escalated to a user gate.</acceptance>
+                  </node>
+                </children>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__document-gate" template_id="document-gate" origin_template_id="document-gate" origin_instance_id="goal" title="Confirm document decisions" type="gate" executor="main" status="skipped" role="document-confirmation" when="document.gate_required == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;accepted&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="document.gate_outcome" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:32:55+00:00">
+                <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
+                <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
+                <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__document-gate-recovery-group" template_id="document-gate-recovery-group" origin_template_id="document-gate-recovery-group" origin_instance_id="goal" title="Recover non-accepting document decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="document.gate_outcome != accepted" when.policy="latched" dynamic.state="open" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:32:55+00:00" />
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__goal__validate-final" template_id="validate-final" origin_template_id="validate-final" origin_instance_id="goal" title="Validate final document" type="task" executor="tool" status="succeeded" role="document-validate-final" when="document.gate_outcome == accepted" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" when.latched="true" started_at="2026-10-28T09:33:00+00:00" agent="main-session" completed_at="2026-10-28T09:33:01+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
+                <deliverables>A final validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the final document without errors.</acceptance>
+                <result>
+                  <summary>Final goal.md validation passed.</summary>
+                  <validation>PASS: xc-document ok=true with valid work-order-goal receipt.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\minecraft-sandbox-workshop\\.xcoding\\work-orders\\20261028-1731-implement-minecraft-sandbox\\goal.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-goal"}}</check>
+                  </checks>
+                </result>
+              </node>
+            </children>
+          </node>
+        </children>
+      </node>
+      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__analysis-group" template_id="analysis-group" origin_template_id="analysis-group" origin_instance_id="root" title="Analyze requested work" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" when="work_order.requires_analysis == true" dynamic.state="closed">
+        <children>
+          <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__dyn-1__analysis-evidence" logical_key="analysis-evidence" origin_instance_id="dyn-1" title="Collect analysis evidence" type="task" executor="main" status="succeeded" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\analysis-evidence\analysis-evidence.md" metadata.artifact.audience="internal" metadata.artifact.content_language="en" started_at="2026-10-28T09:34:47+00:00" agent="main-session" completed_at="2026-10-28T09:35:04+00:00">
+            <instructions>Inspect the seed project and its verification harness; record confirmed facts, gaps, risks, alternatives and unknowns for the sandbox implementation. Do not modify product code.</instructions>
+            <deliverables>One internal analysis-evidence artifact answering the analysis questions.</deliverables>
+            <acceptance>Evidence is grounded in the actual seed files, requirements and harness; alternatives and risks are explicit; no product code changes.</acceptance>
+            <result>
+              <summary>Recorded confirmed current-state facts, requirement gaps, risks, alternatives and unknowns for the sandbox implementation.</summary>
+              <artifacts>
+                <artifact path="C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\analysis-evidence\analysis-evidence.md" />
+              </artifacts>
+              <validation>PASS: evidence grounded in the seed files, bridge, README and page harness; node artifact validated as xc-document node-artifact.</validation>
+            </result>
+          </node>
+          <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__root" template_id="root" origin_template_id="root" origin_instance_id="analysis" title="Document Evolution" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+            <children>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__write-document" template_id="write-document" origin_template_id="write-document" origin_instance_id="analysis" title="Write or revise document" type="task" executor="subagent" status="succeeded" role="document-write" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" started_at="2026-10-28T09:35:12+00:00" agent="main-session" completed_at="2026-10-28T09:35:26+00:00">
+                <instructions>Read document.path, document.template, document.inputs, document.contract, document.content_language, and document.authoring_requirements from the supplied blackboard and node references. Follow the public xc-document human-readable authoring default unless explicit document.authoring_requirements override its style preferences. Preserve exact commands, identifiers, paths, logs, and machine output where literal accuracy matters. Write or revise the target document immediately, preserve valid frontmatter, and do not read the runtime XML directly.</instructions>
+                <deliverables>The managed document at document.path.</deliverables>
+                <acceptance>The target document exists, follows its domain and human-readable authoring contracts plus explicit user requirements, preserves key information, and has complete YAML frontmatter.</acceptance>
+                <result>
+                  <summary>Wrote analysis.md synthesizing evidence, reconciliation, impact/risks and alternatives.</summary>
+                  <artifacts>
+                    <artifact path="C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\analysis.md" />
+                  </artifacts>
+                </result>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__validate-draft" template_id="validate-draft" origin_template_id="validate-draft" origin_instance_id="analysis" title="Validate draft document" type="task" executor="tool" status="succeeded" role="document-validate" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" started_at="2026-10-28T09:35:29+00:00" agent="main-session" completed_at="2026-10-28T09:35:30+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind.</instructions>
+                <deliverables>A validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the draft without errors.</acceptance>
+                <result>
+                  <summary>analysis.md validate-draft validation passed.</summary>
+                  <validation>PASS: xc-document exited 0 with a valid work-order-analysis receipt.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\minecraft-sandbox-workshop\\.xcoding\\work-orders\\20261028-1731-implement-minecraft-sandbox\\analysis.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-analysis"}}</check>
+                  </checks>
+                </result>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__review-loop" template_id="review-loop" origin_template_id="review-loop" origin_instance_id="analysis" title="Review and revise document" type="loop" executor="main" status="skipped" role="document-review-loop" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" when="document.review_required == true" when.policy="latched" loop.iteration="1" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:35:30+00:00">
+                <children>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__review-document" template_id="review-document" origin_template_id="review-document" origin_instance_id="analysis" title="Review document" type="task" executor="subagent" status="pending" role="document-review" metadata.artifact.audience="internal" metadata.artifact.content_language="en" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
+                    <instructions>Review document.path against the domain review dimensions, explicit document.authoring_requirements, and the public xc-document human-readable dimensions: audience fit, progressive disclosure, first-use terminology explanations, concision, and preservation of key information. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
+                    <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
+                    <acceptance>The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues.</acceptance>
+                  </node>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__revise-document" template_id="revise-document" origin_template_id="revise-document" origin_instance_id="analysis" title="Revise document from review" type="task" executor="subagent" status="pending" role="document-revise" when="document.review.open_issues == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" depends_on="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__review-document">
+                    <instructions>Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.</instructions>
+                    <deliverables>An updated managed document.</deliverables>
+                    <acceptance>Required domain and human-readability findings are resolved or explicitly escalated to a user gate.</acceptance>
+                  </node>
+                </children>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__document-gate" template_id="document-gate" origin_template_id="document-gate" origin_instance_id="analysis" title="Confirm document decisions" type="gate" executor="main" status="skipped" role="document-confirmation" when="document.gate_required == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;accepted&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="document.gate_outcome" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:35:30+00:00">
+                <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
+                <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
+                <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__document-gate-recovery-group" template_id="document-gate-recovery-group" origin_template_id="document-gate-recovery-group" origin_instance_id="analysis" title="Recover non-accepting document decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="document.gate_outcome != accepted" when.policy="latched" dynamic.state="open" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:35:30+00:00" />
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__analysis__validate-final" template_id="validate-final" origin_template_id="validate-final" origin_instance_id="analysis" title="Validate final document" type="task" executor="tool" status="succeeded" role="document-validate-final" when="document.gate_outcome == accepted" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" when.latched="true" started_at="2026-10-28T09:35:30+00:00" agent="main-session" completed_at="2026-10-28T09:35:30+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
+                <deliverables>A final validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the final document without errors.</acceptance>
+                <result>
+                  <summary>analysis.md validate-final validation passed.</summary>
+                  <validation>PASS: xc-document exited 0 with a valid work-order-analysis receipt.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\minecraft-sandbox-workshop\\.xcoding\\work-orders\\20261028-1731-implement-minecraft-sandbox\\analysis.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-analysis"}}</check>
+                  </checks>
+                </result>
+              </node>
+            </children>
+          </node>
+        </children>
+      </node>
+      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__reconciliation-group" template_id="reconciliation-group" origin_template_id="reconciliation-group" origin_instance_id="root" title="Reconcile related feature baselines" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="work_order.has_features == true" dynamic.state="open" skip_reason="when" skipped_at="2026-10-28T09:35:04+00:00" />
+      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__clarification-group" template_id="clarification-group" origin_template_id="clarification-group" origin_instance_id="root" title="Clarify material decisions" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="work_order.requires_clarification == true" dynamic.state="open" skip_reason="when" skipped_at="2026-10-28T09:35:04+00:00" />
+      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__work-order-solution-document" template_id="work-order-solution-document" origin_template_id="work-order-solution-document" origin_instance_id="root" title="Select work order solution" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" when="work_order.requires_solution == true" dynamic.state="closed">
+        <children>
+          <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__root" template_id="root" origin_template_id="root" origin_instance_id="solution" title="Document Evolution" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+            <children>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__write-document" template_id="write-document" origin_template_id="write-document" origin_instance_id="solution" title="Write or revise document" type="task" executor="subagent" status="succeeded" role="document-write" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" started_at="2026-10-28T09:35:54+00:00" agent="main-session" completed_at="2026-10-28T09:36:11+00:00">
+                <instructions>Read document.path, document.template, document.inputs, document.contract, document.content_language, and document.authoring_requirements from the supplied blackboard and node references. Follow the public xc-document human-readable authoring default unless explicit document.authoring_requirements override its style preferences. Preserve exact commands, identifiers, paths, logs, and machine output where literal accuracy matters. Write or revise the target document immediately, preserve valid frontmatter, and do not read the runtime XML directly.</instructions>
+                <deliverables>The managed document at document.path.</deliverables>
+                <acceptance>The target document exists, follows its domain and human-readable authoring contracts plus explicit user requirements, preserves key information, and has complete YAML frontmatter.</acceptance>
+                <result>
+                  <summary>Wrote solution.md with the selected design, no feature-baseline impact, implementation strategy and verification strategy.</summary>
+                  <artifacts>
+                    <artifact path="C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\solution.md" />
+                  </artifacts>
+                </result>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__validate-draft" template_id="validate-draft" origin_template_id="validate-draft" origin_instance_id="solution" title="Validate draft document" type="task" executor="tool" status="succeeded" role="document-validate" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" started_at="2026-10-28T09:36:11+00:00" agent="main-session" completed_at="2026-10-28T09:36:11+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind.</instructions>
+                <deliverables>A validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the draft without errors.</acceptance>
+                <result>
+                  <summary>solution.md validate-draft validation passed.</summary>
+                  <validation>PASS: xc-document exited 0 with a valid work-order-solution receipt.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\minecraft-sandbox-workshop\\.xcoding\\work-orders\\20261028-1731-implement-minecraft-sandbox\\solution.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-solution"}}</check>
+                  </checks>
+                </result>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__review-loop" template_id="review-loop" origin_template_id="review-loop" origin_instance_id="solution" title="Review and revise document" type="loop" executor="main" status="skipped" role="document-review-loop" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" when="document.review_required == true" when.policy="latched" loop.iteration="1" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:36:11+00:00">
+                <children>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__review-document" template_id="review-document" origin_template_id="review-document" origin_instance_id="solution" title="Review document" type="task" executor="subagent" status="pending" role="document-review" metadata.artifact.audience="internal" metadata.artifact.content_language="en" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
+                    <instructions>Review document.path against the domain review dimensions, explicit document.authoring_requirements, and the public xc-document human-readable dimensions: audience fit, progressive disclosure, first-use terminology explanations, concision, and preservation of key information. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
+                    <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
+                    <acceptance>The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues.</acceptance>
+                  </node>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__revise-document" template_id="revise-document" origin_template_id="revise-document" origin_instance_id="solution" title="Revise document from review" type="task" executor="subagent" status="pending" role="document-revise" when="document.review.open_issues == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" depends_on="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__review-document">
+                    <instructions>Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.</instructions>
+                    <deliverables>An updated managed document.</deliverables>
+                    <acceptance>Required domain and human-readability findings are resolved or explicitly escalated to a user gate.</acceptance>
+                  </node>
+                </children>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__document-gate" template_id="document-gate" origin_template_id="document-gate" origin_instance_id="solution" title="Confirm document decisions" type="gate" executor="main" status="skipped" role="document-confirmation" when="document.gate_required == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;accepted&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="document.gate_outcome" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:36:11+00:00">
+                <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
+                <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
+                <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
+              </node>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__document-gate-recovery-group" template_id="document-gate-recovery-group" origin_template_id="document-gate-recovery-group" origin_instance_id="solution" title="Recover non-accepting document decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="document.gate_outcome != accepted" when.policy="latched" dynamic.state="open" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:36:11+00:00" />
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__solution__validate-final" template_id="validate-final" origin_template_id="validate-final" origin_instance_id="solution" title="Validate final document" type="task" executor="tool" status="succeeded" role="document-validate-final" when="document.gate_outcome == accepted" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" when.latched="true" started_at="2026-10-28T09:36:11+00:00" agent="main-session" completed_at="2026-10-28T09:36:12+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
+                <deliverables>A final validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the final document without errors.</acceptance>
+                <result>
+                  <summary>solution.md validate-final validation passed.</summary>
+                  <validation>PASS: xc-document exited 0 with a valid work-order-solution receipt.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\minecraft-sandbox-workshop\\.xcoding\\work-orders\\20261028-1731-implement-minecraft-sandbox\\solution.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-solution"}}</check>
+                  </checks>
+                </result>
+              </node>
+            </children>
+          </node>
+        </children>
+      </node>
+      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__approve-work-order-solution" template_id="approve-work-order-solution" origin_template_id="approve-work-order-solution" origin_instance_id="root" title="Approve work order solution" type="gate" executor="main" status="succeeded" role="solution-approval" when="work_order.solution_gate_required == true" metadata.control_packet.category.selected-solution.selectors="[&quot;bb:work_order.solution_source_ids&quot;]" metadata.control_packet.category.selected-solution.min_sources="1" metadata.control_packet.category.selected-solution.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;work_order.document_language&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;approved&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="work_order.solution_gate_outcome" started_at="2026-10-28T09:36:21+00:00" agent="main-session" completed_at="2026-10-28T09:36:38+00:00">
+        <instructions>Present the selected change solution, baseline impact, implementation strategy, verification strategy, and unresolved decisions. Record approval or add revision nodes.</instructions>
+        <deliverables>An approval decision or explicit revision work.</deliverables>
+        <acceptance>Implementation cannot proceed on a material unresolved solution decision.</acceptance>
+        <result>
+          <summary>Solution approved: selected design covers all required sandbox behavior and verification.</summary>
+          <validation>PASS: control packet selected-solution threshold satisfied by the terminal solution writer and its solution.md artifact; no unresolved material decision.</validation>
+          <gate_outcome>approved</gate_outcome>
+          <decision>Approved in the main session because no user approval channel exists and the binding user decision requires a recorded decision plus continuation. solution.md implements every functional-scope item and acceptance condition, preserves the seed tests, the status-marker contract and file:// operation, adds DOM-free tests for terrain determinism, block bounds, collision, placement and save/load, keeps every artifact under the workbench, and records the report waiver and no-commit decision. Residual risks (play feel, browser-dependent localStorage, headless-only render proof) are stated with mitigations and will be tested in verification.</decision>
+        </result>
+      </node>
+      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__solution-recovery-group" template_id="solution-recovery-group" origin_template_id="solution-recovery-group" origin_instance_id="root" title="Recover non-accepting solution decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="work_order.solution_gate_outcome != approved" dynamic.state="open" skip_reason="when" skipped_at="2026-10-28T09:36:38+00:00" />
+      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__approved-solution-continuation" template_id="approved-solution-continuation" origin_template_id="approved-solution-continuation" origin_instance_id="root" title="Continue approved work order" type="composite" executor="main" status="succeeded" role="gate-continuation" mode="sequence" when="work_order.solution_gate_outcome == approved">
+        <children>
+          <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__implementation-group" template_id="implementation-group" origin_template_id="implementation-group" origin_instance_id="root" title="Implement approved change" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" when="work_order.requires_implementation == true" dynamic.state="closed">
+            <children>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__dyn-1__impl-core" logical_key="impl-core" origin_instance_id="dyn-1" title="Implement offline 2D sandbox" type="task" executor="main" status="succeeded" metadata.control_packet.category.approved-work.selectors="[&quot;bb:implementation.sources.impl-core&quot;]" metadata.control_packet.category.approved-work.min_sources="2" metadata.control_packet.category.approved-work.artifact_min="1" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\implementation\implementation.md" metadata.artifact.audience="internal" metadata.artifact.content_language="en" started_at="2026-10-28T09:36:53+00:00" agent="main-session" completed_at="2026-10-28T09:47:26+00:00">
+                <instructions>Implement the approved solution inside the consumer project: seeded terrain, player physics and collision, mining/placement, hotbar and input, camera, localStorage save/load, page hint and README; add focused Node tests without weakening the seed tests; keep all temporary files under the workbench tmp/.</instructions>
+                <deliverables>The playable sandbox, its tests and documentation, plus one implementation artifact.</deliverables>
+                <acceptance>All approved functional scope is implemented; the seed tests still pass unchanged; new tests cover terrain determinism, bounds, collision, placement and save/load; no external dependency or network reference is introduced; artifacts live under the workbench.</acceptance>
+                <result>
+                  <summary>Implemented seeded terrain, AABB player physics, mining/placement, hotbar input, clamped camera, localStorage persistence, hint UI, 22 new tests and the README; 28 tests and page_check pass.</summary>
+                  <artifacts>
+                    <artifact path="C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\implementation\implementation.md" />
+                  </artifacts>
+                  <validation>PASS: node --test 28/28; page_check ok=true static empty, marker pixel [46,204,113] distance 0.0, 53 canvas colour buckets; real-browser smoke verified input, mining, placement and save/reload on file://.</validation>
+                </result>
+              </node>
+            </children>
+          </node>
+          <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__verification-group" template_id="verification-group" origin_template_id="verification-group" origin_instance_id="root" title="Verify work order outcome" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" when="work_order.requires_verification == true" dynamic.state="closed">
+            <children>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__dyn-1__verify-acceptance" logical_key="verify-acceptance" origin_instance_id="dyn-1" title="Verify sandbox acceptance" type="task" executor="main" status="succeeded" metadata.control_packet.category.implementation-records.selectors="[&quot;bb:verification.sources.verify-acceptance&quot;]" metadata.control_packet.category.implementation-records.min_sources="1" metadata.control_packet.category.implementation-records.artifact_min="1" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\verification\verification.md" metadata.artifact.audience="internal" metadata.artifact.content_language="en" started_at="2026-10-28T09:47:40+00:00" agent="main-session" completed_at="2026-10-28T09:48:14+00:00">
+                <instructions>Run the project-defined verification for the approved solution: node --test and python tools/page_check.py, plus the recorded browser interaction smoke; map evidence to every acceptance condition and record the full output in the verification artifact.</instructions>
+                <deliverables>One verification artifact with command outcomes, acceptance mapping, coverage gaps and residual risk.</deliverables>
+                <acceptance>Both required commands pass with recorded output; coverage covers determinism, bounds, collision, placement, save/load, the status marker and non-blank rendering; gaps are explicit.</acceptance>
+                <result>
+                  <summary>Verification passed: 28/28 Node tests, page_check ok with exact green marker and 53 canvas buckets, and a real-browser file:// smoke proved input, mining, placement and save/reload.</summary>
+                  <artifacts>
+                    <artifact path="C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\verification\verification.md" />
+                  </artifacts>
+                  <validation>PASS: both required commands exited 0; full output recorded; acceptance mapping complete; residual gaps limited to human play feel and browser matrix.</validation>
+                </result>
+              </node>
+            </children>
+          </node>
+          <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__report-group" template_id="report-group" origin_template_id="report-group" origin_instance_id="root" title="Produce change review report" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="work_order.requires_report == true" dynamic.state="open" skip_reason="when" skipped_at="2026-10-28T09:48:14+00:00">
+            <instructions>Produce the change report for this work order after verification and before the result document. The group is mounted by the commitment value work_order.requires_report. Embed the xc-change-report subtree once under this group, or run a single role=report node that carries the same contract. Resolve the subtree's template path from the committed setup record at .agents/.xcoding-setup/manifest.json, which holds the installed xc-change-report package's absolute path; change-report-template.xml is read from it, and the host-to-Skill-root table is the fallback for a project with no such record. Before the group's first node runs, publish all thirteen caller-seeded keys with the values this work order actually uses, never merely accepting their declared defaults: report.path, report.manifest_path, report.baseline_commit, report.baseline_digest, report.language, report.strength, report.gate_required, report.gate_outcome, report.gate_rework_required, report.gate_recovery_required, report.round, report.refresh_count, and report.refresh_reason. report.round is the 1-based index of the pass being entered. When prepare-manifest measures one or more analyzable units, produce the report; when it measures zero analyzable units, record work_order.report_skip_reason=zero_analyzable_units and produce no report; a user waiver records work_order.report_skip_reason=user_waived, and a skip the resolved report policy produced records work_order.report_skip_reason=policy_default. A skipped gate records report.gate_outcome=not-run, never accepted.</instructions>
+            <deliverables>On the produced outcome: one change-report.html, one change-report-manifest.json, and one change-report-verdicts.json under the workbench report node artifact directory. On the skipped outcome: no report file is required, and the deliverable is the recorded work_order.report_skip_reason with report.run_required=false.</deliverables>
+            <acceptance>Exactly one of the two outcomes holds: either the report exists at report.path and is proven by report.manifest_path, or report.run_required is false and work_order.report_skip_reason records one of the legal reasons (read_only_mode, zero_analyzable_units, user_waived, policy_default); a produced report is never accepted without its manifest, and a skip is never accepted without its reason. The caller publishes all thirteen caller-seeded report.* keys with the values this work order uses before the group's first node runs, and the subtree's template is resolved from the installed package path the setup record holds, so the guards and completion-fact selectors the subtree evaluates resolve against those thirteen declarations or against a key one of the subtree's own nodes writes before that expression reads it.</acceptance>
+          </node>
+          <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__result-document" template_id="result-document" origin_template_id="result-document" origin_instance_id="root" title="Record work order result" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" dynamic.state="closed">
+            <children>
+              <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__root" template_id="root" origin_template_id="root" origin_instance_id="result" title="Document Evolution" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+                <children>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__write-document" template_id="write-document" origin_template_id="write-document" origin_instance_id="result" title="Write or revise document" type="task" executor="subagent" status="succeeded" role="document-write" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" started_at="2026-10-28T09:48:27+00:00" agent="main-session" completed_at="2026-10-28T09:48:38+00:00">
+                    <instructions>Read document.path, document.template, document.inputs, document.contract, document.content_language, and document.authoring_requirements from the supplied blackboard and node references. Follow the public xc-document human-readable authoring default unless explicit document.authoring_requirements override its style preferences. Preserve exact commands, identifiers, paths, logs, and machine output where literal accuracy matters. Write or revise the target document immediately, preserve valid frontmatter, and do not read the runtime XML directly.</instructions>
+                    <deliverables>The managed document at document.path.</deliverables>
+                    <acceptance>The target document exists, follows its domain and human-readable authoring contracts plus explicit user requirements, preserves key information, and has complete YAML frontmatter.</acceptance>
+                    <result>
+                      <summary>Wrote result.md with actual changes, validation evidence, no-baseline statement, the report waiver line and residual risks.</summary>
+                      <artifacts>
+                        <artifact path="C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\result.md" />
+                      </artifacts>
+                    </result>
+                  </node>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__validate-draft" template_id="validate-draft" origin_template_id="validate-draft" origin_instance_id="result" title="Validate draft document" type="task" executor="tool" status="succeeded" role="document-validate" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" started_at="2026-10-28T09:48:38+00:00" agent="main-session" completed_at="2026-10-28T09:48:38+00:00">
+                    <instructions>Run xc-document validation for document.path and document.kind.</instructions>
+                    <deliverables>A validation result recorded in the node result.</deliverables>
+                    <acceptance>xc-document validates the draft without errors.</acceptance>
+                    <result>
+                      <summary>result.md validate-draft validation passed.</summary>
+                      <validation>PASS: xc-document exited 0 with a valid work-order-result receipt.</validation>
+                      <checks>
+                        <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\minecraft-sandbox-workshop\\.xcoding\\work-orders\\20261028-1731-implement-minecraft-sandbox\\result.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-result"}}</check>
+                      </checks>
+                    </result>
+                  </node>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__review-loop" template_id="review-loop" origin_template_id="review-loop" origin_instance_id="result" title="Review and revise document" type="loop" executor="main" status="skipped" role="document-review-loop" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" when="document.review_required == true" when.policy="latched" loop.iteration="1" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:48:38+00:00">
+                    <children>
+                      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__review-document" template_id="review-document" origin_template_id="review-document" origin_instance_id="result" title="Review document" type="task" executor="subagent" status="pending" role="document-review" metadata.artifact.audience="internal" metadata.artifact.content_language="en" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
+                        <instructions>Review document.path against the domain review dimensions, explicit document.authoring_requirements, and the public xc-document human-readable dimensions: audience fit, progressive disclosure, first-use terminology explanations, concision, and preservation of key information. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
+                        <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
+                        <acceptance>The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues.</acceptance>
+                      </node>
+                      <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__revise-document" template_id="revise-document" origin_template_id="revise-document" origin_instance_id="result" title="Revise document from review" type="task" executor="subagent" status="pending" role="document-revise" when="document.review.open_issues == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" depends_on="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__review-document">
+                        <instructions>Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.</instructions>
+                        <deliverables>An updated managed document.</deliverables>
+                        <acceptance>Required domain and human-readability findings are resolved or explicitly escalated to a user gate.</acceptance>
+                      </node>
+                    </children>
+                  </node>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__document-gate" template_id="document-gate" origin_template_id="document-gate" origin_instance_id="result" title="Confirm document decisions" type="gate" executor="main" status="skipped" role="document-confirmation" when="document.gate_required == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;accepted&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="document.gate_outcome" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:48:38+00:00">
+                    <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
+                    <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
+                    <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
+                  </node>
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__document-gate-recovery-group" template_id="document-gate-recovery-group" origin_template_id="document-gate-recovery-group" origin_instance_id="result" title="Recover non-accepting document decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="document.gate_outcome != accepted" when.policy="latched" dynamic.state="open" when.latched="false" skip_reason="when" skipped_at="2026-10-28T09:48:38+00:00" />
+                  <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__result__validate-final" template_id="validate-final" origin_template_id="validate-final" origin_instance_id="result" title="Validate final document" type="task" executor="tool" status="succeeded" role="document-validate-final" when="document.gate_outcome == accepted" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" when.latched="true" started_at="2026-10-28T09:48:38+00:00" agent="main-session" completed_at="2026-10-28T09:48:38+00:00">
+                    <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
+                    <deliverables>A final validation result recorded in the node result.</deliverables>
+                    <acceptance>xc-document validates the final document without errors.</acceptance>
+                    <result>
+                      <summary>result.md validate-final validation passed.</summary>
+                      <validation>PASS: xc-document exited 0 with a valid work-order-result receipt.</validation>
+                      <checks>
+                        <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\minecraft-sandbox-workshop\\.xcoding\\work-orders\\20261028-1731-implement-minecraft-sandbox\\result.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-result"}}</check>
+                      </checks>
+                    </result>
+                  </node>
+                </children>
+              </node>
+            </children>
+          </node>
+          <node id="rt_work-order-20261028-1731-implement-minecraft-sandbox__root__finalize-work-order" template_id="finalize-work-order" origin_template_id="finalize-work-order" origin_instance_id="root" title="Finalize ordinary work order" type="task" executor="main" status="succeeded" role="work-order-finalize" metadata.control_packet.category.supporting-records.selectors="[&quot;bb:work_order.result_source_ids&quot;]" metadata.control_packet.category.supporting-records.min_sources="1" metadata.control_packet.category.supporting-records.artifact_min="1" metadata.control_packet.category.work-order-objective.selectors="[&quot;bb:work_order.objective_source_ids&quot;]" metadata.control_packet.category.work-order-objective.min_sources="1" metadata.control_packet.category.work-order-objective.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;work_order.document_language&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" started_at="2026-10-28T09:48:48+00:00" agent="main-session" completed_at="2026-10-28T09:48:58+00:00">
+            <instructions>Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order. Consume work_order.report_skip_reason: when work_order.requires_report is true and neither a report path nor one of the legal skip reasons (read_only_mode, zero_analyzable_units, user_waived, policy_default) is recorded, the work order must not close.</instructions>
+            <deliverables>A completed, failed, or blocked work order with durable evidence.</deliverables>
+            <acceptance>The runtime tree and workbench documents accurately describe the work order outcome, and a committed report obligation is either satisfied by a report path or explicitly recorded as a skip decision.</acceptance>
+            <result>
+              <summary>Work order closed: playable offline 2D sandbox implemented, 28 Node tests pass, page_check passes with a green marker and 53 canvas buckets, and a real-browser file:// smoke proved input, mining, placement and save/reload. Goal, analysis, solution, approval, implementation, verification and result stages are complete; the report is explicitly waived (user_waived) and no project commit was created.</summary>
+              <validation>PASS: finalizer control packet supporting-records and work-order-objective thresholds satisfied by terminal result.md and goal.md writer leaves; work_order.requires_report=false with report_skip_reason=user_waived; convention discovery not-applicable with record; all declared artifacts reside under the workbench; no feature directory or project commit exists.</validation>
+            </result>
+          </node>
+        </children>
+      </node>
+    </children>
+  </node>
+</orchestration>

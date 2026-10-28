@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sandbox — XC work-order sample</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main id="app">
+    <canvas id="game" width="960" height="540" aria-label="Sandbox world"></canvas>
+    <div id="hud" aria-live="polite">
+      <p id="hint">A / D or ← / → move · Space jump · Left click mine · Right click place · 1–4 select</p>
+      <p id="selection">Selected: Grass</p>
+    </div>
+    <div id="hotbar" role="toolbar" aria-label="Block palette">
+      <span class="slot" data-block="grass" role="button" tabindex="0" aria-pressed="true">1</span>
+      <span class="slot" data-block="dirt" role="button" tabindex="0" aria-pressed="false">2</span>
+      <span class="slot" data-block="stone" role="button" tabindex="0" aria-pressed="false">3</span>
+      <span class="slot" data-block="wood" role="button" tabindex="0" aria-pressed="false">4</span>
+    </div>
+    <div id="status" data-state="booting" title="Page status"></div>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/interaction.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

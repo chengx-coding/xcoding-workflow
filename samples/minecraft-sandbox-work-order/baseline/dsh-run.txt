@@ -1,0 +1,21 @@
+Built the complete game at `index.html` in the current working directory.
+
+**Included**
+- Deterministic procedural terrain from a numeric seed, with grass, dirt, stone, sand, caves, trees, and bedrock.
+- Player movement, gravity, jumping, coyote time, and solid-block collision.
+- Left-click mining/hold-to-mine with reach limits.
+- Right-click placement with face detection, empty-cell checks, support checks, inventory counts, and player-overlap prevention.
+- 8-slot hotbar with number-key/wheel selection and a prominent gold selected state.
+- Smooth camera clamped to world bounds.
+- Autosaved world, player position, inventory, and selection in `localStorage`.
+- Seeded New World dialog, Help dialog, responsive HUD, and offline-only single-file implementation.
+
+**Controls**
+- `A/D` or `←/→` — move
+- `W`, `Space`, or `↑` — jump
+- Left-click — mine
+- Right-click — build
+- `1–8` or mouse wheel — select block
+- `H` — help
+
+Verified in Chrome via automated interaction tests: movement, jumping, mining, placing, inside-player placement rejection, deterministic seed generation, persistence across reload, responsive layouts, no console errors, and 60 FPS.

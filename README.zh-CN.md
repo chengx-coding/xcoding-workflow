@@ -6,29 +6,103 @@ xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审�
 
 当前源码候选版本：<!-- xc:version -->0.3.2<!-- /xc:version -->。[版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
 
+## XC 由哪些部分组成
+
+整个工作流是“可移植的文本 + 一条很小的命令行”。Agent 宿主提供模型与工具；`xc-*` Skills 提供生命周期与质量规则；`xcoding` 命令负责确定性状态；项目的 `.xcoding` 工作区保存持久记录；项目自己的桥接文档提供命令、语言与约束。
+
+```mermaid
+flowchart LR
+    subgraph host["Agent 宿主"]
+        agent["编码 Agent"]
+    end
+    subgraph workflow["可移植工作流"]
+        skills["xc-* Skills<br/>生命周期与质量阶段"]
+        bridge[".xcoding/WORKFLOW.md<br/>项目桥接"]
+    end
+    subgraph engine["xcoding 命令行"]
+        cli["runtime · viewer · setup"]
+        tree["受管运行时树<br/>唯一进度权威"]
+    end
+    subgraph project["消费项目"]
+        code["代码 · 测试 · 文档"]
+        record[".xcoding 工作区<br/>文档 · 产物"]
+    end
+    agent --> skills
+    bridge --> skills
+    skills --> cli
+    cli --> tree
+    tree --> record
+    skills --> code
+    record --> code
+```
+
+桥接文档是声明式项目事实的唯一读取点。工作区使用独立的 Git 仓库，因此工作流历史不会混入源码历史。Skills 只通过 `xcoding` 命令行访问状态；没有任何 Skill 直接解析或编辑运行时树。
+
+## 受管工单如何运行
+
+修改任何东西之前，XC 先把需求收敛成少量已确认事实。如果工作局限、可逆、且不需要持久记录，可以作为一次直接操作完成。只要有一项事实未确认或存在风险，工作就进入受管工单，生命周期被保存在运行时树里，而不是留在对话里。
+
+```mermaid
+flowchart TD
+    request["需求"] --> facts{"事实是否全部确认<br/>可以安全直接执行？"}
+    facts -- "六项全部为否" --> direct["直接执行"]
+    facts -- "是、未知或无法读取" --> managed["受管工单"]
+    managed --> goal["目标"] --> analysis["分析"] --> solution["方案"]
+    solution --> gate{"方案确认闸门"}
+    gate -- "同意" --> implementation["实现"]
+    gate -- "拒绝或需修订" --> recovery["恢复工作"] --> solution
+    implementation --> verification["验证"]
+    verification -- "失败" --> implementation
+    verification --> report["变更报告<br/>政策要求时"]
+    report --> result["结果与证据"]
+    verification -- "无需报告" --> result
+```
+
+六项事实是：进度或证据是否必须保留到以后；工作是否改变共享代码、公开约定、用户数据、权限、生产或基础设施状态、安全边界或发布资产；是否无法一步完整回退；是否必须等待、重启、在另一个会话继续或依赖异步结果；是否需要多个人、Agent 或外部系统协作；是否需要保留审查、审批、验证、审计或提交记录。每项只能回答 `yes`、`no` 或 `unknown`；只有六项全部确认为 `no` 才允许直接执行。即使如此，项目规则仍可要求走受管路径。
+
+## 运行时谁做什么
+
+主会话负责编排；runtime 负责调度；worker 只执行一个节点。worker 只拿到自己的契约与输入，因此长流程不依赖某一个上下文装下所有内容。
+
+```mermaid
+sequenceDiagram
+    participant M as 主会话
+    participant R as xcoding runtime
+    participant W as Worker
+    participant U as 用户
+    U->>M: 提出需求
+    M->>R: 初始化或恢复工单
+    R-->>M: 就绪节点与控制包
+    M->>R: 启动节点
+    M->>W: 单节点契约与输入
+    W->>W: 执行工作、写入产物
+    W->>R: 完成、失败或阻塞
+    R-->>M: 更新后的状态与下一个就绪节点
+    M->>U: 需要人工决定时发起闸门问题
+```
+
+## 看它实际跑一次
+
+[工单示例](samples/minecraft-sandbox-work-order/README.zh-CN.md) 是一次真实、完整的运行：一个预先准备种子内容的消费项目由 DeepSeek Harness 命令行驱动，走完整受管生命周期，构建出一个可游玩的 2D 沙盒。工单、文档、验证证据和渲染出的编排树都归档在示例里。示例还包含同一任务的第二次直接执行（不使用 XC），附截图和诚实的对比。
+
+![完成的示例编排树](samples/minecraft-sandbox-work-order/tree/orchestration-tree.png)
+
+这张图是该次运行最终的编排树，由只读的本地 Viewer 导出。示例 README 说明了怎么读它，包括被跳过的变更报告组和仍处于 pending 的不可达分支。
+
 ## 它能做什么
 
 - XC 由必要的 `xcoding` CLI package 和一组称为 **Skills** 的工作流模块组成。
 - 小型、低风险的任务可以直接完成。
 - 需要计划、审查、故障恢复或长期留痕的任务使用**受管工单**。工单把目标、决策、进度和证据保存在一起。
 - 显式选择自适应受管工单时，可以从一个合并工作叶子节点和一个 finalizer 开始，再根据已确认事实增加文档、分析、门禁、验证、审查与恢复。
-- 在实现与验证之后，改动了可分析代码的工单会产出一份**变更报告**：一个离线 HTML 文件，逐条说明改了什么、为什么存在、背后的设计与权衡，以及它处于更大流程的哪一环，并附上机械证明，说明没有可分析变更单元被漏掉。
-- 项目中的 `.xcoding` 目录是工作流专用空间。它使用独立的 Git 工作树，也就是专门保存工作流历史的独立工作目录，避免把这些记录混入源码提交历史。
+- 改动了可分析代码的工单可以产出一份**变更报告**：一个离线 HTML 文件，逐条说明改了什么、背后的设计与权衡，以及它处于更大流程的哪一环，并附上机械证明，说明没有可分析变更单元被漏掉。
+- 项目中的 `.xcoding` 目录是工作流专用空间。它使用独立的 Git 仓库，避免把这些记录混入源码提交历史。
 - [`xc-writing`](skills/xc-writing/SKILL.md) 指导技术问答、解释、起草、修订和文字审阅，在适应读者的同时保留证据与条件；既可独立使用，也可通过现有文档写作入口使用。
 - 只有在你明确创建或接管时，长期维护的产品功能才会成为受管功能。普通维护不会自动创建功能。
 
 ## 选择直接或受管工作
 
-开始修改前，XC 会先判断任务是否适合一次性直接完成。它会检查六个问题：
-
-1. 是否必须把进度或证据保留到以后？
-2. 是否可能影响共享代码、公开约定、数据、权限、安全边界、基础设施或发布内容？
-3. 是否无法通过一个步骤完整回退？
-4. 是否必须等待、重启或在另一个会话中继续？
-5. 是否需要多个人、Agent 或外部系统协作？
-6. 是否必须保留审查、批准、验证或审计记录？
-
-每个答案只能是 `yes`、`no` 或 `unknown`。
+开始修改前，XC 会检查上面列出的六个问题。
 
 - 只有六个答案都明确为 `no` 时，才使用**直接执行**。
 - 只要有一个答案是 `yes`、`unknown` 或无法确认，就使用**受管工单**。
@@ -130,7 +204,9 @@ New-Item -ItemType Junction -Path (Join-Path $ProjectRoot ".xcoding") -Target (J
 - [安装](docs/zh-CN/getting-started/installation.md)
 - [快速开始](docs/zh-CN/getting-started/quick-start.md)
 - [核心设计](docs/zh-CN/concepts/core-design.md)
+- [编排概览](docs/zh-CN/orchestration/overview.md)
 - [写作与质量 Skill](docs/zh-CN/reference/skills/implementation-and-quality.md)
+- [工单示例](samples/minecraft-sandbox-work-order/README.zh-CN.md)
 
 `build_agents.py` 只用于开发本仓库。它刷新当前检出中的本地 Skill 镜像，不会把 XC 安装到其他项目。
 

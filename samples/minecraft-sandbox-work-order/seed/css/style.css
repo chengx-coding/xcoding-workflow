@@ -1,0 +1,94 @@
+:root {
+  color-scheme: dark;
+  --ink: #e8eef5;
+  --muted: #9fb0c3;
+  --panel: rgba(8, 14, 22, 0.72);
+  --edge: rgba(232, 238, 245, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #0b1016;
+  color: var(--ink);
+  font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+#app {
+  position: relative;
+  width: 960px;
+  margin: 0 auto;
+}
+
+#game {
+  display: block;
+  width: 960px;
+  height: 540px;
+  background: #7ec8e3;
+}
+
+#hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  max-width: 520px;
+  padding: 8px 10px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+#hotbar {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--panel);
+  transform: translateX(-50%);
+}
+
+#hotbar .slot {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+#hotbar .slot.is-selected {
+  border-color: #7ee0a4;
+  color: #08110c;
+  background: #7ee0a4;
+}
+
+#status {
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f1c40f;
+}
+
+#status[data-state="ready"] {
+  background: #2ecc71;
+}
+
+#status[data-state="error"] {
+  background: #e74c3c;
+}

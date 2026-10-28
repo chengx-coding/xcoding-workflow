@@ -1,0 +1,6 @@
+metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.completion.artifacts.path=literal:C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\artifacts\analysis-evidence\analysis-evidence.md
+metadata.artifact.audience=internal
+metadata.artifact.content_language=en
