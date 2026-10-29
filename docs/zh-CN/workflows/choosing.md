@@ -23,7 +23,7 @@
 
 实现幅度是动态约束，不是固定最小值。目标是**最小充分改动**：在满足正当需求和任务相应质量 bar 的前提下最小的改动，并在不冲突时尽量保持既有结构与一致性。
 
-- `create` 没有最小化预设。它的 goal 必须携带用户可见质量契约，以及保留请求结果的 intended capability scope；实现在约束内最大化产品价值。goal 要为每个 material exclusion 或新增约束记录来源；goal 自己发明的 material exclusion 在没有用户确认时不得成为绑定范围。比较对象是 floor，不是 ceiling。这是保真要求，不是 breadth 指标：小型 create 任务可以只有很小的 capability map。
+- `create` 没有最小化预设。它的 goal 必须携带用户可见质量契约，以及保留请求结果的 intended capability scope；实现在约束内最大化产品价值。goal 要为每个 material exclusion 或新增约束记录来源；goal 自己发明的 material exclusion 在没有用户确认时不得成为绑定范围。比较对象是 floor，不是 ceiling。存在可信领域参考时，analysis 还要记录一个小型 signature-experience map，goal 的质量契约携带该挑战；这不是 breadth 指标。没有可信参考时明确记录；存在可信参考的小型任务使用缩减后的 decision-changing signature set，而不是一刀切的豁免。
 - `change` 使用中等最小性：优先选择能完整满足需求与质量 bar 的最小一致改动；如果需求或质量 bar 要求更大改动，就降低最小性偏好，按需求实现。尽量保持一致性。
 - `repair` 使用强最小性预设：能局部修复就局部修复；如果根因或正确修复需要改共享机制、设计或需求，则升级为 `change`。
 
