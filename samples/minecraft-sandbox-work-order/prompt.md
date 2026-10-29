@@ -28,21 +28,36 @@ These are binding. Do not re-open them, and do not ask the user about them.
 1. **Use the standard create lifecycle.** Keep `work_order.requires_analysis=true`,
    `work_order.requires_solution=true` and `work_order.solution_gate_required=true`; do not treat
    analysis or solution as optional. The goal must carry the quality contract below in its acceptance
-   conditions; create has no minimality presumption.
-2. **Add an independent visual review.** Before the result, render the page, inspect a 960x600
+   conditions; create has no minimality presumption. The goal must also preserve the verbatim
+   request: do not add material exclusions or constraints the request does not contain. If a
+   capability is ambiguous and no user is available, carry it as an open decision, not a silent
+   exclusion. Analysis must produce a capability map (must/should/non-goal with source, user value,
+   acceptance and verification); the solution must record the accepted capability matrix; the map is
+   a fidelity instrument, not a breadth target. Analysis must also record a small
+   signature-experience table from a credible domain reference (reference, signature capabilities,
+   evidence, decision); the solution must cover accepted signature must/should capabilities. A
+   reference is not a checklist or a feature-count target; a small task with a credible reference
+   uses a reduced decision-changing set with a recorded reason, and if none is credible, record that.
+2. **Prior accepted capability inventory.** Treat the following cumulative inventory from prior
+   standard versions as accepted capabilities: per-block inventory counts; 52 automated tests
+   including the seed tests; reduced-motion support; wheel selection; 1280-wide scaling; audio/mute;
+   numeric seed entry; pause; the eighth hotbar block; day/night; nine-slot hotbar; coordinates.
+   Disposition every item as preserve/improve/replace/retire; replace/retire requires reason, impact
+   and source, and no item may be silently dropped.
+3. **Add an independent visual review.** Before the result, render the page, inspect a 960x600
    screenshot, and run an independent visual review (for example through `xc-review`). Fix every
    required finding and re-check.
-3. **The change-report stage is waived.** Set `work_order.requires_report=false` and
+4. **The change-report stage is waived.** Set `work_order.requires_report=false` and
    `work_order.report_skip_reason=user_waived`; do not mount the report group.
-4. **Do not create a project Git commit.** The project bridge forbids it because the enclosing
+5. **Do not create a project Git commit.** The project bridge forbids it because the enclosing
    repository owns the sample's single scoped commit.
-5. **No user is available.** Never ask a question; complete any main-session gate yourself with a
+6. **No user is available.** Never ask a question; complete any main-session gate yourself with a
    concrete decision that records the reasoning.
-6. **Use only the runtime public interface.** Every runtime read and write goes through
+7. **Use only the runtime public interface.** Every runtime read and write goes through
    `xcoding runtime ...`; never open or edit `runtime/orchestration.xml`.
-7. **Keep temporary files local.** Put scripts, logs, screenshots and intermediate output under the
+8. **Keep temporary files local.** Put scripts, logs, screenshots and intermediate output under the
    work order's `tmp/` directory; never declare a temporary file as an artifact.
-8. **Regression isolation is binding.** Run from a clean seed in an isolated workspace that contains
+9. **Regression isolation is binding.** Run from a clean seed in an isolated workspace that contains
    no public sample, baseline, prior sample result, or any existing implementation. Do not read,
    search for, or consult those paths. The baseline and historical results are used only for
    evaluation after the run, never as implementation input.
