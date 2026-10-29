@@ -10,7 +10,7 @@ preference, not the objective.
 
 | Task type | Minimality strength | Default | When to release / override | Task-appropriate quality bar |
 | --- | --- | --- | --- | --- |
-| `create` | none | Build the best artifact possible within the stated constraints and quality contract | Not applicable; there is no minimality presumption to release | User-facing quality, completeness and richness appropriate to the request |
+| `create` | none | Use the standard lifecycle (goal, analysis, solution, approval, implementation, verification, result); build the best artifact possible within the stated constraints and quality contract | Not applicable; there is no minimality presumption to release | User-facing quality, completeness and richness appropriate to the request |
 | `change` | medium | Prefer the smallest coherent change that fully satisfies the need and quality bar, preserving consistency where possible | If the minimal change cannot meet the need or quality bar, lower the minimality preference and implement the change the need requires | Need satisfaction, consistency with the existing design, no regression |
 | `repair` | strong | Assume a local fix in mature, coupled code; keep the change and behavior surface as small as the fix allows | Promote to `change` when the root cause or the correct fix requires changing a shared mechanism, a design decision or a requirement, or the change approaches feature scale | Correct fix, no regression, justified scope; not feature growth |
 | `maintenance` | by nature | Apply the `change` or `repair` rules according to what the maintenance actually is | Same promotion rule as the chosen rule | The outcome the maintenance must preserve or restore |
@@ -56,11 +56,10 @@ presumption, contextual adjustments and explicit release triggers.
 - **Analysis scope assessment (change and repair):** task type; code maturity/coupling; the user's
   delta; whether a minimal coherent change fully satisfies the need and quality bar; the viable
   larger options; the recommendation; uncertainty; whether clarification or a gate is required.
-- **Solution scope decision (change and repair; create):** for change and repair, the solution records
-  the task type, minimality strength, chosen scope, release or promotion triggers, the user
-  confirmation reference when one was required, and the boundary the implementation must not cross.
-  For create, the goal's quality contract and constraints are the scope record when no solution is
-  used; a solution records the same fields when one is selected.
+- **Solution scope decision (create, change and repair):** for every mode, record the task type, the
+  minimality strength (none for create), the chosen scope, the release or promotion triggers, the
+  user confirmation reference when one was required, and the boundary the implementation must not
+  cross. For create, the goal's quality contract supplies the quality bar.
 - **Implementation:** the accepted scope is an input. The worker implements it, records changed
   paths and validation, and does not add unapproved scope. If the scope is insufficient, the worker
   stops and reports back rather than inventing a new scope.

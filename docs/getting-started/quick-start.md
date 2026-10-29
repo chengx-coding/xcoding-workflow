@@ -132,7 +132,7 @@ mode: change
 feature_ids: []
 ```
 
-Select `create` for a from-zero artifact, or `investigation`, `change`, `repair`, `review`, or `maintenance` as the mode that matches the request. A `create` goal must carry a user-facing quality contract; `change` uses the minimum sufficient scope, and `repair` uses a strong minimality presumption that promotes to `change` when the fix crosses a design or mechanism boundary.
+Select `create` for a from-zero artifact, or `investigation`, `change`, `repair`, `review`, or `maintenance` as the mode that matches the request. `create` uses the standard lifecycle (analysis, solution and approval included) and its goal must carry a user-facing quality contract; `change` uses the minimum sufficient scope, and `repair` uses a strong minimality presumption that promotes to `change` when the fix crosses a design or mechanism boundary.
 
 ### A genuinely new managed feature
 

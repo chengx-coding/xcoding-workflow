@@ -132,7 +132,7 @@ mode: change
 feature_ids: []
 ```
 
-从零构建 artifact 时选择 `create`；否则根据请求选择 `investigation`、`change`、`repair`、`review` 或 `maintenance`。`create` 的 goal 必须携带用户可见质量契约；`change` 使用最小充分范围；`repair` 使用强最小性预设，若修复跨越设计或机制边界则升级为 `change`。
+从零构建 artifact 时选择 `create`；否则根据请求选择 `investigation`、`change`、`repair`、`review` 或 `maintenance`。`create` 使用标准生命周期（包含 analysis、solution 和 approval），其 goal 必须携带用户可见质量契约；`change` 使用最小充分范围；`repair` 使用强最小性预设，若修复跨越设计或机制边界则升级为 `change`。
 
 ### 全新的 managed feature
 

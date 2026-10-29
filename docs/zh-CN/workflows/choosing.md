@@ -11,7 +11,7 @@
 | 项目首次采用 XC，或缺少必需的 workshop 桥接文档 | [`xc-workshop-setup`](../../../skills/xc-workshop-setup/SKILL.md) | 通过 setup work order 创建受管项目工作流和知识指引；不会创建业务 feature |
 | 请求的行为需要一个新的、显式受管的 feature 身份 | [`xc-new-feature`](../../../skills/xc-new-feature/SKILL.md) | 创建 feature 目录，批准 feature 基线，然后实现、验证并报告该 feature |
 | 已有行为尚未受管，但未来演进需要持久基线 | [`xc-feature-adoption`](../../../skills/xc-feature-adoption/SKILL.md) | 根据当前代码和测试证据推导并批准基线，不改变产品行为 |
-| 需要从零构建新的 artifact、代码库或产品能力，而不是原地修改 | [`xc-work`](../../../skills/xc-work/SKILL.md) 配合 `mode=create` | 要求用户可见的质量契约；选择创建、实现、验证和结果，分析/方案可选 |
+| 需要从零构建新的 artifact、代码库或产品能力，而不是原地修改 | [`xc-work`](../../../skills/xc-work/SKILL.md) 配合 `mode=create` | 使用标准生命周期（goal、analysis、solution、approval、implementation、verification、result）；goal 必须携带用户可见质量契约，且没有最小化预设 |
 | 只需确定事实或影响，不要求产品变更 | [`xc-work`](../../../skills/xc-work/SKILL.md) 配合 `mode=investigation` | 产出证据和结果；可以省略方案、实现和验证 |
 | 需要修改已有代码、配置或行为 | `xc-work` 配合 `mode=change` | 使用最小充分范围：优先最小一致改动，但当需求或质量 bar 要求更大改动时扩大 |
 | 需要修复已报告的故障 | `xc-work` 配合 `mode=repair` | 使用强最小性预设；根因不确定时先诊断；若修复跨越设计、机制或需求边界，则升级为 change |

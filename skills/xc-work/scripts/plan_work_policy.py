@@ -331,7 +331,10 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         add_scope(base_scope, f"mode:{facts['mode']}")
         enable(("change_report",), f"mode:{facts['mode']}")
         if facts["mode"] == "create":
-            enable(("goal_document", "result_document"), "mode:create")
+            enable(
+                ("goal_document", "analysis", "solution", "approval", "result_document"),
+                "mode:create",
+            )
 
     for name in GOVERNANCE_FACTS:
         value = facts[name]

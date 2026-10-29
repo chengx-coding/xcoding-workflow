@@ -33,7 +33,7 @@
 - **公开入口：** `operation=run|classify|plan|adaptive-run`，默认为 `run`，并必填 `request`。`run` 与 `adaptive-run` 要求 `workshop_path` 和 `project_root`。`plan` 接受治理、bridge policy、范围、清晰度、风险、验证、协作、持续时间、审计、pace 和 mode 事实，其中 `mode` 为 `create|investigation|change|repair|review|maintenance`。
 - **分类：** 执行 `python skills/xc-work/scripts/classify.py [事实参数]`。只有六项已确认的 `no` 才返回 direct；任一 `yes` 或 `unknown` 都返回 managed。省略事实会变成 `unknown`；非法输入、可执行文件缺失、超时、低层非零退出、JSON 畸形或未知 schema/route 都会以零状态退出，并返回带 `classification_status=escalated` 和原因 `classification-unavailable` 的 managed 结果。
 - **规划：** 执行 `python skills/xc-work/scripts/plan_work.py [规划事实]`。Plan 会单调推导文档、分析、gate、implementation unit、verification scope、change report、review、recovery、depth，以及绑定 request/bridge 的 plan receipt。非法或伪造输出会 fail closed 到完整安全 capability 集合。
-- **典型受管用法：** 省略 `operation` 或使用 `operation=run` 保持现有完整生命周期。显式使用 `adaptive-run` 时，root 下只有 sequence dynamic group；最小形态包含一个 combined work leaf 和一个 finalizer，其他 capability 只在事实要求时增加。对从零构建的 artifact 使用 `mode=create` 并携带质量契约；对相应范围使用 `change` 或 `repair`。
+- **典型受管用法：** 省略 `operation` 或使用 `operation=run` 保持现有完整生命周期。显式使用 `adaptive-run` 时，root 下只有 sequence dynamic group；最小形态包含一个 combined work leaf 和一个 finalizer，其他 capability 只在事实要求时增加。对从零构建的 artifact 使用 `mode=create`，走标准生命周期（goal、analysis、solution、approval、implementation、verification、result）并携带质量契约；对相应范围使用 `change` 或 `repair`。
 - **主要边界：** 分类只读且不执行实质操作。公开适配器会验证可观察的子进程结果，但不认证调用方、解释器、可执行文件字节或宿主，也不提供宿主中介或证明。严格低层分类器保留非零诊断错误，但不是生命周期入口。受管工作不得隐式创建或采用功能。Scope policy 是判断契约：analysis 记录评估，solution 记录决定，实现遵循它，review 检查范围适配；它不是机械强制机制。
 - **版本决策：** 完整与自适应路径读取项目桥接中的编号政策，在既有 artifact 中保留版本评估；修改版本前通过主会话 gate 取得用户对具体候选与范围的明确同意。新功能和工作流演进复用该契约。XC 项目自身的规则见[版本维护](../../development/versioning.md)。
 
