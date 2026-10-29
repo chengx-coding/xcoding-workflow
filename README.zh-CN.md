@@ -83,11 +83,11 @@ sequenceDiagram
 
 ## 看它实际跑一次
 
-[工单示例](samples/minecraft-sandbox-work-order/README.zh-CN.md) 是一次真实、完整的运行：一个预先准备种子内容的消费项目由 DeepSeek Harness 命令行驱动，走完整受管生命周期，构建出一个可游玩的 2D 沙盒。工单、文档、验证证据和渲染出的编排树都归档在示例里。示例还包含同一任务的第二次直接执行（不使用 XC），附截图和诚实的对比。
+[工单示例](samples/minecraft-sandbox-work-order/README.zh-CN.md) 是一次真实、完整的运行：一个预先准备种子内容的消费项目由 DeepSeek Harness 命令行驱动，走 create 模式的受管生命周期，构建出一个可游玩的 2D 沙盒。这次运行使用动态 scope policy：`create` 携带质量契约、没有最小化预设，因此分析、方案和变更报告被刻意省略。工单、文档、验证证据和渲染出的编排树都归档在示例里。示例还包含同一任务的第二次直接执行（不使用 XC），附截图和诚实的对比。
 
 ![完成的示例编排树](samples/minecraft-sandbox-work-order/tree/orchestration-tree.png)
 
-这张图是该次运行最终的编排树，由只读的本地 Viewer 导出。示例 README 说明了怎么读它，包括被跳过的变更报告组和仍处于 pending 的不可达分支。
+这张图是该次运行最终的编排树，由只读的本地 Viewer 导出。示例 README 说明了怎么读它，包括被跳过的分析、方案和变更报告分支；create 模式的树没有 pending 工作。
 
 ## 它能做什么
 

@@ -12,7 +12,7 @@ This directory is the consumer project of the XC work-order sample. The product 
 Minecraft-style browser sandbox: a static page built from plain HTML, CSS and JavaScript, with no
 framework, no build step and no package manager. The seed snapshot shipped with this sample (`seed/`,
 beside `project/`) provides the page shell, module skeleton and verification harness; the committed
-`project/` is the finished result produced by the sample's managed work order. To run the work order
+`project/` is the finished result produced by the sample's create-mode managed work order. To run the work order
 again, remove `project/.xcoding` and `project/`, recreate `project/`, and copy `seed/` into it so the
 starting state contains no finished files or stale runtime link; the workshop step then recreates the
 junction.
@@ -62,10 +62,7 @@ architecture overview.
 
 No managed features exist; the sample work order has `feature_ids=[]` and must not create one.
 
-This work order is a published reference sample. Keep the full `xc-work operation=run` lifecycle
-(goal, analysis, solution, approval, implementation, verification, result) rather than a reduced path.
-The change-report stage is explicitly waived by the user: write `work_order.requires_report=false`
-and `work_order.report_skip_reason=user_waived` during preparation and do not mount the report group.
+This work order is a published create-mode reference sample. Use `xc-work` `operation=run` with `mode=create`. The create lifecycle is goal, implementation, verification and result; set `work_order.requires_analysis=false`, `work_order.requires_solution=false` and `work_order.solution_gate_required=false`. The goal's acceptance conditions must include a user-facing quality contract: the result will be compared side-by-side with a strong one-shot attempt and must be at least as visually polished and feature-rich. Render the page, inspect a screenshot, compare it against that bar, and iterate. Add an independent visual review node before the result and fix any required findings. The change-report stage is explicitly waived by the user: write `work_order.requires_report=false` and `work_order.report_skip_reason=user_waived` during preparation and do not mount the report group.
 
 ## Project-Specific Constraints
 

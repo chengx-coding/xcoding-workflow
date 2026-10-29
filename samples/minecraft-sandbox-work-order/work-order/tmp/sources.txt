@@ -1,0 +1,2 @@
+﻿work_order.objective_source_ids=["rt_work-order-20261029-1219-2d-sandbox-game__dyn-1__goal-document"]
+implementation.sources.impl=["rt_work-order-20261029-1219-2d-sandbox-game__dyn-1__goal-document"]

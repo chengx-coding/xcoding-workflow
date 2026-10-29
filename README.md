@@ -83,11 +83,11 @@ sequenceDiagram
 
 ## See it work
 
-The [sample work order](samples/minecraft-sandbox-work-order/README.md) is a real, complete run: a seeded consumer project was driven by the DeepSeek Harness command line through the full managed lifecycle to build a playable 2D sandbox. The work order, its documents, its verification evidence and the rendered orchestration tree are all archived in the sample. It also contains one direct run of the same task without XC, with screenshots and an honest comparison.
+The [sample work order](samples/minecraft-sandbox-work-order/README.md) is a real, complete run: a seeded consumer project was driven by the DeepSeek Harness command line through a create-mode managed lifecycle to build a playable 2D sandbox. The run uses the dynamic scope policy: `create` with a quality contract and no minimality presumption, so analysis, solution and the change report are deliberately omitted. The work order, its documents, its verification evidence and the rendered orchestration tree are all archived in the sample. It also contains one direct run of the same task without XC, with screenshots and an honest comparison.
 
 ![The completed sample orchestration tree](samples/minecraft-sandbox-work-order/tree/orchestration-tree.png)
 
-The image is the final orchestration tree of that run, exported from the read-only local viewer. The sample README explains how to read it, including the skipped change-report group and the unreachable branches left pending.
+The image is the final orchestration tree of that run, exported from the read-only local viewer. The sample README explains how to read it, including the skipped analysis, solution and change-report branches; the create-mode tree has no pending work.
 
 ## What it does
 

@@ -1,152 +1,163 @@
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"), require("./world.js"), require("./player.js"));
+    module.exports = factory(require("./config.js"), require("./world.js"));
   } else {
-    root.SandboxInteraction = factory(root.SandboxConfig, root.SandboxWorld, root.SandboxPlayer);
+    root.SandboxInteraction = factory(root.SandboxConfig, root.SandboxWorld);
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, World, Player) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, worldApi) {
   "use strict";
 
-  if (!CONFIG || !World || !Player) {
-    throw new Error("SandboxConfig, SandboxWorld and SandboxPlayer are required before SandboxInteraction");
+  const EPSILON = 0.0001;
+
+  function distanceFromPlayer(player, x, y) {
+    const centerY = player.y - player.height / 2;
+    const dx = x + 0.5 - player.x;
+    const dy = y + 0.5 - centerY;
+    return Math.sqrt(dx * dx + dy * dy);
   }
 
-  function cellFromScreen(camera, screenX, screenY, tileSize) {
-    const tile = tileSize || CONFIG.tileSize;
-    const offsetX = camera ? camera.x : 0;
-    const offsetY = camera ? camera.y : 0;
-    return {
-      x: Math.floor((screenX + offsetX) / tile),
-      y: Math.floor((screenY + offsetY) / tile)
-    };
-  }
-
-  function playerCenter(player) {
-    return {
-      x: player.x,
-      y: player.y - player.height / 2
-    };
-  }
-
-  function inReach(player, x, y, reach) {
-    const center = playerCenter(player);
-    const target = { x: x + 0.5, y: y + 0.5 };
-    const distance = Math.hypot(target.x - center.x, target.y - center.y);
-    return distance <= (reach === undefined ? CONFIG.reach : reach);
-  }
-
-  function overlapsPlayer(player, x, y) {
+  function intersectsPlayer(player, x, y) {
     const left = player.x - player.width / 2;
     const right = player.x + player.width / 2;
     const top = player.y - player.height;
     const bottom = player.y;
-    return (
-      left < x + 1 - 1e-6 &&
-      right > x + 1e-6 &&
-      top < y + 1 - 1e-6 &&
-      bottom > y + 1e-6
-    );
+    return x + 1 > left + EPSILON && x < right - EPSILON && y + 1 > top + EPSILON && y < bottom - EPSILON;
   }
 
   function hasSolidNeighbor(world, x, y) {
     return (
-      World.isSolid(world, x + 1, y) ||
-      World.isSolid(world, x - 1, y) ||
-      World.isSolid(world, x, y + 1) ||
-      World.isSolid(world, x, y - 1)
+      worldApi.isSolid(world, x - 1, y) ||
+      worldApi.isSolid(world, x + 1, y) ||
+      worldApi.isSolid(world, x, y - 1) ||
+      worldApi.isSolid(world, x, y + 1)
     );
   }
 
-  function canMine(world, player, x, y) {
-    const block = World.getBlock(world, x, y);
-    if (block === null || block === CONFIG.blocks.air) {
-      return false;
-    }
-    return inReach(player, x, y);
-  }
-
-  function mineBlock(world, player, x, y) {
-    if (!canMine(world, player, x, y)) {
-      return false;
-    }
-    return World.setBlock(world, x, y, CONFIG.blocks.air);
-  }
-
-  function canPlaceAt(world, player, x, y) {
+  function canPlaceBlock(world, player, x, y, reach) {
     if (!Number.isInteger(x) || !Number.isInteger(y)) {
-      return false;
+      return { ok: false, reason: "outside" };
     }
-    const block = World.getBlock(world, x, y);
-    if (block === null || block !== CONFIG.blocks.air) {
-      return false;
+    if (x < 0 || y < 0 || x >= world.width || y >= world.height) {
+      return { ok: false, reason: "outside" };
     }
-    if (!inReach(player, x, y)) {
-      return false;
+    if (worldApi.getBlock(world, x, y) !== CONFIG.blocks.air) {
+      return { ok: false, reason: "occupied" };
     }
-    if (overlapsPlayer(player, x, y)) {
-      return false;
+    if (distanceFromPlayer(player, x, y) > (reach == null ? CONFIG.reach : reach)) {
+      return { ok: false, reason: "reach" };
     }
-    return hasSolidNeighbor(world, x, y);
+    if (intersectsPlayer(player, x, y)) {
+      return { ok: false, reason: "player" };
+    }
+    if (!hasSolidNeighbor(world, x, y)) {
+      return { ok: false, reason: "unsupported" };
+    }
+    return { ok: true, reason: "ok" };
   }
 
-  function canPlace(world, player, x, y, block) {
-    if (!Number.isInteger(block) || block <= 0) {
-      return false;
-    }
-    return canPlaceAt(world, player, x, y);
-  }
-
-  function placeBlock(world, player, x, y, block) {
-    if (!canPlace(world, player, x, y, block)) {
-      return false;
-    }
-    return World.setBlock(world, x, y, block);
-  }
-
-  function adjacentPlacementCell(world, player, x, y) {
-    if (canPlaceAt(world, player, x, y)) {
-      return { x: x, y: y };
-    }
-
-    const neighbors = [
-      { x: x + 1, y: y },
-      { x: x - 1, y: y },
-      { x: x, y: y + 1 },
-      { x: x, y: y - 1 }
+  function adjacentCandidates(x, y, localX, localY) {
+    const edges = [
+      { x: x, y: y - 1, distance: localY },
+      { x: x, y: y + 1, distance: 1 - localY },
+      { x: x - 1, y: y, distance: localX },
+      { x: x + 1, y: y, distance: 1 - localX }
     ];
-    const candidates = neighbors.filter(function candidate(cell) {
-      return canPlaceAt(world, player, cell.x, cell.y);
+    edges.sort(function (a, b) {
+      return a.distance - b.distance;
     });
-    if (candidates.length === 0) {
-      return null;
-    }
+    return edges;
+  }
 
-    const center = playerCenter(player);
-    candidates.sort(function nearest(a, b) {
-      const distanceA = Math.hypot(a.x + 0.5 - center.x, a.y + 0.5 - center.y);
-      const distanceB = Math.hypot(b.x + 0.5 - center.x, b.y + 0.5 - center.y);
-      if (distanceA !== distanceB) {
-        return distanceA - distanceB;
+  function findPlacementCell(world, player, x, y, localX, localY, reach) {
+    if (x < 0 || y < 0 || x >= world.width || y >= world.height) {
+      return { ok: false, reason: "outside", x: x, y: y };
+    }
+    const block = worldApi.getBlock(world, x, y);
+    if (block === CONFIG.blocks.air) {
+      const result = canPlaceBlock(world, player, x, y, reach);
+      return { ok: result.ok, reason: result.reason, x: x, y: y };
+    }
+    const candidates = adjacentCandidates(x, y, localX, localY);
+    let firstReason = "occupied";
+    for (let index = 0; index < candidates.length; index += 1) {
+      const candidate = candidates[index];
+      const result = canPlaceBlock(world, player, candidate.x, candidate.y, reach);
+      if (result.ok) {
+        return { ok: true, reason: "ok", x: candidate.x, y: candidate.y };
       }
-      if (a.y !== b.y) {
-        return a.y - b.y;
+      if (result.reason !== "occupied" && result.reason !== "outside") {
+        firstReason = result.reason;
       }
-      return a.x - b.x;
-    });
-    return candidates[0];
+    }
+    return { ok: false, reason: firstReason, x: x, y: y };
+  }
+
+  function inspectTarget(world, player, worldX, worldY, selectedBlock, reach) {
+    const x = Math.floor(worldX);
+    const y = Math.floor(worldY);
+    const block = worldApi.getBlock(world, x, y);
+    const empty = block === CONFIG.blocks.air;
+    const inReach = block !== null && distanceFromPlayer(player, x, y) <= (reach == null ? CONFIG.reach : reach);
+    const placement = findPlacementCell(
+      world,
+      player,
+      x,
+      y,
+      worldX - x,
+      worldY - y,
+      reach
+    );
+    return {
+      x: x,
+      y: y,
+      block: block,
+      empty: empty,
+      inReach: inReach,
+      canMine: inReach && block !== null && block !== CONFIG.blocks.bedrock,
+      canPlace: placement.ok,
+      placement: placement,
+      selectedBlock: selectedBlock
+    };
+  }
+
+  function mineBlock(world, player, x, y, reach) {
+    if (x < 0 || y < 0 || x >= world.width || y >= world.height) {
+      return { ok: false, reason: "outside" };
+    }
+    const block = worldApi.getBlock(world, x, y);
+    if (block === CONFIG.blocks.air) {
+      return { ok: false, reason: "empty" };
+    }
+    if (block === CONFIG.blocks.bedrock) {
+      return { ok: false, reason: "bedrock" };
+    }
+    if (distanceFromPlayer(player, x, y) > (reach == null ? CONFIG.reach : reach)) {
+      return { ok: false, reason: "reach" };
+    }
+    worldApi.setBlock(world, x, y, CONFIG.blocks.air);
+    return { ok: true, block: block };
+  }
+
+  function placeBlock(world, player, x, y, block, reach) {
+    if (!Number.isInteger(block) || block === CONFIG.blocks.air) {
+      return { ok: false, reason: "invalid-block" };
+    }
+    const check = canPlaceBlock(world, player, x, y, reach);
+    if (!check.ok) {
+      return check;
+    }
+    worldApi.setBlock(world, x, y, block);
+    return { ok: true, block: block };
   }
 
   return {
-    cellFromScreen: cellFromScreen,
-    playerCenter: playerCenter,
-    inReach: inReach,
-    overlapsPlayer: overlapsPlayer,
+    distanceFromPlayer: distanceFromPlayer,
+    intersectsPlayer: intersectsPlayer,
     hasSolidNeighbor: hasSolidNeighbor,
-    canMine: canMine,
+    canPlaceBlock: canPlaceBlock,
+    findPlacementCell: findPlacementCell,
+    inspectTarget: inspectTarget,
     mineBlock: mineBlock,
-    canPlaceAt: canPlaceAt,
-    canPlace: canPlace,
-    placeBlock: placeBlock,
-    adjacentPlacementCell: adjacentPlacementCell
+    placeBlock: placeBlock
   };
 });

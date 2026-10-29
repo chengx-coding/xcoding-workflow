@@ -1,84 +1,91 @@
-# Sandbox (sample consumer project)
+# Verdant Depths — a pocket sandbox
 
-A playable, offline 2D sandbox game inspired by Minecraft. It is built from plain HTML, CSS and
-JavaScript with no framework, no build step, no third-party libraries and no network requests.
+A playable, offline 2D sandbox inspired by Minecraft. This is a static page built from plain HTML,
+CSS and JavaScript: no framework, no build step, no package manager and no network access. Open
+`index.html` directly in a browser to play from `file://`.
 
-The world is generated deterministically from a numeric seed: a flat spawn meadow opens into rolling
-hills, with grass, dirt and stone layers plus trees that provide wood. The player can walk, jump, mine
-blocks within reach and place blocks from the hotbar. The camera follows the player, and the world and
-player state are saved to `localStorage` and restored the next time the page is opened.
+The world is generated from a numeric seed and saved to `localStorage`, including edits, player
+position, selected block, time of day and progress. Reopening the page restores the valley exactly
+where you left it. A corrupt or incompatible save is discarded safely and a fresh world is grown.
 
 ## Open it
 
-Open `index.html` directly in a browser (double-click it), or serve the folder with any static file
-server. The page works from `file://`; there is nothing to install or build.
+Double-click `index.html`, or open it with any modern desktop browser. Sound starts after the first
+interaction because browsers require a user gesture before audio.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| `A` / `D` or `←` / `→` | Move left and right |
-| `Space` | Jump |
-| Left click | Mine the block under the pointer, within reach |
-| Right click | Place the selected block in an empty adjacent cell |
-| `1` – `4` | Select a hotbar block |
-| Click a hotbar slot | Select that block |
+| `A` / `D` or `←` / `→` | Walk left and right |
+| `Space` | Jump; hold for a higher arc |
+| `Shift` | Sprint |
+| Left click | Mine the outlined block within reach |
+| Right click | Place the selected block in the green outlined cell |
+| `1` – `9` | Select a hotbar block |
+| Mouse wheel | Cycle the hotbar |
+| `H` | Open or close the field manual |
+| `M` | Mute or restore generated sound |
+| `Esc` | Close the field manual or world loom |
 
-The selected hotbar slot is highlighted, and the HUD shows the selected block. The page hint line
-repeats the controls while playing.
+Blocks can only be placed in empty, reachable cells with a solid neighbour, and never inside the
+player. The deep bedrock at the bottom of the world cannot be mined.
 
-## Saving
+Use the **Seed** chip or **New world** button to open the world loom. Enter a numeric seed, choose a
+preset, or let it surprise you. Generating a new world replaces the current save.
 
-Mining, placing, selecting a block and moving the player are saved through `localStorage`. The save
-contains the full block array, the world seed, the player position and velocity, and the selected
-block. A missing, corrupt or unavailable save falls back to a freshly generated world; a save written
-by this version stores `version: 1`.
+## What is in the valley
+
+- Seeded rolling terrain with meadow, woodland and dune biomes, caves, coal seams, prism crystals,
+  grass, dirt, stone, timber and canopy trees.
+- Nine placeable block types: meadow grass, rich dirt, slate stone, timber, canopy leaves, warm sand,
+  oak planks, sun glass and glow lanterns.
+- A player with gravity, acceleration, sprinting, variable-height jumping, coyote time and solid
+  collision.
+- Reach-limited mining and face-aware placing, with a live target outline and block ghost.
+- A clamped, smoothly following camera; a minimap; a day/night cycle with stars, parallax ridges,
+  drifting clouds, lantern and crystal light, fireflies and break/place particles.
+- Four field notes that track mining, building, crystal discovery and exploration.
+- Autosave feedback, a generated soundscape, and a built-in field manual.
 
 ## Checks
+
+From this directory:
 
 ```console
 node --test "tests/**/*.test.js"
 python tools/page_check.py
 ```
 
-`node --test` runs the logic tests. They cover terrain determinism and layers, bounded block access,
-player landing/wall/jump collision, reach and placement rules (including the player footprint),
-camera clamping, and save/load round-tripping. `tools/page_check.py` checks that the page has no
-external network references, that its required elements and local assets exist, and then loads it in
-headless Chrome. It verifies that the `#status` marker turns green and that the canvas renders more
-than a blank frame. Pass `--screenshot <path>` to keep the captured image.
+`node --test` runs the logic tests for terrain generation, serialization, player physics, block
+interaction, camera bounds and save handling. `tools/page_check.py` verifies required page elements,
+local assets, the absence of network references, then loads the page in headless Chrome, checks the
+status marker and samples the rendered canvas. Pass `--screenshot <path>` to keep a captured image.
 
 ## Architecture
 
 ```text
-index.html          page shell: canvas, HUD hint, hotbar, status marker
-css/style.css       layout, hotbar selected state, status-marker colours
-js/config.js        shared constants (seed, world size, tiles, physics, block ids, hotbar)
-js/world.js         seeded terrain, trees, block access, serialization
-js/player.js        player state, AABB movement, collision, gravity and jumping
-js/interaction.js   pointer mapping, reach, mining and placement rules
-js/save.js          versioned localStorage save/load with an injectable storage
-js/render.js        camera follow/clamp, tile and player rendering
-js/main.js          boot, fixed-step loop, input, hotbar, HUD and persistence
+index.html          page shell, HUD, hotbar, field manual and seed dialog
+css/style.css       visual system, layout, selected-slot state and motion
+js/config.js        world size, physics, block ids, hotbar and save constants
+js/world.js         seeded terrain, biomes, caves, ores, trees, spawn and serialization
+js/player.js        gravity, movement, jump handling and axis-separated collision
+js/interaction.js   reach checks, target inspection, mining and face-aware placement
+js/camera.js        follow smoothing, world-bound clamping, shake and coordinate mapping
+js/storage.js       versioned save payloads and safe localStorage access
+js/render.js        sky, terrain textures, player, particles, lighting, minimap and icons
+js/main.js          boot, input, game loop, HUD state, saves, hotbar and dialogs
 tests/              Node logic tests
 tools/page_check.py static and headless-browser checks
 ```
 
-The modules use the same UMD wrapper as the seed so Node can require them without a DOM. `world.js`
-keeps a flat spawn plateau over the original ground line and blends into seeded hills east of it. The
-player is a small AABB moved in substeps; horizontal and vertical collisions snap to tile edges, and
-out-of-world sides act as solid walls. `main.js` runs a fixed 60 Hz update step, recomputes the camera
-from the player position, and renders only the visible tiles.
-
 The status marker is part of the verification contract: `#status` starts at
-`data-state="booting"`, becomes `data-state="ready"` after a successful first frame, and becomes
-`data-state="error"` (red) if boot or a later frame fails. `tools/page_check.py` samples the marker's
-pixel.
+`data-state="booting"`, becomes `data-state="ready"` after the first successful frame, and becomes
+`data-state="error"` if boot fails.
 
 ## Constraints
 
-- No third-party libraries, CDNs, external fonts or network requests.
-- The page stays runnable from `file://`.
-- The modules stay loadable in Node for the logic tests.
-- The seed tests in `tests/world.test.js` remain unchanged; new coverage lives in the added test
-  files.
+- No third-party libraries, CDNs, external fonts, remote images or network requests.
+- The page works from `file://` and needs no development server.
+- Browser modules remain loadable in Node for the logic tests.
+- Text files are UTF-8 with LF line endings and JavaScript keeps two-space indentation.

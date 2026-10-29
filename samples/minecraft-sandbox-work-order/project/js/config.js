@@ -13,35 +13,74 @@
     dirt: 2,
     stone: 3,
     wood: 4,
-    leaves: 5
+    leaves: 5,
+    sand: 6,
+    planks: 7,
+    glass: 8,
+    lantern: 9,
+    coal: 10,
+    crystal: 11,
+    bedrock: 12
   });
 
+  const HOTBAR = Object.freeze([
+    BLOCKS.grass,
+    BLOCKS.dirt,
+    BLOCKS.stone,
+    BLOCKS.wood,
+    BLOCKS.leaves,
+    BLOCKS.sand,
+    BLOCKS.planks,
+    BLOCKS.glass,
+    BLOCKS.lantern
+  ]);
+
   return Object.freeze({
-    version: "1.0.0",
-    seed: 20261028,
-    tileSize: 24,
-    viewWidth: 960,
-    viewHeight: 540,
-    worldWidth: 128,
-    worldHeight: 64,
-    gravity: 0.03,
-    moveSpeed: 0.18,
-    jumpSpeed: 0.45,
-    maxFallSpeed: 0.9,
-    maxStep: 0.25,
-    spawnX: 12,
-    reach: 5,
-    stepMs: 1000 / 60,
-    saveKey: "xc-sandbox-sample-v1",
-    saveVersion: 1,
+    version: "2.0.0",
+    tileSize: 32,
+    viewWidth: 1280,
+    viewHeight: 720,
+    worldWidth: 180,
+    worldHeight: 72,
+    gravity: 34,
+    moveSpeed: 7.4,
+    sprintMultiplier: 1.32,
+    jumpSpeed: 12.8,
+    maxFallSpeed: 24,
+    reach: 5.6,
+    seed: 874213,
+    saveKey: "verdant-depths-save-v2",
+    saveVersion: 2,
+    dayLengthSeconds: 300,
+    initialTimeOfDay: 0.43,
+    fixedStep: 1 / 120,
     blocks: BLOCKS,
+    hotbar: HOTBAR,
     blockNames: Object.freeze({
-      1: "grass",
-      2: "dirt",
-      3: "stone",
-      4: "wood",
-      5: "leaves"
+      0: "Air",
+      1: "Meadow grass",
+      2: "Rich dirt",
+      3: "Slate stone",
+      4: "Timber",
+      5: "Canopy leaves",
+      6: "Warm sand",
+      7: "Oak planks",
+      8: "Sun glass",
+      9: "Glow lantern",
+      10: "Coal seam",
+      11: "Prism crystal",
+      12: "Bedrock"
     }),
-    hotbar: Object.freeze([BLOCKS.grass, BLOCKS.dirt, BLOCKS.stone, BLOCKS.wood])
+    blockShortNames: Object.freeze({
+      1: "Grass",
+      2: "Dirt",
+      3: "Stone",
+      4: "Timber",
+      5: "Leaves",
+      6: "Sand",
+      7: "Planks",
+      8: "Glass",
+      9: "Lantern"
+    })
   });
 });

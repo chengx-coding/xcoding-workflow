@@ -1,5 +1,38 @@
-- **Work order id:** `20261028-1731-implement-minecraft-sandbox`
-- **Runtime tree reference:** `C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\runtime\orchestration.xml`
-- **Path of `result.md`:** `C:\dev\xcoding-workflow-dev\minecraft-sandbox-workshop\.xcoding\work-orders\20261028-1731-implement-minecraft-sandbox\result.md`
+Built and closed the managed create-mode work order.
 
-Implemented a playable offline 2D sandbox with deterministic seeded terrain (grass, dirt, stone and trees), AABB player physics with collision/jumping, left-click mining and right-click placement, a four-block hotbar, a clamped follow camera, `localStorage` save/load, a control hint line and an updated README. Verification proved `node --test` passes 28/28 tests, `python tools/page_check.py` passes with an exact green `#status` marker and 53 canvas colour buckets, and a real Chrome `file://` smoke test confirmed walking, jumping, hotbar selection, mining, placement and save/reload. The full lifecycle closed with the change report explicitly waived and no project Git commit created.
+## Delivered
+
+Playable offline game at:
+
+`C:\dev\xcoding-workflow-dev\wf-ablation\sample-create\project\index.html`
+
+Key features:
+
+- Seeded procedural terrain with grass, dirt, stone, caves, coal, crystals, biomes, trees, lantern landmarks and a distant forest layer.
+- Player gravity, acceleration, sprinting, variable-height jumping, coyote time and solid collision.
+- Reach-limited mining, face-aware placement, block ghost, player-overlap rejection and blocked-action feedback.
+- Nine-block hotbar with number-key/wheel selection and a raised, glowing selected state.
+- Clamped follow camera, minimap, day/night cycle, particles, camera shake, generated audio and field notes.
+- Versioned `localStorage` save/restore for world edits, player state, selected slot, time and progress.
+- Updated `README.md` with controls and architecture.
+
+## Verified
+
+- `node --test "tests/**/*.test.js"` — **34 passed, 0 failed**
+- `python tools/page_check.py --window 960x600` — **passed**; static/network checks clean, status marker correct, 284 canvas colour buckets
+- Browser probe — mining, placement, movement, save and reload restore all passed
+- UI probe — New World dialog, help panel, Escape close and slot 9 selection passed
+- Network/fetch scan — **no network references**
+- UTF-8/LF scan — **all LF**
+- Independent visual review against strong one-shot references S1 and S3 — **PASS, no required findings**
+- Final recheck of the exact delivered files — **passed**
+
+## Work order
+
+- ID: `20261029-1219-2d-sandbox-game`
+- Runtime status: **complete**, integrity valid
+- Report: waived by the user (`user_waived`)
+- Feature directory: none
+- Project Git commit: none, per the project bridge
+
+Residual risks are limited to audible audio-quality review, touch/wheel input coverage, and the fact that the independent visual comparison was static rather than a live responsive pass.
