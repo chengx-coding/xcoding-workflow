@@ -166,6 +166,19 @@ $svg = Invoke-WebRequest "$($viewer.url)api/trees/$($viewer.trees[0].tree_id)/sv
 
 归档的 `work-order/` 是原始工作区目录加上最终回答的副本，行尾统一为 LF；因此它包含原始运行的绝对路径。
 
+## 评测标准
+
+每次 sample 运行都用固定的 [M2D-SES v1.0](evaluation/STANDARD.md) 评分：12 个领域、86 条细则、
+T0–T3 分层、权重、0–5 锚点，并分别报告 coverage/depth/extras。可复用的
+[score sheet](evaluation/SCORE-SHEET.md) 记录各领域分数以及 base、core demo 和 coverage 指数。
+
+当前 0.3.3 产物的 base 分数是 **standard 55/100**、**pre-correction 60/100**、**baseline
+39/100**；core demo 为 61/65/44，coverage 为 47/50/31（standard/pre-correction/baseline）。
+standard 更干净、更响应式、更稳；pre-correction 特例更接近
+Minecraft 的系统空间，在世界/生物群系、方块/交互、昼夜和更丰富的 HUD 上更强。三者相对
+Minecraft 都还很浅：没有合成、生存、生物/战斗、红石、水/沙子物理、天气或结构。领域表和
+额外项/争议项见 [score sheet](evaluation/SCORE-SHEET.md)。
+
 ## 局限
 
 - 这是单次示例运行，记录一次执行，不是 benchmark。

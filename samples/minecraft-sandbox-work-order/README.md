@@ -230,6 +230,21 @@ $svg = Invoke-WebRequest "$($viewer.url)api/trees/$($viewer.trees[0].tree_id)/sv
 The archived `work-order/` directory is a copy of the original workshop directory plus the run's final
 answer, normalized to LF; it therefore contains absolute paths from the original run.
 
+## Evaluation standard
+
+Every sample run is scored with the fixed [M2D-SES v1.0](evaluation/STANDARD.md): 12 domains, 86
+criteria, T0-T3 tiers, weights, 0-5 anchors, and separate coverage/depth/extras reporting. The
+reusable [score sheet](evaluation/SCORE-SHEET.md) records the domain scores and the base, core-demo
+and coverage indices.
+
+For the current 0.3.3 products, the base scores are **standard 55/100**, **pre-correction 60/100**
+and **baseline 39/100**; core demo is 61/65/44 and coverage is 47/50/31 (standard/pre-correction/
+baseline). The standard is cleaner, more responsive and more
+robust; the pre-correction special is more Minecraft-complete and wins world/biomes, blocks/
+interaction, day/night and the richer HUD. All three remain shallow relative to Minecraft: no
+crafting, survival, mobs/combat, redstone, water/sand physics, weather or structures. See the
+[score sheet](evaluation/SCORE-SHEET.md) for the domain table and the extras/controversy notes.
+
 ## Limitations
 
 - This is a single sample run. It documents one execution, not a benchmark.
