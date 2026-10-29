@@ -51,7 +51,7 @@
 - **何时调用：** 工作流需要独立评估受管文档、方案、代码变更、诊断或验证证据时。
 - **用途：** 评估不可变输入，产出可追踪、按严重度排序的 findings 和结论。
 - **公开入口：** 必填 `review_kind`、`inputs`、`artifact_path`；可选 `review_context`。
-- **典型用法：** 检查请求的质量维度，让每个必修 finding 都有证据，并写入已验证 node artifact。对 code/solution review 还检查 under-scope（需求或质量 bar 未满足）、over-scope（无谓改动或超出批准范围）和 scope drift（实现与记录的 scope decision 不一致）。对 `create`，对照原始请求加 accepted capability matrix 检查保真，而不只是 approved solution；没有用户/项目来源的 material exclusion 属于无来源缩窄。存在 reference signature 时，缺失或明显削弱的 signature must capability 是 under-scope；signature should capability 也是 under-scope，除非 accepted matrix 记录了带原因和影响的 deferral；导入无关参考 feature 是 over-scope。
+- **典型用法：** 检查请求的质量维度，让每个必修 finding 都有证据，并写入已验证 node artifact。对 code/solution review 还检查 under-scope（需求或质量 bar 未满足）、over-scope（无谓改动或超出批准范围）和 scope drift（实现与记录的 scope decision 不一致）。对 `create`，对照原始请求加 accepted capability matrix 检查保真，而不只是 approved solution；没有用户/项目来源的 material exclusion 属于无来源缩窄。存在 reference signature 时，缺失或明显削弱的 signature must capability 是 under-scope；signature should capability 也是 under-scope，除非 accepted matrix 记录了带原因和影响的 deferral；导入无关参考 feature 是 over-scope。存在 prior capability inventory 时，无解释的缺失是 finding；replace/retire 需要记录原因、影响和来源，prior should 可带原因、影响、来源和重新进入触发条件而接受为 defer。
 - **主要边界：** 审查对被审对象只读；调用方负责整改和风险决策，原始命令记录不是默认 artifact。范围 finding 是有证据的评审判断，不是机械 scope checker。
 
 ## `xc-verification`

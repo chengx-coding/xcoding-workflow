@@ -117,6 +117,41 @@ The goal's quality contract, when a reference exists, includes the signature-exp
 the result must at least be recognizably a complete experience of the requested kind, not merely a
 literal checklist of the prompt.
 
+## Prior capability preservation
+
+When the task supplies a prior accepted capability inventory (an iteration, redesign, migration, or
+replatform of an existing product), record the inventory and its source/version. For every prior
+capability, record one disposition:
+
+| Disposition | Meaning | Requirement |
+| --- | --- | --- |
+| `preserve` | The capability remains available | Current capability matrix and verification |
+| `improve` | The capability remains and is strengthened | Matrix plus comparison evidence |
+| `replace` | A different mechanism/experience delivers it | Reason, impact, and source/approval |
+| `retire` | The capability is removed | Reason, impact, and user/project source; an unsourced removal is a finding |
+| `defer` | A prior `should` remains accepted but is not delivered this iteration | Reason, impact, source, and a re-entry trigger; a deferred should is not a silent retirement |
+
+The inventory is not a ceiling and not a breadth score: new capabilities may still be added. It is a
+continuity record for capabilities the product already accepted. If no prior inventory is supplied,
+record `not applicable`; do not invent one.
+
+Every prior item must appear in the disposition table. A wholly omitted item is a blocking gap, not
+a silent omission; the solution must not be approved while any prior item is undispositioned. A prior
+`should` may be deferred with a recorded reason, impact, source, and re-entry trigger; record `defer`
+rather than silently retiring it.
+
+A `replace` or `retire` source must be independent of the solution approval it is trying to obtain:
+a user decision, a project constraint, or a prior accepted decision. The fact that the solution gate
+approved the plan is not itself the source. If the prior inventory has no version/tag, record the
+source and that uncertainty; do not infer a version.
+
+Use user-observable capability granularity, not implementation mechanism names. Analysis holds the
+canonical prior-inventory table; goal and solution reference its dispositions rather than restating a
+second copy. A `replace` or `retire` without a source/approval must not enter the approved solution
+matrix. Verification maps evidence to every preserved/improved capability; a missing prior capability
+is a gap. Review diffs the prior inventory against the accepted matrix and reports an unexplained
+removal as a finding.
+
 ## Analysis comparison
 
 Analysis must compare the goal with the original request:
