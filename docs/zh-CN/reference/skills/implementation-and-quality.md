@@ -31,7 +31,7 @@
 - **何时调用：** 获批方案和必需门禁已经确定一个有边界的实现变更时。
 - **用途：** 只执行一个 runtime 实现节点，并记录变更路径、验证、基线影响和残余风险。
 - **公开入口：** 必填 `workbench_path`、`work_scope`、`inputs` 和 `artifact_path`。
-- **典型用法：** 阅读节点契约和获批输入，按任务采用最小充分幅度实现已批准范围（`create` 在质量契约内最大化，`change` 用最小充分改动，`repair` 保持强最小性预设），运行局部检查并写入声明的 artifact。范围不足时停下并返回调用方，而不是自行扩缩。自适应 minimal 节点可以在验证不可变 plan receipt 后，把一个 coherent implementation 与 focused verification 合并执行。
+- **典型用法：** 阅读节点契约和获批输入，按任务采用最小充分幅度实现已批准范围（`create` 在质量契约内最大化，`change` 用最小充分改动，`repair` 保持强最小性预设），运行局部检查并写入声明的 artifact。对 `create`，accepted capability matrix 是已批准范围的一部分：实现每个 accepted must capability，不得静默丢弃或削弱 must/should capability；范围或 must capability 不足时停下返回调用方，而不是自行扩缩。自适应 minimal 节点可以在验证不可变 plan receipt 后，把一个 coherent implementation 与 focused verification 合并执行。
 - **主要边界：** 不负责分解或重试，不得顺手覆盖功能基线，只能通过运行时公开命令报告。范围的扩大或缩小是调用方或 gate 的决定，不是 worker 的决定。
 
 ## `xc-writing`
@@ -51,7 +51,7 @@
 - **何时调用：** 工作流需要独立评估受管文档、方案、代码变更、诊断或验证证据时。
 - **用途：** 评估不可变输入，产出可追踪、按严重度排序的 findings 和结论。
 - **公开入口：** 必填 `review_kind`、`inputs`、`artifact_path`；可选 `review_context`。
-- **典型用法：** 检查请求的质量维度，让每个必修 finding 都有证据，并写入已验证 node artifact。对 code/solution review 还检查 under-scope（需求或质量 bar 未满足）、over-scope（无谓改动或超出批准范围）和 scope drift（实现与记录的 scope decision 不一致）。
+- **典型用法：** 检查请求的质量维度，让每个必修 finding 都有证据，并写入已验证 node artifact。对 code/solution review 还检查 under-scope（需求或质量 bar 未满足）、over-scope（无谓改动或超出批准范围）和 scope drift（实现与记录的 scope decision 不一致）。对 `create`，对照原始请求加 accepted capability matrix 检查保真，而不只是 approved solution；没有用户/项目来源的 material exclusion 属于无来源缩窄。
 - **主要边界：** 审查对被审对象只读；调用方负责整改和风险决策，原始命令记录不是默认 artifact。范围 finding 是有证据的评审判断，不是机械 scope checker。
 
 ## `xc-verification`
@@ -61,5 +61,5 @@
 - **何时调用：** 实现、诊断、采用或功能基线需要项目定义的验证证据时。
 - **用途：** 运行最小充分命令集，把证据映射到验收条件，并记录结果和覆盖缺口。
 - **公开入口：** 必填 `workbench_path`、`verification_scope`、`artifact_path`；可选 `inputs`。
-- **典型用法：** 读取项目验证政策，先运行局部检查，再按风险扩展回归检查，并记录每条命令及未执行前置条件。Adaptive regression 或 multi-environment scope 使用独立验证节点；fast pace 不能删除 required scope。
+- **典型用法：** 读取项目验证政策，先运行局部检查，再按风险扩展回归检查，并记录每条命令及未执行前置条件。对 `create`，把证据映射到 accepted matrix 中的每个 must/should capability；测试全过不等于未验证 capability 已证明。Adaptive regression 或 multi-environment scope 使用独立验证节点；fast pace 不能删除 required scope。
 - **主要边界：** 不编造命令或通过标准，不静默弱化验收条件，也不为强行通过而修改产品行为。

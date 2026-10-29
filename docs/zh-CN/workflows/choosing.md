@@ -23,11 +23,11 @@
 
 实现幅度是动态约束，不是固定最小值。目标是**最小充分改动**：在满足正当需求和任务相应质量 bar 的前提下最小的改动，并在不冲突时尽量保持既有结构与一致性。
 
-- `create` 没有最小化预设。它的 goal 必须携带用户可见质量契约，实现在约束内最大化产品价值。
+- `create` 没有最小化预设。它的 goal 必须携带用户可见质量契约，以及保留请求结果的 intended capability scope；实现在约束内最大化产品价值。goal 要为每个 material exclusion 或新增约束记录来源；goal 自己发明的 material exclusion 在没有用户确认时不得成为绑定范围。比较对象是 floor，不是 ceiling。这是保真要求，不是 breadth 指标：小型 create 任务可以只有很小的 capability map。
 - `change` 使用中等最小性：优先选择能完整满足需求与质量 bar 的最小一致改动；如果需求或质量 bar 要求更大改动，就降低最小性偏好，按需求实现。尽量保持一致性。
 - `repair` 使用强最小性预设：能局部修复就局部修复；如果根因或正确修复需要改共享机制、设计或需求，则升级为 `change`。
 
-analysis 为 `change`/`repair` 记录 scope assessment；solution 记录 scope decision；实现只执行已批准范围，范围不足时停下返回，不静默扩缩；review 检查 under-scope、over-scope 和 scope drift。权衡材料性不清时，主会话通过现有澄清或批准 gate 询问用户。详细策略见 [`xc-work` 的 scope reference](../../../skills/xc-work/references/scope-policy.md)。
+analysis 为 `change`/`repair` 记录 scope assessment；solution 记录 scope decision；实现只执行已批准范围，范围不足时停下返回，不静默扩缩；review 检查 under-scope、over-scope 和 scope drift。对 `create`，analysis 对照原始请求并携带 capability map（must/should/non-goals）；solution 记录 accepted matrix，把每个 must/should capability 映射到实现与验证；review 对照原始请求与该矩阵检查保真，包括没有用户/项目来源的 exclusion。权衡材料性不清时，主会话通过现有澄清或批准 gate 询问用户。详细策略见 [`xc-work` 的 scope reference](../../../skills/xc-work/references/scope-policy.md)；create scope 方法见 [`create-scope` reference](../../../skills/xc-work/references/create-scope.md)。
 
 ## Direct 或受管治理
 
