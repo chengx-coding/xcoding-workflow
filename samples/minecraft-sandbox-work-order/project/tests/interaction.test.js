@@ -4,84 +4,69 @@ const assert = require("node:assert/strict");
 const config = require("../js/config.js");
 const worldApi = require("../js/world.js");
 const playerApi = require("../js/player.js");
-const interaction = require("../js/interaction.js");
 
-function makeWorld() {
-  const width = 40;
-  const height = 24;
-  const surface = 16;
-  const data = new Uint8Array(width * height);
-  const ground = new Int16Array(width);
-  const biomes = new Uint8Array(width);
-  for (let x = 0; x < width; x += 1) {
-    ground[x] = surface;
-    for (let y = surface; y < height; y += 1) {
-      data[y * width + x] = y === surface ? config.blocks.grass : config.blocks.stone;
+function flatArena() {
+  const world = worldApi.createWorld(config.seed);
+  const base = worldApi.surfaceHeightAt(world, 64);
+  for (let x = 56; x <= 80; x += 1) {
+    for (let y = base - 10; y < base; y += 1) {
+      worldApi.setBlock(world, x, y, config.blocks.air);
     }
+    for (let y = base + 1; y <= base + 12; y += 1) {
+      worldApi.setBlock(world, x, y, config.blocks.air);
+    }
+    worldApi.setBlock(world, x, base, config.blocks.stone);
   }
-  data[13 * width + 14] = config.blocks.wood;
-  data[12 * width + 14] = config.blocks.leaves;
-  return { width: width, height: height, seed: 7, data: data, ground: ground, biomes: biomes };
+  const player = playerApi.createPlayer(64.5, base);
+  player.onGround = true;
+  return { world: world, base: base, player: player };
 }
 
-test("inspectTarget identifies mineable blocks within reach", () => {
-  const world = makeWorld();
-  const player = playerApi.createPlayer(10.5, 16);
-  const hover = interaction.inspectTarget(world, player, 11.2, 15.2, config.blocks.stone, config.reach);
-  assert.equal(hover.x, 11);
-  assert.equal(hover.y, 15);
-  assert.equal(hover.block, config.blocks.air);
-  assert.equal(hover.empty, true);
-});
-
-test("mining removes one block and rejects empty, bedrock and distant cells", () => {
-  const world = makeWorld();
-  const player = playerApi.createPlayer(10.5, 16);
-  const result = interaction.mineBlock(world, player, 14, 13, config.reach);
+test("mining succeeds on a solid block within reach", () => {
+  const arena = flatArena();
+  const result = worldApi.canMineBlock(arena.world, arena.player, 66, arena.base, config.reach);
   assert.equal(result.ok, true);
-  assert.equal(worldApi.getBlock(world, 14, 13), config.blocks.air);
-  assert.equal(interaction.mineBlock(world, player, 14, 13, config.reach).reason, "empty");
-
-  worldApi.setBlock(world, 12, 13, config.blocks.bedrock);
-  assert.equal(interaction.mineBlock(world, player, 12, 13, config.reach).reason, "bedrock");
-
-  worldApi.setBlock(world, 35, 5, config.blocks.stone);
-  assert.equal(interaction.mineBlock(world, player, 35, 5, config.reach).reason, "reach");
+  assert.equal(worldApi.getBlock(arena.world, 66, arena.base), config.blocks.stone);
 });
 
-test("placement is limited to supported, empty, reachable cells outside the player", () => {
-  const world = makeWorld();
-  const player = playerApi.createPlayer(10.5, 16);
-  assert.equal(interaction.canPlaceBlock(world, player, 11, 15, config.reach).ok, true);
-  assert.equal(interaction.canPlaceBlock(world, player, 10, 15, config.reach).reason, "player");
-  assert.equal(interaction.canPlaceBlock(world, player, 10, 16, config.reach).reason, "occupied");
-  assert.equal(interaction.canPlaceBlock(world, player, 11, 12, config.reach).reason, "unsupported");
-  assert.equal(interaction.canPlaceBlock(world, player, 35, 5, config.reach).ok, false);
+test("mining rejects empty cells, out-of-bounds cells and distant blocks", () => {
+  const arena = flatArena();
+  assert.equal(worldApi.canMineBlock(arena.world, arena.player, 64, arena.base - 3, config.reach).reason, "empty");
+  assert.equal(worldApi.canMineBlock(arena.world, arena.player, -1, arena.base, config.reach).reason, "bounds");
+  assert.equal(worldApi.canMineBlock(arena.world, arena.player, 78, arena.base, config.reach).reason, "reach");
 });
 
-test("placing a block changes the world and is rejected inside the player", () => {
-  const world = makeWorld();
-  const player = playerApi.createPlayer(10.5, 16);
-  const placed = interaction.placeBlock(world, player, 11, 15, config.blocks.planks, config.reach);
-  assert.equal(placed.ok, true);
-  assert.equal(worldApi.getBlock(world, 11, 15), config.blocks.planks);
-  const blocked = interaction.placeBlock(world, player, 10, 15, config.blocks.stone, config.reach);
-  assert.equal(blocked.ok, false);
-  assert.equal(blocked.reason, "player");
-  assert.equal(worldApi.getBlock(world, 10, 15), config.blocks.air);
+test("placing succeeds in a clear, supported, non-player cell", () => {
+  const arena = flatArena();
+  const result = worldApi.canPlaceBlock(arena.world, arena.player, 66, arena.base - 1, config.reach);
+  assert.equal(result.ok, true);
+  worldApi.setBlock(arena.world, 66, arena.base - 1, config.blocks.planks);
+  assert.equal(worldApi.getBlock(arena.world, 66, arena.base - 1), config.blocks.planks);
 });
 
-test("clicking a solid face selects an adjacent empty cell", () => {
-  const world = makeWorld();
-  const player = playerApi.createPlayer(10.5, 16);
-  const placement = interaction.findPlacementCell(world, player, 12, 16, 0.5, 0.95, config.reach);
-  assert.equal(placement.ok, true);
-  assert.equal(placement.y, 15);
+test("placing is refused inside the player", () => {
+  const arena = flatArena();
+  const result = worldApi.canPlaceBlock(arena.world, arena.player, 64, arena.base - 1, config.reach);
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "player");
 });
 
-test("distance and player intersection helpers behave at cell boundaries", () => {
-  const player = playerApi.createPlayer(10.5, 16);
-  assert.equal(interaction.distanceFromPlayer(player, 10, 15) > 0, true);
-  assert.equal(interaction.intersectsPlayer(player, 10, 15), true);
-  assert.equal(interaction.intersectsPlayer(player, 11, 15), false);
+test("placing is refused on occupied, unsupported and out-of-reach cells", () => {
+  const arena = flatArena();
+  assert.equal(worldApi.canPlaceBlock(arena.world, arena.player, 64, arena.base, config.reach).reason, "occupied");
+  assert.equal(worldApi.canPlaceBlock(arena.world, arena.player, 64, arena.base - 4, config.reach).reason, "unsupported");
+  assert.equal(worldApi.canPlaceBlock(arena.world, arena.player, 78, arena.base - 1, config.reach).reason, "reach");
+});
+
+test("solid-neighbour detection works on all four sides", () => {
+  const arena = flatArena();
+  worldApi.setBlock(arena.world, 60, arena.base - 3, config.blocks.stone);
+  assert.equal(worldApi.hasSolidNeighbour(arena.world, 60, arena.base - 2), true);
+  assert.equal(worldApi.hasSolidNeighbour(arena.world, 60, arena.base - 5), false);
+});
+
+test("reach uses the distance from the player centre to the cell centre", () => {
+  const arena = flatArena();
+  assert.equal(worldApi.cellWithinReach(arena.world, arena.player, 64, arena.base - 1, 5), true);
+  assert.equal(worldApi.cellWithinReach(arena.world, arena.player, 64, arena.base - 9, 5), false);
 });

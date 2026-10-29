@@ -1,39 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1348" height="1866" viewBox="0 0 1348 1866" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="2036" height="4998" viewBox="0 0 2036 4998" role="img" aria-labelledby="title description">
   <title id="title">2d-sandbox-game</title>
-  <desc id="description">Complete orchestration tree for 20261029-1219-2d-sandbox-game.</desc>
+  <desc id="description">Complete orchestration tree for 20261029-1459-2d-sandbox-game.</desc>
   <rect width="100%" height="100%" fill="#0b1220"/>
   <text x="42" y="31" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="18" font-weight="700">2d-sandbox-game</text>
-  <text x="42" y="53" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="12">Work order 20261029-1219-2d-sandbox-game · succeeded</text>
-  <path d="M 274 969 C 330 969, 330 157, 386 157" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 274 969 C 330 969, 330 273, 386 273" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 618 273 C 674 273, 674 273, 730 273" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 274 969 C 330 969, 330 389, 386 389" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
-  <path d="M 274 969 C 330 969, 330 505, 386 505" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
-  <path d="M 274 969 C 330 969, 330 621, 386 621" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
-  <path d="M 274 969 C 330 969, 330 737, 386 737" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
-  <path d="M 274 969 C 330 969, 330 853, 386 853" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
-  <path d="M 274 969 C 330 969, 330 969, 386 969" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
-  <path d="M 274 969 C 330 969, 330 1433, 386 1433" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 618 1433 C 674 1433, 674 1085, 730 1085" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 962 1085 C 1018 1085, 1018 1085, 1074 1085" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 618 1433 C 674 1433, 674 1317, 730 1317" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 962 1317 C 1018 1317, 1018 1201, 1074 1201" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 962 1317 C 1018 1317, 1018 1317, 1074 1317" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 962 1317 C 1018 1317, 1018 1433, 1074 1433" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 618 1433 C 674 1433, 674 1549, 730 1549" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
-  <path d="M 618 1433 C 674 1433, 674 1665, 730 1665" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 962 1665 C 1018 1665, 1018 1665, 1074 1665" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <path d="M 618 1433 C 674 1433, 674 1781, 730 1781" fill="none" stroke="#4ade80" stroke-width="2"/>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__root" data-status="succeeded">
+  <text x="42" y="53" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="12">Work order 20261029-1459-2d-sandbox-game · succeeded</text>
+  <path d="M 274 2535 C 330 2535, 330 157, 386 157" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 274 2535 C 330 2535, 330 621, 386 621" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 618 621 C 674 621, 674 621, 730 621" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 621 C 1018 621, 1018 273, 1074 273" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 621 C 1018 621, 1018 389, 1074 389" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 621 C 1018 621, 1018 563, 1074 563" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 1306 563 C 1362 563, 1362 505, 1418 505" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M 1306 563 C 1362 563, 1362 621, 1418 621" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M 962 621 C 1018 621, 1018 737, 1074 737" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 962 621 C 1018 621, 1018 853, 1074 853" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 962 621 C 1018 621, 1018 969, 1074 969" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 274 2535 C 330 2535, 330 1491, 386 1491" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 618 1491 C 674 1491, 674 1085, 730 1085" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 618 1491 C 674 1491, 674 1549, 730 1549" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 1549 C 1018 1549, 1018 1201, 1074 1201" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 1549 C 1018 1549, 1018 1317, 1074 1317" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 1549 C 1018 1549, 1018 1491, 1074 1491" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 1306 1491 C 1362 1491, 1362 1433, 1418 1433" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M 1306 1491 C 1362 1491, 1362 1549, 1418 1549" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M 962 1549 C 1018 1549, 1018 1665, 1074 1665" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 962 1549 C 1018 1549, 1018 1781, 1074 1781" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 962 1549 C 1018 1549, 1018 1897, 1074 1897" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 274 2535 C 330 2535, 330 2013, 386 2013" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 274 2535 C 330 2535, 330 2129, 386 2129" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 274 2535 C 330 2535, 330 2593, 386 2593" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 618 2593 C 674 2593, 674 2593, 730 2593" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 2593 C 1018 2593, 1018 2245, 1074 2245" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 2593 C 1018 2593, 1018 2361, 1074 2361" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 2593 C 1018 2593, 1018 2535, 1074 2535" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 1306 2535 C 1362 2535, 1362 2477, 1418 2477" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M 1306 2535 C 1362 2535, 1362 2593, 1418 2593" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M 962 2593 C 1018 2593, 1018 2709, 1074 2709" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 962 2593 C 1018 2593, 1018 2825, 1074 2825" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 962 2593 C 1018 2593, 1018 2941, 1074 2941" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 274 2535 C 330 2535, 330 3057, 386 3057" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 274 2535 C 330 2535, 330 3173, 386 3173" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 274 2535 C 330 2535, 330 4101, 386 4101" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 618 4101 C 674 4101, 674 3289, 730 3289" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 3289 C 1018 3289, 1018 3289, 1074 3289" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 618 4101 C 674 4101, 674 3637, 730 3637" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 3637 C 1018 3637, 1018 3405, 1074 3405" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 3637 C 1018 3637, 1018 3521, 1074 3521" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 3637 C 1018 3637, 1018 3637, 1074 3637" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 3637 C 1018 3637, 1018 3753, 1074 3753" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 3637 C 1018 3637, 1018 3869, 1074 3869" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 618 4101 C 674 4101, 674 3985, 730 3985" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 618 4101 C 674 4101, 674 4449, 730 4449" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 962 4449 C 1018 4449, 1018 4449, 1074 4449" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 1306 4449 C 1362 4449, 1362 4101, 1418 4101" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 1306 4449 C 1362 4449, 1362 4217, 1418 4217" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 1306 4449 C 1362 4449, 1362 4391, 1418 4391" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 1650 4391 C 1706 4391, 1706 4333, 1762 4333" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M 1650 4391 C 1706 4391, 1706 4449, 1762 4449" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M 1306 4449 C 1362 4449, 1362 4565, 1418 4565" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 1306 4449 C 1362 4449, 1362 4681, 1418 4681" fill="none" stroke="#fbbf24" stroke-width="2" stroke-dasharray="6 5"/>
+  <path d="M 1306 4449 C 1362 4449, 1362 4797, 1418 4797" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <path d="M 618 4101 C 674 4101, 674 4913, 730 4913" fill="none" stroke="#4ade80" stroke-width="2"/>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__root" data-status="succeeded">
     <title>Work Order</title>
-    <rect x="42" y="926" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="42" y="926" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="56" y="953" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Work Order</text>
-    <text x="56" y="975" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / root</text>
-    <text x="56" y="996" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+    <rect x="42" y="2492" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="42" y="2492" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="56" y="2519" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Work Order</text>
+    <text x="56" y="2541" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / root</text>
+    <text x="56" y="2562" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__prepare-work-order" data-status="succeeded">
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__prepare-work-order" data-status="succeeded">
     <title>Prepare work order</title>
     <rect x="386" y="114" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
     <rect x="386" y="114" width="4" height="86" rx="2" fill="#4ade80"/>
@@ -41,156 +78,452 @@
     <text x="400" y="163" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / work-order-prepare</text>
     <text x="400" y="184" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__goal-document" data-status="succeeded">
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__goal-document" data-status="succeeded">
     <title>Define work order goal</title>
-    <rect x="386" y="230" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="386" y="230" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="400" y="257" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Define work order goal</text>
-    <text x="400" y="279" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
-    <text x="400" y="300" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
-  </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__dyn-1__goal-document" data-status="succeeded">
-    <title>Write work order goal</title>
-    <rect x="730" y="230" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="730" y="230" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="744" y="257" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Write work order goal</text>
-    <text x="744" y="279" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / goal-document</text>
-    <text x="744" y="300" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
-  </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__analysis-group" data-status="skipped">
-    <title>Analyze requested work</title>
-    <rect x="386" y="346" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="386" y="346" width="4" height="86" rx="2" fill="#fbbf24"/>
-    <text x="400" y="373" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Analyze requested work</text>
-    <text x="400" y="395" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
-    <text x="400" y="416" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
-  </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__reconciliation-group" data-status="skipped">
-    <title>Reconcile related feature baselines</title>
-    <rect x="386" y="462" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="386" y="462" width="4" height="86" rx="2" fill="#fbbf24"/>
-    <text x="400" y="489" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Reconcile related feature bas…</text>
-    <text x="400" y="511" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
-    <text x="400" y="532" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
-  </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__clarification-group" data-status="skipped">
-    <title>Clarify material decisions</title>
     <rect x="386" y="578" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="386" y="578" width="4" height="86" rx="2" fill="#fbbf24"/>
-    <text x="400" y="605" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Clarify material decisions</text>
+    <rect x="386" y="578" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="400" y="605" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Define work order goal</text>
     <text x="400" y="627" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
-    <text x="400" y="648" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+    <text x="400" y="648" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__work-order-solution-document" data-status="skipped">
-    <title>Select work order solution</title>
-    <rect x="386" y="694" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="386" y="694" width="4" height="86" rx="2" fill="#fbbf24"/>
-    <text x="400" y="721" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Select work order solution</text>
-    <text x="400" y="743" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
-    <text x="400" y="764" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__goal__root" data-status="succeeded">
+    <title>Document Evolution</title>
+    <rect x="730" y="578" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="730" y="578" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="744" y="605" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Document Evolution</text>
+    <text x="744" y="627" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / root</text>
+    <text x="744" y="648" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__approve-work-order-solution" data-status="skipped">
-    <title>Approve work order solution</title>
-    <rect x="386" y="810" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="386" y="810" width="4" height="86" rx="2" fill="#fbbf24"/>
-    <text x="400" y="837" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Approve work order solution</text>
-    <text x="400" y="859" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">gate / solution-approval</text>
-    <text x="400" y="880" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__goal__write-document" data-status="succeeded">
+    <title>Write or revise document</title>
+    <rect x="1074" y="230" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="230" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="257" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Write or revise document</text>
+    <text x="1088" y="279" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-write</text>
+    <text x="1088" y="300" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__solution-recovery-group" data-status="skipped">
-    <title>Recover non-accepting solution decision</title>
-    <rect x="386" y="926" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="386" y="926" width="4" height="86" rx="2" fill="#fbbf24"/>
-    <text x="400" y="953" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Recover non-accepting solutio…</text>
-    <text x="400" y="975" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
-    <text x="400" y="996" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__goal__validate-draft" data-status="succeeded">
+    <title>Validate draft document</title>
+    <rect x="1074" y="346" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="346" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="373" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Validate draft document</text>
+    <text x="1088" y="395" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-validate</text>
+    <text x="1088" y="416" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__approved-solution-continuation" data-status="succeeded">
-    <title>Continue approved work order</title>
-    <rect x="386" y="1390" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="386" y="1390" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="400" y="1417" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Continue approved work order</text>
-    <text x="400" y="1439" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / gate-continuation</text>
-    <text x="400" y="1460" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__goal__review-loop" data-status="skipped">
+    <title>Review and revise document</title>
+    <rect x="1074" y="520" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="520" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1088" y="547" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Review and revise document</text>
+    <text x="1088" y="569" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">loop / document-review-loop</text>
+    <text x="1088" y="590" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__implementation-group" data-status="succeeded">
-    <title>Implement approved change</title>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__goal__review-document" data-status="pending">
+    <title>Review document</title>
+    <rect x="1418" y="462" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="462" width="4" height="86" rx="2" fill="#94a3b8"/>
+    <text x="1432" y="489" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Review document</text>
+    <text x="1432" y="511" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-review</text>
+    <text x="1432" y="532" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">PENDING</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__goal__revise-document" data-status="pending">
+    <title>Revise document from review</title>
+    <rect x="1418" y="578" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="578" width="4" height="86" rx="2" fill="#94a3b8"/>
+    <text x="1432" y="605" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Revise document from review</text>
+    <text x="1432" y="627" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-revise</text>
+    <text x="1432" y="648" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">PENDING</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__goal__document-gate" data-status="skipped">
+    <title>Confirm document decisions</title>
+    <rect x="1074" y="694" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="694" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1088" y="721" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Confirm document decisions</text>
+    <text x="1088" y="743" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">gate / document-confirmation</text>
+    <text x="1088" y="764" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__goal__document-gate-recovery-group" data-status="skipped">
+    <title>Recover non-accepting document decision</title>
+    <rect x="1074" y="810" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="810" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1088" y="837" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Recover non-accepting documen…</text>
+    <text x="1088" y="859" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="1088" y="880" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__goal__validate-final" data-status="succeeded">
+    <title>Validate final document</title>
+    <rect x="1074" y="926" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="926" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="953" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Validate final document</text>
+    <text x="1088" y="975" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-validate-final</text>
+    <text x="1088" y="996" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__analysis-group" data-status="succeeded">
+    <title>Analyze requested work</title>
+    <rect x="386" y="1448" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="386" y="1448" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="400" y="1475" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Analyze requested work</text>
+    <text x="400" y="1497" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="400" y="1518" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__dyn-1__analysis-evidence" data-status="succeeded">
+    <title>Investigate seed state, constraints and design options</title>
     <rect x="730" y="1042" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
     <rect x="730" y="1042" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="744" y="1069" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Implement approved change</text>
-    <text x="744" y="1091" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="744" y="1069" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Investigate seed state, const…</text>
+    <text x="744" y="1091" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / analysis-evidence</text>
     <text x="744" y="1112" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__dyn-1__implementation" data-status="succeeded">
-    <title>Build the complete sandbox game</title>
-    <rect x="1074" y="1042" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="1074" y="1042" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="1088" y="1069" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Build the complete sandbox ga…</text>
-    <text x="1088" y="1091" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / implementation</text>
-    <text x="1088" y="1112" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__analysis__root" data-status="succeeded">
+    <title>Document Evolution</title>
+    <rect x="730" y="1506" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="730" y="1506" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="744" y="1533" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Document Evolution</text>
+    <text x="744" y="1555" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / root</text>
+    <text x="744" y="1576" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__verification-group" data-status="succeeded">
-    <title>Verify work order outcome</title>
-    <rect x="730" y="1274" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="730" y="1274" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="744" y="1301" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Verify work order outcome</text>
-    <text x="744" y="1323" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
-    <text x="744" y="1344" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
-  </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__dyn-1__verification" data-status="succeeded">
-    <title>Verify acceptance and rendered page</title>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__analysis__write-document" data-status="succeeded">
+    <title>Write or revise document</title>
     <rect x="1074" y="1158" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
     <rect x="1074" y="1158" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="1088" y="1185" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Verify acceptance and rendere…</text>
-    <text x="1088" y="1207" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / verification</text>
+    <text x="1088" y="1185" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Write or revise document</text>
+    <text x="1088" y="1207" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-write</text>
     <text x="1088" y="1228" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__dyn-1__visual-review" data-status="succeeded">
-    <title>Independent visual review of final page</title>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__analysis__validate-draft" data-status="succeeded">
+    <title>Validate draft document</title>
     <rect x="1074" y="1274" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
     <rect x="1074" y="1274" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="1088" y="1301" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Independent visual review of …</text>
-    <text x="1088" y="1323" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / review</text>
+    <text x="1088" y="1301" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Validate draft document</text>
+    <text x="1088" y="1323" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-validate</text>
     <text x="1088" y="1344" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__dyn-1__final-recheck" data-status="succeeded">
-    <title>Re-verify final files after visual fixes</title>
-    <rect x="1074" y="1390" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="1074" y="1390" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="1088" y="1417" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Re-verify final files after v…</text>
-    <text x="1088" y="1439" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / verification</text>
-    <text x="1088" y="1460" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__analysis__review-loop" data-status="skipped">
+    <title>Review and revise document</title>
+    <rect x="1074" y="1448" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="1448" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1088" y="1475" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Review and revise document</text>
+    <text x="1088" y="1497" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">loop / document-review-loop</text>
+    <text x="1088" y="1518" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__report-group" data-status="skipped">
-    <title>Produce change review report</title>
-    <rect x="730" y="1506" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="730" y="1506" width="4" height="86" rx="2" fill="#fbbf24"/>
-    <text x="744" y="1533" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Produce change review report</text>
-    <text x="744" y="1555" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
-    <text x="744" y="1576" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__analysis__review-document" data-status="pending">
+    <title>Review document</title>
+    <rect x="1418" y="1390" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="1390" width="4" height="86" rx="2" fill="#94a3b8"/>
+    <text x="1432" y="1417" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Review document</text>
+    <text x="1432" y="1439" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-review</text>
+    <text x="1432" y="1460" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">PENDING</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__result-document" data-status="succeeded">
-    <title>Record work order result</title>
-    <rect x="730" y="1622" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="730" y="1622" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="744" y="1649" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Record work order result</text>
-    <text x="744" y="1671" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
-    <text x="744" y="1692" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__analysis__revise-document" data-status="pending">
+    <title>Revise document from review</title>
+    <rect x="1418" y="1506" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="1506" width="4" height="86" rx="2" fill="#94a3b8"/>
+    <text x="1432" y="1533" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Revise document from review</text>
+    <text x="1432" y="1555" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-revise</text>
+    <text x="1432" y="1576" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">PENDING</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__dyn-1__result-document" data-status="succeeded">
-    <title>Record work order result</title>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__analysis__document-gate" data-status="skipped">
+    <title>Confirm document decisions</title>
     <rect x="1074" y="1622" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="1074" y="1622" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="1088" y="1649" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Record work order result</text>
-    <text x="1088" y="1671" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / result-document</text>
-    <text x="1088" y="1692" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+    <rect x="1074" y="1622" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1088" y="1649" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Confirm document decisions</text>
+    <text x="1088" y="1671" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">gate / document-confirmation</text>
+    <text x="1088" y="1692" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
   </g>
-  <g data-node-id="rt_work-order-20261029-1219-2d-sandbox-game__root__finalize-work-order" data-status="succeeded">
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__analysis__document-gate-recovery-group" data-status="skipped">
+    <title>Recover non-accepting document decision</title>
+    <rect x="1074" y="1738" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="1738" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1088" y="1765" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Recover non-accepting documen…</text>
+    <text x="1088" y="1787" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="1088" y="1808" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__analysis__validate-final" data-status="succeeded">
+    <title>Validate final document</title>
+    <rect x="1074" y="1854" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="1854" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="1881" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Validate final document</text>
+    <text x="1088" y="1903" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-validate-final</text>
+    <text x="1088" y="1924" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__reconciliation-group" data-status="skipped">
+    <title>Reconcile related feature baselines</title>
+    <rect x="386" y="1970" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="386" y="1970" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="400" y="1997" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Reconcile related feature bas…</text>
+    <text x="400" y="2019" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="400" y="2040" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__clarification-group" data-status="skipped">
+    <title>Clarify material decisions</title>
+    <rect x="386" y="2086" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="386" y="2086" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="400" y="2113" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Clarify material decisions</text>
+    <text x="400" y="2135" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="400" y="2156" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__work-order-solution-document" data-status="succeeded">
+    <title>Select work order solution</title>
+    <rect x="386" y="2550" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="386" y="2550" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="400" y="2577" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Select work order solution</text>
+    <text x="400" y="2599" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="400" y="2620" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__solution__root" data-status="succeeded">
+    <title>Document Evolution</title>
+    <rect x="730" y="2550" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="730" y="2550" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="744" y="2577" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Document Evolution</text>
+    <text x="744" y="2599" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / root</text>
+    <text x="744" y="2620" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__solution__write-document" data-status="succeeded">
+    <title>Write or revise document</title>
+    <rect x="1074" y="2202" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="2202" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="2229" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Write or revise document</text>
+    <text x="1088" y="2251" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-write</text>
+    <text x="1088" y="2272" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__solution__validate-draft" data-status="succeeded">
+    <title>Validate draft document</title>
+    <rect x="1074" y="2318" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="2318" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="2345" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Validate draft document</text>
+    <text x="1088" y="2367" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-validate</text>
+    <text x="1088" y="2388" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__solution__review-loop" data-status="skipped">
+    <title>Review and revise document</title>
+    <rect x="1074" y="2492" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="2492" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1088" y="2519" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Review and revise document</text>
+    <text x="1088" y="2541" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">loop / document-review-loop</text>
+    <text x="1088" y="2562" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__solution__review-document" data-status="pending">
+    <title>Review document</title>
+    <rect x="1418" y="2434" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="2434" width="4" height="86" rx="2" fill="#94a3b8"/>
+    <text x="1432" y="2461" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Review document</text>
+    <text x="1432" y="2483" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-review</text>
+    <text x="1432" y="2504" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">PENDING</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__solution__revise-document" data-status="pending">
+    <title>Revise document from review</title>
+    <rect x="1418" y="2550" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="2550" width="4" height="86" rx="2" fill="#94a3b8"/>
+    <text x="1432" y="2577" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Revise document from review</text>
+    <text x="1432" y="2599" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-revise</text>
+    <text x="1432" y="2620" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">PENDING</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__solution__document-gate" data-status="skipped">
+    <title>Confirm document decisions</title>
+    <rect x="1074" y="2666" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="2666" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1088" y="2693" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Confirm document decisions</text>
+    <text x="1088" y="2715" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">gate / document-confirmation</text>
+    <text x="1088" y="2736" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__solution__document-gate-recovery-group" data-status="skipped">
+    <title>Recover non-accepting document decision</title>
+    <rect x="1074" y="2782" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="2782" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1088" y="2809" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Recover non-accepting documen…</text>
+    <text x="1088" y="2831" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="1088" y="2852" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__solution__validate-final" data-status="succeeded">
+    <title>Validate final document</title>
+    <rect x="1074" y="2898" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="2898" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="2925" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Validate final document</text>
+    <text x="1088" y="2947" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-validate-final</text>
+    <text x="1088" y="2968" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__approve-work-order-solution" data-status="succeeded">
+    <title>Approve work order solution</title>
+    <rect x="386" y="3014" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="386" y="3014" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="400" y="3041" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Approve work order solution</text>
+    <text x="400" y="3063" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">gate / solution-approval</text>
+    <text x="400" y="3084" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__solution-recovery-group" data-status="skipped">
+    <title>Recover non-accepting solution decision</title>
+    <rect x="386" y="3130" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="386" y="3130" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="400" y="3157" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Recover non-accepting solutio…</text>
+    <text x="400" y="3179" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="400" y="3200" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__approved-solution-continuation" data-status="succeeded">
+    <title>Continue approved work order</title>
+    <rect x="386" y="4058" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="386" y="4058" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="400" y="4085" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Continue approved work order</text>
+    <text x="400" y="4107" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / gate-continuation</text>
+    <text x="400" y="4128" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__implementation-group" data-status="succeeded">
+    <title>Implement approved change</title>
+    <rect x="730" y="3246" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="730" y="3246" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="744" y="3273" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Implement approved change</text>
+    <text x="744" y="3295" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="744" y="3316" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__dyn-1__build-game" data-status="succeeded">
+    <title>Build the complete 2D sandbox game</title>
+    <rect x="1074" y="3246" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="3246" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="3273" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Build the complete 2D sandbox…</text>
+    <text x="1088" y="3295" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / implementation-unit</text>
+    <text x="1088" y="3316" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__verification-group" data-status="succeeded">
+    <title>Verify work order outcome</title>
+    <rect x="730" y="3594" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="730" y="3594" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="744" y="3621" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Verify work order outcome</text>
+    <text x="744" y="3643" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="744" y="3664" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__dyn-1__logic-tests" data-status="succeeded">
+    <title>Run logic test suite</title>
+    <rect x="1074" y="3362" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="3362" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="3389" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Run logic test suite</text>
+    <text x="1088" y="3411" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / verification-logic</text>
+    <text x="1088" y="3432" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__dyn-1__page-check" data-status="succeeded">
+    <title>Run static and headless page check</title>
+    <rect x="1074" y="3478" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="3478" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="3505" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Run static and headless page …</text>
+    <text x="1088" y="3527" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / verification-page</text>
+    <text x="1088" y="3548" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__dyn-1__independent-visual-review" data-status="succeeded">
+    <title>Independent visual review of the final page</title>
+    <rect x="1074" y="3594" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="3594" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="3621" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Independent visual review of …</text>
+    <text x="1088" y="3643" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / independent-visual-review</text>
+    <text x="1088" y="3664" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__dyn-1__visual-repair" data-status="succeeded">
+    <title>Repair review observations</title>
+    <rect x="1074" y="3710" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="3710" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="3737" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Repair review observations</text>
+    <text x="1088" y="3759" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / review-driven-repair</text>
+    <text x="1088" y="3780" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__dyn-1__visual-review-final" data-status="succeeded">
+    <title>Final independent visual confirmation</title>
+    <rect x="1074" y="3826" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="3826" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="3853" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Final independent visual conf…</text>
+    <text x="1088" y="3875" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / independent-visual-review</text>
+    <text x="1088" y="3896" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__report-group" data-status="skipped">
+    <title>Produce change review report</title>
+    <rect x="730" y="3942" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="730" y="3942" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="744" y="3969" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Produce change review report</text>
+    <text x="744" y="3991" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="744" y="4012" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__result-document" data-status="succeeded">
+    <title>Record work order result</title>
+    <rect x="730" y="4406" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="730" y="4406" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="744" y="4433" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Record work order result</text>
+    <text x="744" y="4455" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="744" y="4476" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__result__root" data-status="succeeded">
+    <title>Document Evolution</title>
+    <rect x="1074" y="4406" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1074" y="4406" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1088" y="4433" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Document Evolution</text>
+    <text x="1088" y="4455" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / root</text>
+    <text x="1088" y="4476" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__result__write-document" data-status="succeeded">
+    <title>Write or revise document</title>
+    <rect x="1418" y="4058" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="4058" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1432" y="4085" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Write or revise document</text>
+    <text x="1432" y="4107" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-write</text>
+    <text x="1432" y="4128" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__result__validate-draft" data-status="succeeded">
+    <title>Validate draft document</title>
+    <rect x="1418" y="4174" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="4174" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1432" y="4201" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Validate draft document</text>
+    <text x="1432" y="4223" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-validate</text>
+    <text x="1432" y="4244" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__result__review-loop" data-status="skipped">
+    <title>Review and revise document</title>
+    <rect x="1418" y="4348" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="4348" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1432" y="4375" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Review and revise document</text>
+    <text x="1432" y="4397" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">loop / document-review-loop</text>
+    <text x="1432" y="4418" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__result__review-document" data-status="pending">
+    <title>Review document</title>
+    <rect x="1762" y="4290" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1762" y="4290" width="4" height="86" rx="2" fill="#94a3b8"/>
+    <text x="1776" y="4317" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Review document</text>
+    <text x="1776" y="4339" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-review</text>
+    <text x="1776" y="4360" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">PENDING</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__result__revise-document" data-status="pending">
+    <title>Revise document from review</title>
+    <rect x="1762" y="4406" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1762" y="4406" width="4" height="86" rx="2" fill="#94a3b8"/>
+    <text x="1776" y="4433" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Revise document from review</text>
+    <text x="1776" y="4455" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-revise</text>
+    <text x="1776" y="4476" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">PENDING</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__result__document-gate" data-status="skipped">
+    <title>Confirm document decisions</title>
+    <rect x="1418" y="4522" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="4522" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1432" y="4549" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Confirm document decisions</text>
+    <text x="1432" y="4571" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">gate / document-confirmation</text>
+    <text x="1432" y="4592" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__result__document-gate-recovery-group" data-status="skipped">
+    <title>Recover non-accepting document decision</title>
+    <rect x="1418" y="4638" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="4638" width="4" height="86" rx="2" fill="#fbbf24"/>
+    <text x="1432" y="4665" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Recover non-accepting documen…</text>
+    <text x="1432" y="4687" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">composite / dynamic-group</text>
+    <text x="1432" y="4708" fill="#fbbf24" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SKIPPED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__result__validate-final" data-status="succeeded">
+    <title>Validate final document</title>
+    <rect x="1418" y="4754" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="1418" y="4754" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="1432" y="4781" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Validate final document</text>
+    <text x="1432" y="4803" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / document-validate-final</text>
+    <text x="1432" y="4824" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+  </g>
+  <g data-node-id="rt_work-order-20261029-1459-2d-sandbox-game__root__finalize-work-order" data-status="succeeded">
     <title>Finalize ordinary work order</title>
-    <rect x="730" y="1738" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
-    <rect x="730" y="1738" width="4" height="86" rx="2" fill="#4ade80"/>
-    <text x="744" y="1765" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Finalize ordinary work order</text>
-    <text x="744" y="1787" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / work-order-finalize</text>
-    <text x="744" y="1808" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
+    <rect x="730" y="4870" width="232" height="86" rx="9" fill="#172033" stroke="#475569"/>
+    <rect x="730" y="4870" width="4" height="86" rx="2" fill="#4ade80"/>
+    <text x="744" y="4897" fill="#f8fafc" font-family="Segoe UI,Arial,sans-serif" font-size="13" font-weight="700">Finalize ordinary work order</text>
+    <text x="744" y="4919" fill="#94a3b8" font-family="Segoe UI,Arial,sans-serif" font-size="11">task / work-order-finalize</text>
+    <text x="744" y="4940" fill="#4ade80" font-family="Segoe UI,Arial,sans-serif" font-size="11" font-weight="700">SUCCEEDED</text>
   </g>
 </svg>

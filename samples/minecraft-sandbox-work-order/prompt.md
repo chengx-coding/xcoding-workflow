@@ -1,12 +1,13 @@
-# Run the managed create-mode sample work order
+# Run the standard-lifecycle sample work order
 
 You are working in the checkout of the XC workflow (`xcoding-workflow`). The checkout root contains
 `skills/xc-work/SKILL.md`; the consumer project for this work order is
 `samples/minecraft-sandbox-work-order/project` below that root.
 
 Load the `xc-work` Skill with the skill tool and follow its `operation=run` instructions. This task is
-a published reference sample for the **create** lifecycle: do not downgrade it to direct work, and do
-not re-add the analysis, solution or change-report stages that create mode deliberately leaves out.
+a published reference sample for the **standard create lifecycle**: keep goal, analysis, solution,
+solution approval, implementation, verification and result. Do not skip stages, and do not add
+one-off tuning merely to beat a comparison target.
 
 ## Parameters
 
@@ -24,30 +25,29 @@ not re-add the analysis, solution or change-report stages that create mode delib
 
 These are binding. Do not re-open them, and do not ask the user about them.
 
-1. **Use create mode.** Set `work_order.requires_analysis=false`,
-   `work_order.requires_solution=false` and `work_order.solution_gate_required=false`. Keep
-   preparation, goal, implementation, verification and result. There is no minimality presumption:
-   build the best product the constraints allow.
-2. **The goal must carry the quality contract.** Its acceptance conditions must include the quality
-   bar below and a comparison target. The page will be compared side-by-side with a strong one-shot
-   attempt; it must be at least as visually polished and feature-rich.
-3. **Add an independent visual review.** Before the result, render the page, inspect a 960x600
-   screenshot, and run an independent visual review of the final page (for example through
-   `xc-review`). Fix every required finding and re-check.
-4. **The change-report stage is waived.** In preparation set
-   `work_order.requires_report=false` and `work_order.report_skip_reason=user_waived`. Do not mount
-   the report group and do not invoke `xc-change-report`.
-5. **Do not create a project Git commit.** The project bridge forbids it because the enclosing
+1. **Use the standard create lifecycle.** Keep `work_order.requires_analysis=true`,
+   `work_order.requires_solution=true` and `work_order.solution_gate_required=true`; do not treat
+   analysis or solution as optional. The goal must carry the quality contract below in its acceptance
+   conditions; create has no minimality presumption.
+2. **Add an independent visual review.** Before the result, render the page, inspect a 960x600
+   screenshot, and run an independent visual review (for example through `xc-review`). Fix every
+   required finding and re-check.
+3. **The change-report stage is waived.** Set `work_order.requires_report=false` and
+   `work_order.report_skip_reason=user_waived`; do not mount the report group.
+4. **Do not create a project Git commit.** The project bridge forbids it because the enclosing
    repository owns the sample's single scoped commit.
-6. **No user is available.** There is no approval channel and no way to answer a question. Never call
-   a user-question tool and never wait for input. Complete any main-session gate yourself with a
+5. **No user is available.** Never ask a question; complete any main-session gate yourself with a
    concrete decision that records the reasoning.
-7. **Use the runtime public interface only.** Every runtime read and write goes through
-   `xcoding runtime ...`. Never open, read, summarize, edit or reformat `runtime/orchestration.xml`.
-8. **Keep temporary files local.** Put scripts, logs, screenshots and intermediate output under the
-   work order's `tmp/` directory. Never declare a temporary file as an artifact.
+6. **Use only the runtime public interface.** Every runtime read and write goes through
+   `xcoding runtime ...`; never open or edit `runtime/orchestration.xml`.
+7. **Keep temporary files local.** Put scripts, logs, screenshots and intermediate output under the
+   work order's `tmp/` directory; never declare a temporary file as an artifact.
+8. **Regression isolation is binding.** Run from a clean seed in an isolated workspace that contains
+   no public sample, baseline, prior sample result, or any existing implementation. Do not read,
+   search for, or consult those paths. The baseline and historical results are used only for
+   evaluation after the run, never as implementation input.
 
-## Quality bar
+## Quality contract
 
 This result will be compared side-by-side with a strong one-shot attempt. It must be at least as
 visually polished and feature-rich as that bar: a distinctive interface with a clear visual
@@ -78,11 +78,13 @@ Implement a playable, offline 2D sandbox in the consumer project:
 - `python tools/page_check.py` passes: no external network references, required elements present, the
   page status marker reports success, and the rendered canvas is not blank.
 - A 960x600 screenshot is captured under the work order `tmp/`, inspected, and compared with the
-  one-shot baseline; the final page is at least as good on the quality bar.
+  one-shot baseline after the run; the final page is at least as good on the quality bar.
 - The independent visual review is recorded and every required finding is fixed.
 - The page status marker contract (`#status` with `data-state="ready"` on success and a red error
   state on failure) and the existing local file layout are preserved.
 - `project/README.md` describes what was built, how to run it, the controls and the test commands.
+- The work order records the standard lifecycle stages: goal, analysis, solution, approval,
+  implementation, verification and result.
 
 ## Final answer
 

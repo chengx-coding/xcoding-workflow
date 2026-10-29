@@ -1,38 +1,27 @@
-Built and closed the managed create-mode work order.
+Completed the standard create lifecycle for work order `20261029-1459-2d-sandbox-game`. Status: **complete**, tree validated.
 
 ## Delivered
 
-Playable offline game at:
+`project/index.html` — **Terra**, a playable offline 2D Minecraft-style sandbox:
 
-`C:\dev\xcoding-workflow-dev\wf-ablation\sample-create\project\index.html`
+- Seeded terrain with grass, dirt, stone, wood, leaves, sand, planks and glass; hills, trees, caves, ore speckles and flowers.
+- Gravity, left/right movement, jumping with coyote time, and full solid-block collision.
+- Left-click mining within five blocks, right-click supported placement, player-body refusal, particles, ghost previews and synthesized sound.
+- Eight-slot hotbar with number keys 1–8, wheel cycling and a raised gold selected state.
+- Smooth camera clamped to world bounds, layered sky/parallax, textured blocks and an animated explorer.
+- `localStorage` save/restore of seed, edits, position, hotbar and inventory, with a visible save indicator.
+- In-page field guide (`H`/`P`/`Esc`), seed generation, randomiser and two-step reset.
+- Controls documented in `README.md` and the in-page guide.
 
-Key features:
+## Verification
 
-- Seeded procedural terrain with grass, dirt, stone, caves, coal, crystals, biomes, trees, lantern landmarks and a distant forest layer.
-- Player gravity, acceleration, sprinting, variable-height jumping, coyote time and solid collision.
-- Reach-limited mining, face-aware placement, block ghost, player-overlap rejection and blocked-action feedback.
-- Nine-block hotbar with number-key/wheel selection and a raised, glowing selected state.
-- Clamped follow camera, minimap, day/night cycle, particles, camera shake, generated audio and field notes.
-- Versioned `localStorage` save/restore for world edits, player state, selected slot, time and progress.
-- Updated `README.md` with controls and architecture.
+- `node --test "tests/**/*.test.js"` → **33/33 pass** (six unchanged seed tests + 27 added).
+- `python tools/page_check.py` → **ok**, status marker exact `[46, 204, 113]` at distance `0.0`, **292** canvas colour buckets.
+- Headless browser probe → **21/21 checks**: mining, placing, reach/player refusals, hotbar selection, save/reload restore, seed regeneration, no console errors.
+- Independent visual review → **ACCEPT WITH OBSERVATIONS**, zero required findings. All four observations were repaired: field guide now fits at 960×600, the underground backdrop gap was fixed, hotbar labels enlarged, and hover/ghost feedback strengthened. A second independent review confirmed **ACCEPT**, with all four observations **CLOSED** and no required findings.
 
-## Verified
+## Closure notes
 
-- `node --test "tests/**/*.test.js"` — **34 passed, 0 failed**
-- `python tools/page_check.py --window 960x600` — **passed**; static/network checks clean, status marker correct, 284 canvas colour buckets
-- Browser probe — mining, placement, movement, save and reload restore all passed
-- UI probe — New World dialog, help panel, Escape close and slot 9 selection passed
-- Network/fetch scan — **no network references**
-- UTF-8/LF scan — **all LF**
-- Independent visual review against strong one-shot references S1 and S3 — **PASS, no required findings**
-- Final recheck of the exact delivered files — **passed**
-
-## Work order
-
-- ID: `20261029-1219-2d-sandbox-game`
-- Runtime status: **complete**, integrity valid
-- Report: waived by the user (`user_waived`)
-- Feature directory: none
-- Project Git commit: none, per the project bridge
-
-Residual risks are limited to audible audio-quality review, touch/wheel input coverage, and the fact that the independent visual comparison was static rather than a live responsive pass.
+- `work_order.requires_report=false` with `report_skip_reason=user_waived`; no report group mounted.
+- No project Git commit was created.
+- Work-order documents: `goal.md`, `analysis.md`, `solution.md`, `result.md` under `.xcoding/work-orders/20261029-1459-2d-sandbox-game/`; visual evidence is under its `tmp/`.

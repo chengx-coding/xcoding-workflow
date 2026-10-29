@@ -16,71 +16,60 @@
     leaves: 5,
     sand: 6,
     planks: 7,
-    glass: 8,
-    lantern: 9,
-    coal: 10,
-    crystal: 11,
-    bedrock: 12
+    glass: 8
   });
 
-  const HOTBAR = Object.freeze([
-    BLOCKS.grass,
-    BLOCKS.dirt,
-    BLOCKS.stone,
-    BLOCKS.wood,
-    BLOCKS.leaves,
-    BLOCKS.sand,
-    BLOCKS.planks,
-    BLOCKS.glass,
-    BLOCKS.lantern
-  ]);
+  const BLOCK_NAMES = Object.freeze({
+    1: "grass",
+    2: "dirt",
+    3: "stone",
+    4: "wood",
+    5: "leaves",
+    6: "sand",
+    7: "planks",
+    8: "glass"
+  });
+
+  const BLOCK_INFO = Object.freeze({
+    1: { name: "Grass", swatch: "#6cc24a", accent: "#a7e36b", solid: true, hardness: 0.35 },
+    2: { name: "Dirt", swatch: "#8a5a3b", accent: "#b07b52", solid: true, hardness: 0.4 },
+    3: { name: "Stone", swatch: "#77828f", accent: "#a4afba", solid: true, hardness: 0.75 },
+    4: { name: "Wood", swatch: "#7a5230", accent: "#a97744", solid: true, hardness: 0.55 },
+    5: { name: "Leaves", swatch: "#3f8f45", accent: "#6fc472", solid: true, hardness: 0.25 },
+    6: { name: "Sand", swatch: "#d9bf7c", accent: "#f0dda5", solid: true, hardness: 0.3 },
+    7: { name: "Planks", swatch: "#b07a45", accent: "#d4a06b", solid: true, hardness: 0.45 },
+    8: { name: "Glass", swatch: "#a8dcea", accent: "#e6fbff", solid: true, hardness: 0.2, transparent: true }
+  });
+
+  const HOTBAR = Object.freeze([1, 2, 3, 4, 5, 6, 7, 8]);
 
   return Object.freeze({
-    version: "2.0.0",
-    tileSize: 32,
-    viewWidth: 1280,
-    viewHeight: 720,
-    worldWidth: 180,
-    worldHeight: 72,
-    gravity: 34,
-    moveSpeed: 7.4,
-    sprintMultiplier: 1.32,
-    jumpSpeed: 12.8,
-    maxFallSpeed: 24,
-    reach: 5.6,
-    seed: 874213,
-    saveKey: "verdant-depths-save-v2",
-    saveVersion: 2,
-    dayLengthSeconds: 300,
-    initialTimeOfDay: 0.43,
-    fixedStep: 1 / 120,
+    version: "0.1.0",
+    tileSize: 40,
+    viewWidth: 960,
+    viewHeight: 540,
+    worldWidth: 128,
+    worldHeight: 64,
+    seed: 20261029,
+    gravity: 44,
+    moveSpeed: 8.6,
+    jumpSpeed: 14.2,
+    maxFall: 34,
+    groundAccel: 64,
+    airAccel: 34,
+    groundFriction: 52,
+    coyoteTime: 0.1,
+    jumpBuffer: 0.12,
+    reach: 5,
+    playerWidth: 0.68,
+    playerHeight: 1.78,
+    saveKey: "xc-sandbox-terra-v1",
+    saveVersion: 1,
+    autosaveSeconds: 2.5,
     blocks: BLOCKS,
+    blockNames: BLOCK_NAMES,
+    blockInfo: BLOCK_INFO,
     hotbar: HOTBAR,
-    blockNames: Object.freeze({
-      0: "Air",
-      1: "Meadow grass",
-      2: "Rich dirt",
-      3: "Slate stone",
-      4: "Timber",
-      5: "Canopy leaves",
-      6: "Warm sand",
-      7: "Oak planks",
-      8: "Sun glass",
-      9: "Glow lantern",
-      10: "Coal seam",
-      11: "Prism crystal",
-      12: "Bedrock"
-    }),
-    blockShortNames: Object.freeze({
-      1: "Grass",
-      2: "Dirt",
-      3: "Stone",
-      4: "Timber",
-      5: "Leaves",
-      6: "Sand",
-      7: "Planks",
-      8: "Glass",
-      9: "Lantern"
-    })
+    startingInventory: Object.freeze({ 1: 48, 2: 48, 3: 48, 4: 32, 5: 32, 6: 32, 7: 32, 8: 24 })
   });
 });

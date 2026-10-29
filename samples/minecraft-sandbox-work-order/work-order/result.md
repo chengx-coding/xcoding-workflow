@@ -1,130 +1,124 @@
 ---
 schema_version: 1
 document_kind: work-order-result
-content_language: en
-work_order_id: 20261029-1219-2d-sandbox-game
+content_language: "en"
+work_order_id: "20261029-1459-2d-sandbox-game"
 feature_ids: []
 orchestration:
-  main_tree_ref: runtime/orchestration.xml
+  main_tree_ref: "C:\\dev\\xcoding-workflow-dev\\wf-ablation\\standard-sample\\workspace\\workshop\\.xcoding\\work-orders\\20261029-1459-2d-sandbox-game\\runtime\\orchestration.xml"
 ---
 
-# Result — Verdant Depths offline sandbox
+# Result — Terra, a complete offline 2D sandbox
 
 ## Actual changes
 
-Delivered the finished game as `index.html` plus local, offline-only CSS and JavaScript:
+The seed shell in `project/` became a playable, self-contained 2D sandbox. It opens from
+`index.html` with no build step and no network access, generates seeded terrain, and implements the
+full loop: move, jump, collide, mine, place, select, follow, save and restore.
 
-```text
-index.html
-README.md
-css/style.css
-js/config.js
-js/world.js
-js/player.js
-js/interaction.js
-js/camera.js
-js/storage.js
-js/render.js
-js/main.js
-tests/world.test.js
-tests/player.test.js
-tests/interaction.test.js
-tests/camera.test.js
-tests/storage.test.js
-```
+| Area | Delivered |
+| --- | --- |
+| Terrain | Seeded heightfield with grass, dirt, stone, trees, leaves, sandy clearings, caves and ore speckles; the column-10 ground-line contract is preserved for every seed |
+| Player | Gravity, acceleration, AABB collision on both axes, coyote-time jump, jump buffer, variable jump, landing events, facing and animation state |
+| Interaction | Left-click mining within five blocks with particles and sound; right-click placement into a clear, supported, player-free cell; reach/adjacency/player rules are unit-tested |
+| Hotbar | Eight block types, number keys 1–8, mouse-wheel cycling, a raised gold selected slot, swatch, name and inventory count |
+| Camera | Smooth follow with look-ahead, clamped to the world bounds on both axes |
+| Presentation | Full-window DPR-aware canvas, layered sky, sun glow, drifting clouds, birds, parallax ridges, haze, procedural tile textures, cave background, cliff walls, ambient occlusion, flowers, character with helmet/scarf/backpack/lantern, vignette |
+| HUD and guide | Brand, seed chip, live save chip, sound/help buttons, hint bar, toasts, and a field guide with controls, materials, field notes, seed generation, randomiser and two-step reset |
+| Persistence | Versioned `localStorage` payload of seed, all blocks, player position, hotbar and inventory; guarded access with an in-memory fallback and a live save indicator |
+| Quality | Seeded debug handle, status error handling, reduced-motion support, responsive layout at 960x600 and 1440x900, no external references |
 
-The page now includes:
-
-- Deterministic, seed-driven terrain with meadow, woodland and dune biomes, layered grass, dirt,
-  stone and bedrock, caves, coal, prism crystals, trees, a near-spawn grove, trail lanterns and a
-  distant forest layer.
-- A player with gravity, acceleration, sprinting, variable-height jumping, coyote time and
-  axis-separated solid collision.
-- Reach-limited left-click mining and face-aware right-click placement, with target brackets, a
-  block ghost, player-overlap rejection and clear blocked-action feedback.
-- A nine-block hotbar with number-key and wheel selection, an unmistakable raised/glowing selected
-  state, block icons and names.
-- A smoothly following, world-clamped camera; a stylized survey minimap with viewport framing; a
-  day/night sky with stars, sun, moon, clouds, parallax ridges, birds and fireflies; cave mushrooms,
-  lantern/crystal light, break/place particles, camera shake and generated Web Audio feedback.
-- Versioned `localStorage` persistence of the world, seed, player position, selected slot, time of
-  day and progress, with safe fallback for missing, corrupt or stale saves.
-- A field-notes checklist, seed/time/coordinate chips, save status, a full field manual, a seed-based
-  New World dialog, and a compact controls note.
-
-`README.md` documents how to open the page, all controls, the checks and the architecture. The
-existing project bridge and `tools/page_check.py` were not weakened or replaced.
+Files: `index.html`, `css/style.css`, `js/config.js`, `js/world.js`, `js/player.js`, `js/save.js`,
+`js/render.js`, `js/main.js`, `tests/generation.test.js`, `tests/player.test.js`,
+`tests/interaction.test.js`, `tests/save.test.js`, `README.md`. The seed file `tests/world.test.js`
+and the verification harness `tools/page_check.py` were not weakened or replaced.
 
 ## Validation evidence
 
-- `node --test "tests/**/*.test.js"` — **34 tests, 0 failures**. Focused coverage includes seeded
-  determinism, required materials, caves/ores, serialization, gravity, jumping, wall and floor
-  collision, fast-fall tunneling, mining and placement validity, player-overlap rejection, camera
-  following/clamping, and save/restore parsing.
-- `python tools/page_check.py --window 960x600` — **passed**. Static and network checks are clean;
-  the status marker is `[46,204,113]` at distance 0.0; the canvas produced 284 colour buckets.
-- Network scan — `NO_NETWORK_OR_FETCH_REFERENCES` across served HTML, CSS, JavaScript and Markdown.
-- UTF-8/LF scan — `ALL_LF`.
-- `node --check` on every JavaScript module — passed.
-- Chrome DevTools browser probe — left-click mined a targeted grass block, right-click placed oak
-  planks after selecting slot 7, movement changed the player position, and a reload restored the
-  placed block, selected slot and player position from the saved payload.
-- UI probe — the New World dialog opened, generated and displayed seed `12345`, and closed; the help
-  panel opened and closed with Escape; `Digit9` selected the Glow lantern slot.
-- Independent visual review — a fresh reviewer compared the final 960x600 render with strong
-  one-shot references S1 and S3. Verdict: **PASS**, **no required findings**. It found the page
-  meets the bar on hierarchy, identity and feature breadth. Four non-blocking observations
-  (deliberate inset frame, small secondary type, stylized minimap, compressed selected caption) are
-  recorded in `artifacts/review/visual-review.md`.
-- Final recheck artifact — `artifacts/verification/final-recheck.md` re-ran the tests, page check,
-  network/LF scans, browser persistence probe and UI probe on the final files. All passed.
+### Logic
 
-The rendered evidence lives under the workbench `tmp/` directory, including
-`tmp/recheck-final.png`, `tmp/enhanced.png`, `tmp/hover-render.png` and `tmp/night-render.png`.
-Those are diagnostic evidence, not declared work-order artifacts.
+```console
+node --test "tests/**/*.test.js"
+```
+
+Result: `tests 33`, `pass 33`, `fail 0`, duration `119.9562ms`. The six original seed tests still
+pass; 27 added tests cover seed determinism and the column-10 invariant, terrain variety, bottom-row
+seal, gravity/landing, wall and ceiling collision, held jump height, mine/place rules including the
+player-body refusal, persistence round-trips, corrupt payload rejection and the storage fallback.
+Evidence: `artifacts/verification/logic-tests.md` and `tmp/logic-tests-output.txt`.
+
+### Page check
+
+```console
+python tools/page_check.py --screenshot <workbench>/tmp/repair-960.png
+```
+
+Result: `ok=true`; static problems `[]`; status marker pixel `[46, 204, 113]` against expected
+`[46, 204, 113]` (distance `0.0`); canvas colour buckets `299`. Evidence:
+`artifacts/verification/page-check.md`, `tmp/repair-960.png`.
+
+### Browser interaction probe
+
+A disposable headless-Chrome probe drove real input events, saved, reloaded and inspected the live
+page. All 21 checks passed: ready state, `file://` storage, eight hotbar slots with one selected,
+jump/land, mining and inventory increment, placement and inventory decrement, hotbar selection,
+player-body placement refusal, out-of-reach mining refusal, versioned save, save indicator, reload
+restore of position and placed block, field-guide open/close, seed regeneration, and zero console
+errors or uncaught exceptions. Evidence: `tmp/browser_probe.mjs` output.
+
+### Visual review and iteration
+
+- First independent review: `artifacts/verification/independent-visual-review.md`. Verdict
+  `ACCEPT WITH OBSERVATIONS`, zero required findings, four non-blocking observations (field guide
+  scrolled at 960x600; deep cave air read near-black at 1440x900; 8px hotbar labels; subtle grass
+  hover cue).
+- Review-driven repair: `artifacts/verification/visual-repair.md`. Fixed a real underground-backdrop
+  gap (columns whose surface was below the viewport were skipped, leaving pure black), lifted the
+  cave texture, compacted the field guide so it fits at short heights (measured `scrollHeight=471`,
+  `clientHeight=471`, all seed actions visible at a 942x504 viewport), enlarged hotbar labels, and
+  strengthened mine/placement feedback. Re-ran the logic tests (33/33), page check (299 buckets,
+  marker exact) and browser probe (21/21).
+- Final independent confirmation: `artifacts/verification/visual-review-final.md`. Verdict:
+  ACCEPT. The reviewer re-rendered 960x600 and 1440x900, measured the field guide at `scrollHeight 471 = clientHeight 471` with all seed actions visible, sampled cave air at `rgb(22,41,42)` with zero pure-black pixels, confirmed 9px/10px hotbar labels and valid mine/place hover states, and found no new required finding.
+- Rendered evidence: `tmp/repair-960.png`, `tmp/repair-overlay-960.png`, `tmp/repair-1440-clean2.png`,
+  `tmp/visual-hover-mine.png`, `tmp/visual-hover-place.png`, `tmp/visual-overlay.png`,
+  `tmp/seed-31415926.png`, plus the reviewer's own captures under `tmp/review/` and
+  `tmp/final-review/`.
 
 ## Baseline synchronization
 
-No managed feature exists and `feature_ids` is empty, so there was no feature baseline to reconcile
-or synchronize. No feature directory was created. This create-mode work order did not mount the
-analysis, solution, approval, report or feature-reconciliation stages, per the explicit binding
-instructions.
-
-No project Git commit was created. The project bridge states that the enclosing repository owns the
-sample's scoped commit and that a commit from this project would capture unrelated paths.
+`feature_ids=[]`; no managed feature baseline exists and no feature directory was created. There is
+nothing to reconcile or update. The de facto seed contract is preserved: the six original
+`tests/world.test.js` tests are unchanged and pass, the surface at column 10 remains the base ground
+row for every seed, the bottom rows remain stone, and block access/serialization behavior is intact.
+The added tests extend coverage rather than replacing it.
 
 ## Deviations and residual risks
 
-- The default full lifecycle's analysis, solution, solution-gate and report stages were skipped on
-  explicit instruction. The goal, implementation, verification, independent visual review, final
-  recheck and result were retained.
-- Audio output was exercised through the generated Web Audio path but could not be audibly evaluated
-  in headless Chrome.
-- Mouse-wheel cycling and touch/mobile layouts were not exercised by the automated browser probe;
-  number-key selection, the New World dialog, the help dialog, mining, placing, movement and reload
-  were.
-- The independent visual comparison was static at 960x600. Live animation, audio and responsive
-  behavior were covered by the browser/source checks instead.
-- The four non-blocking visual observations from the review remain accepted residual polish notes;
-  none was required for acceptance.
+- **Report:** explicitly waived by the user. `work_order.requires_report=false` and
+  `work_order.report_skip_reason=user_waived`; no report group was mounted and no report was produced.
+- **Commit:** no project Git commit was created, per the project bridge. The `project/` path is not a
+  Git worktree in this isolated workspace; the workshop repository has no commits. The enclosing
+  sample repository, when present, owns any scoped commit.
+- **Version:** the project bridge declares no version policy and no version surface is part of the
+  delivery. `js/config.js` keeps the seed value `0.1.0`; no bump was invented.
+- **Storage fallback:** a browser policy that blocks `localStorage` for `file://` falls back to an
+  in-memory store; the HUD reports "Session only" and the game remains playable but does not persist
+  across a reload in that configuration. `file://` storage was verified in Chrome.
+- **Audio:** synthesized sound starts only after a user gesture, by browser policy. Headless Chrome
+  cannot audibly verify the cue quality; the audio path is guarded and optional.
+- **Coverage limits:** touch/mobile below 960px, non-Chrome browsers, and other storage policies were
+  not exercised end-to-end. Deep cave air is intentionally dark; the repair lifted it to a textured
+  blue-grey rather than making it bright.
+- **No baseline comparison sample** was available or consulted; the visual judgment is against the
+  stated quality bar and the two independent reviews above.
 
-## Change report
+## Report and provenance
 
-`report.run_required=false` — the user explicitly waived the change report.
-`work_order.requires_report=false` and `work_order.report_skip_reason=user_waived`. No
-`change-report.html`, manifest or verdict file was produced, and `report.path` remains unset by
-design.
-
-## Conclusion
-
-The game is delivered and playable offline. All explicit requirements are implemented, the final
-files pass the project test and browser checks, the independent visual review passed without
-required findings, and the final recheck passed on the exact worktree left for delivery. The
-remaining risks are limited to the untested audio, touch and wheel surfaces noted above.
-
-The main evidence artifacts are:
-
-- `artifacts/implementation/sandbox.md`
-- `artifacts/verification/acceptance.md`
-- `artifacts/review/visual-review.md`
-- `artifacts/verification/final-recheck.md`
+Report: skipped by explicit user waiver (`work_order.report_skip_reason=user_waived`); report path:
+none; manifest path: none. Workbench:
+`C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\workshop\.xcoding\work-orders\20261029-1459-2d-sandbox-game`.
+Implementation evidence: `artifacts/implementation/build-game.md`. Verification evidence:
+`artifacts/verification/logic-tests.md`, `page-check.md`, `independent-visual-review.md`,
+`visual-repair.md`, `visual-review-final.md`. Controls are documented in `project/README.md` and in
+the in-page field guide.

@@ -1,0 +1,433 @@
+{
+  "hotbar960": {
+    "viewport": {
+      "w": 960,
+      "h": 600
+    },
+    "slotCount": 8,
+    "hotbarRect": {
+      "left": 206.5,
+      "right": 753.5,
+      "top": 492,
+      "bottom": 578,
+      "width": 547,
+      "height": 86
+    },
+    "fitsViewport": true,
+    "gapToViewportBottom": 22,
+    "selected": {
+      "text": "1Grass48",
+      "rect": {
+        "left": 215.5,
+        "right": 275.5,
+        "top": 496,
+        "bottom": 564
+      }
+    },
+    "nameFontSize": "9px",
+    "countFontSize": "9px",
+    "counts": [
+      "48",
+      "48",
+      "48",
+      "32",
+      "32",
+      "32",
+      "32",
+      "24"
+    ],
+    "labels": [
+      "Grass",
+      "Dirt",
+      "Stone",
+      "Wood",
+      "Leaves",
+      "Sand",
+      "Planks",
+      "Glass"
+    ],
+    "slotWidths": [
+      60,
+      60,
+      60,
+      60,
+      60,
+      60,
+      60,
+      60
+    ]
+  },
+  "overlay960": {
+    "viewport": {
+      "w": 960,
+      "h": 600
+    },
+    "panel": {
+      "rect": {
+        "top": 63.3,
+        "bottom": 536.7,
+        "left": 90,
+        "right": 870,
+        "width": 780,
+        "height": 473.4
+      },
+      "scrollHeight": 471,
+      "clientHeight": 471,
+      "scrollTop": 0,
+      "maxHeight": "564px",
+      "padding": "18px 24px 16px",
+      "contentTop": 82.3,
+      "contentBottom": 519.7
+    },
+    "head": {
+      "top": 82.3,
+      "bottom": 167.9,
+      "left": 115,
+      "right": 845,
+      "width": 730,
+      "height": 85.6
+    },
+    "close": {
+      "top": 84.3,
+      "bottom": 124.3,
+      "left": 805,
+      "right": 845,
+      "width": 40,
+      "height": 40
+    },
+    "reset": {
+      "top": 466.4,
+      "bottom": 498.4,
+      "left": 203.7,
+      "right": 283.5,
+      "width": 79.8,
+      "height": 32
+    },
+    "random": {
+      "top": 466.4,
+      "bottom": 498.4,
+      "left": 115,
+      "right": 195.7,
+      "width": 80.7,
+      "height": 32
+    },
+    "apply": {
+      "top": 427.4,
+      "bottom": 460.4,
+      "left": 413.7,
+      "right": 483.5,
+      "width": 69.8,
+      "height": 33
+    },
+    "seedHint": {
+      "rect": {
+        "top": 506.4,
+        "bottom": 519.7,
+        "left": 115,
+        "right": 483.5,
+        "width": 368.5,
+        "height": 13.3
+      },
+      "text": "Seed 20261029 \u2014 the same number always grows the same world."
+    },
+    "contentFitsWithoutScroll": true,
+    "rowsVisibleWithoutScroll": true,
+    "overflowedElements": [],
+    "seedActionsVisible": true,
+    "seedHintVisible": true,
+    "overlayHidden": false,
+    "scrollTopAfterOpen": 0,
+    "closed": true
+  },
+  "mineTarget960": {
+    "player": {
+      "x": 66.5,
+      "y": 40.999999,
+      "height": 1.78
+    },
+    "camera": {
+      "x": 2214,
+      "y": 1339.9999600059573
+    },
+    "cell": {
+      "x": 65,
+      "y": 40,
+      "sx": 406,
+      "sy": 280,
+      "d": 1.07
+    }
+  },
+  "mineHoverState960": {
+    "cell": {
+      "x": 65,
+      "y": 40
+    },
+    "mine": {
+      "ok": true,
+      "reason": "ok"
+    },
+    "placeCell": {
+      "x": 66,
+      "y": 40
+    },
+    "place": {
+      "ok": false,
+      "reason": "player"
+    },
+    "reason": ""
+  },
+  "placeTarget960": {
+    "player": {
+      "x": 66.5,
+      "y": 40.999999,
+      "height": 1.78
+    },
+    "camera": {
+      "x": 2214,
+      "y": 1339.9999600000078
+    },
+    "cell": {
+      "x": 67,
+      "y": 40,
+      "sx": 486,
+      "sy": 280,
+      "d": 1.07
+    }
+  },
+  "glassSelected960": {
+    "selected": "glass",
+    "name": "Glass",
+    "count": "24"
+  },
+  "placeHoverState960": {
+    "cell": {
+      "x": 67,
+      "y": 40
+    },
+    "mine": {
+      "ok": false,
+      "reason": "empty"
+    },
+    "placeCell": {
+      "x": 67,
+      "y": 40
+    },
+    "place": {
+      "ok": true,
+      "reason": "ok"
+    },
+    "reason": ""
+  },
+  "hotbar1440": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "slotCount": 8,
+    "hotbarRect": {
+      "left": 413.5,
+      "right": 1026.5,
+      "top": 774,
+      "bottom": 872,
+      "width": 613,
+      "height": 98
+    },
+    "fitsViewport": true,
+    "gapToViewportBottom": 28,
+    "selected": {
+      "text": "1Grass48",
+      "rect": {
+        "left": 424.5,
+        "right": 490.5,
+        "top": 780,
+        "bottom": 856
+      }
+    },
+    "nameFontSize": "10px",
+    "countFontSize": "9px",
+    "counts": [
+      "48",
+      "48",
+      "48",
+      "32",
+      "32",
+      "32",
+      "32",
+      "24"
+    ],
+    "labels": [
+      "Grass",
+      "Dirt",
+      "Stone",
+      "Wood",
+      "Leaves",
+      "Sand",
+      "Planks",
+      "Glass"
+    ],
+    "slotWidths": [
+      66,
+      66,
+      66,
+      66,
+      66,
+      66,
+      66,
+      66
+    ]
+  },
+  "overlay1440": {
+    "viewport": {
+      "w": 1440,
+      "h": 900
+    },
+    "panel": {
+      "rect": {
+        "top": 158.3,
+        "bottom": 741.7,
+        "left": 330,
+        "right": 1110,
+        "width": 780,
+        "height": 583.5
+      },
+      "scrollHeight": 581,
+      "clientHeight": 581,
+      "scrollTop": 0,
+      "maxHeight": "740px",
+      "padding": "28px 30px 26px",
+      "contentTop": 187.3,
+      "contentBottom": 714.7
+    },
+    "head": {
+      "top": 187.3,
+      "bottom": 286,
+      "left": 361,
+      "right": 1079,
+      "width": 718,
+      "height": 98.8
+    },
+    "close": {
+      "top": 189.3,
+      "bottom": 229.3,
+      "left": 1039,
+      "right": 1079,
+      "width": 40,
+      "height": 40
+    },
+    "reset": {
+      "top": 651,
+      "bottom": 688,
+      "left": 461.4,
+      "right": 552.7,
+      "width": 91.4,
+      "height": 37
+    },
+    "random": {
+      "top": 651,
+      "bottom": 688,
+      "left": 361,
+      "right": 453.4,
+      "width": 92.4,
+      "height": 37
+    },
+    "apply": {
+      "top": 604,
+      "bottom": 641,
+      "left": 642.8,
+      "right": 723.2,
+      "width": 80.4,
+      "height": 37
+    },
+    "seedHint": {
+      "rect": {
+        "top": 700,
+        "bottom": 714.7,
+        "left": 361,
+        "right": 723.2,
+        "width": 362.2,
+        "height": 14.7
+      },
+      "text": "Seed 20261029 \u2014 the same number always grows the same world."
+    },
+    "contentFitsWithoutScroll": true,
+    "rowsVisibleWithoutScroll": true,
+    "overflowedElements": [],
+    "seedActionsVisible": true,
+    "seedHintVisible": true,
+    "overlayHidden": false
+  },
+  "mineTarget1440": {
+    "player": {
+      "x": 66.5,
+      "y": 40.999999,
+      "height": 1.78
+    },
+    "camera": {
+      "x": 1974,
+      "y": 1189.9999600021727
+    },
+    "cell": {
+      "x": 65,
+      "y": 40,
+      "sx": 646,
+      "sy": 430,
+      "d": 1.07
+    }
+  },
+  "mineHoverState1440": {
+    "cell": {
+      "x": 65,
+      "y": 40
+    },
+    "mine": {
+      "ok": true,
+      "reason": "ok"
+    },
+    "placeCell": {
+      "x": 66,
+      "y": 40
+    },
+    "place": {
+      "ok": false,
+      "reason": "player"
+    },
+    "reason": ""
+  },
+  "placeTarget1440": {
+    "player": {
+      "x": 66.5,
+      "y": 40.999999,
+      "height": 1.78
+    },
+    "camera": {
+      "x": 1974,
+      "y": 1189.999960000001
+    },
+    "cell": {
+      "x": 67,
+      "y": 40,
+      "sx": 726,
+      "sy": 430,
+      "d": 1.07
+    }
+  },
+  "placeHoverState1440": {
+    "cell": {
+      "x": 67,
+      "y": 40
+    },
+    "mine": {
+      "ok": false,
+      "reason": "empty"
+    },
+    "placeCell": {
+      "x": 67,
+      "y": 40
+    },
+    "place": {
+      "ok": true,
+      "reason": "ok"
+    },
+    "reason": ""
+  }
+}

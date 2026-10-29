@@ -3,145 +3,115 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1517">
-  <title>Verdant Depths — a pocket sandbox</title>
+  <title>Terra — a 2D sandbox</title>
+  <meta name="description" content="A playable offline 2D sandbox: seeded terrain, mining, building and saving.">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <main id="app">
-    <canvas id="game" width="1280" height="720" aria-label="Verdant Depths sandbox world"></canvas>
-    <div class="scene-grain" aria-hidden="true"></div>
-    <div class="scene-frame" aria-hidden="true"></div>
+    <canvas id="game" width="960" height="540" tabindex="-1" aria-label="Sandbox world. Use A and D to move, Space to jump, left click to mine and right click to place."></canvas>
 
-    <header id="hud">
+    <div id="hud">
       <div class="brand">
-        <span class="brand-sigil" aria-hidden="true">
-          <span></span><span></span><span></span>
-        </span>
-        <div class="brand-copy">
-          <strong>Verdant Depths</strong>
-          <small>a pocket world · creative mode</small>
-        </div>
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-text"><strong>TERRA</strong><small>2D sandbox</small></span>
       </div>
-      <div class="hud-tools">
-        <button id="seedChip" class="chip chip-button" type="button" title="Open the world loom">
-          <span class="chip-label">Seed</span>
-          <strong id="seedValue">—</strong>
+      <div class="chips">
+        <button id="seedChip" class="chip chip-button" type="button" title="Change the world seed (H for controls)">
+          <span class="chip-label">Seed</span><span id="seedValue" class="chip-value">—</span>
         </button>
-        <div class="chip" id="clockChip">
-          <span class="chip-icon" id="clockIcon" aria-hidden="true">☀</span>
-          <strong id="clockText">09:00</strong>
-        </div>
-        <div class="chip" id="coordsChip">
-          <span class="chip-icon" aria-hidden="true">⌖</span>
-          <strong id="coordsText">0, 0</strong>
-        </div>
-        <button id="soundButton" class="icon-button" type="button" title="Toggle sound" aria-label="Toggle sound">♪</button>
-        <button id="helpButton" class="icon-button" type="button" title="Open field manual" aria-label="Open field manual">?</button>
-        <button id="newWorldButton" class="action-button" type="button">New world</button>
+        <span id="saveChip" class="chip" data-state="idle">
+          <span class="chip-dot" aria-hidden="true"></span><span id="saveText">Booting</span>
+        </span>
       </div>
-    </header>
-
-    <aside id="journal" class="glass-panel">
-      <div class="panel-eyebrow"><span>Field notes</span><b id="journalCount">0 / 4</b></div>
-      <h2 id="journalTitle">Find your feet</h2>
-      <p class="journal-subtitle" id="journalSubtitle">The valley is yours to shape.</p>
-      <ul id="objectives" class="objective-list"></ul>
-      <div class="journal-footer">
-        <span class="pulse-dot"></span>
-        <span id="journalFooter">Autosave keeps this world close.</span>
-      </div>
-    </aside>
-
-    <aside id="minimapPanel" class="glass-panel">
-      <div class="panel-eyebrow"><span>Survey</span><b id="biomeLabel">Meadow</b></div>
-      <canvas id="minimap" width="220" height="112" aria-label="World map"></canvas>
-      <div class="map-legend"><span class="legend-dot player-dot"></span>You <span class="legend-dot view-dot"></span>View</div>
-    </aside>
-
-    <div id="toastArea" class="toast-area" aria-live="polite"></div>
-
-    <div id="targetReadout" class="target-readout" aria-live="polite">
-      <strong id="targetName">Meadow grass</strong>
-      <span id="targetHint">Left click to mine</span>
     </div>
 
-    <div id="hotbar" role="toolbar" aria-label="Block palette">
-      <div id="selectedLabel" class="selected-label">Meadow grass</div>
-      <div id="hotbarSlots" class="hotbar-slots"></div>
+    <div id="topRight" class="cluster">
+      <button id="soundBtn" class="icon-btn" type="button" aria-pressed="true" title="Sound on (M)" aria-label="Toggle sound">
+        <span class="icon-glyph" aria-hidden="true">♪</span>
+      </button>
+      <button id="helpBtn" class="icon-btn" type="button" title="Controls and world settings (H)" aria-label="Open controls">
+        <span class="icon-glyph" aria-hidden="true">?</span>
+      </button>
     </div>
 
-    <div id="controlsHint" class="controls-hint">
+    <div id="hintBar" class="hint-bar" aria-hidden="true">
       <span><kbd>A</kbd><kbd>D</kbd> move</span>
       <span><kbd>Space</kbd> jump</span>
       <span><kbd>LMB</kbd> mine</span>
       <span><kbd>RMB</kbd> place</span>
-      <span><kbd>1–9</kbd> select</span>
-      <span><kbd>H</kbd> help</span>
+      <span><kbd>H</kbd> controls</span>
     </div>
 
-    <div id="saveIndicator" class="save-indicator" aria-live="polite">
-      <span class="save-orb"></span><b id="saveText">Saved</b>
-    </div>
+    <div id="hotbar" role="toolbar" aria-label="Block palette"></div>
 
-    <section id="helpPanel" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="helpTitle">
-      <div class="modal-card help-card">
-        <button class="modal-close" type="button" data-close="helpPanel" aria-label="Close">×</button>
-        <div class="panel-eyebrow"><span>Field manual</span><b>01</b></div>
-        <h2 id="helpTitle">Make the valley yours.</h2>
-        <p class="modal-lead">A quiet place with a deep floor. Dig gently, build freely, and leave a light on.</p>
-        <div class="control-grid">
-          <div><kbd>A</kbd><kbd>D</kbd><span>Walk left and right</span></div>
-          <div><kbd>←</kbd><kbd>→</kbd><span>Alternate movement</span></div>
-          <div><kbd>Space</kbd><span>Jump · hold for height</span></div>
-          <div><kbd>Shift</kbd><span>Sprint</span></div>
-          <div><kbd>LMB</kbd><span>Mine the outlined block</span></div>
-          <div><kbd>RMB</kbd><span>Place in the green outline</span></div>
-          <div><kbd>1</kbd>–<kbd>9</kbd><span>Choose a block</span></div>
-          <div><kbd>Wheel</kbd><span>Cycle the hotbar</span></div>
-          <div><kbd>H</kbd><span>Open or close this manual</span></div>
-          <div><kbd>M</kbd><span>Mute the generated sounds</span></div>
+    <div id="toastRail" aria-live="polite"></div>
+
+    <section id="overlay" class="overlay" hidden aria-modal="true" role="dialog" aria-labelledby="overlayTitle">
+      <div class="panel">
+        <header class="panel-head">
+          <div>
+            <p class="eyebrow">Field guide</p>
+            <h1 id="overlayTitle">Build, dig, wander.</h1>
+            <p class="lede">A quiet little world that fits in one page. Everything saves as you play.</p>
+          </div>
+          <button id="overlayClose" class="icon-btn" type="button" aria-label="Close controls">
+            <span class="icon-glyph" aria-hidden="true">×</span>
+          </button>
+        </header>
+
+        <div class="panel-grid">
+          <div class="panel-col">
+            <h2>Controls</h2>
+            <dl class="controls">
+              <div><dt><kbd>A</kbd><kbd>D</kbd> or <kbd>←</kbd><kbd>→</kbd></dt><dd>Walk left and right</dd></div>
+              <div><dt><kbd>Space</kbd> or <kbd>W</kbd></dt><dd>Jump</dd></div>
+              <div><dt><kbd>LMB</kbd></dt><dd>Mine within reach (hold to repeat)</dd></div>
+              <div><dt><kbd>RMB</kbd></dt><dd>Place a clear, supported block</dd></div>
+              <div><dt><kbd>1</kbd>–<kbd>8</kbd></dt><dd>Pick a material, or scroll</dd></div>
+              <div><dt><kbd>H</kbd> / <kbd>P</kbd></dt><dd>Open or close this guide (<kbd>Esc</kbd>)</dd></div>
+              <div><dt><kbd>M</kbd></dt><dd>Mute or unmute sound</dd></div>
+            </dl>
+
+            <h2>World</h2>
+            <div class="seed-form">
+              <label for="seedInput">World seed</label>
+              <div class="seed-row">
+                <input id="seedInput" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-describedby="seedHint">
+                <button id="seedApply" class="btn btn-primary" type="button">Generate</button>
+              </div>
+              <div class="seed-row">
+                <button id="seedRandom" class="btn" type="button">Surprise me</button>
+                <button id="worldReset" class="btn btn-quiet" type="button">Reset world</button>
+              </div>
+              <p id="seedHint" class="hint">The same number always grows the same world.</p>
+            </div>
+          </div>
+
+          <div class="panel-col">
+            <h2>Materials</h2>
+            <ul id="blockLegend" class="legend"></ul>
+
+            <h2>Field notes</h2>
+            <p class="notes">Reach is five blocks. A placed block needs a solid neighbour, a clear cell, and a body-sized gap — the explorer cannot be built into a wall.</p>
+            <p class="notes">Mined blocks refill the hotbar counts. The camera follows your explorer and stops at the edges of the world. Progress is written to this browser only.</p>
+            <p class="notes quietly">No network, no libraries, no build step. Open the file and play.</p>
+          </div>
         </div>
-        <div class="help-note">
-          <strong>Good to know</strong>
-          <p>Mining and placing save automatically. If you dig into the deep dark, crystal seams glow just enough to guide you home.</p>
-        </div>
-        <button class="primary-button" type="button" data-close="helpPanel">Back to the valley</button>
       </div>
     </section>
 
-    <section id="seedPanel" class="modal" hidden aria-modal="true" role="dialog" aria-labelledby="seedTitle">
-      <div class="modal-card seed-card">
-        <button class="modal-close" type="button" data-close="seedPanel" aria-label="Close">×</button>
-        <div class="panel-eyebrow"><span>World loom</span><b>02</b></div>
-        <h2 id="seedTitle">Carve a new world.</h2>
-        <p class="modal-lead">Every seed grows a different valley. The old world will be folded away when you generate a new one.</p>
-        <label class="seed-field" for="seedInput">
-          <span>Numeric seed</span>
-          <input id="seedInput" type="number" inputmode="numeric" min="0" step="1" value="874213">
-        </label>
-        <div class="seed-presets">
-          <button type="button" data-seed="874213">Valley</button>
-          <button type="button" data-seed="120420">Hollow</button>
-          <button type="button" data-seed="77031">Deep</button>
-          <button type="button" data-seed="24061994">Wild</button>
-        </div>
-        <div class="modal-actions">
-          <button id="randomSeed" class="ghost-button" type="button">Surprise me</button>
-          <button id="generateWorld" class="primary-button" type="button">Generate world</button>
-        </div>
-      </div>
-    </section>
+    <div id="status" data-state="booting" title="Page status" role="status" aria-live="polite"></div>
 
-    <div id="status" data-state="booting" title="Page status"></div>
+    <noscript>
+      <div class="noscript">Terra needs JavaScript enabled to grow a world.</div>
+    </noscript>
   </main>
 
   <script src="js/config.js"></script>
   <script src="js/world.js"></script>
   <script src="js/player.js"></script>
-  <script src="js/interaction.js"></script>
-  <script src="js/camera.js"></script>
-  <script src="js/storage.js"></script>
+  <script src="js/save.js"></script>
   <script src="js/render.js"></script>
   <script src="js/main.js"></script>
 </body>

@@ -1,13 +1,17 @@
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"));
+    module.exports = factory(require("./config.js"), require("./world.js"));
   } else {
-    root.SandboxPlayer = factory(root.SandboxConfig);
+    root.SandboxPlayer = factory(root.SandboxConfig, root.SandboxWorld);
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, WORLD) {
   "use strict";
 
-  const EPSILON = 0.001;
+  if (!CONFIG || !WORLD) {
+    throw new Error("SandboxConfig and SandboxWorld are required before SandboxPlayer");
+  }
+
+  const EPS = 1e-6;
 
   function createPlayer(x, y) {
     return {
@@ -16,111 +20,121 @@
       vx: 0,
       vy: 0,
       onGround: false,
-      width: 0.68,
-      height: 1.8,
+      width: CONFIG.playerWidth,
+      height: CONFIG.playerHeight,
+      facing: 1,
       coyote: 0,
       jumpBuffer: 0,
-      facing: 1,
+      jumpHeld: false,
       animTime: 0,
-      spawnX: x,
-      spawnY: y
+      moving: false,
+      justLanded: false,
+      steps: 0
     };
   }
 
-  function overlapsSolid(world, x, y, width, height) {
-    const left = x - width / 2 + EPSILON;
-    const right = x + width / 2 - EPSILON;
-    const top = y - height + EPSILON;
-    const bottom = y - EPSILON;
-    if (left < 0 || right > world.width || top < 0 || bottom > world.height) {
-      return true;
+  function approach(value, target, delta) {
+    if (value < target) {
+      return Math.min(value + delta, target);
     }
-    const firstX = Math.floor(left);
-    const lastX = Math.floor(right);
-    const firstY = Math.floor(top);
-    const lastY = Math.floor(bottom);
-    for (let ty = firstY; ty <= lastY; ty += 1) {
-      for (let tx = firstX; tx <= lastX; tx += 1) {
-        const block = world.data[ty * world.width + tx];
-        if (block !== CONFIG.blocks.air) {
-          return true;
-        }
-      }
-    }
-    return false;
+    return Math.max(value - delta, target);
   }
 
-  function approach(current, target, maxDelta) {
-    if (current < target) {
-      return Math.min(target, current + maxDelta);
-    }
-    if (current > target) {
-      return Math.max(target, current - maxDelta);
-    }
-    return current;
+  function box(player) {
+    return WORLD.rectOf(player);
   }
 
-  function movePlayer(player, world, dx, dy) {
-    const distance = Math.max(Math.abs(dx), Math.abs(dy));
-    const steps = Math.max(1, Math.ceil(distance / 0.12));
-    const stepX = dx / steps;
-    const stepY = dy / steps;
-
-    for (let index = 0; index < steps; index += 1) {
-      if (stepX !== 0) {
-        const nextX = player.x + stepX;
-        if (!overlapsSolid(world, nextX, player.y, player.width, player.height)) {
-          player.x = nextX;
-        } else {
-          player.vx = 0;
+  function moveX(player, world, amount) {
+    if (!amount) {
+      return false;
+    }
+    player.x += amount;
+    const rect = box(player);
+    const y0 = Math.floor(rect.top + EPS);
+    const y1 = Math.floor(rect.bottom - EPS);
+    const x0 = Math.floor(rect.left + EPS);
+    const x1 = Math.floor(rect.right - EPS);
+    let hit = false;
+    for (let y = y0; y <= y1; y += 1) {
+      for (let x = x0; x <= x1; x += 1) {
+        if (!WORLD.isSolid(world, x, y)) {
+          continue;
         }
-      }
-      if (stepY !== 0) {
-        const nextY = player.y + stepY;
-        if (!overlapsSolid(world, player.x, nextY, player.width, player.height)) {
-          player.y = nextY;
+        hit = true;
+        if (amount > 0) {
+          player.x = Math.min(player.x, x - player.width / 2 - EPS);
         } else {
-          if (stepY > 0) {
-            player.onGround = true;
-          }
-          player.vy = 0;
-          break;
+          player.x = Math.max(player.x, x + 1 + player.width / 2 + EPS);
         }
       }
     }
+    if (hit) {
+      player.vx = 0;
+    }
+    return hit;
+  }
+
+  function moveY(player, world, amount) {
+    player.onGround = false;
+    if (!amount) {
+      return false;
+    }
+    player.y += amount;
+    const rect = box(player);
+    const x0 = Math.floor(rect.left + EPS);
+    const x1 = Math.floor(rect.right - EPS);
+    const y0 = Math.floor(rect.top + EPS);
+    const y1 = Math.floor(rect.bottom - EPS);
+    let hit = false;
+    for (let y = y0; y <= y1; y += 1) {
+      for (let x = x0; x <= x1; x += 1) {
+        if (!WORLD.isSolid(world, x, y)) {
+          continue;
+        }
+        hit = true;
+        if (amount > 0) {
+          player.y = Math.min(player.y, y - EPS);
+          player.onGround = true;
+        } else {
+          player.y = Math.max(player.y, y + 1 + player.height + EPS);
+        }
+      }
+    }
+    if (hit) {
+      player.vy = 0;
+    }
+    return hit;
   }
 
   function stepPlayer(player, world, input, dt) {
+    const step = Math.min(Math.max(typeof dt === "number" ? dt : 0, 0), 1 / 20);
     const controls = input || {};
-    const duration = Math.max(0, Math.min(dt || 0, 0.05));
-    if (duration === 0) {
-      return player;
-    }
+    const events = { jumped: false, landed: false, hitWall: false, hitCeiling: false };
 
-    const grounded = player.onGround;
     const direction = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
-    const sprint = controls.sprint ? CONFIG.sprintMultiplier : 1;
-    const targetSpeed = direction * CONFIG.moveSpeed * sprint;
-    const acceleration = grounded ? 58 : 30;
-    const deceleration = grounded ? 46 : 12;
-
     if (direction !== 0) {
-      player.vx = approach(player.vx, targetSpeed, acceleration * duration);
       player.facing = direction;
-    } else {
-      player.vx = approach(player.vx, 0, deceleration * duration);
     }
 
-    if (grounded) {
-      player.coyote = 0.1;
-    } else {
-      player.coyote = Math.max(0, player.coyote - duration);
+    const targetVelocity = direction * CONFIG.moveSpeed;
+    const acceleration = player.onGround ? CONFIG.groundAccel : CONFIG.airAccel;
+    player.vx = approach(player.vx, targetVelocity, acceleration * step);
+    if (direction === 0) {
+      const friction = player.onGround ? CONFIG.groundFriction : CONFIG.airAccel * 0.4;
+      player.vx = approach(player.vx, 0, friction * step);
     }
 
-    if (controls.jumpPressed) {
-      player.jumpBuffer = 0.13;
+    const jump = Boolean(controls.jump);
+    if (jump && !player.jumpHeld) {
+      player.jumpBuffer = CONFIG.jumpBuffer;
+    }
+    player.jumpHeld = jump;
+    player.jumpBuffer = Math.max(0, player.jumpBuffer - step);
+
+    if (player.onGround) {
+      player.coyote = CONFIG.coyoteTime;
     } else {
-      player.jumpBuffer = Math.max(0, player.jumpBuffer - duration);
+      player.coyote = Math.max(0, player.coyote - step);
     }
 
     if (player.jumpBuffer > 0 && player.coyote > 0) {
@@ -128,45 +142,60 @@
       player.onGround = false;
       player.coyote = 0;
       player.jumpBuffer = 0;
+      events.jumped = true;
     }
 
-    let gravity = CONFIG.gravity;
-    if (!controls.jumpHeld && player.vy < -3) {
-      gravity *= 1.85;
-    }
-    player.vy = Math.min(player.vy + gravity * duration, CONFIG.maxFallSpeed);
-
-    player.onGround = false;
-    movePlayer(player, world, player.vx * duration, player.vy * duration);
-
-    if (!player.onGround && player.vy >= 0) {
-      if (overlapsSolid(world, player.x, player.y + 0.045, player.width, player.height)) {
-        player.onGround = true;
-        player.vy = 0;
-      }
+    player.vy = Math.min(CONFIG.maxFall, player.vy + CONFIG.gravity * step);
+    if (!jump && player.vy < -CONFIG.jumpSpeed * 0.45) {
+      player.vy += CONFIG.gravity * 1.15 * step;
     }
 
-    player.animTime += Math.abs(player.vx) * duration;
-    return player;
+    const wasGrounded = player.onGround;
+    events.hitWall = moveX(player, world, player.vx * step);
+    const yBefore = player.y;
+    const verticalHit = moveY(player, world, player.vy * step);
+    if (verticalHit && player.y < yBefore) {
+      events.hitCeiling = true;
+    }
+    if (!wasGrounded && player.onGround) {
+      events.landed = true;
+    }
+
+    player.x = Math.min(Math.max(player.x, player.width / 2), world.width - player.width / 2);
+    player.y = Math.min(player.y, world.height - EPS);
+    player.justLanded = events.landed;
+    player.moving = Math.abs(player.vx) > 0.15;
+    player.animTime += step * (player.moving ? 11 : 2.2);
+    player.steps += 1;
+    return events;
   }
 
-  function teleportToSpawn(player, world, spawn) {
-    player.x = spawn.x;
-    player.y = spawn.y;
-    player.vx = 0;
-    player.vy = 0;
-    player.onGround = false;
-    player.coyote = 0;
-    player.jumpBuffer = 0;
-    player.spawnX = spawn.x;
-    player.spawnY = spawn.y;
-    return player;
+  function serializePlayer(player) {
+    return {
+      x: Number(player.x.toFixed(4)),
+      y: Number(player.y.toFixed(4)),
+      vx: Number((player.vx || 0).toFixed(4)),
+      vy: Number((player.vy || 0).toFixed(4)),
+      facing: player.facing < 0 ? -1 : 1
+    };
+  }
+
+  function restorePlayer(data, fallbackX, fallbackY) {
+    if (data && Number.isFinite(data.x) && Number.isFinite(data.y)) {
+      const player = createPlayer(data.x, data.y);
+      player.vx = Number.isFinite(data.vx) ? data.vx : 0;
+      player.vy = Number.isFinite(data.vy) ? data.vy : 0;
+      player.facing = data.facing < 0 ? -1 : 1;
+      return player;
+    }
+    return createPlayer(fallbackX, fallbackY);
   }
 
   return {
     createPlayer: createPlayer,
     stepPlayer: stepPlayer,
-    overlapsSolid: overlapsSolid,
-    teleportToSpawn: teleportToSpawn
+    serializePlayer: serializePlayer,
+    restorePlayer: restorePlayer,
+    box: box
   };
 });
