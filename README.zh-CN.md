@@ -4,7 +4,7 @@
 
 xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审查的结果。它不绑定特定编程语言、框架或运行编码 Agent 的应用；本文把这类应用称为 **Agent 宿主**。
 
-当前源码候选版本：<!-- xc:version -->0.3.2<!-- /xc:version -->。[版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
+当前源码候选版本：<!-- xc:version -->0.3.3<!-- /xc:version -->。[版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
 
 ## XC 由哪些部分组成
 
@@ -119,7 +119,7 @@ python skills/xc-work/scripts/classify.py [事实参数]
 
 六个参数分别是 `needs_persistence`、`material_impact`、`difficult_rollback`、`crosses_sessions`、`multiple_actors` 和 `audit_required`。省略的参数会按 `unknown` 处理。输入错误、超时、执行失败或无效输出都会得到受管结果，不会静默放行直接执行。
 
-需要启动受管工单时，调用 [`xc-work`](skills/xc-work/SKILL.md) 并使用 `operation=run`。这个操作始终是受管执行。模型名称、供应商、上下文窗口大小和项目技术栈都不能改变六个答案，也不能取消必要的审查和验证。
+需要启动受管工单时，调用 [`xc-work`](skills/xc-work/SKILL.md) 并使用 `operation=run`。这个操作始终是受管执行。模型名称、供应商、上下文窗口大小和项目技术栈都不能改变六个答案，也不能取消必要的审查和验证。按任务选择 mode：从零构建的 artifact 用 `create` 并携带用户可见质量契约；原地修改用 `change`，采用最小充分改动；修复用 `repair`，保持强最小性预设，若修复跨越设计或机制边界则升级为 `change`。
 
 `operation=adaptive-run` 是显式选择的受管替代路径。它保留持久 runtime，但允许最小 workbench 不创建强制顶层文档。`operation=plan` 根据治理、项目政策、范围、清晰度、风险、验证、协作、持续时间、审计和 `adaptive|fast|thorough` 节奏事实单调增加 capability。省略 operation 或显式 `run` 仍保持原完整生命周期。
 
@@ -134,10 +134,10 @@ python skills/xc-work/scripts/classify.py [事实参数]
 
 受支持的 distribution 是 `xcoding-workflow`；`0.1.0` 只通过不可变 GitHub Release 分发，不发布到 PyPI。如果不可变 release 及其完整性文件尚不可用，就还没有受支持的公开安装产物。
 
-对于已经发布的 release，应从该 release 下载 wheel 和完整性文件，并按[安装](docs/zh-CN/getting-started/installation.md)中的说明校验。以下文件名仅示意当前尚未发布的 `0.3.2` 源码候选，不表示发行产物已经可用或已获得发行资格。只有在候选 wheel 完成构建并针对预期用途验证后，才安装它：
+对于已经发布的 release，应从该 release 下载 wheel 和完整性文件，并按[安装](docs/zh-CN/getting-started/installation.md)中的说明校验。以下文件名仅示意当前尚未发布的 `0.3.3` 源码候选，不表示发行产物已经可用或已获得发行资格。只有在候选 wheel 完成构建并针对预期用途验证后，才安装它：
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.3.2-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.3.3-py3-none-any.whl
 xcoding version --json
 ```
 

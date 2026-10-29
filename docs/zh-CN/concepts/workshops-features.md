@@ -10,7 +10,7 @@ Workshop 的桥接文档记录项目策略。`WORKFLOW.md` 描述项目身份、
 
 ## Work Order 与 Workbench
 
-Work order 是一次调查、变更、修复、评审或维护工作的持久单元。[work order 打开器](../../../skills/xc-open-work-order/SKILL.md)会创建避免冲突的 ID 并返回权威 workbench 路径，但不会创建文档、运行时树、feature 目录或 commit。
+Work order 是一次创建、调查、变更、修复、评审或维护工作的持久单元。[work order 打开器](../../../skills/xc-open-work-order/SKILL.md)会创建避免冲突的 ID 并返回权威 workbench 路径，但不会创建文档、运行时树、feature 目录或 commit。
 
 标准 workbench 的概念结构如下：
 

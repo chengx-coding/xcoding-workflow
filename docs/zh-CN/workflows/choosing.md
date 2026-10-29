@@ -11,12 +11,23 @@
 | 项目首次采用 XC，或缺少必需的 workshop 桥接文档 | [`xc-workshop-setup`](../../../skills/xc-workshop-setup/SKILL.md) | 通过 setup work order 创建受管项目工作流和知识指引；不会创建业务 feature |
 | 请求的行为需要一个新的、显式受管的 feature 身份 | [`xc-new-feature`](../../../skills/xc-new-feature/SKILL.md) | 创建 feature 目录，批准 feature 基线，然后实现、验证并报告该 feature |
 | 已有行为尚未受管，但未来演进需要持久基线 | [`xc-feature-adoption`](../../../skills/xc-feature-adoption/SKILL.md) | 根据当前代码和测试证据推导并批准基线，不改变产品行为 |
+| 需要从零构建新的 artifact、代码库或产品能力，而不是原地修改 | [`xc-work`](../../../skills/xc-work/SKILL.md) 配合 `mode=create` | 要求用户可见的质量契约；选择创建、实现、验证和结果，分析/方案可选 |
 | 只需确定事实或影响，不要求产品变更 | [`xc-work`](../../../skills/xc-work/SKILL.md) 配合 `mode=investigation` | 产出证据和结果；可以省略方案、实现和验证 |
-| 需要修改已有代码、配置或行为 | `xc-work` 配合 `mode=change` | 按需选择分析、方案、实现和验证阶段 |
-| 需要修复已报告的故障 | `xc-work` 配合 `mode=repair` | 根因不确定时先诊断，再返回已批准的变更路径 |
+| 需要修改已有代码、配置或行为 | `xc-work` 配合 `mode=change` | 使用最小充分范围：优先最小一致改动，但当需求或质量 bar 要求更大改动时扩大 |
+| 需要修复已报告的故障 | `xc-work` 配合 `mode=repair` | 使用强最小性预设；根因不确定时先诊断；若修复跨越设计、机制或需求边界，则升级为 change |
 | 需要只读评估文档、代码或证据 | `xc-work` 配合 `mode=review` | 生成分析和评审 artifact，不修改被评审输入 |
-| 不创建 feature 的日常维护 | `xc-work` 配合 `mode=maintenance` | 只运行维护目标所需的文档和执行节点 |
+| 不创建 feature 的日常维护 | `xc-work` 配合 `mode=maintenance` | 只运行维护目标所需的文档和执行节点，按性质沿用 change/repair 的 scope 规则 |
 | 需要修改可移植工作流契约、项目桥接指引、agent、导出物或编排模板 | [`xc-workflow-evolution`](../../../skills/xc-workflow-evolution/SKILL.md) | 用标准 work order 和评审纪律维护工作流 |
+
+## 变更范围
+
+实现幅度是动态约束，不是固定最小值。目标是**最小充分改动**：在满足正当需求和任务相应质量 bar 的前提下最小的改动，并在不冲突时尽量保持既有结构与一致性。
+
+- `create` 没有最小化预设。它的 goal 必须携带用户可见质量契约，实现在约束内最大化产品价值。
+- `change` 使用中等最小性：优先选择能完整满足需求与质量 bar 的最小一致改动；如果需求或质量 bar 要求更大改动，就降低最小性偏好，按需求实现。尽量保持一致性。
+- `repair` 使用强最小性预设：能局部修复就局部修复；如果根因或正确修复需要改共享机制、设计或需求，则升级为 `change`。
+
+analysis 为 `change`/`repair` 记录 scope assessment；solution 记录 scope decision；实现只执行已批准范围，范围不足时停下返回，不静默扩缩；review 检查 under-scope、over-scope 和 scope drift。权衡材料性不清时，主会话通过现有澄清或批准 gate 询问用户。详细策略见 [`xc-work` 的 scope reference](../../../skills/xc-work/references/scope-policy.md)。
 
 ## Direct 或受管治理
 

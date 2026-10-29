@@ -51,8 +51,8 @@ DECOMPOSITION_GRADES = (
 )
 REVIEW_GRADES = ("none", "self-check", "independent", "architecture-gate")
 REPORT_AUDIT_REQUIRED_GRADES = frozenset({"result", "full"})
-MODES = ("investigation", "change", "repair", "review", "maintenance")
-MUTATION_MODES = frozenset({"change", "repair", "maintenance"})
+MODES = ("create", "investigation", "change", "repair", "review", "maintenance")
+MUTATION_MODES = frozenset({"create", "change", "repair", "maintenance"})
 MUTATION_ONLY_CAPABILITIES = frozenset(
     {"split_implementation", "separate_verification", "change_report"}
 )
@@ -330,6 +330,8 @@ def build_plan(facts: dict[str, str]) -> dict[str, object]:
         base_scope = "smoke" if facts["verification"] == "smoke" else "focused"
         add_scope(base_scope, f"mode:{facts['mode']}")
         enable(("change_report",), f"mode:{facts['mode']}")
+        if facts["mode"] == "create":
+            enable(("goal_document", "result_document"), "mode:create")
 
     for name in GOVERNANCE_FACTS:
         value = facts[name]

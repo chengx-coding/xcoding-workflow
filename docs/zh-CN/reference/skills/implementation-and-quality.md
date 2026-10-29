@@ -31,8 +31,8 @@
 - **何时调用：** 获批方案和必需门禁已经确定一个有边界的实现变更时。
 - **用途：** 只执行一个 runtime 实现节点，并记录变更路径、验证、基线影响和残余风险。
 - **公开入口：** 必填 `workbench_path`、`work_scope`、`inputs` 和 `artifact_path`。
-- **典型用法：** 阅读节点契约和获批输入，实施最小完整变更，运行局部检查并写入声明的 artifact。自适应 minimal 节点可以在验证不可变 plan receipt 后，把一个 coherent implementation 与 focused verification 合并执行。
-- **主要边界：** 不负责分解或重试，不得顺手覆盖功能基线，只能通过运行时公开命令报告。
+- **典型用法：** 阅读节点契约和获批输入，按任务采用最小充分幅度实现已批准范围（`create` 在质量契约内最大化，`change` 用最小充分改动，`repair` 保持强最小性预设），运行局部检查并写入声明的 artifact。范围不足时停下并返回调用方，而不是自行扩缩。自适应 minimal 节点可以在验证不可变 plan receipt 后，把一个 coherent implementation 与 focused verification 合并执行。
+- **主要边界：** 不负责分解或重试，不得顺手覆盖功能基线，只能通过运行时公开命令报告。范围的扩大或缩小是调用方或 gate 的决定，不是 worker 的决定。
 
 ## `xc-writing`
 
@@ -51,8 +51,8 @@
 - **何时调用：** 工作流需要独立评估受管文档、方案、代码变更、诊断或验证证据时。
 - **用途：** 评估不可变输入，产出可追踪、按严重度排序的 findings 和结论。
 - **公开入口：** 必填 `review_kind`、`inputs`、`artifact_path`；可选 `review_context`。
-- **典型用法：** 检查请求的质量维度，让每个必修 finding 都有证据，并写入已验证 node artifact。
-- **主要边界：** 审查对被审对象只读；调用方负责整改和风险决策，原始命令记录不是默认 artifact。
+- **典型用法：** 检查请求的质量维度，让每个必修 finding 都有证据，并写入已验证 node artifact。对 code/solution review 还检查 under-scope（需求或质量 bar 未满足）、over-scope（无谓改动或超出批准范围）和 scope drift（实现与记录的 scope decision 不一致）。
+- **主要边界：** 审查对被审对象只读；调用方负责整改和风险决策，原始命令记录不是默认 artifact。范围 finding 是有证据的评审判断，不是机械 scope checker。
 
 ## `xc-verification`
 

@@ -339,7 +339,7 @@ class AdaptivePlanningTests(unittest.TestCase):
         self.assertIn("change_report", policy.CAPABILITIES)
         self.assertEqual(policy.CAPABILITIES[-1], "change_report")
         self.assertIn("change_report", policy.MUTATION_ONLY_CAPABILITIES)
-        for mode in ("change", "repair", "maintenance"):
+        for mode in ("create", "change", "repair", "maintenance"):
             facts = self.base_facts()
             facts["mode"] = mode
             payload = policy.build_plan(facts)
@@ -353,6 +353,24 @@ class AdaptivePlanningTests(unittest.TestCase):
             facts["mode"] = mode
             payload = policy.build_plan(facts)
             self.assertFalse(payload["capabilities"]["change_report"], mode)
+
+    def test_create_mode_carries_goal_result_and_report(self) -> None:
+        facts = self.base_facts()
+        facts["mode"] = "create"
+        facts["request"] = "Create a small offline artifact from scratch."
+        payload = policy.build_plan(facts)
+        capabilities = payload["capabilities"]
+        self.assertTrue(capabilities["goal_document"])
+        self.assertTrue(capabilities["result_document"])
+        self.assertTrue(capabilities["change_report"])
+        self.assertFalse(capabilities["analysis"])
+        self.assertFalse(capabilities["solution"])
+        self.assertIn("mode:create", payload["required_provenance"]["goal_document"])
+        self.assertIn("mode:create", payload["required_provenance"]["result_document"])
+        flow = (ROOT / "skills" / "xc-work" / "assets" / "work-order-flow.json").read_text(encoding="utf-8")
+        template = (ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml").read_text(encoding="utf-8")
+        for shipped in (flow, template):
+            self.assertIn("true for create, change, repair, and maintenance", shipped)
 
     def test_report_node_precedes_review_nodes_and_names_the_baseline_source(self) -> None:
         facts = self.base_facts()

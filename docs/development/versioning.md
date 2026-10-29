@@ -2,7 +2,7 @@
 
 **Language:** **English** | [简体中文](../zh-CN/development/versioning.md)
 
-The current source version is <!-- xc:version -->0.3.2<!-- /xc:version -->. It identifies the source candidate; it does not claim that a public release or support evidence exists. The new shortcut exists only in builds containing its implementation; older installations can use `xcoding version --json`, and reinstalling the same historical wheel does not add the capability. Read the [installation contract](../getting-started/installation.md) for supported release boundaries.
+The current source version is <!-- xc:version -->0.3.3<!-- /xc:version -->. It identifies the source candidate; it does not claim that a public release or support evidence exists. The new shortcut exists only in builds containing its implementation; older installations can use `xcoding version --json`, and reinstalling the same historical wheel does not add the capability. Read the [installation contract](../getting-started/installation.md) for supported release boundaries.
 
 ## One Version Source
 

@@ -31,8 +31,8 @@ These supporting Skills execute approved changes, explain them to human reviewer
 - **Invoke when:** an approved solution and required gates have established one bounded implementation change.
 - **Purpose:** execute exactly one runtime implementation node and record changed paths, validation, baseline impact, and residual risk.
 - **Public entry:** required `workbench_path`, `work_scope`, `inputs`, and `artifact_path`.
-- **Typical usage:** read the supplied node contract and approved inputs, make the smallest coherent change, run focused checks, and write the declared artifact. An adaptive minimal node may combine one coherent implementation with focused verification after its immutable plan receipt is validated.
-- **Boundaries:** it does not own decomposition or retries, cannot opportunistically overwrite feature baselines, and reports only through the runtime public command.
+- **Typical usage:** read the supplied node contract and approved inputs, implement the accepted scope with the minimum sufficient magnitude for the task (`create` maximizes within its quality contract; `change` uses the minimum sufficient change; `repair` keeps the strong minimality presumption), run focused checks, and write the declared artifact. If the accepted scope proves insufficient, stop and return to the caller instead of expanding or shrinking it. An adaptive minimal node may combine one coherent implementation with focused verification after its immutable plan receipt is validated.
+- **Boundaries:** it does not own decomposition or retries, cannot opportunistically overwrite feature baselines, and reports only through the runtime public command. Scope expansion or shrink is a caller or gate decision, not a worker decision.
 
 ## `xc-writing`
 
@@ -51,8 +51,8 @@ These supporting Skills execute approved changes, explain them to human reviewer
 - **Invoke when:** a workflow requires independent assessment of a managed document, solution, code change, diagnosis, or verification evidence.
 - **Purpose:** evaluate immutable inputs and produce traceable, severity-ranked findings and a conclusion.
 - **Public entry:** required `review_kind`, `inputs`, and `artifact_path`; optional `review_context`.
-- **Typical usage:** inspect the requested quality dimensions, ground each required finding in evidence, and write a validated node artifact.
-- **Boundaries:** review is read-only; the caller owns remediation and risk decisions, and raw transcripts are not the default artifact.
+- **Typical usage:** inspect the requested quality dimensions, ground each required finding in evidence, and write a validated node artifact. For code and solution reviews, also check under-scope (the accepted need or quality bar is not met), over-scope (unnecessary churn or changes beyond the approved scope), and scope drift (the implementation differs from the recorded scope decision).
+- **Boundaries:** review is read-only; the caller owns remediation and risk decisions, and raw transcripts are not the default artifact. Scope findings are evidence-backed review judgments, not a mechanical scope checker.
 
 ## `xc-verification`
 

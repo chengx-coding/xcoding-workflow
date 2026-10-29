@@ -121,7 +121,7 @@ project_root: /absolute/path/to/project
 
 ### 现有项目工作
 
-调查、代码变更、修复、审查或维护使用 [`xc-work`](../../../skills/xc-work/SKILL.md)。它可以关联零个、一个或多个已经纳管的 feature，且绝不会隐式创建 feature。
+创建、调查、代码变更、修复、审查或维护使用 [`xc-work`](../../../skills/xc-work/SKILL.md)。它可以关联零个、一个或多个已经纳管的 feature，且绝不会隐式创建 feature。
 
 ```text
 Invoke xc-work with:
@@ -132,7 +132,7 @@ mode: change
 feature_ids: []
 ```
 
-根据请求选择 `investigation`、`change`、`repair`、`review` 或 `maintenance` 模式。
+从零构建 artifact 时选择 `create`；否则根据请求选择 `investigation`、`change`、`repair`、`review` 或 `maintenance`。`create` 的 goal 必须携带用户可见质量契约；`change` 使用最小充分范围；`repair` 使用强最小性预设，若修复跨越设计或机制边界则升级为 `change`。
 
 ### 全新的 managed feature
 

@@ -10,7 +10,7 @@ The workshop bridge documents project policy. `WORKFLOW.md` describes project id
 
 ## Work Orders And Workbenches
 
-A work order is one durable unit of investigation, change, repair, review, or maintenance. The [work-order opener](../../skills/xc-open-work-order/SKILL.md) creates a collision-safe ID and returns authoritative workbench paths without creating documents, runtime trees, feature directories, or commits.
+A work order is one durable unit of creation, investigation, change, repair, review, or maintenance. The [work-order opener](../../skills/xc-open-work-order/SKILL.md) creates a collision-safe ID and returns authoritative workbench paths without creating documents, runtime trees, feature directories, or commits.
 
 A standard workbench has this conceptual shape:
 

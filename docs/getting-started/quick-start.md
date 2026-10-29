@@ -121,7 +121,7 @@ Complete setup before starting ordinary work or managing a feature.
 
 ### Existing project work
 
-Use [`xc-work`](../../skills/xc-work/SKILL.md) for investigation, a code change, repair, review, or maintenance. It can reference zero, one, or multiple already managed features and never creates a feature implicitly.
+Use [`xc-work`](../../skills/xc-work/SKILL.md) for creation, investigation, a code change, repair, review, or maintenance. It can reference zero, one, or multiple already managed features and never creates a feature implicitly.
 
 ```text
 Invoke xc-work with:
@@ -132,7 +132,7 @@ mode: change
 feature_ids: []
 ```
 
-Select `investigation`, `change`, `repair`, `review`, or `maintenance` as the mode that matches the request.
+Select `create` for a from-zero artifact, or `investigation`, `change`, `repair`, `review`, or `maintenance` as the mode that matches the request. A `create` goal must carry a user-facing quality contract; `change` uses the minimum sufficient scope, and `repair` uses a strong minimality presumption that promotes to `change` when the fix crosses a design or mechanism boundary.
 
 ### A genuinely new managed feature
 

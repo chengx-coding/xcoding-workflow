@@ -1,6 +1,6 @@
 ---
 name: "xc-work"
-description: "Classifies governance, plans proportional managed effort, or runs full and adaptive managed work orders for investigation, iteration, repair, review, maintenance, or cross-feature work without implicitly creating a feature."
+description: "Classifies governance, plans proportional managed effort, or runs full and adaptive managed work orders for creation, investigation, iteration, repair, review, maintenance, or cross-feature work with a task-appropriate scope policy, without implicitly creating a feature."
 ---
 
 # XC Work
@@ -20,14 +20,14 @@ description: "Classifies governance, plans proportional managed effort, or runs 
   - Scope: Business repository root supplied to `xc-open-work-order`.
 
 - `request` - `string`; required
-  - Scope: Requested investigation, change, repair, review, or maintenance outcome.
+  - Scope: Requested creation, investigation, change, repair, review, or maintenance outcome.
 
 - `feature_ids` - `string[]`; optional for `operation=run|adaptive-run`
   - Scope: Existing related feature identifiers. An empty list is valid.
 
 - `mode` - `enum`; optional for `operation=run|plan|adaptive-run`, defaults to `change`
-  - Allowed values: `investigation`, `change`, `repair`, `review`, `maintenance`.
-  - Scope: Controls default analysis, solution, implementation, and verification gates. The runtime blackboard remains authoritative for the selected execution path.
+  - Allowed values: `create`, `investigation`, `change`, `repair`, `review`, `maintenance`.
+  - Scope: Controls default analysis, solution, implementation, verification and scope behavior. The runtime blackboard remains authoritative for the selected execution path.
 
 - `document_language` - `string`; optional for `operation=run|adaptive-run`
   - Scope: Explicit simplified BCP 47 language tag for top-level work order documents. When omitted, use the initiating user request's clearly dominant language; if that cannot be decided quickly, use `en`.
@@ -142,7 +142,7 @@ python skills/xc-work/scripts/plan_work.py \
   --duration single-step|multi-step|cross-session|unknown \
   --audit runtime-only|result|full|unknown \
   --pace adaptive|fast|thorough \
-  --mode investigation|change|repair|review|maintenance
+  --mode create|investigation|change|repair|review|maintenance
 ```
 
 The strict policy merges capability contributions by Boolean OR, minimum implementation units by `max`, verification scopes by stable ordered union, and depth by `max`. Governance and bridge facts establish a floor before task facts. Read-only modes never acquire mutation-only capabilities during fail-closed escalation. `fast` uses the required minimum and cannot remove required work; `thorough` may add analysis, review, recovery exercise, and regression depth. Missing or invalid public input, a low-level failure, or forged output returns the mode-appropriate full safe capability set.
@@ -217,11 +217,11 @@ Omitting `operation` or specifying `operation=run` preserves the existing manage
 3. Call `xc-open-work-order`, initialize `assets/work-order-template.xml`, determine and validate `work_order.document_language` through `xc-document`, then complete `prepare-work-order`. An explicit `document_language` wins; otherwise use only the initiating request's clearly dominant language or `en`.
    Consume the returned `tmp_path` as the only location for the main session's temporary and process files, and create `<workbench>/tmp/` when an existing workbench does not have it.
    In the same preparation step, write the commitment `work_order.requires_report`. Resolve it from the report policy below, not from the mode alone. Then capture `work_order.report_baseline` once — baseline commit, worktree digest, and digest algorithm — and only when that resolved commitment is `true`, by running `xc-change-report`'s `scripts/capture_baseline.py`, whose `--format keys` output is the publishable form of exactly those three values; recording them by hand satisfies this step's text while leaving the capture undone, and the report stage then fails with `baseline_record_missing`. A work order that resolves to no report captures nothing here and records its `work_order.report_skip_reason` as it already does. Where version control is unusable for the repository — it is not a worktree, or no baseline commit is resolvable — the capture fails closed and copies nothing; a full copy is admissible only through the capture command's explicit consent opt-in, whose reference must name the user's explicit decision obtained through a main-session gate, and no new configuration item exists for it. Set the initial `report.strength` from the confirmed `risk` and `audit` facts: `risk=low` with `audit=runtime-only` is `minimal`; `risk=high`, `audit=result`, or `audit=full` is `full`; everything else is `standard`. The commitment, the initial report strength and, when the commitment is `true`, the baseline record are preparation-phase records, not retrospective notes. A late baseline lets earlier implementation changes escape the covered change set, and `work_order.requires_report` is a commitment, never a status bit: its declared default is `true`, so an unwritten commitment selects `report-group` instead of silently skipping the report, and the write this preparation step performs is what makes the commitment. Step 10 refuses to close a work order whose report obligation was neither satisfied nor explicitly skipped.
-4. Create `goal.md` through document evolution. Before every top-level work order document subtree, set `document.content_language` to `work_order.document_language`. Set blackboard controls based on the requested mode and required gates.
-5. When analysis is needed, schedule `xc-analysis` nodes and synthesize accepted evidence into `analysis.md`.
+4. Create `goal.md` through document evolution. Before every top-level work order document subtree, set `document.content_language` to `work_order.document_language`. Set blackboard controls based on the requested mode and required gates. For `create`, the goal's acceptance conditions must include a user-facing quality contract and a concrete comparison target when one exists; for `change` and `repair`, include the task-appropriate quality bar (need satisfaction, no regression).
+5. When analysis is needed, schedule `xc-analysis` nodes and synthesize accepted evidence into `analysis.md`. For `change` and `repair`, the analysis records a scope assessment (see `references/scope-policy.md`); for `create`, record the constraints and quality contract instead of a minimality assessment.
 6. When feature IDs are present, embed `xc-feature-reconciliation` sequentially under `reconciliation-group` before selecting a work order solution.
 7. When evidence leaves a material human-owned decision unresolved, or the user explicitly asks to clarify or stress-test work, set `work_order.requires_clarification=true` and embed `xc-clarify` under `clarification-group`. The group must complete before selecting a solution.
-8. Create `solution.md` when a change strategy must be selected. Publish the terminal solution writer ID as the compact JSON array in `work_order.solution_source_ids`, read the approval control packet, and complete `approve-work-order-solution` with `--gate-outcome approved|rejected|revision-required` plus a non-empty decision. The default `work_order.solution_gate_outcome=approved` is used only when the optional gate is skipped. A rejected, revision-required, or otherwise non-approved value opens `solution-recovery-group` and keeps the approved continuation closed. Add revision and a successor approval gate inside that recovery group; the successor gate must atomically publish `approved` before consequential work can continue.
+8. Create `solution.md` when a change strategy must be selected. For `change` and `repair`, the solution records the scope decision: task type, minimality strength, chosen scope, release or promotion triggers, user confirmation reference when required, and the implementation boundary. For `create`, the goal's quality contract and constraints are the scope record when no solution is selected, and a solution records the same fields when one is used. Publish the terminal solution writer ID as the compact JSON array in `work_order.solution_source_ids`, read the approval control packet, and complete `approve-work-order-solution` with `--gate-outcome approved|rejected|revision-required` plus a non-empty decision. The default `work_order.solution_gate_outcome=approved` is used only when the optional gate is skipped. A rejected, revision-required, or otherwise non-approved value opens `solution-recovery-group` and keeps the approved continuation closed. Add revision and a successor approval gate inside that recovery group; the successor gate must atomically publish `approved` before consequential work can continue.
 9. Add approved implementation nodes through `xc-implementation`, then verification nodes through `xc-verification` only after `approved-solution-continuation` is selected. Publish each node's declared source IDs through its node-specific blackboard key before requesting its control packet; do not substitute ancestor or group IDs.
    A work order that produces analyzable change units also produces a change report. `report-group` is the last group before `result-document`, mounted after `verification-group`, because only implemented and verified code has a state worth describing; and that full lifecycle mounts no top-level review node, so a review that the project bridge or an approved solution requires is extra work inside the implementation path and happens before the report rather than between the report and the result document. The other half of the same statement is the adaptive path, where the order is main-session policy rather than something the engine enforces: when it selects `independent_review`, the main session sequences the report leaf before that review leaf so the report is the reviewer's input, and a review that changes code refreshes the report once more afterwards.
 10. Create `result.md` through document evolution. Publish the terminal goal writer ID in `work_order.objective_source_ids` and the terminal result writer ID in `work_order.result_source_ids`, read the finalizer control packet, and complete `finalize-work-order`.
@@ -239,7 +239,7 @@ Whether a work order produces a change report is a default with an override, res
 `report.default` has three values:
 
 - `never` — the report is not produced for any mode.
-- `code-change-only` — the commitment follows the mode: `true` for `change`, `repair`, and `maintenance`; `false` for `investigation` and `review`; and `true` when the mode cannot be confirmed, because an unknown mode is never read as "no report needed". **This is the built-in default and reproduces the previous mode-derived behaviour exactly**, so adding the configuration section changes nothing for a project that does not set it.
+- `code-change-only` — the commitment follows the mode: `true` for `create`, `change`, `repair`, and `maintenance`; `false` for `investigation` and `review`; and `true` when the mode cannot be confirmed, because an unknown mode is never read as "no report needed". **This is the built-in default and reproduces the previous mode-derived behaviour for the pre-existing modes**, so adding the configuration section changes nothing for a project that does not set it.
 - `always` — the commitment is `true` for every mode, including read-only ones.
 
 Every skip records why. The legal values of `work_order.report_skip_reason` are `read_only_mode`, `zero_analyzable_units`, `user_waived`, and `policy_default`, the last for a skip the resolved tier produced. Extending the vocabulary is what keeps step 10's rule intact: a policy skip is now expressible, so it is recorded rather than silent, and a skip with no reason remains illegal.
@@ -286,12 +286,30 @@ Main sessions consume worker `--summary` values as compact state deltas and poin
 
 The orchestration tree is a managed work order's single authoritative progress state. The main session must not maintain a parallel host-provided task list as work-order state; host task facilities are transient node-scoped scratch or derived presentation only.
 
+## Scope Policy
+
+Implementation magnitude is a dynamic constraint, not a fixed minimum. The target is the **minimum
+sufficient change**: the smallest change that fully satisfies the legitimate need and the
+task-appropriate quality bar, preserving existing structure and consistency where that does not
+conflict with the need. `create` has no minimality presumption; `change` uses a medium minimum-
+sufficient policy; `repair` uses a strong minimality presumption and is promoted to `change` when the
+fix crosses a design, mechanism or requirement boundary. The detailed presets, dynamic factors,
+decision procedure, records and task-specific quality bars are in `references/scope-policy.md`; load
+it when selecting or reviewing a solution.
+
+Analysis records the scope assessment for `change` and `repair`; the solution records the scope
+decision for `create`, `change` and `repair`; implementation follows the accepted scope and stops
+rather than silently expanding or shrinking it; review checks under-scope, over-scope and scope
+drift.
+
 ## Mode Rules
 
+- `create`: no minimality presumption. Normally requires a goal with a user-facing quality contract, implementation, verification and result; analysis, solution and solution approval are optional and added only for material risk, unknown constraints or design decisions. The implementation maximizes user value within the constraints and quality bar. The goal's quality contract and constraints are the scope record when no solution is selected.
 - `investigation`: normally requires analysis and result, but may skip solution, implementation, and verification.
 - `review`: normally requires analysis and review artifacts, but does not modify reviewed inputs.
-- `repair`: uses `xc-diagnosis` when root cause is uncertain, then follows the regular solution, implementation, and verification path.
-- `change` and `maintenance`: select only the documents and nodes necessary for the requested outcome.
+- `repair`: strong minimality presumption, with `xc-diagnosis` when root cause is uncertain. Keep the fix local when that fully repairs the problem; if the evidence shows the fix requires a shared mechanism, design or requirement change, promote the scope to `change`, record the trigger, and follow the `change` rules instead of forcing a small fix.
+- `change`: medium minimality. Prefer the smallest coherent change that fully satisfies the legitimate need and quality bar; if that cannot be met without a larger change, lower the minimality preference and implement the change the need requires. Preserve consistency where possible. Record the scope assessment and decision, and ask the user through the existing clarification or approval gate when the trade-off is material or unclear.
+- `maintenance`: apply the `change` or `repair` rules according to the nature of the maintenance.
 - Proportional selection prunes analysis depth and other optional stages, never the L1 convention-discovery floor. L1 runs in preparation for every mutating work order on both `run` and `adaptive-run`, and as the L0 tripwire on the direct path; `pace=fast` can reduce L2 depth but cannot remove L1. L2 deep study rides on `xc-analysis` (`analysis_scope=convention-review`) and is added by confirmed facts or by L1 evidence of conflict, ambiguity, multiple governance sources, or an unusually large convention set.
 
 ## Reconciliation and Concurrency

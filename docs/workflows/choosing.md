@@ -11,12 +11,23 @@ Choose the lifecycle from the state of the project and the intended outcome. Do 
 | The project is adopting XC, or required workshop bridge documents are missing | [`xc-workshop-setup`](../../skills/xc-workshop-setup/SKILL.md) | Creates the managed project workflow and knowledge guidance through a setup work order; it does not create a business feature |
 | The requested behavior needs a new, explicitly managed feature identity | [`xc-new-feature`](../../skills/xc-new-feature/SKILL.md) | Creates the feature directory, approves feature baselines, then implements, verifies, and reports the feature |
 | Existing behavior is not managed yet but needs durable baselines for future evolution | [`xc-feature-adoption`](../../skills/xc-feature-adoption/SKILL.md) | Derives and approves baselines from current code and test evidence without changing product behavior |
+| A new artifact, codebase, or product surface must be built from scratch rather than changed in place | [`xc-work`](../../skills/xc-work/SKILL.md) with `mode=create` | Requires a user-facing quality contract; selects creation, implementation, verification and result, and leaves analysis and solution optional |
 | Facts or impact must be established, but no product change is requested | [`xc-work`](../../skills/xc-work/SKILL.md) with `mode=investigation` | Produces evidence and a result; solution, implementation, and verification can be omitted |
-| Existing code, configuration, or behavior must change | `xc-work` with `mode=change` | Selects the needed analysis, solution, implementation, and verification stages |
-| A reported failure needs repair | `xc-work` with `mode=repair` | Uses diagnosis when the root cause is uncertain, then returns to the approved change path |
+| Existing code, configuration, or behavior must change | `xc-work` with `mode=change` | Uses the minimum sufficient scope: prefers the smallest coherent change, but expands when the need or quality bar requires it |
+| A reported failure needs repair | `xc-work` with `mode=repair` | Uses a strong minimality presumption and diagnosis when the root cause is uncertain; promotes to change when the fix crosses a design, mechanism or requirement boundary |
 | Documents, code, or evidence need read-only assessment | `xc-work` with `mode=review` | Produces analysis and review artifacts without modifying the reviewed inputs |
-| Routine upkeep is needed without creating a feature | `xc-work` with `mode=maintenance` | Runs only the documents and execution nodes required for the maintenance outcome |
+| Routine upkeep is needed without creating a feature | `xc-work` with `mode=maintenance` | Runs only the documents and execution nodes required for the maintenance outcome, using the change or repair scope rules by nature |
 | Portable workflow contracts, project bridge guidance, agents, exports, or orchestration templates must change | [`xc-workflow-evolution`](../../skills/xc-workflow-evolution/SKILL.md) | Applies the standard work-order and review discipline to workflow maintenance |
+
+## Change Scope
+
+Implementation magnitude is a dynamic constraint, not a fixed minimum. The target is the **minimum sufficient change**: the smallest change that fully satisfies the legitimate need and the task-appropriate quality bar, preserving existing structure and consistency where that does not conflict with the need.
+
+- `create` has no minimality presumption. Its goal must carry a user-facing quality contract, and the implementation maximizes the product within the stated constraints.
+- `change` uses a medium minimality policy: prefer the smallest coherent change that fully satisfies the need and quality bar, but expand when the need or quality bar requires a larger change. Preserve consistency where possible.
+- `repair` uses a strong minimality presumption: keep the fix local when that fully repairs the problem, and promote to `change` when the root cause or the correct fix requires a shared mechanism, design or requirement change.
+
+Analysis records the scope assessment for `change` and `repair`; the solution records the scope decision; implementation follows the accepted scope and stops rather than silently expanding or shrinking it; review checks under-scope, over-scope and scope drift. When the trade-off is material or unclear, the main session asks the user through the existing clarification or approval gate. The detailed policy is in the [`xc-work` scope reference](../../skills/xc-work/references/scope-policy.md).
 
 ## Direct Or Managed Governance
 

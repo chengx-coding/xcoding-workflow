@@ -4,7 +4,7 @@
 
 xcoding-workflow helps coding agents carry work from an initial request to a tested, reviewed result. It works across programming languages, frameworks, and the applications that run coding agents, known here as **Agent hosts**.
 
-Current source candidate version: <!-- xc:version -->0.3.2<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
+Current source candidate version: <!-- xc:version -->0.3.3<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
 
 ## How XC fits together
 
@@ -119,7 +119,7 @@ python skills/xc-work/scripts/classify.py [fact flags]
 
 Its six flags are `needs_persistence`, `material_impact`, `difficult_rollback`, `crosses_sessions`, `multiple_actors`, and `audit_required`. Omitted flags become `unknown`. Invalid input, timeouts, execution failures, and invalid output all produce a managed result instead of silently allowing direct work.
 
-Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed work. This operation is always managed. Model name, vendor, context-window size, and project technology never change the six answers or remove required review and verification.
+Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed work. This operation is always managed. Model name, vendor, context-window size, and project technology never change the six answers or remove required review and verification. Choose the mode from the task: `create` for a from-zero artifact with a user-facing quality contract, `change` for the minimum sufficient modification, and `repair` for a strong minimality presumption that promotes to `change` when the fix crosses a design or mechanism boundary.
 
 `operation=adaptive-run` is an explicit managed alternative. It preserves a durable runtime while allowing a minimal workbench with no mandatory top-level documents. `operation=plan` derives monotonic capabilities from governance, project policy, scope, clarity, risk, verification, coordination, duration, audit, and `adaptive|fast|thorough` pace facts. Existing omitted or explicit `run` behavior remains the full lifecycle.
 
@@ -134,10 +134,10 @@ Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed w
 
 The supported distribution is `xcoding-workflow`; `0.1.0` is distributed only as an immutable GitHub Release. It is not published on PyPI. If the immutable release and its integrity files are not available, there is no supported public installation artifact yet.
 
-For a published release, download the wheel and integrity files from that same release and verify them as described in [Installation](docs/getting-started/installation.md). The following filename illustrates the current, unpublished `0.3.2` source candidate; it is not an available release artifact or evidence of release qualification. Install it only after a candidate wheel has been built and verified for your intended use:
+For a published release, download the wheel and integrity files from that same release and verify them as described in [Installation](docs/getting-started/installation.md). The following filename illustrates the current, unpublished `0.3.3` source candidate; it is not an available release artifact or evidence of release qualification. Install it only after a candidate wheel has been built and verified for your intended use:
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.3.2-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.3.3-py3-none-any.whl
 xcoding version --json
 ```
 

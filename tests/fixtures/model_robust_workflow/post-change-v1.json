@@ -20,7 +20,7 @@
     "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
     "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
     "src/xcoding/cli.py": "2b18aae52faf063f8fa80bef16b9fdd2cf1ecde02c2abc4ba17856d9bb8e7384",
-    "skills/xc-work/assets/work-order-template.xml": "ce66cc716db5fcb12ef96b0b592adec28160f02f2e0f4bb3d85f6121fa01447c",
+    "skills/xc-work/assets/work-order-template.xml": "f0aa61b483e7e74720f2b2503e75988d458e188c2412f0fe12e8b529f8b8181a",
     "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
     "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
     "skills/xc-document/scripts/validate_document.py": "99a8daa4e55f9b856e6eb75c6bff8f1a347d882c870cbcd0bc0e68528a663be2",
@@ -30,7 +30,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "4e32f3184253e55c4b17b829536ffcacdd31c0c1",
+  "recording_base_commit": "e72eeaafcdd99a66979c8f7b52c8cab33c3094a4",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -141,7 +141,7 @@
       "T1-M": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 113259,
+            "context_bytes": 113283,
             "runtime_calls": 38,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -176,7 +176,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 113923,
+            "context_bytes": 113947,
             "runtime_calls": 38,
             "explicit_transitions": 16,
             "delegations": 6,
@@ -208,7 +208,7 @@
       "T2": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 143292,
+            "context_bytes": 143316,
             "runtime_calls": 49,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -244,7 +244,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 144205,
+            "context_bytes": 144229,
             "runtime_calls": 49,
             "explicit_transitions": 22,
             "delegations": 9,
@@ -276,7 +276,7 @@
       "T3": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 209664,
+            "context_bytes": 209688,
             "runtime_calls": 76,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -315,7 +315,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 211075,
+            "context_bytes": 211099,
             "runtime_calls": 76,
             "explicit_transitions": 34,
             "delegations": 14,
@@ -347,7 +347,7 @@
       "T4": {
         "auto_commit_false": {
           "metrics": {
-            "context_bytes": 237835,
+            "context_bytes": 237859,
             "runtime_calls": 91,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -389,7 +389,7 @@
         },
         "auto_commit_true": {
           "metrics": {
-            "context_bytes": 239495,
+            "context_bytes": 239519,
             "runtime_calls": 91,
             "explicit_transitions": 40,
             "delegations": 17,
@@ -478,22 +478,22 @@
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
-        "current_value": 113259,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
-        "numeric_delta": 48506
+        "current_value": 113283,
+        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "numeric_delta": 48530
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 5
       },
       {
@@ -504,27 +504,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved."
+        "explanation": "Dynamic scope policy: create mode and report policy update"
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
-        "current_value": 113923,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
-        "numeric_delta": 48506
+        "current_value": 113947,
+        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "numeric_delta": 48530
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 5
       },
       {
@@ -535,27 +535,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved."
+        "explanation": "Dynamic scope policy: create mode and report policy update"
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
-        "current_value": 143292,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
-        "numeric_delta": 52746
+        "current_value": 143316,
+        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "numeric_delta": 52770
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 4
       },
       {
@@ -566,27 +566,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved."
+        "explanation": "Dynamic scope policy: create mode and report policy update"
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
-        "current_value": 144205,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
-        "numeric_delta": 52746
+        "current_value": 144229,
+        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "numeric_delta": 52770
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 4
       },
       {
@@ -597,27 +597,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved."
+        "explanation": "Dynamic scope policy: create mode and report policy update"
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
-        "current_value": 209664,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
-        "numeric_delta": 69526
+        "current_value": 209688,
+        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "numeric_delta": 69550
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 6
       },
       {
@@ -628,27 +628,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved."
+        "explanation": "Dynamic scope policy: create mode and report policy update"
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
-        "current_value": 211075,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
-        "numeric_delta": 69526
+        "current_value": 211099,
+        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "numeric_delta": 69550
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 6
       },
       {
@@ -659,27 +659,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved."
+        "explanation": "Dynamic scope policy: create mode and report policy update"
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
-        "current_value": 237835,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
-        "numeric_delta": 72941
+        "current_value": 237859,
+        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "numeric_delta": 72965
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 6
       },
       {
@@ -690,27 +690,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved."
+        "explanation": "Dynamic scope policy: create mode and report policy update"
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
-        "current_value": 239495,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
-        "numeric_delta": 72941
+        "current_value": 239519,
+        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "numeric_delta": 72965
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+        "explanation": "Dynamic scope policy: create mode and report policy update",
         "numeric_delta": 6
       },
       {
@@ -721,12 +721,12 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved."
+        "explanation": "Dynamic scope policy: create mode and report policy update"
       }
     ]
   },
   "change_note": {
-    "reason": "Re-record after the conditional baseline capture change: the prepare-work-order node of skills/xc-work/assets/work-order-flow.json and the prepare-feature node of skills/xc-new-feature/assets/new-feature-flow.json now capture and require work_order.report_baseline only when the resolved report commitment work_order.requires_report is true, and their preparation-phase-record clause no longer counts the baseline as unconditional. The regenerated work-order-template.xml - a declared recording input - grew, and every profile's context_bytes metric grew with it. No measured scenario outcome changes; the immutable historical baseline is preserved.",
+    "reason": "Dynamic scope policy: create mode and report policy update",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1231,7 +1231,7 @@
         "T1-M": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 113259,
+              "context_bytes": 113283,
               "runtime_calls": 38,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1266,7 +1266,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 113923,
+              "context_bytes": 113947,
               "runtime_calls": 38,
               "explicit_transitions": 16,
               "delegations": 6,
@@ -1298,7 +1298,7 @@
         "T2": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 143292,
+              "context_bytes": 143316,
               "runtime_calls": 49,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1334,7 +1334,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 144205,
+              "context_bytes": 144229,
               "runtime_calls": 49,
               "explicit_transitions": 22,
               "delegations": 9,
@@ -1366,7 +1366,7 @@
         "T3": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 209664,
+              "context_bytes": 209688,
               "runtime_calls": 76,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1405,7 +1405,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 211075,
+              "context_bytes": 211099,
               "runtime_calls": 76,
               "explicit_transitions": 34,
               "delegations": 14,
@@ -1437,7 +1437,7 @@
         "T4": {
           "auto_commit_false": {
             "metrics": {
-              "context_bytes": 237835,
+              "context_bytes": 237859,
               "runtime_calls": 91,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1479,7 +1479,7 @@
           },
           "auto_commit_true": {
             "metrics": {
-              "context_bytes": 239495,
+              "context_bytes": 239519,
               "runtime_calls": 91,
               "explicit_transitions": 40,
               "delegations": 17,
@@ -1573,7 +1573,7 @@
       "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
       "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
       "src/xcoding/cli.py": "2b18aae52faf063f8fa80bef16b9fdd2cf1ecde02c2abc4ba17856d9bb8e7384",
-      "skills/xc-work/assets/work-order-template.xml": "ce66cc716db5fcb12ef96b0b592adec28160f02f2e0f4bb3d85f6121fa01447c",
+      "skills/xc-work/assets/work-order-template.xml": "f0aa61b483e7e74720f2b2503e75988d458e188c2412f0fe12e8b529f8b8181a",
       "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
       "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
       "skills/xc-document/scripts/validate_document.py": "99a8daa4e55f9b856e6eb75c6bff8f1a347d882c870cbcd0bc0e68528a663be2",

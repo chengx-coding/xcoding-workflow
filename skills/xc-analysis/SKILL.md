@@ -27,6 +27,8 @@ description: "Performs evidence-driven investigation, impact analysis, reconcili
 
 The caller reads `.xcoding/WORKFLOW.md` and `.xcoding/KNOWLEDGE.md`, opens or resumes the work order, then schedules one or more analysis nodes in its managed tree. Each node records evidence in a node artifact. A document-evolution subtree synthesizes accepted facts, hypotheses, alternatives, risks, and unresolved decisions into `analysis.md`.
 
+For a change or repair, the analysis includes a **scope assessment**: the maturity and coupling of the existing code, the size and intent of the requested delta, whether a minimal coherent change fully satisfies the legitimate need and the task-appropriate quality bar, the viable larger options, the recommendation, and the uncertainty. If the recommendation is materially ambiguous, or a repair's correct fix would cross a design, mechanism or requirement boundary, flag it for the caller's clarification or approval gate before solution selection. A create task records its constraints and quality contract instead of a minimality assessment.
+
 Use parallel nodes only for independent perspectives. The caller names each perspective, declares its artifact path, and schedules a synthesis node after all required evidence nodes complete. A synthesis may discard unsupported claims; it must not merge incompatible evidence silently.
 
 Analysis node artifacts default to internal English. A caller may explicitly mark a user-facing analysis report with `metadata.artifact.audience=user` and `metadata.artifact.content_language=work_order.document_language`; resolve the language before writing its node-artifact frontmatter. User-facing reports follow the public `xc-document` human-readable authoring default and supplied explicit authoring requirements while preserving exact evidence.
@@ -37,6 +39,7 @@ Analysis node artifacts default to internal English. A caller may explicitly mar
 - Cite code, test, configuration, Git, document, or runtime-query evidence by path or command outcome.
 - For feature reconciliation, compare code and executable tests as current implementation evidence against feature baselines as approved target intent.
 - Evidence-backed, intent-compatible baseline drift may be synchronized through a separate document-evolution subtree.
+- For change and repair, record the scope assessment and recommendation; the caller owns the scope decision and analysis must not silently choose a larger implementation.
 - Ambiguous drift, product-intent conflict, or concurrent baseline modification requires a main-session user gate.
 
 ## Constraints
