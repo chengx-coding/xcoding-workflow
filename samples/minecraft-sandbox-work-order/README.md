@@ -119,10 +119,18 @@ current best result under the fixed sample evaluation:
 | 0.3.4 standard | 55 | 61 | 47% | +4/−0 | 59 |
 | 0.3.5 standard | 55 | 62 | 47% | +4/−0 | 59 |
 | **0.3.6 standard** | **62** | **70** | **49%** | **+5/−0** | **67** |
+| E3 / Verdant Hollow (historical ablation reference) | 56 | 67 | 47% | +5/−1 | 60 |
 
 0.3.6 is best on base, core and base+extras; coverage is one criterion below the pre-correction
 (42/86 vs 43/86). The remaining coverage gap is the T2/T3 systems layer (crafting, survival,
 mobs/combat, redstone, fluids), which the compact sample prompt intentionally keeps out of scope.
+
+E3 / Verdant Hollow is the 2026-10-28 ablation condition E3 (blind letter F), added as a standing
+**reference condition** for future sample comparisons — not a standard sample or release bar. It has
+the richest core-sandbox world in the packet (four biomes, ores, bedrock, 14 blocks, minimap,
+day/night and audio), but no counted inventory, 17 tests and no pause/reduced motion, hence base 56.
+Future runs compare against it for world/presentation and core-demo quality; 0.3.6 remains the best
+standard sample.
 
 ## Regression history
 

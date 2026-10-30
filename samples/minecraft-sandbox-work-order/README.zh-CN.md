@@ -109,10 +109,17 @@ Baseline 使用同一模型（`deepseek-flash`）、同一台机器和原始任�
 | 0.3.4 standard | 55 | 61 | 47% | +4/−0 | 59 |
 | 0.3.5 standard | 55 | 62 | 47% | +4/−0 | 59 |
 | **0.3.6 standard** | **62** | **70** | **49%** | **+5/−0** | **67** |
+| E3 / Verdant Hollow（历史消融参考） | 56 | 67 | 47% | +5/−1 | 60 |
 
 0.3.6 在 base、core、base+extras 上最佳；coverage 比 pre-correction 少 1 个准则（42/86 vs
 43/86）。剩余 coverage gap 是 T2/T3 系统层（crafting、survival、mobs/combat、redstone、fluids），
 这是紧凑 sample prompt 有意排除的范围。
+
+E3 / Verdant Hollow 是 2026-10-28 消融实验的条件 E3（盲评字母 F），现已作为未来 sample 对比的
+**固定参考条件**，不是标准 sample，也不是发布门槛。它拥有参考集中最丰富的核心沙盒世界（四个
+biomes、ores、bedrock、14 种方块、minimap、day/night、audio），但没有 counted inventory、只有
+17 tests、没有 pause/reduced motion，因此 base 为 56。未来运行用它作为世界/表现和 core-demo 的
+参考；0.3.6 仍是最佳标准 sample。
 
 ## 回归历史
 

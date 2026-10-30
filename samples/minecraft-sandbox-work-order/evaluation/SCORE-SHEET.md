@@ -109,10 +109,27 @@ The 0.3.6 run is the first promoted sample with the prior-capability-preservatio
 prior inventory items were dispositioned preserve/improve, and the suite is 124 tests. It is best on
 base, core and base+extras, not on coverage; the remaining coverage gap is the T2/T3 systems layer.
 
+## Standing reference: E3 / Verdant Hollow
+
+E3 is the 2026-10-28 workflow-quality ablation condition E3 (blind letter F), **not a 0.3.x
+standard sample** and not a release bar. It is retained as a standing reference for future sample
+comparisons because it is the richest core-sandbox artifact in the packet: four biomes, coal/iron
+ores, bedrock, cacti, a live minimap, numeric clock, field guide, 14 solid blocks, nine slots, a
+day/night cycle and procedural audio.
+
+Its fixed M2D-SES v1.0 score is **base 56 / core 67 / coverage 47% / extras +4 / base+extras 60**
+(13 files, 121.3 KB product, 17 tests, 238 colour buckets at 960x600). It has no counted inventory,
+no drops/hardness, no reduced motion or pause, and a much smaller test suite than 0.3.6; that is why
+its base is below 0.3.6's 62 despite the richer world.
+
+Include E3 in future sample comparisons as a **reference condition** for world/presentation and
+core-demo quality; never present it as a standard sample or a release bar. 0.3.6 remains the best
+standard sample.
+
 ## Policy
 
-- Compare with the one-shot baseline **and** the previous standard run, not only with the immediately
-  previous special result.
+- Compare with the one-shot baseline, the pre-correction special, the previous standard run, and the
+  E3 reference condition. E3 is a reference, not a standard sample or release bar.
 - Small variation is acceptable; a whole-domain drop or consecutive declines trigger investigation.
 - Extras are recorded separately and never excuse a missing T0/T1 criterion.
 - A standard revision gets a new version number; prior sheets remain valid under their version.
