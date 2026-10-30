@@ -165,6 +165,6 @@ Adoption derives evidence-backed baselines and does not silently change or repai
 
 ## 5. Let the managed lifecycle control state
 
-Provide decisions at explicit user gates and let the runtime public interfaces own node scheduling, transitions, and checkpoints. Keep code and project commits in the project repository; keep work-order documents, feature baselines, runtime state, and node artifacts in the workshop history, which by the default `independent-link` topology is independent of the project repository.
+Provide decisions at explicit user gates and let the runtime public interfaces own node scheduling, transitions, and checkpoints. An explicitly authorized autonomous self-evolution line may delegate a gate to the agent only under the [self-evolution discipline](../../skills/xc-workflow-evolution/references/self-evolution-discipline.md); the decision is recorded and reported, and non-delegable boundaries remain user-owned. Keep code and project commits in the project repository; keep work-order documents, feature baselines, runtime state, and node artifacts in the workshop history, which by the default `independent-link` topology is independent of the project repository.
 
 Continue with the [documentation index](../index.md) for concepts, workflow guidance, orchestration details, and the complete Skill reference.

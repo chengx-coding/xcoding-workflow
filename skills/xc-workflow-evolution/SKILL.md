@@ -60,6 +60,39 @@ packages. `--check` is read-only. Consumer-specific paths, installation
 policy, and deletion gates belong in the consumer bridge or managed work order, not
 in this Skill.
 
+## Self-Evolution Discipline
+
+When the requested change is part of a **self-evolution/optimization line** rather than a one-off
+maintenance edit, read and apply [`references/self-evolution-discipline.md`](references/self-evolution-discipline.md)
+before starting or continuing the line. It owns the detailed method; this section is the contract.
+
+- **Meta-cognitive checkpoint.** After 3 completed iterations in a line, or at the project's version
+  boundary, or on a direction/patch/architecture/regression/generality/metric-change/user-report
+  signal, pause for an independent meta-review. The review has a 45–60 minute time-box, records a
+  decision (`continue|simplify|refactor|change-metric|pause|stop|defer`) and may pause the line, but
+  cannot make material changes unilaterally. It does not review itself recursively.
+- **Content placement.** Stable contract and invariants stay in `SKILL.md`; detailed method,
+  checklists and record formats stay in references; stage-specific actions and attention stay in
+  orchestration node instructions. Keep one owner per rule, do not duplicate, and record an
+  equivalence check when moving content.
+- **Divergence and convergence.** Context divergence (bridge, instructions, conventions, prior
+  decisions, tests/CI, ownership, history) is mandatory even for specific tasks. Solution divergence
+  is adaptive; self-evolution must consider do-nothing, minimal fix, simplify, refactor and
+  change-metric/process. Converge with evidence, rejected options, uncertainty and a stopping reason;
+  option count is not a metric.
+- **Delegated gates.** Only an explicit user grant for an autonomous multi-round self-evolution line
+  can delegate an otherwise user-owned gate. A delegated gate is **run**, not skipped, and is recorded
+  with its grant, scope, alternatives, materiality, evidence, risk, rollback and independent review.
+  `result.md` must contain a dedicated autonomous-decisions section. Expanding the grant, security/
+  permissions/secrets/compliance, destructive history/artifact deletion, release/tag/publication,
+  core values or explicit user constraints, host restrictions, and out-of-grant or irreversible
+  decisions remain non-delegable.
+
+This discipline applies to self-evolution lines only. Ordinary work orders and their user gates are
+unchanged. It adds no runtime command, state, node type or configuration surface; use the existing
+nodes, artifacts and gates. All new rules are convention-only unless an existing mechanical check says
+otherwise.
+
 ## Architecture-Preserving Evolution
 
 Prefer the smallest correct fix that reuses an existing mechanism or established pattern over a new command, new state, new configuration surface, new node type, or new cross-cutting check. A minor or low-value problem does not justify durable added complexity.

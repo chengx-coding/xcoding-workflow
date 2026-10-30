@@ -27,7 +27,7 @@
 - `change` 使用中等最小性：优先选择能完整满足需求与质量 bar 的最小一致改动；如果需求或质量 bar 要求更大改动，就降低最小性偏好，按需求实现。尽量保持一致性。
 - `repair` 使用强最小性预设：能局部修复就局部修复；如果根因或正确修复需要改共享机制、设计或需求，则升级为 `change`。
 
-analysis 为 `change`/`repair` 记录 scope assessment；solution 记录 scope decision；实现只执行已批准范围，范围不足时停下返回，不静默扩缩；review 检查 under-scope、over-scope 和 scope drift。对 `create`，analysis 对照原始请求并携带 capability map（must/should/non-goals）；solution 记录 accepted matrix，把每个 must/should capability 映射到实现与验证；review 对照原始请求与该矩阵检查保真，包括没有用户/项目来源的 exclusion。权衡材料性不清时，主会话通过现有澄清或批准 gate 询问用户。详细策略见 [`xc-work` 的 scope reference](../../../skills/xc-work/references/scope-policy.md)；create scope 方法见 [`create-scope` reference](../../../skills/xc-work/references/create-scope.md)。
+analysis 为 `change`/`repair` 记录 scope assessment；solution 记录 scope decision；实现只执行已批准范围，范围不足时停下返回，不静默扩缩；review 检查 under-scope、over-scope 和 scope drift。对 `create`，analysis 对照原始请求并携带 capability map（must/should/non-goals）；solution 记录 accepted matrix，把每个 must/should capability 映射到实现与验证；review 对照原始请求与该矩阵检查保真，包括没有用户/项目来源的 exclusion。权衡材料性不清时，主会话通过现有澄清或批准 gate 询问用户。只有在用户显式授权的自主自进化线中，才能按[自进化规范](../../../skills/xc-workflow-evolution/references/self-evolution-discipline.md)委托该 gate；现有 gate 仍须实际执行，决定会被记录和报告，不可委托边界仍归用户所有。详细策略见 [`xc-work` 的 scope reference](../../../skills/xc-work/references/scope-policy.md)；create scope 方法见 [`create-scope` reference](../../../skills/xc-work/references/create-scope.md)。
 
 ## Direct 或受管治理
 

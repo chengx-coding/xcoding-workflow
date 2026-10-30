@@ -65,4 +65,4 @@
 - **用途：** 将普通工作订单和审查纪律用于工作流维护，同时区分可移植核心与项目专属政策。
 - **公开入口：** 必填 `scope`、`workshop_path`、`project_root` 和 `request`；`scope` 选择 portable core、project bridge、agent export、orchestration template 或 health check。
 - **典型用法：** 确认六项治理事实，调用公开 `xc-work operation=classify`，然后只执行全 `no` 所允许的当前响应内动作，或以零 feature 进入公开 `xc-work operation=run`。受管工作会记录分析和方案、修改规范源、按需重新生成受管输出并验证受影响接口。
-- **主要边界：** 只依赖 `xc-work` Skill 名称和公开参数，不调用另一个 Skill 的私有分类脚本或 reference。不得手工修改生成资产或受管运行时状态；广泛架构变更需要备选方案、审查和显式用户门禁。
+- **主要边界：** 只依赖 `xc-work` Skill 名称和公开参数，不调用另一个 Skill 的私有分类脚本或 reference。不得手工修改生成资产或受管运行时状态；广泛架构变更需要备选方案、审查和显式用户门禁。只有在用户显式授权的自主自进化线中，才能按[自进化规范](../../../../skills/xc-workflow-evolution/references/self-evolution-discipline.md)委托该门禁；被委托的门禁必须实际执行、记录并报告，不可委托边界仍归用户所有。

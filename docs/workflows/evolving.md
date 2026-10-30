@@ -16,6 +16,8 @@ Workflow maintenance uses the same evidence, approval, implementation, verificat
 
 Broad architecture changes require evidence, viable alternatives, independent review, and an explicit user gate before implementation.
 
+An explicitly authorized autonomous self-evolution line may delegate an otherwise user-owned gate to the agent under the [self-evolution discipline](../../skills/xc-workflow-evolution/references/self-evolution-discipline.md). The delegated gate must still execute, be recorded as a delegated decision and be reported in the result; release/tag, security/permissions, destructive history, core values, host restrictions and other non-delegable boundaries remain user-owned.
+
 Narrow workflow maintenance may explicitly use `xc-work operation=adaptive-run` after proportional planning. Broad portable-core, orchestration-template, and agent-export changes retain their required analysis, solution, gate, verification, and review capabilities even when the user requests a fast pace. Existing workflow-evolution routing continues to use the full `run` lifecycle by default.
 
 ## Change Canonical Sources First

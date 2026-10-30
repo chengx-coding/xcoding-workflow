@@ -16,6 +16,8 @@
 
 大范围架构变更必须在实现前具备证据、可行备选方案、独立评审和显式用户 gate。
 
+在用户显式授权的自主自进化线中，可以按[自进化规范](../../../skills/xc-workflow-evolution/references/self-evolution-discipline.md)把原本属于用户的 gate 委托给 agent。被委托的 gate 仍必须实际执行，记录为 delegated decision，并在结果中报告；release/tag、安全/权限、破坏性历史、核心价值、host 限制及其他不可委托边界仍归用户所有。
+
 窄范围工作流维护可以在成比例规划后显式使用 `xc-work operation=adaptive-run`。广泛的 portable-core、orchestration-template 和 agent-export 变更即使用户要求 fast pace，仍保留 required analysis、solution、gate、verification 和 review capability。现有 workflow-evolution 路由默认继续使用完整 `run` 生命周期。
 
 ## 先修改规范源

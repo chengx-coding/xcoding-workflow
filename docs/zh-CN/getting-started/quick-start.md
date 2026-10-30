@@ -165,6 +165,6 @@ Adoption 会推导有证据支持的基线，不会静默修改或修复产品�
 
 ## 5. 让受管生命周期控制状态
 
-在显式用户门禁中提供决策，并让运行时公开接口负责节点调度、转换和检查点。代码和项目提交保留在项目仓库；work order 文档、feature 基线、运行时状态和节点 artifact 保留在 workshop 历史中，它在默认 `independent-link` 拓扑下独立于项目仓库。
+在显式用户门禁中提供决策，并让运行时公开接口负责节点调度、转换和检查点。只有在用户显式授权的自主自进化线中，才能按[自进化规范](../../../skills/xc-workflow-evolution/references/self-evolution-discipline.md)把 gate 委托给 agent；该决定会被记录和报告，不可委托边界仍归用户所有。代码和项目提交保留在项目仓库；work order 文档、feature 基线、运行时状态和节点 artifact 保留在 workshop 历史中，它在默认 `independent-link` 拓扑下独立于项目仓库。
 
 继续查看[文档索引](../../index.md)，了解概念、工作流指引、编排细节和完整 Skill 参考。

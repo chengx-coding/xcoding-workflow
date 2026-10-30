@@ -113,7 +113,7 @@ The generic core decides when project knowledge is needed. The bridge supplies t
 
 ## Main Session, Worker, And Public Boundaries
 
-The main session is the orchestrator. It opens or resumes the work order, asks the runtime for ready work, starts executable nodes, handles user gates, delegates one node at a time, and verifies runtime state after a worker returns.
+The main session is the orchestrator. It opens or resumes the work order, asks the runtime for ready work, starts executable nodes, handles user gates (including a recorded delegated-gate decision in an explicitly authorized autonomous self-evolution line), delegates one node at a time, and verifies runtime state after a worker returns.
 
 A worker receives one running node and its bounded inputs. It executes only that node, writes declared artifacts, and reports completion, failure, or blocking through the public runtime interface. It does not inspect sibling or future nodes, change global control flow, or directly read managed runtime files.
 
