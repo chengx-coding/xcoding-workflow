@@ -96,6 +96,12 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("single default screenshot", reference_flat)
         self.assertIn("visible-state assertion", verification)
         self.assertIn("two materially different visual states", verification)
+        self.assertIn("changes content", reference_flat)
+        self.assertIn("boundary/terminal", reference_flat)
+        self.assertIn("changes content", analysis)
+        self.assertIn("boundary/terminal", analysis)
+        self.assertIn("changes content", verification)
+        self.assertIn("boundary/terminal", verification)
         self.assertEqual(reference.count("## Reference-informed signature experience"), 1)
 
     def test_generic_create_scope_assets_do_not_name_the_sample_domain(self):

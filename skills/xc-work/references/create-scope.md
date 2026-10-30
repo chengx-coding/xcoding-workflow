@@ -103,8 +103,9 @@ applies at approval time; this rule applies to the executed evidence after imple
 a fidelity instrument, not a feature count: do not add a journey merely to make the map look thorough,
 and do not import a reference's unrelated states.
 
-**Visible state.** A journey that removes, clears, hides or covers content, changes mode/theme/time or
-viewport, or reaches a boundary/terminal state must state what the user sees in its place. Its
+**Visible state.** A journey that removes, clears, hides or covers content, changes content, changes
+mode/theme/time or viewport, or reaches a boundary/terminal state must state what the user sees in its
+place. Its
 `acceptance` records the visible before/after: background, empty/fallback content, occlusion, layer
 order and spatial anchor, not only the model or action result. Its `verification` executes the journey
 and asserts the visible state; when the experience has materially different visual states, it checks at
