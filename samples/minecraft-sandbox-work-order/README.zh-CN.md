@@ -72,7 +72,11 @@ python tools/page_check.py --window 960x600
                                     202 colour buckets in the rendered canvas
 ```
 
-下图是 [`media/xc-sandbox.png`](media/xc-sandbox.png)。
+下图是 [`media/xc-sandbox.png`](media/xc-sandbox.png)。它是种子 `20261030`、默认白天状态的干净
+960x600 截图。页面是响应式的：其他窗口尺寸下 960x540 的舞台会缩放并留黑边，因此 HUD/游戏区看起来
+会比这张裁剪图更大或更小。游戏还会恢复 `localStorage`；之前保存过的种子、时间或被编辑过的世界，
+都会让普通浏览器打开时看起来不同。要复现截图：输入种子 `20261030` 并点 **Load**，或清除该页面的
+站点数据，然后使用 960x600 视口。
 
 ## 直接 baseline 与 0.3.6 结果
 

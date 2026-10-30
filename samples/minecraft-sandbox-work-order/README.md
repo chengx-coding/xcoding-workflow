@@ -80,7 +80,12 @@ python tools/page_check.py --window 960x600
                                     202 colour buckets in the rendered canvas
 ```
 
-The screenshot used below is [`media/xc-sandbox.png`](media/xc-sandbox.png).
+The screenshot used below is [`media/xc-sandbox.png`](media/xc-sandbox.png). It is a clean 960x600
+capture of the seed `20261030` and the default day state. The page is responsive: at other window
+sizes the 960x540 stage scales and letterboxes, so the HUD/play area will look larger or smaller than
+this crop. The game also restores `localStorage`; a previously saved seed, time or edited world can
+therefore make a normal browser open look different. To reproduce the capture, enter seed `20261030`
+and choose **Load**, or clear the page's site data, then use a 960x600 viewport.
 
 ## The direct baseline and the 0.3.6 result
 
