@@ -80,7 +80,7 @@ python tools/page_check.py --window 960x600
                                     202 colour buckets in the rendered canvas
 ```
 
-The screenshot used below is [`media/xc-sandbox.png`](media/xc-sandbox.png). It is a clean 960x600
+The screenshot used below is [`media/xc-sandbox-0.3.6.png`](media/xc-sandbox-0.3.6.png). It is a clean 960x600
 capture of the seed `20261030` and the default day state. The page is responsive: at other window
 sizes the 960x540 stage scales and letterboxes, so the HUD/play area will look larger or smaller than
 this crop. The game also restores `localStorage`; a previously saved seed, time or edited world can
@@ -95,7 +95,7 @@ direct run with the workflow disabled. The launch configuration and final answer
 
 | Direct baseline | XC 0.3.6 standard create-mode work order |
 | --- | --- |
-| <img src="media/baseline-sandbox.png" alt="Direct baseline sandbox screenshot" width="440"> | <img src="media/xc-sandbox.png" alt="XC 0.3.6 sandbox screenshot" width="440"> |
+| <img src="media/baseline-sandbox.png" alt="Direct baseline sandbox screenshot" width="440"> | <img src="media/xc-sandbox-0.3.6.png" alt="XC 0.3.6 sandbox screenshot" width="440"> |
 
 | Fact | Direct baseline | XC 0.3.6 work order |
 | --- | --- | --- |

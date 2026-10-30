@@ -72,7 +72,7 @@ python tools/page_check.py --window 960x600
                                     202 colour buckets in the rendered canvas
 ```
 
-下图是 [`media/xc-sandbox.png`](media/xc-sandbox.png)。它是种子 `20261030`、默认白天状态的干净
+下图是 [`media/xc-sandbox-0.3.6.png`](media/xc-sandbox-0.3.6.png)。它是种子 `20261030`、默认白天状态的干净
 960x600 截图。页面是响应式的：其他窗口尺寸下 960x540 的舞台会缩放并留黑边，因此 HUD/游戏区看起来
 会比这张裁剪图更大或更小。游戏还会恢复 `localStorage`；之前保存过的种子、时间或被编辑过的世界，
 都会让普通浏览器打开时看起来不同。要复现截图：输入种子 `20261030` 并点 **Load**，或清除该页面的
@@ -86,7 +86,7 @@ Baseline 使用同一模型（`deepseek-flash`）、同一台机器和原始任�
 
 | 直接 baseline | XC 0.3.6 标准 create 工单 |
 | --- | --- |
-| <img src="media/baseline-sandbox.png" alt="直接 baseline 沙盒截图" width="440"> | <img src="media/xc-sandbox.png" alt="XC 0.3.6 沙盒截图" width="440"> |
+| <img src="media/baseline-sandbox.png" alt="直接 baseline 沙盒截图" width="440"> | <img src="media/xc-sandbox-0.3.6.png" alt="XC 0.3.6 沙盒截图" width="440"> |
 
 | 事实 | 直接 baseline | XC 0.3.6 工单 |
 | --- | --- | --- |
