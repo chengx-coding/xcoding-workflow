@@ -62,6 +62,50 @@ Priorities:
 The map is not a checklist to maximize. It exists to expose omissions and unilateral narrowing before
 they become implementation.
 
+## Stateful experience integrity
+
+**Trigger.** Apply this section when the requested acceptance depends on a user-observable state that
+can change, persist, fail, empty, or recover. If no such state exists, record "no applicable stateful
+journey" with the reason in the capability map; do not silently omit the decision.
+
+When it applies, the capability map must also cover the **states the experience depends on**, not only
+its static features. Add a small set of **user journeys** and **integrity invariants**:
+
+- boundary and edge states (the end of a list/document, an empty container, a disabled control);
+- content that is removed, cleared, hidden or exhausted, and what the user sees in its place;
+- terminal, failure, cancelled or rejected-action states;
+- reload, restart, recovery and persistence states;
+- the feedback that tells the user an action was accepted or refused.
+
+A journey is a user-observable sequence with a before/after state, not an implementation module. An
+integrity invariant is a condition that must remain true across that sequence. Add these as `must`
+capability-map rows when the requested experience depends on them; add them as `should` only when the
+experience can be coherent without them, with the usual reason and impact.
+
+**Row content.** Each journey/integrity row uses the existing map fields as follows:
+
+- `acceptance` states the before/action/after sequence: the user-observable **before** condition, the
+  action, and the user-observable **after** condition.
+- `verification` names the exact executed probe or manual scenario and the assertion it makes. A row
+  whose acceptance is only a state label, or whose verification is only "inspection", "review", or
+  "manual", is not a journey row. A test that enters the state but asserts only an internal value is
+  not sufficient.
+
+**Executed evidence.** Verification must execute the probe or manual scenario and record the
+before-state and post-state observable. A static image, a code reading, and a narrative claim are not
+evidence, even when attached to a journey row. If the probe is unavailable, record the gap; do not
+write a pass.
+
+A `must` journey gap fails/blocks verification until it is executed, or the create result may close
+only with a user-accepted risk recorded through the existing result/risk gate. A `should` journey gap
+may remain a recorded gap with its reason. The existing "uncovered must blocks solution approval" rule
+applies at approval time; this rule applies to the executed evidence after implementation. The set is
+a fidelity instrument, not a feature count: do not add a journey merely to make the map look thorough,
+and do not import a reference's unrelated states.
+
+**Force.** This obligation is convention-only: no check rejects a create task that omits a journey; its
+force is the contract text and review.
+
 ## Reference-informed signature experience
 
 When a credible reference exists — a product, experience, or genre exemplar in the task's domain —

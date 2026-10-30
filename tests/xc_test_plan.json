@@ -78,11 +78,12 @@
         "test_xc_lifecycle_templates",
         "test_xc_new_feature_report",
         "test_xc_orchestration_author",
+        "test_create_scope_fidelity",
         "test_xc_runtime_cli_parity",
         "test_xc_runtime_query"
       ],
       "baseline_seconds": 366.5,
-      "baseline_tests": 263,
+      "baseline_tests": 265,
       "notes": "test_xc_workflow_governance lives at the tests root because its path is a governance manifest input; it belongs to this cluster and is listed in kernel_modules instead of here to keep cluster membership unambiguous for path resolution."
     },
     "lifecycle": {
@@ -612,5 +613,5 @@
   },
   "module_weights_source": "measured per-module wall seconds and collected test counts from a full serial baseline profile on a 20-logical-core Windows machine; used only as the sharding cost model",
   "module_test_counts": {},
-  "expected_collected_tests": 1019
+  "expected_collected_tests": 1021
 }
