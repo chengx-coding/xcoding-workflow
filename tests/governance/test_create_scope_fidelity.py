@@ -89,6 +89,13 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("before-state", verification)
         self.assertIn("post-state", verification)
         self.assertIn("must` journey gap", verification)
+        self.assertIn("Visible state.", reference)
+        self.assertIn("visible before/after", reference_flat)
+        self.assertIn("two of them", reference_flat)
+        self.assertIn("spatial/layer consistency", reference_flat)
+        self.assertIn("single default screenshot", reference_flat)
+        self.assertIn("visible-state assertion", verification)
+        self.assertIn("two materially different visual states", verification)
         self.assertEqual(reference.count("## Reference-informed signature experience"), 1)
 
     def test_generic_create_scope_assets_do_not_name_the_sample_domain(self):
