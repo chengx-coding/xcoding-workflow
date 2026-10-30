@@ -1,135 +1,172 @@
-# M2D-SES v1.0 — sample score sheet
+# M2D-SES v1.1 — score sheet
 
-Use this sheet with [`STANDARD.md`](STANDARD.md). Score each domain 0-5 using the rubric's anchors,
-record a separate T0/T1 core sub-score and a present/total criterion count per domain, then compute
-the indices. Keep the completed sheet with the run's evaluation record; do not overwrite earlier
-sheets.
+Use with [`STANDARD.md`](STANDARD.md) and [`PROFILE-2D-SANDBOX.md`](PROFILE-2D-SANDBOX.md). Run the
+J1–J8 journeys first; a first-frame screenshot alone is not a score.
 
 ## Formula
 
-- **Base /100** = Σ(domain weight × domain score) / 100 × 20.
-- **Core demo /100** = Σ(domain weight × T0/T1 sub-score) over domains that contain T0/T1 criteria,
-  divided by the sum of those weights (86; D3 and D9 are excluded because they contain only T2/T3
-  criteria), then ×20. The sub-scores are recorded per domain below.
-- **Coverage** = Σ(present criteria across domains) / 86. A criterion is present only at score ≥2.
-  This is an unweighted breadth count, not a domain-weighted average.
-- **Depth** = average score of present criteria only (optional diagnostic).
-- **Extras** = separate bonus/penalty score (−10 to +10); report it separately and as a sensitivity
-  line `base + extras`.
+- **PES /100** = Σ(PES domain weight × domain score) / 100 × 20, before defect caps.
+- **ECS /100** = Σ(engineering domain weight × domain score) / 100 × 20.
+- **Composite /100** = 0.75 × PES after caps + 0.25 × ECS, then capped at 65 for any high defect and
+  30 for any blocker.
+- **PES defect caps** = 20 for any blocker, 60 for one high, 50 for two or more high, 85 for three or
+  more medium.
+- **Minimum engineering gate** = G1–G3 only; pass/fail, no points.
+- **Coverage** = v1.0 86-criterion diagnostic; not part of PES/ECS/composite.
+- **Extras** = separate bonus/penalty/controversy; does not excuse a defect or gate failure.
 
-## Current 0.3.3 scores (reference, not a template to overwrite)
+PES, ECS and composite are reported separately. The composite is the headline; PES is the experience
+judgment; ECS is the flexible engineering/code-quality judgment.
 
-### Domain scores (0-5)
+## v1.0 reference scores (historical; not comparable)
 
-| Domain | Weight | Baseline | Pre-correction (36d1315) | Standard |
+| Artifact | v1.0 Base | v1.0 Core | v1.0 Coverage | v1.0 Extras |
 | --- | ---: | ---: | ---: | ---: |
-| D1 Core loop and controls | 10 | 4 | 5 | 5 |
-| D2 World generation and biomes | 10 | 3 | 5 | 3 |
-| D3 Terrain physics, fluids, weather | 8 | 1 | 1 | 1 |
-| D4 Blocks, mining, building | 10 | 3 | 5 | 4 |
-| D5 Inventory and items | 8 | 3 | 3 | 5 |
-| D6 Crafting and progression | 8 | 0 | 0 | 0 |
-| D7 Survival: health, hunger, death | 7 | 0 | 0 | 0 |
-| D8 Mobs and combat | 7 | 0 | 1 | 1 |
-| D9 Redstone and automation | 6 | 0 | 0 | 0 |
-| D10 Day/night, weather, atmosphere | 6 | 2 | 5 | 2 |
-| D11 UI/UX, audio, accessibility | 10 | 3 | 4 | 4 |
-| D12 Persistence, engineering, tests | 10 | 2 | 4 | 5 |
-| **Base /100** | **100** | **39** | **60** | **55** |
+| One-shot baseline | 39 | 44 | 31% | 38 |
+| 0.3.3 pre-correction | 60 | 65 | 50% | 61 |
+| 0.3.3 standard | 55 | 61 | 47% | 58 |
+| 0.3.4 standard | 55 | 61 | 47% | 59 |
+| 0.3.5 standard | 55 | 62 | 47% | 59 |
+| 0.3.6 standard | 62 | 70 | 49% | 67 |
+| E3 / Verdant Hollow (reference) | 56 | 67 | 47% | 60 |
 
-### Core sub-scores and coverage counts
+These are retained for provenance only. v1.1 changes the question and the weights; do not compare a
+v1.1 PES/ECS with a v1.0 base.
 
-| Domain | T0/T1 weight | Core B0 | Core P | Core S | Present/total B0 | Present/total P | Present/total S |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| D1 Core loop and controls | 10 | 4 | 5 | 5 | 8/8 | 8/8 | 8/8 |
-| D2 World generation and biomes | 10 | 4 | 5 | 3 | 4/8 | 7/8 | 5/8 |
-| D3 Terrain physics, fluids, weather | — | — | — | — | 0/6 | 0/6 | 0/6 |
-| D4 Blocks, mining, building | 10 | 3 | 4 | 4 | 4/7 | 6/7 | 5/7 |
-| D5 Inventory and items | 8 | 2 | 3 | 4 | 2/7 | 2/7 | 4/7 |
-| D6 Crafting and progression | 8 | 0 | 0 | 0 | 0/7 | 0/7 | 0/7 |
-| D7 Survival: health, hunger, death | 7 | 0 | 0 | 0 | 0/7 | 0/7 | 0/7 |
-| D8 Mobs and combat | 7 | 0 | 1 | 1 | 0/7 | 1/7 | 1/7 |
-| D9 Redstone and automation | — | — | — | — | 0/6 | 0/6 | 0/6 |
-| D10 Day/night, weather, atmosphere | 6 | 2 | 5 | 2 | 1/6 | 5/6 | 2/6 |
-| D11 UI/UX, audio, accessibility | 10 | 3 | 4 | 4 | 5/9 | 8/9 | 8/9 |
-| D12 Persistence, engineering, tests | 10 | 2 | 4 | 5 | 3/8 | 6/8 | 7/8 |
-| **Total / index** | **86** | **44/100** | **65/100** | **61/100** | **27/86 = 31%** | **43/86 = 50%** | **40/86 = 47%** |
+## v1.1 pilot reference set
 
-The core index is computed from the T0/T1 sub-scores over the 86-weight subset:
-`(Σ weight × sub-score) / 86 × 20`. Coverage is the unweighted present count / 86.
+| Artifact | PES | PES cap | ECS | Composite | Gate | High / medium | Coverage | Extras |
+| --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: |
+| 0.3.6 standard | 60.0 | 50.0 | 92.5 | **60.6** | pass | 2 / 2 | 42/86 | +2 |
+| 0.3.3 pre-correction | 70.4 | 70.4 | 74.0 | **71.3** | pass | 0 / 4 | 43/86 | +2 |
+| E3 / Verdant Hollow | 71.2 | 71.2 | 65.5 | **69.8** | pass | 0 / 3 | 40/86 | +2 |
 
-### Extras and sensitivity
+Pilot verdict:
 
-| Artifact | Bonus | Penalty | Base + extras |
-| --- | ---: | ---: | ---: |
-| Baseline | +1 | −2 | 38 |
-| Pre-correction | +3 | −2 | 61 |
-| Standard | +4 | −1 | 58 |
+- **pre-correction is #1 on the composite (71.3)** and **E3 is #1 on PES (71.2)**; they are within
+  the rubric's resolution (tie on experience).
+- **0.3.6 is #3 (60.6)** despite having the **highest ECS (92.5)**. Its 124 tests and strong
+  architecture are credited; they cannot offset the two high world-integrity defects.
+- The high-defect cap is not the only reason 0.3.6 loses: its raw PES (60.0) is already behind both
+  before the cap.
+- Coverage is not a ranking metric: 0.3.6 (42/86) has more coverage than E3 (40/86) but a lower
+  experience score.
 
-Interpretation: the pre-correction special is the most Minecraft-complete; the standard is cleaner,
-more responsive and more robust but loses world, blocks/interaction and day/night/HUD. All three
-lack crafting, survival, mobs/combat, redstone, fluids/sand gravity, weather and structures.
+### ECS detail (pilot)
 
-## New run template
+| Artifact | E1 Test quality | E2 Architecture | E3 Persistence | E4 Perf/a11y | E5 Docs/tooling | ECS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.3.6 | 3.5 | 5 | 5 | 5 | 5 | 92.5 |
+| pre-correction | 4 | 4 | 4 | 2 | 4 | 74.0 |
+| E3 | 3 | 3 | 4 | 2.5 | 4 | 65.5 |
 
-Run: ____________________  Version/commit: ____________________  Date: ____________
+0.3.6's E1 is 3.5, not 5: the suite is large but includes a green test named "the bedrock floor is
+solid" that only checks `isSolid()` on a build with no bedrock. Test count is not test quality.
 
-| Domain | Weight | Score 0-5 | Core T0/T1 0-5 | Present/total | Evidence |
-| --- | ---: | ---: | ---: | ---: | --- |
-| D1 Core loop and controls | 10 | | | /8 | |
-| D2 World generation and biomes | 10 | | | /8 | |
-| D3 Terrain physics, fluids, weather | 8 | | — | /6 | |
-| D4 Blocks, mining, building | 10 | | | /7 | |
-| D5 Inventory and items | 8 | | | /7 | |
-| D6 Crafting and progression | 8 | | | /7 | |
-| D7 Survival: health, hunger, death | 7 | | | /7 | |
-| D8 Mobs and combat | 7 | | | /7 | |
-| D9 Redstone and automation | 6 | | — | /6 | |
-| D10 Day/night, weather, atmosphere | 6 | | | /6 | |
-| D11 UI/UX, audio, accessibility | 10 | | | /9 | |
-| D12 Persistence, engineering, tests | 10 | | | /8 | |
-| **Base /100** | **100** | | | | |
+## Journey log
 
-- Core demo /100 (T0/T1 weights 86):
-- Coverage (present/86):
-- Extras bonus/penalty:
-- Base + extras:
-- Comparison with baseline and previous standard run:
-- Verdict (better / equal / regression signal / significant regression):
-- Notes and controversies:
+| ID | Journey | Result | Evidence / screenshot | Defect IDs |
+| --- | --- | --- | --- | --- |
+| J1 | First launch and controls | | | |
+| J2 | Movement and collision | | | |
+| J3 | Mine, place, hotbar | | | |
+| J4 | Underground and world floor | | | |
+| J5 | Persistence and recovery | | | |
+| J6 | Window, motion, audio, pause | | | |
+| J7 | Time and atmosphere | | | |
+| J8 | Free discovery | | | |
 
-## 0.3.6 current best
+Pilot J4: 0.3.6 fails (no bedrock, underground sky); pre and E3 pass (bedrock + cave backdrop).
 
-The promoted 0.3.6 sample scores **base 62 / core 70 / coverage 49% / base+extras 67**. Domain
-scores: D1 5, D2 3, D3 1, D4 5, D5 5, D6 0, D7 0, D8 1, D9 0, D10 4, D11 5, D12 5. Core T0/T1:
-5, 3, —, 5, 5, 0, 0, 1, —, 3, 5, 5. Coverage is 42/86; pre-correction remains one criterion higher
-at 43/86.
+## PES domains
 
-The 0.3.6 run is the first promoted sample with the prior-capability-preservation gate: all twelve
-prior inventory items were dispositioned preserve/improve, and the suite is 124 tests. It is best on
-base, core and base+extras, not on coverage; the remaining coverage gap is the T2/T3 systems layer.
+| Domain | Weight | Score 0–5 | Evidence | Defects/notes |
+| --- | ---: | ---: | --- | --- |
+| D1 Core loop, controls and feel | 12 | | | |
+| D2 World integrity and underground | 12 | | | |
+| D3 Biomes and environment variety | 10 | | | |
+| D4 Interaction feedback and game feel | 12 | | | |
+| D5 Player, character, art and readability | 10 | | | |
+| D6 HUD, navigation and orientation | 10 | | | |
+| D7 Atmosphere, audio and time | 8 | | | |
+| D8 Inventory, progression and economy | 8 | | | |
+| D9 Content depth, extras and innovation | 8 | | | |
+| D10 Replay, accessibility and performance | 10 | | | |
+| **PES raw** | **100** | | | |
 
-## Standing reference: E3 / Verdant Hollow
+## ECS domains
 
-E3 is the 2026-10-28 workflow-quality ablation condition E3 (blind letter F), **not a 0.3.x
-standard sample** and not a release bar. It is retained as a standing reference for future sample
-comparisons because it is the richest core-sandbox artifact in the packet: four biomes, coal/iron
-ores, bedrock, cacti, a live minimap, numeric clock, field guide, 14 solid blocks, nine slots, a
-day/night cycle and procedural audio.
+| Domain | Weight | Score 0–5 | Evidence |
+| --- | ---: | ---: | --- |
+| E1 Test quality | 25 | | Tests assert invariants, edge cases and recovery; count only as evidence |
+| E2 Architecture and readability | 25 | | Boundaries, cohesion, naming, maintainability |
+| E3 Persistence, robustness and security | 20 | | Versioning, corruption/fallback, offline, errors |
+| E4 Performance, accessibility and responsiveness | 15 | | Frame stability, resize/Dpr, reduced motion, labels |
+| E5 Documentation and tooling | 15 | | README, controls, reproducible checks, useful evidence |
+| **ECS** | **100** | | |
 
-Its fixed M2D-SES v1.0 score is **base 56 / core 67 / coverage 47% / extras +4 / base+extras 60**
-(13 files, 121.3 KB product, 17 tests, 238 colour buckets at 960x600). It has no counted inventory,
-no drops/hardness, no reduced motion or pause, and a much smaller test suite than 0.3.6; that is why
-its base is below 0.3.6's 62 despite the richer world.
+## Defect ledger
 
-Include E3 in future sample comparisons as a **reference condition** for world/presentation and
-core-demo quality; never present it as a standard sample or a release bar. 0.3.6 remains the best
-standard sample.
+| ID | Severity | Journey | Observation | Evidence | Cap effect |
+| --- | --- | --- | --- | --- | --- |
+| | | | | | |
+
+Pilot defects:
+
+| ID | Artifact | Severity | Observation |
+| --- | --- | --- | --- |
+| H1 | 0.3.6 | high | No bedrock/world floor; bottom stone is mineable |
+| H2 | 0.3.6 | high | Underground voids show sky/blank; no cave backdrop |
+| M1 | 0.3.6 | medium | No minimap/orientation; D6 3 |
+| M2 | 0.3.6 | medium | Mining animation is a small arm jitter/tool nub |
+| M3 | 0.3.6 | medium | Art/character simpler than pre/E3 (D5 4, not a defect alone) |
+| — | pre/E3 | pass | Both have bedrock and a cave backdrop; no high defects |
+
+## Minimum engineering gate
+
+| Gate | Pass/fail | Evidence |
+| --- | --- | --- |
+| G1 Boot and offline | | |
+| G2 No fatal errors | | |
+| G3 Save/load/recovery | | |
+
+Tests, performance, accessibility and responsiveness are ECS, not gates.
+
+## Coverage diagnostic (v1.0 criteria)
+
+- Present/86:
+- Missing classes:
+- Coverage never raises PES/ECS and never offsets a defect.
+
+## Extras
+
+| Class | Item | Score | Why |
+| --- | --- | ---: | --- |
+| Bonus | | | |
+| Penalty | | | |
+| Controversial | | 0 | |
+
+## Output
+
+- PES raw:
+- PES after defect caps:
+- ECS:
+- **Composite after caps:**
+- Minimum gate:
+- High / medium defects:
+- Coverage:
+- Extras / sensitivity:
+- Best on: (experience / engineering / coverage / composite)
+- `rubric_gaps` (new issues outside the standard):
+- Next hypothesis for the workflow:
 
 ## Policy
 
-- Compare with the one-shot baseline, the pre-correction special, the previous standard run, and the
-  E3 reference condition. E3 is a reference, not a standard sample or release bar.
-- Small variation is acceptable; a whole-domain drop or consecutive declines trigger investigation.
-- Extras are recorded separately and never excuse a missing T0/T1 criterion.
-- A standard revision gets a new version number; prior sheets remain valid under their version.
+- Compare with the one-shot baseline, pre-correction, 0.3.6 standard, E3 reference, and the previous
+  standard sample. Label E3 as a reference condition, not a standard sample.
+- A high defect is a broken player-visible state, not a missing optional feature. Missing
+  crafting/survival/redstone is a profile/coverage decision.
+- Engineering quality is a real 25% score, not a pile of gates. The only gates are G1–G3; tests,
+  architecture, performance, accessibility and docs are scored in ECS.
+- Engineering cannot fully offset a high experience defect: PES caps and the composite cap apply.
+- The standard is versioned; v1.0 and v1.1 scores are not directly comparable.

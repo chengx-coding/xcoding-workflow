@@ -83,7 +83,7 @@ sequenceDiagram
 
 ## 看它实际跑一次
 
-[工单示例](samples/minecraft-sandbox-work-order/README.zh-CN.md) 是一次真实、完整的运行：一个预先准备种子内容的消费项目由 DeepSeek Harness 命令行驱动，走标准的 create 模式受管生命周期，构建出一个可游玩的 2D 沙盒。这次运行使用 `create` 携带质量契约、没有最小化预设，并保留正常阶段：goal、analysis、solution、approval、implementation、verification、result；只刻意豁免变更报告。运行与 baseline 及旧实现隔离。工单、文档、验证证据和渲染出的编排树都归档在示例里。示例还包含同一任务的第二次直接执行（不使用 XC），附截图和诚实的对比。每次 sample 运行都用固定的 12 领域 [评测标准](samples/minecraft-sandbox-work-order/evaluation/STANDARD.md) 和可复用的 [score sheet](samples/minecraft-sandbox-work-order/evaluation/SCORE-SHEET.md) 评分。
+[工单示例](samples/minecraft-sandbox-work-order/README.zh-CN.md) 是一次真实、完整的运行：一个预先准备种子内容的消费项目由 DeepSeek Harness 命令行驱动，走标准的 create 模式受管生命周期，构建出一个可游玩的 2D 沙盒。这次运行使用 `create` 携带质量契约、没有最小化预设，并保留正常阶段：goal、analysis、solution、approval、implementation、verification、result；只刻意豁免变更报告。运行与 baseline 及旧实现隔离。工单、文档、验证证据和渲染出的编排树都归档在示例里。示例还包含同一任务的第二次直接执行（不使用 XC），附截图和诚实的对比。每次 sample 运行都用固定的 experience-first [评测标准](samples/minecraft-sandbox-work-order/evaluation/STANDARD.md) 和可复用的 [score sheet](samples/minecraft-sandbox-work-order/evaluation/SCORE-SHEET.md) 评分：PES（75%）、Engineering & Code Quality（25%）、一个很小的 minimum gate，以及带 caps 的分级 defect ledger。
 
 ![完成的示例编排树](samples/minecraft-sandbox-work-order/tree/orchestration-tree.png)
 

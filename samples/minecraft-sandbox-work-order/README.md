@@ -19,7 +19,7 @@ implementation.
 | Item | Value |
 | --- | --- |
 | Task | Build a playable, offline 2D Minecraft-style sandbox from scratch |
-| Version | **0.3.6** (best M2D-SES result so far) |
+| Version | **0.3.6** (current standard sample; v1.1 experience rank #3) |
 | Consumer project | [`project/`](project/README.md), built from [`seed/`](seed/) |
 | Host | DeepSeek Harness CLI, `dsh headless` |
 | Model | `deepseek-flash` |
@@ -43,7 +43,8 @@ project/                  the finished consumer project: the delivered game (28 
 baseline/                 the direct baseline: index.html, run record and final answer
 work-order/               the archived 0.3.6 work order: goal, analysis, solution, result,
                           review/verification artifacts, runtime tree and tmp evidence
-evaluation/               the fixed M2D-SES v1.0 standard and score sheet
+evaluation/               the fixed M2D-SES v1.1 standard, 2D profile and score sheet;
+                          v1.0 is retained as historical
 tree/                     the earlier 0.3.3 tree, retained for provenance; the 0.3.6 tree is in work-order/runtime/
 media/                    matched 960x600 screenshots of the managed and baseline pages
 ```
@@ -108,29 +109,28 @@ direct run with the workflow disabled. The launch configuration and final answer
 | Durable process record | none | complete standard work order + runtime tree |
 | Independent visual review | none | passed; no required findings |
 
-The 0.3.6 result is a substantially larger, tested product than the one-shot baseline. It is also the
-current best result under the fixed sample evaluation:
+The 0.3.6 result is a substantially larger, tested product than the one-shot baseline. Under the
+v1.0 engineering-weighted formula it was the best-scoring artifact; under the v1.1 experience-first
+standard it is **third**, because it has no sealed world floor and shows sky behind removed
+underground blocks.
 
-| Artifact | Base | Core | Coverage | Extras | Base+extras |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| One-shot baseline | 39 | 44 | 31% | +1/−2 | 38 |
-| 0.3.3 pre-correction | 60 | 65 | 50% | +3/−2 | 61 |
-| 0.3.3 standard | 55 | 61 | 47% | +4/−1 | 58 |
-| 0.3.4 standard | 55 | 61 | 47% | +4/−0 | 59 |
-| 0.3.5 standard | 55 | 62 | 47% | +4/−0 | 59 |
-| **0.3.6 standard** | **62** | **70** | **49%** | **+5/−0** | **67** |
-| E3 / Verdant Hollow (historical ablation reference) | 56 | 67 | 47% | +5/−1 | 60 |
+| Artifact | PES | ECS | Composite | Gate | High / medium |
+| --- | ---: | ---: | ---: | --- | ---: |
+| **0.3.6 standard** | 50.0 (capped) | **92.5** | **60.6** | pass | **2 / 2** |
+| 0.3.3 pre-correction | 70.4 | 74.0 | **71.3** | pass | 0 / 4 |
+| E3 / Verdant Hollow (reference) | **71.2** | 65.5 | 69.8 | pass | 0 / 3 |
 
-0.3.6 is best on base, core and base+extras; coverage is one criterion below the pre-correction
-(42/86 vs 43/86). The remaining coverage gap is the T2/T3 systems layer (crafting, survival,
-mobs/combat, redstone, fluids), which the compact sample prompt intentionally keeps out of scope.
+v1.1 reports PES (75% of the composite), ECS (25%) and a capped composite. 0.3.6 has the highest ECS
+(92.5: 124 tests, 12 modules, strong persistence/accessibility), but its two high defects cap PES at
+50: no bedrock/floor, and underground voids that show sky. pre-correction is #1 on the composite;
+E3 is #1 on pure PES; the two are within rubric resolution (tie on experience). The v1.0
+base/core/coverage table is historical and not comparable with v1.1.
 
 E3 / Verdant Hollow is the 2026-10-28 ablation condition E3 (blind letter F), added as a standing
 **reference condition** for future sample comparisons — not a standard sample or release bar. It has
 the richest core-sandbox world in the packet (four biomes, ores, bedrock, 14 blocks, minimap,
-day/night and audio), but no counted inventory, 17 tests and no pause/reduced motion, hence base 56.
-Future runs compare against it for world/presentation and core-demo quality; 0.3.6 remains the best
-standard sample.
+day/night and audio), but no counted inventory, 17 tests and no pause/reduced motion. Future runs
+compare against it for world/presentation and core-demo quality.
 
 ## Regression history
 
@@ -139,7 +139,7 @@ standard sample.
 | 0.3.2 sample (C1) | full, no quality contract | 38.1 KB | 69,140 | 28 | 53 | historical; below baseline |
 | 0.3.3 pre-correction | create-minimal (stages skipped) | 132,680 | 168,758 | 34 | 285 | superseded special; not a standard comparison |
 | 0.3.3 standard | full lifecycle + quality contract | 111,090 | 141,977 | 33 | 292 | historical |
-| 0.3.6 standard | full lifecycle + scope/signature/preservation contracts | 170,377 | 185,102 | **124** | 202 | **current best** |
+| 0.3.6 standard | full lifecycle + scope/signature/preservation contracts | 170,377 | 185,102 | **124** | 202 | current standard sample; v1.1 experience #3 |
 
 A run-to-run difference from the superseded special is expected: the special skipped analysis/
 solution, while the standard run keeps the normal lifecycle. 0.3.6 restores the counts/tests/
@@ -160,14 +160,17 @@ verification evidence are under [`work-order/artifacts/`](work-order/artifacts/)
 
 ## Evaluation standard
 
-Every sample run is scored with the fixed [M2D-SES v1.0](evaluation/STANDARD.md): 12 domains, 86
-criteria, T0-T3 tiers, weights, 0-5 anchors, and separate coverage/depth/extras reporting. The
-[score sheet](evaluation/SCORE-SHEET.md) records the domain scores and the base, core-demo and
-coverage indices.
+Every sample run is scored with the fixed [M2D-SES v1.1](evaluation/STANDARD.md): experience-first
+**PES** (75% of the composite), a flexible **Engineering & Code Quality Score (ECS)** (25%), a small
+minimum gate (boot/offline, no fatal errors, save recovery), and a ranked defect ledger. The
+[2D sandbox profile](evaluation/PROFILE-2D-SANDBOX.md) defines the expected journeys and integrity
+requirements; the [score sheet](evaluation/SCORE-SHEET.md) records the PES/ECS/composite and the
+defect caps.
 
-The 0.3.6 evaluation and the earlier 0.3.3–0.3.5 comparisons are retained in the project's sample
-history. The standard is revised only through a deliberate versioned change; completed score sheets
-are not overwritten.
+The v1.0 86-criterion table and scores are retained in [`STANDARD-v1.0.md`](evaluation/STANDARD-v1.0.md)
+and [`SCORE-SHEET-v1.0.md`](evaluation/SCORE-SHEET-v1.0.md) for provenance; v1.0 and v1.1 scores are
+not directly comparable. The standard is revised only through a deliberate versioned change;
+completed score sheets are not overwritten.
 
 ## Reproduce it
 

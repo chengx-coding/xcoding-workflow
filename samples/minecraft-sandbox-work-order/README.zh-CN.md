@@ -16,7 +16,7 @@ preservation 契约。变更报告按用户要求豁免。运行与 one-shot bas
 | 项目 | 值 |
 | --- | --- |
 | 任务 | 从零构建可玩、离线的 2D Minecraft 风格沙盒 |
-| 版本 | **0.3.6**（目前 M2D-SES 最佳结果） |
+| 版本 | **0.3.6**（当前标准 sample；v1.1 体验排名第 3） |
 | 消费者项目 | [`project/`](project/README.md)，从 [`seed/`](seed/) 构建 |
 | 宿主 | DeepSeek Harness CLI，`dsh headless` |
 | 模型 | `deepseek-flash` |
@@ -40,7 +40,8 @@ project/                  完成的消费者项目：交付的游戏（28 个文
 baseline/                 直接 baseline：index.html、运行记录与最终回答
 work-order/               归档的 0.3.6 工单：goal、analysis、solution、result、
                           review/verification 产物、运行时树和 tmp 证据
-evaluation/               固定的 M2D-SES v1.0 标准与 score sheet
+evaluation/               固定的 M2D-SES v1.1 标准、2D profile 和 score sheet；
+                          v1.0 作为历史保留
 tree/                     早期 0.3.3 树，仅为来源保留；0.3.6 树在 work-order/runtime/
 media/                    受管结果与 baseline 的 960x600 截图
 ```
@@ -99,27 +100,24 @@ Baseline 使用同一模型（`deepseek-flash`）、同一台机器和原始任�
 | 持久过程记录 | 无 | 完整标准工单 + 运行时树 |
 | 独立视觉评审 | 无 | 通过；无必修 finding |
 
-0.3.6 是比 one-shot baseline 大得多、测试充分得多的产品，也是当前固定评测下的最佳结果：
+0.3.6 是比 one-shot baseline 大得多、测试充分得多的产品。按 v1.0 的工程加权公式它是最高分；按
+v1.1 的 experience-first 标准它是**第三**，因为没有封闭的世界底线，地下方块挖掉后会露出天空。
 
-| 产物 | Base | Core | Coverage | Extras | Base+extras |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| One-shot baseline | 39 | 44 | 31% | +1/−2 | 38 |
-| 0.3.3 pre-correction | 60 | 65 | 50% | +3/−2 | 61 |
-| 0.3.3 standard | 55 | 61 | 47% | +4/−1 | 58 |
-| 0.3.4 standard | 55 | 61 | 47% | +4/−0 | 59 |
-| 0.3.5 standard | 55 | 62 | 47% | +4/−0 | 59 |
-| **0.3.6 standard** | **62** | **70** | **49%** | **+5/−0** | **67** |
-| E3 / Verdant Hollow（历史消融参考） | 56 | 67 | 47% | +5/−1 | 60 |
+| 产物 | PES | ECS | Composite | Gate | High / medium |
+| --- | ---: | ---: | ---: | --- | ---: |
+| **0.3.6 standard** | 50.0（capped） | **92.5** | **60.6** | pass | **2 / 2** |
+| 0.3.3 pre-correction | 70.4 | 74.0 | **71.3** | pass | 0 / 4 |
+| E3 / Verdant Hollow（参考） | **71.2** | 65.5 | 69.8 | pass | 0 / 3 |
 
-0.3.6 在 base、core、base+extras 上最佳；coverage 比 pre-correction 少 1 个准则（42/86 vs
-43/86）。剩余 coverage gap 是 T2/T3 系统层（crafting、survival、mobs/combat、redstone、fluids），
-这是紧凑 sample prompt 有意排除的范围。
+v1.1 分别报告 PES（composite 的 75%）、ECS（25%）和 capped composite。0.3.6 的 ECS 最高
+（92.5：124 tests、12 modules、强持久化/无障碍），但两个 high defect 把 PES cap 到 50：没有
+bedrock/世界底线，地下镂空露出天空。pre-correction 是 composite 第一；E3 是纯 PES 第一；两者
+在 rubric 分辨率内（体验上并列）。v1.0 的 base/core/coverage 表是历史记录，不能与 v1.1 直接比较。
 
 E3 / Verdant Hollow 是 2026-10-28 消融实验的条件 E3（盲评字母 F），现已作为未来 sample 对比的
 **固定参考条件**，不是标准 sample，也不是发布门槛。它拥有参考集中最丰富的核心沙盒世界（四个
 biomes、ores、bedrock、14 种方块、minimap、day/night、audio），但没有 counted inventory、只有
-17 tests、没有 pause/reduced motion，因此 base 为 56。未来运行用它作为世界/表现和 core-demo 的
-参考；0.3.6 仍是最佳标准 sample。
+17 tests、没有 pause/reduced motion。未来运行用它作为世界/表现和 core-demo 的参考。
 
 ## 回归历史
 
@@ -128,7 +126,7 @@ biomes、ores、bedrock、14 种方块、minimap、day/night、audio），但没
 | 0.3.2 sample (C1) | full，无质量契约 | 38.1 KB | 69,140 | 28 | 53 | 历史；低于 baseline |
 | 0.3.3 pre-correction | create-minimal（跳过阶段） | 132,680 | 168,758 | 34 | 285 | 被取代的特例；不是标准对比 |
 | 0.3.3 standard | full lifecycle + 质量契约 | 111,090 | 141,977 | 33 | 292 | 历史 |
-| 0.3.6 standard | full lifecycle + scope/signature/preservation 契约 | 170,377 | 185,102 | **124** | 202 | **当前最佳** |
+| 0.3.6 standard | full lifecycle + scope/signature/preservation 契约 | 170,377 | 185,102 | **124** | 202 | 当前标准 sample；v1.1 体验第 3 |
 
 与被取代的特例存在 run-to-run 差异是预期的：特例跳过 analysis/solution，标准运行保留正常
 生命周期。0.3.6 恢复了 0.3.5 丢失的 counts/tests/accessibility/responsiveness，并提升 base/core；
@@ -146,12 +144,15 @@ biomes、ores、bedrock、14 种方块、minimap、day/night、audio），但没
 
 ## 评测标准
 
-每次 sample 运行都用固定的 [M2D-SES v1.0](evaluation/STANDARD.md) 评分：12 个领域、86 条细则、
-T0–T3 分层、权重、0–5 锚点，并分别报告 coverage/depth/extras。
-[score sheet](evaluation/SCORE-SHEET.md) 记录领域分数以及 base、core demo 和 coverage 指数。
+每次 sample 运行都用固定的 [M2D-SES v1.1](evaluation/STANDARD.md) 评分：experience-first 的
+**PES**（composite 75%）、灵活的 **Engineering & Code Quality Score (ECS)**（25%）、一个很小的
+minimum gate（boot/offline、无致命错误、保存恢复），以及带等级的 defect ledger。
+[2D sandbox profile](evaluation/PROFILE-2D-SANDBOX.md) 定义预期 journey 和完整性要求；
+[score sheet](evaluation/SCORE-SHEET.md) 记录 PES/ECS/composite 与 defect caps。
 
-0.3.6 评测与 0.3.3–0.3.5 的对比保留在项目 sample 历史中。标准只通过有意的版本化修订变更；
-已完成的 score sheet 不会被覆盖。
+v1.0 的 86 条细则和分数保留在 [`STANDARD-v1.0.md`](evaluation/STANDARD-v1.0.md) 和
+[`SCORE-SHEET-v1.0.md`](evaluation/SCORE-SHEET-v1.0.md) 作为来源记录；v1.0 与 v1.1 分数不能直接
+比较。标准只通过有意的版本化修订变更；已完成的 score sheet 不会被覆盖。
 
 ## 复现
 
