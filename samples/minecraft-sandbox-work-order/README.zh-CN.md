@@ -16,7 +16,7 @@ preservation 契约。变更报告按用户要求豁免。运行与 one-shot bas
 | 项目 | 值 |
 | --- | --- |
 | 任务 | 从零构建可玩、离线的 2D Minecraft 风格沙盒 |
-| 版本 | **0.3.6**（当前标准 sample；v1.1 体验排名第 3） |
+| 版本 | **0.3.6**（当前标准 sample；v1.1 体验排名第 4） |
 | 消费者项目 | [`project/`](project/README.md)，从 [`seed/`](seed/) 构建 |
 | 宿主 | DeepSeek Harness CLI，`dsh headless` |
 | 模型 | `deepseek-flash` |
@@ -101,18 +101,26 @@ Baseline 使用同一模型（`deepseek-flash`）、同一台机器和原始任�
 | 独立视觉评审 | 无 | 通过；无必修 finding |
 
 0.3.6 是比 one-shot baseline 大得多、测试充分得多的产品。按 v1.0 的工程加权公式它是最高分；按
-v1.1 的 experience-first 标准它是**第三**，因为没有封闭的世界底线，地下方块挖掉后会露出天空。
+v1.1 的 experience-first 标准它是**第四**，因为没有封闭的世界底线，地下方块挖掉后会露出天空。
+one-shot baseline 不是体验最差的：它有封闭 bedrock/世界底线和地下背景，虽然无测试/音频，PES 仍
+高于 0.3.6。
 
 | 产物 | PES | ECS | Composite | Gate | High / medium |
 | --- | ---: | ---: | ---: | --- | ---: |
-| **0.3.6 standard** | 50.0（capped） | **92.5** | **60.6** | pass | **2 / 2** |
 | 0.3.3 pre-correction | 70.4 | 74.0 | **71.3** | pass | 0 / 4 |
 | E3 / Verdant Hollow（参考） | **71.2** | 65.5 | 69.8 | pass | 0 / 3 |
+| 0.3.3 standard | 57.6 | 81.0 | 63.5 | pass | **1 / 2** |
+| **0.3.6 standard** | 50.0（capped） | **92.5** | **60.6** | pass | **2 / 2** |
+| one-shot baseline | 55.8 | 38.0 | 51.4 | pass | 0 / 3 |
 
 v1.1 分别报告 PES（composite 的 75%）、ECS（25%）和 capped composite。0.3.6 的 ECS 最高
 （92.5：124 tests、12 modules、强持久化/无障碍），但两个 high defect 把 PES cap 到 50：没有
-bedrock/世界底线，地下镂空露出天空。pre-correction 是 composite 第一；E3 是纯 PES 第一；两者
-在 rubric 分辨率内（体验上并列）。v1.0 的 base/core/coverage 表是历史记录，不能与 v1.1 直接比较。
+bedrock/世界底线，地下镂空露出天空。0.3.3 standard 也有一个 high defect（没有 bedrock），
+PES cap 后 57.6。pre-correction 是 composite 第一；E3 是纯 PES 第一；两者在 rubric 分辨率内
+（体验上并列）。v1.0 的 base/core/coverage 表是历史记录，不能与 v1.1 直接比较。
+
+0.3.4 和 0.3.5 **没有按 v1.1 重评**：完整 artifact 已不再保留，只保留 v1.0 历史分数
+（55/61/47 和 55/62/47）；不会从截图伪造 v1.1 分数。
 
 E3 / Verdant Hollow 是 2026-10-28 消融实验的条件 E3（盲评字母 F），现已作为未来 sample 对比的
 **固定参考条件**，不是标准 sample，也不是发布门槛。它拥有参考集中最丰富的核心沙盒世界（四个
@@ -126,7 +134,7 @@ biomes、ores、bedrock、14 种方块、minimap、day/night、audio），但没
 | 0.3.2 sample (C1) | full，无质量契约 | 38.1 KB | 69,140 | 28 | 53 | 历史；低于 baseline |
 | 0.3.3 pre-correction | create-minimal（跳过阶段） | 132,680 | 168,758 | 34 | 285 | 被取代的特例；不是标准对比 |
 | 0.3.3 standard | full lifecycle + 质量契约 | 111,090 | 141,977 | 33 | 292 | 历史 |
-| 0.3.6 standard | full lifecycle + scope/signature/preservation 契约 | 170,377 | 185,102 | **124** | 202 | 当前标准 sample；v1.1 体验第 3 |
+| 0.3.6 standard | full lifecycle + scope/signature/preservation 契约 | 170,377 | 185,102 | **124** | 202 | 当前标准 sample；v1.1 体验第 4 |
 
 与被取代的特例存在 run-to-run 差异是预期的：特例跳过 analysis/solution，标准运行保留正常
 生命周期。0.3.6 恢复了 0.3.5 丢失的 counts/tests/accessibility/responsiveness，并提升 base/core；

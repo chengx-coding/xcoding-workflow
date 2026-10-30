@@ -33,32 +33,48 @@ judgment; ECS is the flexible engineering/code-quality judgment.
 These are retained for provenance only. v1.1 changes the question and the weights; do not compare a
 v1.1 PES/ECS with a v1.0 base.
 
-## v1.1 pilot reference set
+## v1.1 consolidated reference set
 
 | Artifact | PES | PES cap | ECS | Composite | Gate | High / medium | Coverage | Extras |
 | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: |
-| 0.3.6 standard | 60.0 | 50.0 | 92.5 | **60.6** | pass | 2 / 2 | 42/86 | +2 |
 | 0.3.3 pre-correction | 70.4 | 70.4 | 74.0 | **71.3** | pass | 0 / 4 | 43/86 | +2 |
-| E3 / Verdant Hollow | 71.2 | 71.2 | 65.5 | **69.8** | pass | 0 / 3 | 40/86 | +2 |
+| E3 / Verdant Hollow | **71.2** | 71.2 | 65.5 | **69.8** | pass | 0 / 3 | 40/86 | +2 |
+| 0.3.3 standard | 57.6 | 57.6 | 81.0 | **63.5** | pass | **1 / 2** | 40/86 | — |
+| 0.3.6 standard | 60.0 | 50.0 | 92.5 | **60.6** | pass | **2 / 2** | 42/86 | +2 |
+| one-shot baseline | 55.8 | 55.8 | 38.0 | **51.4** | pass | 0 / 3 | 27/86* | — |
 
-Pilot verdict:
+\* Baseline coverage is a legacy v1.0 diagnostic count; it is not a v1.1 experience score.
+
+**0.3.4 and 0.3.5 are not re-evaluated under v1.1**: their complete artifacts are not retained. Their
+v1.0 historical scores remain 55/61/47% and 55/62/47%; no v1.1 score is fabricated from screenshots.
+
+Consolidated verdict:
 
 - **pre-correction is #1 on the composite (71.3)** and **E3 is #1 on PES (71.2)**; they are within
   the rubric's resolution (tie on experience).
-- **0.3.6 is #3 (60.6)** despite having the **highest ECS (92.5)**. Its 124 tests and strong
+- **0.3.3 standard is #3 (63.5)**; it has one high defect (no bedrock/floor), but strong ECS (81.0)
+  keeps it above 0.3.6.
+- **0.3.6 is #4 (60.6)** despite having the **highest ECS (92.5)**. Its 124 tests and strong
   architecture are credited; they cannot offset the two high world-integrity defects.
-- The high-defect cap is not the only reason 0.3.6 loses: its raw PES (60.0) is already behind both
-  before the cap.
+- **The one-shot baseline is last on composite (51.4)** because its ECS is 38.0 (no tests/README/
+  tools), but its PES (55.8) is **above 0.3.6's 50.0**: it has a sealed floor and underground
+  backdrop, unlike 0.3.6. This is the experience-first inversion.
 - Coverage is not a ranking metric: 0.3.6 (42/86) has more coverage than E3 (40/86) but a lower
   experience score.
+- The high-defect cap is not the only reason 0.3.6 loses: its raw PES (60.0) is already behind pre,
+  E3 and 0.3.3 standard before the cap.
 
-### ECS detail (pilot)
+### ECS detail
 
 | Artifact | E1 Test quality | E2 Architecture | E3 Persistence | E4 Perf/a11y | E5 Docs/tooling | ECS |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 0.3.6 | 3.5 | 5 | 5 | 5 | 5 | 92.5 |
 | pre-correction | 4 | 4 | 4 | 2 | 4 | 74.0 |
 | E3 | 3 | 3 | 4 | 2.5 | 4 | 65.5 |
+
+0.3.3 standard ECS is **81.0** (33 tests, 6 modules, README/checks; weaker accessibility/
+responsiveness and no bedrock test); baseline ECS is **38.0** (no tests, README or tools, but clean
+single-file code). Full breakdown is in the v1.1 consolidated evaluation.
 
 0.3.6's E1 is 3.5, not 5: the suite is large but includes a green test named "the bedrock floor is
 solid" that only checks `isSolid()` on a build with no bedrock. Test count is not test quality.
@@ -117,10 +133,17 @@ Pilot defects:
 | --- | --- | --- | --- |
 | H1 | 0.3.6 | high | No bedrock/world floor; bottom stone is mineable |
 | H2 | 0.3.6 | high | Underground voids show sky/blank; no cave backdrop |
+| H3 | 0.3.3 standard | high | No bedrock/world floor; bottom rows are ordinary stone |
 | M1 | 0.3.6 | medium | No minimap/orientation; D6 3 |
 | M2 | 0.3.6 | medium | Mining animation is a small arm jitter/tool nub |
-| M3 | 0.3.6 | medium | Art/character simpler than pre/E3 (D5 4, not a defect alone) |
+| M3 | 0.3.3 standard | medium | No minimap; weak mining animation |
+| M4 | baseline | medium | No audio, pause or minimap; 800px hotbar clip (0 high defects; J4 passes) |
 | — | pre/E3 | pass | Both have bedrock and a cave backdrop; no high defects |
+
+Art/character quality is a **D5 domain score**, not a defect (0.3.6, pre, E3 all score D5 4;
+0.3.3 standard 3.5; baseline 4). The score sheet's earlier art-as-medium row was inconsistent and is
+removed. HUD occlusion at the world bottom is a J4 usability medium; use an unobstructed position
+before claiming the floor test.
 
 ## Minimum engineering gate
 

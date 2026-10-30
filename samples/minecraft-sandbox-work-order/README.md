@@ -19,7 +19,7 @@ implementation.
 | Item | Value |
 | --- | --- |
 | Task | Build a playable, offline 2D Minecraft-style sandbox from scratch |
-| Version | **0.3.6** (current standard sample; v1.1 experience rank #3) |
+| Version | **0.3.6** (current standard sample; v1.1 experience rank #4) |
 | Consumer project | [`project/`](project/README.md), built from [`seed/`](seed/) |
 | Host | DeepSeek Harness CLI, `dsh headless` |
 | Model | `deepseek-flash` |
@@ -111,20 +111,28 @@ direct run with the workflow disabled. The launch configuration and final answer
 
 The 0.3.6 result is a substantially larger, tested product than the one-shot baseline. Under the
 v1.0 engineering-weighted formula it was the best-scoring artifact; under the v1.1 experience-first
-standard it is **third**, because it has no sealed world floor and shows sky behind removed
-underground blocks.
+standard it is **fourth**, because it has no sealed world floor and shows sky behind removed
+underground blocks. The one-shot baseline is not the worst experience: it has a sealed bedrock floor
+and an underground backdrop, so it beats 0.3.6 on PES despite having no tests or audio.
 
 | Artifact | PES | ECS | Composite | Gate | High / medium |
 | --- | ---: | ---: | ---: | --- | ---: |
-| **0.3.6 standard** | 50.0 (capped) | **92.5** | **60.6** | pass | **2 / 2** |
 | 0.3.3 pre-correction | 70.4 | 74.0 | **71.3** | pass | 0 / 4 |
 | E3 / Verdant Hollow (reference) | **71.2** | 65.5 | 69.8 | pass | 0 / 3 |
+| 0.3.3 standard | 57.6 | 81.0 | 63.5 | pass | **1 / 2** |
+| **0.3.6 standard** | 50.0 (capped) | **92.5** | **60.6** | pass | **2 / 2** |
+| one-shot baseline | 55.8 | 38.0 | 51.4 | pass | 0 / 3 |
 
 v1.1 reports PES (75% of the composite), ECS (25%) and a capped composite. 0.3.6 has the highest ECS
 (92.5: 124 tests, 12 modules, strong persistence/accessibility), but its two high defects cap PES at
-50: no bedrock/floor, and underground voids that show sky. pre-correction is #1 on the composite;
-E3 is #1 on pure PES; the two are within rubric resolution (tie on experience). The v1.0
-base/core/coverage table is historical and not comparable with v1.1.
+50: no bedrock/floor, and underground voids that show sky. 0.3.3 standard has one high defect
+(no bedrock) and a capped 57.6. pre-correction is #1 on the composite; E3 is #1 on pure PES; the
+two are within rubric resolution (tie on experience). The v1.0 base/core/coverage table is
+historical and not comparable with v1.1.
+
+0.3.4 and 0.3.5 are **not re-evaluated under v1.1**: their complete artifacts are no longer retained,
+so only their v1.0 historical scores (55/61/47 and 55/62/47) remain. A v1.1 score is not fabricated
+from screenshots.
 
 E3 / Verdant Hollow is the 2026-10-28 ablation condition E3 (blind letter F), added as a standing
 **reference condition** for future sample comparisons — not a standard sample or release bar. It has
@@ -139,7 +147,7 @@ compare against it for world/presentation and core-demo quality.
 | 0.3.2 sample (C1) | full, no quality contract | 38.1 KB | 69,140 | 28 | 53 | historical; below baseline |
 | 0.3.3 pre-correction | create-minimal (stages skipped) | 132,680 | 168,758 | 34 | 285 | superseded special; not a standard comparison |
 | 0.3.3 standard | full lifecycle + quality contract | 111,090 | 141,977 | 33 | 292 | historical |
-| 0.3.6 standard | full lifecycle + scope/signature/preservation contracts | 170,377 | 185,102 | **124** | 202 | current standard sample; v1.1 experience #3 |
+| 0.3.6 standard | full lifecycle + scope/signature/preservation contracts | 170,377 | 185,102 | **124** | 202 | current standard sample; v1.1 experience #4 |
 
 A run-to-run difference from the superseded special is expected: the special skipped analysis/
 solution, while the standard run keeps the normal lifecycle. 0.3.6 restores the counts/tests/

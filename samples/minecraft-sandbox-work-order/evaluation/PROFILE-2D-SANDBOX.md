@@ -59,8 +59,10 @@ J4 is the decisive journey for this profile:
 4. try to mine the floor;
 5. record whether the world is sealed and whether the background reads as underground.
 
-A first-frame screenshot is not evidence for J4. The evaluator must record the state before/after
-removing underground blocks and at the bottom.
+If the hotbar/HUD covers the bottom row at the clamped camera position, move or zoom to an
+unobstructed position; record the occlusion as a medium usability issue, not as a pass. A first-frame
+screenshot is not evidence for J4. The evaluator must record the state before/after removing
+underground blocks and at the bottom.
 
 ## Defect examples
 
