@@ -1,89 +1,86 @@
-# Terra — a 2D sandbox
+# Blockstead — a 2D Minecraft-style sandbox
 
-Terra is a small, playable 2D sandbox inspired by Minecraft. It is a static page: plain HTML, CSS
-and JavaScript with no framework, no build step, no package manager and no network access. Open the
-file and the world is already growing.
-
-## Open it
-
-Double-click `index.html`, or open it from a browser with `File → Open`. The page runs from
-`file://`; there is no server to start.
+A playable, offline 2D sandbox game inspired by Minecraft. The whole game is this page and its local
+files: plain HTML, CSS and JavaScript with no framework, no build step and no network access. Open
+`index.html` directly in a browser (double-click it) and play.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| `A` / `D` or `←` / `→` | Walk left and right |
-| `Space` or `W` / `↑` | Jump (hold for a higher jump) |
-| Left mouse button | Mine the solid block under the pointer within reach; hold to keep mining |
-| Right mouse button | Place the selected block in a clear, supported cell |
-| `1` – `8` | Select a hotbar material |
-| Mouse wheel over the world | Cycle the hotbar |
-| `H` | Open or close the field guide (controls and world settings) |
-| `P` or `Esc` | Pause and open the field guide |
-| `M` | Mute or unmute the synthesized sounds |
+| `A` / `D` or `←` / `→` | Move left and right |
+| `Space` or `W` | Jump |
+| Left click (hold) | Mine the block under the pointer, within reach |
+| Right click | Place the selected block in an empty adjacent cell |
+| `1` – `9` | Select a hotbar slot |
+| Mouse wheel | Cycle the hotbar |
+| `P` or `Esc` | Pause and resume |
+| `M` | Mute or unmute sound |
+| `H` or `?` | Show or hide the controls panel |
+| `R` | Return to a safe spot on the surface |
 
-The field guide also contains the seed form, the **Surprise me** randomizer, and a two-step
-**Reset world** action.
+Mining and building are checked for reach, empty cells and stock. A block can never be placed inside
+the player. Each hotbar slot shows its remaining stock; mining adds to the matching slot and placing
+spends one.
 
-## What the world does
+## The world
 
-- **Seeded terrain.** A numeric seed grows hills, sandy clearings, dirt and stone strata, caves,
-  trees and grass. The same seed always grows the same world; different seeds produce different
-  profiles. Change the seed in the field guide to explore another one.
-- **A real character.** The explorer falls under gravity, walks, jumps with coyote time and a jump
-  buffer, and collides with every solid block on both axes.
-- **Mining and building.** Left-click mines a solid block within five blocks; right-click places the
-  selected material into an empty cell that has a solid neighbour and does not overlap the explorer.
-  Mined blocks refill the hotbar counts; placing spends them.
-- **A camera with edges.** The camera follows the explorer smoothly and clamps to the world bounds,
-  so the world never scrolls past its own edge.
-- **Feedback everywhere.** A pulsing reach outline and ghost placement preview, block-break
-  particles, animated walking, small synthesized sounds, toasts for refusals, a live save indicator
-  and a clearly lit selected hotbar slot.
-- **Offline persistence.** The seed, every mined or placed block, the explorer's position, the
-  hotbar selection and the inventory are saved to `localStorage` and restored when the page is
-  reopened. If a browser blocks storage for local files, the game falls back to an in-memory store
-  for the session and the HUD says so.
+- Terrain is generated from a numeric seed: hills, layered grass, dirt and stone, sand in the
+  valleys, cave pockets and trees. The same seed always rebuilds the same world.
+- Type a whole number into the **Seed** field and press **Load** to rebuild the world (or **Random**
+  for a fresh one). The current seed is editable at any time.
+- A day/night cycle runs continuously; the HUD shows the time of day and the sun, moon and stars
+  follow it.
+- The camera follows the player and stays inside the world bounds.
+- The HUD shows live coordinates and depth, the hovered block and the current phase of the day.
+
+## Saving
+
+Edits, the player position, the hotbar stock and the current time save to `localStorage`
+automatically (every few seconds, on pause and when the page is hidden) and are restored the next
+time the page opens. If the saved data is unreadable, the page starts a fresh world instead of
+failing. Sound and mute preference are stored separately.
 
 ## Checks
-
-Run these from this directory:
 
 ```console
 node --test "tests/**/*.test.js"
 python tools/page_check.py
 ```
 
-`node --test` covers world generation invariants, collision on every axis, jump behaviour,
-reach/adjacency/player-overlap placement rules and persistence serialization. `tools/page_check.py`
-checks the page is offline, required elements and local assets exist, and then loads the page in
-headless Chrome to verify the status marker and a non-blank canvas. Pass `--screenshot <path>` to
-keep the captured image.
+`node --test` runs the logic tests; the browser modules are written so they can be required in Node
+without a DOM. `python tools/page_check.py` runs the static checks (required elements, local assets,
+no network references) and then loads the page in headless Chrome to verify the status marker and a
+non-blank canvas. Pass `--screenshot <path>` to keep the captured image.
 
 ## Architecture
 
 ```text
-index.html          page shell: canvas, HUD, hotbar, guide overlay, status marker
-css/style.css       full-window layout, HUD, hotbar, overlay and responsive rules
-js/config.js        shared constants, block metadata and hotbar order
-js/world.js         seeded generation, block access, reach/placement rules, serialization
-js/player.js        player state, AABB collision, gravity, movement, jumping, serialization
-js/save.js          guarded localStorage adapter, payload validation, memory fallback
-js/render.js        camera, sky and parallax, tile textures, character, effects
-js/main.js          boot, fixed-step loop, input, hotbar, HUD, audio, autosave
-tests/              Node logic tests
-tools/page_check.py static and headless-browser checks
+index.html            page shell: canvas, HUD, hotbar, seed panel, overlays, status marker
+css/style.css         visual design, 1280px scaling, reduced-motion rules
+js/config.js          constants, block palette, hotbar order, stock and hardness
+js/rng.js             seed hashing, PRNG helpers, seed parsing
+js/world.js           terrain, caves, trees, block access, spawn search, serialization
+js/player.js          gravity, jumping, and block collision
+js/camera.js          camera follow and world-bound clamping
+js/interaction.js     targeting, reach, mining, placement, inventory and hotbar model
+js/daynight.js        day/night clock and sky palette
+js/storage.js         versioned localStorage save/load and settings
+js/audio.js           procedural WebAudio sound effects and mute
+js/ui.js              HUD formatting, key mapping, help content, reduced-motion detection
+js/render.js          textured tiles, sky, parallax, particles, player sprite
+js/main.js            boot, loop, input wiring, autosave, pause, seed loading
+tests/                Node logic and static-page tests
+tools/page_check.py   static and headless-browser checks
 ```
 
-The status marker is part of the verification contract: `#status` starts at
-`data-state="booting"`, becomes `data-state="ready"` after the first successful frame, and becomes
-`data-state="error"` if boot or a later runtime step fails.
+The status marker is part of the verification contract: `#status` starts at `data-state="booting"`,
+becomes `data-state="ready"` after a successful first frame, and becomes `data-state="error"` if boot
+fails.
 
 ## Constraints
 
 - No third-party libraries, CDNs, external fonts or network requests.
-- Runs from `file://`; no bundler, server or build step.
-- Browser modules stay loadable in Node so the logic tests can require them without a DOM.
-- Seeded generation keeps the seed snapshot's ground-line contract at column 10, so the original
-  world tests continue to pass unchanged.
+- The page runs from `file://`; no bundler or development server is required.
+- Browser modules stay loadable in Node for the logic tests.
+- Existing tests are never weakened; coverage is added instead.

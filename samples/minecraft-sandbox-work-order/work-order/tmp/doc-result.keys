@@ -1,0 +1,13 @@
+document.path=C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\workshop\.xcoding\work-orders\20261030-0000-minecraft-sandbox\result.md
+document.kind=work-order-result
+document.template=C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\skills\xc-document\assets\templates\work-order-result.md
+document.inputs=C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\workshop\.xcoding\work-orders\20261030-0000-minecraft-sandbox\goal.md, C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\workshop\.xcoding\work-orders\20261030-0000-minecraft-sandbox\analysis.md, C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\workshop\.xcoding\work-orders\20261030-0000-minecraft-sandbox\solution.md, C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\workshop\.xcoding\work-orders\20261030-0000-minecraft-sandbox\artifacts\verify-final\verification.md, C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\workshop\.xcoding\work-orders\20261030-0000-minecraft-sandbox\artifacts\visual-review\review.md
+document.contract=C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\skills\xc-work\references\create-scope.md
+document.content_language=en
+document.authoring_requirements=
+document.receipt.content_language=en
+document.receipt.audience=
+document.review_required=true
+document.gate_required=false
+document.gate_outcome=accepted
+document.review.open_issues=false

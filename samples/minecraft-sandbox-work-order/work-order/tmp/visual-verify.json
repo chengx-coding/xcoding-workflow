@@ -1,0 +1,178 @@
+{
+  "steps": [
+    {
+      "label": "initial",
+      "value": "{\"seed\":20261030,\"time\":0.18243041666666704,\"paused\":false,\"selected\":0,\"counts\":{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":12,\"6\":16,\"7\":20,\"8\":16,\"9\":8},\"player\":{\"x\":62.5,\"y\":40.9999,\"onGround\":true},\"status\":\"ready\"}"
+    },
+    {
+      "label": "day-shot",
+      "value": "day-960.png"
+    },
+    {
+      "label": "night-time",
+      "value": 0.7818745833333329
+    },
+    {
+      "label": "night-shot",
+      "value": "night-960.png"
+    },
+    {
+      "label": "paused",
+      "value": true
+    },
+    {
+      "label": "pause-overlay-visible",
+      "value": true
+    },
+    {
+      "label": "pause-shot",
+      "value": "pause-960.png"
+    },
+    {
+      "label": "resumed",
+      "value": true
+    },
+    {
+      "label": "help-count",
+      "value": 10
+    },
+    {
+      "label": "help-pauses-game",
+      "value": true
+    },
+    {
+      "label": "help-shot",
+      "value": "help-960.png"
+    },
+    {
+      "label": "help-restores-game",
+      "value": true
+    },
+    {
+      "label": "hover-target-text",
+      "value": "Leaves"
+    },
+    {
+      "label": "mouse-mine-target",
+      "value": "{\"x\":64,\"y\":40,\"block\":5}"
+    },
+    {
+      "label": "mouse-mine-block-after",
+      "value": 0
+    },
+    {
+      "label": "mouse-mine-counts-before",
+      "value": "{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":12,\"6\":16,\"7\":20,\"8\":16,\"9\":8}"
+    },
+    {
+      "label": "mouse-mine-counts-after",
+      "value": "{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":13,\"6\":16,\"7\":20,\"8\":16,\"9\":8}"
+    },
+    {
+      "label": "jump-on-ground-before",
+      "value": true
+    },
+    {
+      "label": "jump-delta",
+      "value": "1.677"
+    },
+    {
+      "label": "keyboard-move-delta",
+      "value": "-1.150"
+    },
+    {
+      "label": "number-key-selected",
+      "value": 2
+    },
+    {
+      "label": "wheel-selected",
+      "value": 3
+    },
+    {
+      "label": "selected-shot",
+      "value": "selected-slot.png"
+    },
+    {
+      "label": "mine-result",
+      "value": "{\"ok\":true,\"block\":5,\"x\":63,\"y\":39,\"before\":{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":13,\"6\":16,\"7\":20,\"8\":16,\"9\":8},\"after\":{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":14,\"6\":16,\"7\":20,\"8\":16,\"9\":8}}"
+    },
+    {
+      "label": "place-result",
+      "value": "{\"ok\":true,\"reason\":\"\",\"block\":6,\"x\":63,\"y\":40,\"before\":{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":14,\"6\":16,\"7\":20,\"8\":16,\"9\":8},\"after\":{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":14,\"6\":15,\"7\":20,\"8\":16,\"9\":8}}"
+    },
+    {
+      "label": "persist-snapshot",
+      "value": "{\"seed\":20261030,\"time\":0.2011795833333365,\"paused\":false,\"selected\":3,\"counts\":{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":14,\"6\":15,\"7\":20,\"8\":16,\"9\":8},\"player\":{\"x\":61.350100000000005,\"y\":40.9999,\"onGround\":true},\"status\":\"ready\"}"
+    },
+    {
+      "label": "persist-mined-block-empty",
+      "value": 0
+    },
+    {
+      "label": "persist-placed-block",
+      "value": 6
+    },
+    {
+      "label": "persist-placed-expected",
+      "value": 6
+    },
+    {
+      "label": "persist-counts",
+      "value": "{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":14,\"6\":15,\"7\":20,\"8\":16,\"9\":8}"
+    },
+    {
+      "label": "persist-mine-before",
+      "value": "{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":13,\"6\":16,\"7\":20,\"8\":16,\"9\":8}"
+    },
+    {
+      "label": "persist-mine-after",
+      "value": "{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":14,\"6\":16,\"7\":20,\"8\":16,\"9\":8}"
+    },
+    {
+      "label": "persist-place-after",
+      "value": "{\"1\":24,\"2\":32,\"3\":24,\"4\":16,\"5\":14,\"6\":15,\"7\":20,\"8\":16,\"9\":8}"
+    },
+    {
+      "label": "persist-storage-present",
+      "value": true
+    },
+    {
+      "label": "seed-777",
+      "value": 777
+    },
+    {
+      "label": "seed-777-shot",
+      "value": "seed-777.png"
+    },
+    {
+      "label": "reload-777-seed",
+      "value": 777
+    },
+    {
+      "label": "wide-app-width",
+      "value": 1280
+    },
+    {
+      "label": "wide-canvas-width",
+      "value": 1280
+    },
+    {
+      "label": "wide-shot",
+      "value": "wide-1280.png"
+    },
+    {
+      "label": "reduced-matches",
+      "value": true
+    },
+    {
+      "label": "reduced-shot",
+      "value": "reduced-960.png"
+    },
+    {
+      "label": "final-status",
+      "value": "ready"
+    }
+  ],
+  "errors": [],
+  "console": []
+}

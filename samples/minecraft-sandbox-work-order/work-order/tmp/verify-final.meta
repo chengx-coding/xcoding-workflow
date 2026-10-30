@@ -1,0 +1,9 @@
+metadata.artifact.audience=internal
+metadata.artifact.content_language=en
+metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.completion.artifacts.path=literal:C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\workshop\.xcoding\work-orders\20261030-0000-minecraft-sandbox\artifacts\verify-final\verification.md
+metadata.control_packet.category.implementation-records.selectors=["bb:verification.sources.final"]
+metadata.control_packet.category.implementation-records.min_sources=4
+metadata.control_packet.category.implementation-records.artifact_min=1

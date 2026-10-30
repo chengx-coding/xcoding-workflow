@@ -1,913 +1,708 @@
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"), require("./world.js"));
+    module.exports = factory(require("./config.js"), require("./camera.js"), require("./rng.js"), require("./daynight.js"));
   } else {
-    root.SandboxRender = factory(root.SandboxConfig, root.SandboxWorld);
+    root.SandboxRender = factory(root.SandboxConfig, root.SandboxCamera, root.SandboxRng, root.SandboxDayNight);
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, WORLD) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, CAMERA, RNG, DAYNIGHT) {
   "use strict";
 
-  const TILE = CONFIG.tileSize;
-  const BLOCK = CONFIG.blocks;
-  const AIR = BLOCK.air;
-  const textureCache = new Map();
-  let cavePattern = null;
-
   const BLOCK_COLORS = Object.freeze({
-    1: CONFIG.blockInfo[1].swatch,
-    2: CONFIG.blockInfo[2].swatch,
-    3: CONFIG.blockInfo[3].swatch,
-    4: CONFIG.blockInfo[4].swatch,
-    5: CONFIG.blockInfo[5].swatch,
-    6: CONFIG.blockInfo[6].swatch,
-    7: CONFIG.blockInfo[7].swatch,
-    8: CONFIG.blockInfo[8].swatch
+    1: "#5da34d",
+    2: "#8a5f3c",
+    3: "#7f8a94",
+    4: "#6d4a2f",
+    5: "#3f8f4f",
+    6: "#d9c68a",
+    7: "#a9773f",
+    8: "#8b9299",
+    9: "#a9d8e8"
   });
 
-  const FLOWER_COLORS = ["#ffd166", "#ff9db1", "#f6f1de", "#c3a6ff", "#ffb26b"];
+  const TILE_VARIANTS = 4;
+  const tileCache = { tile: 0, variants: null };
+  const surfaceCache = typeof WeakMap === "function" ? new WeakMap() : null;
 
-  const CLOUDS = [
-    { x: 0.08, y: 0.12, scale: 1.15, speed: 0.006, alpha: 0.2 },
-    { x: 0.32, y: 0.22, scale: 0.72, speed: 0.004, alpha: 0.15 },
-    { x: 0.58, y: 0.08, scale: 1.3, speed: 0.005, alpha: 0.18 },
-    { x: 0.82, y: 0.28, scale: 0.9, speed: 0.0035, alpha: 0.14 },
-    { x: 0.95, y: 0.15, scale: 1.05, speed: 0.0045, alpha: 0.16 }
-  ];
-
-  function clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
+  function hasDocument() {
+    return typeof document !== "undefined" && typeof document.createElement === "function";
   }
 
-  function mulberry32(seed) {
-    let a = seed >>> 0;
-    return function random() {
-      a = (a + 0x6d2b79f5) >>> 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+  function applyPixel(ctx, x, y, color, size) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, size || 1, size || 1);
   }
 
-  function makeCanvas(size) {
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    return canvas;
-  }
-
-  function getCavePattern(ctx) {
-    if (cavePattern) {
-      return cavePattern;
-    }
-    const size = 64;
-    const canvas = makeCanvas(size);
-    const g = canvas.getContext("2d");
-    g.fillStyle = "#22303a";
-    g.fillRect(0, 0, size, size);
-    const random = mulberry32(0xc0ffee);
-    for (let index = 0; index < 74; index += 1) {
-      const x = Math.floor(random() * size);
-      const y = Math.floor(random() * size);
-      const w = 1 + Math.floor(random() * 4);
-      const h = 1 + Math.floor(random() * 3);
-      g.fillStyle = random() > 0.5 ? "#2b3c47" : "#18232b";
-      g.fillRect(x, y, w, h);
-    }
-    g.strokeStyle = "rgba(164, 198, 212, 0.16)";
-    g.lineWidth = 1;
-    for (let index = 0; index < 7; index += 1) {
-      const x = Math.floor(random() * size);
-      const y = Math.floor(random() * size);
-      g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x + 4 + Math.floor(random() * 10), y + 3 + Math.floor(random() * 8));
-      g.stroke();
-    }
-    cavePattern = ctx.createPattern(canvas, "repeat");
-    return cavePattern;
-  }
-
-  function fill(g, color, x, y, width, height) {
-    g.fillStyle = color;
-    g.fillRect(x, y, width, height);
-  }
-
-  function drawDirt(g, size, random) {
-    fill(g, "#7b5438", 0, 0, size, size);
-    for (let index = 0; index < 34; index += 1) {
-      const x = Math.floor(random() * size);
-      const y = Math.floor(random() * size);
-      const w = 1 + Math.floor(random() * 3);
-      const h = 1 + Math.floor(random() * 2);
-      fill(g, random() > 0.55 ? "#684429" : "#8d6243", x, y, w, h);
-    }
-    for (let index = 0; index < 7; index += 1) {
-      const x = Math.floor(random() * (size - 3));
-      const y = Math.floor(random() * (size - 2));
-      fill(g, "#a2825f", x, y, 2, 1);
-    }
-    for (let index = 0; index < 3; index += 1) {
-      if (random() > 0.55) {
-        const x = Math.floor(random() * size);
-        const y = Math.floor(random() * (size - 6));
-        fill(g, "#5a3c24", x, y, 1, 3 + Math.floor(random() * 4));
-        fill(g, "#5a3c24", x + 1, y + 2, 1, 2);
-      }
+  function speckle(ctx, random, tile, colors) {
+    const count = 10 + Math.floor(random.range(0, 8));
+    for (let index = 0; index < count; index += 1) {
+      const x = Math.floor(random.range(1, tile - 2));
+      const y = Math.floor(random.range(1, tile - 2));
+      applyPixel(ctx, x, y, colors[Math.floor(random.range(0, colors.length))], random.range(0, 1) > 0.6 ? 2 : 1);
     }
   }
 
-  function drawGrass(g, size, random) {
-    drawDirt(g, size, random);
-    for (let x = 0; x < size; x += 2) {
-      const depth = 7 + Math.floor(random() * 4);
-      fill(g, "#5fae45", x, 0, 2, depth);
+  function paintGrass(ctx, tile, random) {
+    ctx.fillStyle = "#8a5f3c";
+    ctx.fillRect(0, 0, tile, tile);
+    speckle(ctx, random, tile, ["#7a5230", "#986a44", "#6e4a2b"]);
+    const top = Math.max(5, Math.round(tile * 0.3));
+    ctx.fillStyle = "#57a24a";
+    ctx.fillRect(0, 0, tile, top);
+    for (let x = 0; x < tile; x += 1) {
+      const depth = 1 + Math.floor(random.next() * 4);
+      ctx.fillStyle = random.next() > 0.5 ? "#63b055" : "#4a9140";
+      ctx.fillRect(x, top - 1, 1, depth);
     }
-    for (let x = 0; x < size; x += 1) {
-      const shade = random() > 0.62 ? "#7fd15b" : "#6cc24a";
-      const top = Math.floor(random() * 4);
-      fill(g, shade, x, top, 1, 2);
-    }
-    fill(g, "#4f973c", 0, 11, size, 2);
-    for (let index = 0; index < 9; index += 1) {
-      const x = Math.floor(random() * size);
-      const y = 10 + Math.floor(random() * 5);
-      fill(g, "#8fe06d", x, y, 1, 2);
-    }
+    ctx.fillStyle = "#6fc45f";
+    ctx.fillRect(0, 0, tile, 2);
   }
 
-  function drawStone(g, size, random) {
-    fill(g, "#747f8a", 0, 0, size, size);
+  function paintDirt(ctx, tile, random) {
+    ctx.fillStyle = "#8a5f3c";
+    ctx.fillRect(0, 0, tile, tile);
+    speckle(ctx, random, tile, ["#754d2e", "#9c6d47", "#5f3f25"]);
+  }
+
+  function paintStone(ctx, tile, random) {
+    ctx.fillStyle = "#7f8a94";
+    ctx.fillRect(0, 0, tile, tile);
+    speckle(ctx, random, tile, ["#737d87", "#8b959f", "#69737d"]);
+    ctx.strokeStyle = "rgba(40, 48, 56, 0.35)";
+    ctx.lineWidth = 1;
+    const splitY = Math.floor(random.range(tile * 0.3, tile * 0.7));
+    ctx.beginPath();
+    ctx.moveTo(0, splitY);
+    ctx.lineTo(tile, splitY + Math.floor(random.range(-3, 3)));
+    ctx.stroke();
+    applyPixel(ctx, Math.floor(random.range(2, tile - 3)), splitY + 2, "rgba(220, 228, 234, 0.4)", 2);
+  }
+
+  function paintSand(ctx, tile, random) {
+    ctx.fillStyle = "#d9c68a";
+    ctx.fillRect(0, 0, tile, tile);
+    speckle(ctx, random, tile, ["#cdb878", "#e6d59b", "#bfa96a"]);
+  }
+
+  function paintWood(ctx, tile, random) {
+    ctx.fillStyle = "#6d4a2f";
+    ctx.fillRect(0, 0, tile, tile);
+    for (let x = 3; x < tile; x += 5) {
+      ctx.fillStyle = "rgba(58, 38, 22, 0.55)";
+      ctx.fillRect(x, 0, 1, tile);
+      ctx.fillStyle = "rgba(150, 108, 68, 0.4)";
+      ctx.fillRect(x + 1, 0, 1, tile);
+    }
+    ctx.strokeStyle = "rgba(46, 30, 18, 0.6)";
+    ctx.beginPath();
+    ctx.ellipse(tile / 2, tile / 2, 4, 6, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  function paintLeaves(ctx, tile, random) {
+    ctx.fillStyle = "#2f7a3c";
+    ctx.fillRect(0, 0, tile, tile);
     for (let index = 0; index < 26; index += 1) {
-      const x = Math.floor(random() * size);
-      const y = Math.floor(random() * size);
-      const w = 2 + Math.floor(random() * 5);
-      const h = 1 + Math.floor(random() * 3);
-      fill(g, random() > 0.5 ? "#68737e" : "#828d99", x, y, w, h);
-    }
-    g.strokeStyle = "#545e69";
-    g.lineWidth = 1;
-    for (let index = 0; index < 4; index += 1) {
-      const x = Math.floor(random() * size);
-      const y = Math.floor(random() * size);
-      g.beginPath();
-      g.moveTo(x, y);
-      g.lineTo(x + 3 + Math.floor(random() * 6), y + 2 + Math.floor(random() * 5));
-      g.stroke();
+      const x = random.range(0, tile - 3);
+      const y = random.range(0, tile - 3);
+      ctx.fillStyle = random.next() > 0.5 ? "#479b4f" : "#256a31";
+      ctx.fillRect(Math.floor(x), Math.floor(y), 3, 2);
     }
     for (let index = 0; index < 5; index += 1) {
-      fill(g, "#9aa5b1", Math.floor(random() * size), Math.floor(random() * size), 2, 1);
-    }
-    if (random() > 0.42) {
-      const oreColor = random() > 0.55 ? "#bf8b52" : "#c8c078";
-      const oreX = 4 + Math.floor(random() * (size - 9));
-      const oreY = 5 + Math.floor(random() * (size - 11));
-      fill(g, oreColor, oreX, oreY, 2, 2);
-      fill(g, "#efe7b0", oreX, oreY, 1, 1);
-      fill(g, oreColor, oreX + 3, oreY + 4, 1, 2);
-      fill(g, "#6a5236", oreX + 2, oreY + 5, 1, 1);
+      ctx.fillStyle = "rgba(12, 34, 18, 0.5)";
+      ctx.fillRect(Math.floor(random.range(2, tile - 3)), Math.floor(random.range(2, tile - 3)), 2, 2);
     }
   }
 
-  function drawWood(g, size, random) {
-    fill(g, "#6f4a2b", 0, 0, size, size);
+  function paintPlanks(ctx, tile, random) {
+    ctx.fillStyle = "#a9773f";
+    ctx.fillRect(0, 0, tile, tile);
+    for (let y = 0; y < tile; y += 6) {
+      ctx.fillStyle = "rgba(70, 44, 20, 0.5)";
+      ctx.fillRect(0, y, tile, 1);
+      ctx.fillStyle = "rgba(214, 168, 105, 0.35)";
+      ctx.fillRect(0, y + 1, tile, 1);
+    }
     for (let index = 0; index < 6; index += 1) {
-      const x = 2 + index * 5 + Math.floor(random() * 2);
-      fill(g, index % 2 === 0 ? "#5d3c22" : "#835a36", x, 0, 1, size);
-    }
-    for (let index = 0; index < 10; index += 1) {
-      fill(g, "#8e6239", Math.floor(random() * size), Math.floor(random() * size), 1, 2 + Math.floor(random() * 3));
-    }
-    g.strokeStyle = "#4c3019";
-    g.lineWidth = 1;
-    g.beginPath();
-    g.ellipse(21, 12, 4, 6, 0, 0, Math.PI * 2);
-    g.stroke();
-    fill(g, "#9c6c40", 20, 11, 2, 2);
-    fill(g, "#4f321d", 0, 0, 2, size);
-    fill(g, "#4f321d", size - 1, 0, 1, size);
-  }
-
-  function drawLeaves(g, size, random) {
-    fill(g, "#357c3c", 0, 0, size, size);
-    for (let index = 0; index < 40; index += 1) {
-      const x = Math.floor(random() * size);
-      const y = Math.floor(random() * size);
-      const w = 2 + Math.floor(random() * 4);
-      const h = 2 + Math.floor(random() * 3);
-      const tone = random();
-      fill(g, tone > 0.72 ? "#63b866" : tone > 0.36 ? "#479b4c" : "#2c6c34", x, y, w, h);
-    }
-    for (let index = 0; index < 7; index += 1) {
-      fill(g, "#7ed07d", Math.floor(random() * size), Math.floor(random() * size), 1, 2);
+      applyPixel(
+        ctx,
+        Math.floor(random.range(1, tile - 2)),
+        Math.floor(random.range(1, tile - 2)),
+        "rgba(84, 54, 24, 0.45)",
+        2
+      );
     }
   }
 
-  function drawSand(g, size, random) {
-    fill(g, "#d8bd78", 0, 0, size, size);
-    for (let index = 0; index < 46; index += 1) {
-      const x = Math.floor(random() * size);
-      const y = Math.floor(random() * size);
-      fill(g, random() > 0.5 ? "#c6a962" : "#eedba3", x, y, 1 + Math.floor(random() * 2), 1);
-    }
-    for (let index = 0; index < 4; index += 1) {
-      fill(g, "#b99b57", Math.floor(random() * size), Math.floor(random() * size), 2, 2);
-    }
-  }
-
-  function drawPlanks(g, size, random) {
-    for (let row = 0; row < 4; row += 1) {
-      const top = row * 8;
-      fill(g, row % 2 === 0 ? "#ad7642" : "#a26c3b", 0, top, size, 8);
-      fill(g, "#7c5229", 0, top + 7, size, 1);
-      fill(g, "#c99359", 0, top, size, 1);
-      const seam = row % 2 === 0 ? 10 : 22;
-      fill(g, "#7c5229", seam, top, 1, 7);
-      fill(g, "#5f3d1f", 4, top + 3, 1, 1);
-      fill(g, "#5f3d1f", 26, top + 3, 1, 1);
-    }
-    for (let index = 0; index < 12; index += 1) {
-      fill(g, "#c28b50", Math.floor(random() * size), Math.floor(random() * size), 1, 1);
+  function paintCobblestone(ctx, tile, random) {
+    ctx.fillStyle = "#7d848b";
+    ctx.fillRect(0, 0, tile, tile);
+    const stones = 6;
+    for (let index = 0; index < stones; index += 1) {
+      const width = Math.floor(random.range(6, 11));
+      const height = Math.floor(random.range(5, 9));
+      const x = Math.floor(random.range(0, tile - width));
+      const y = Math.floor(random.range(0, tile - height));
+      ctx.fillStyle = ["#9aa1a8", "#8d949b", "#767d84"][index % 3];
+      ctx.fillRect(x, y, width, height);
+      ctx.fillStyle = "rgba(235, 240, 244, 0.22)";
+      ctx.fillRect(x, y, width, 1);
+      ctx.fillStyle = "rgba(38, 44, 50, 0.35)";
+      ctx.fillRect(x, y + height - 1, width, 1);
     }
   }
 
-  function drawGlass(g, size) {
-    fill(g, "rgba(160, 216, 232, 0.2)", 0, 0, size, size);
-    fill(g, "rgba(226, 250, 255, 0.5)", 0, 0, size, 2);
-    fill(g, "rgba(226, 250, 255, 0.35)", 0, 0, 2, size);
-    fill(g, "rgba(30, 74, 88, 0.28)", 0, size - 2, size, 2);
-    fill(g, "rgba(30, 74, 88, 0.22)", size - 2, 0, 2, size);
-    g.save();
-    g.globalAlpha = 0.3;
-    g.fillStyle = "#ffffff";
-    g.beginPath();
-    g.moveTo(6, size - 5);
-    g.lineTo(size - 5, 6);
-    g.lineTo(size - 10, 6);
-    g.lineTo(6, size - 10);
-    g.closePath();
-    g.fill();
-    g.restore();
-    fill(g, "rgba(255, 255, 255, 0.75)", 21, 7, 2, 2);
-    fill(g, "rgba(255, 255, 255, 0.45)", 25, 11, 1, 1);
-    fill(g, "rgba(255, 255, 255, 0.45)", 8, 23, 1, 1);
-  }
-
-  function drawBlockTexture(g, block, variant, size) {
-    const random = mulberry32((block * 7919 + variant * 104729 + 17) >>> 0);
-    switch (block) {
-      case BLOCK.grass:
-        drawGrass(g, size, random);
-        break;
-      case BLOCK.dirt:
-        drawDirt(g, size, random);
-        break;
-      case BLOCK.stone:
-        drawStone(g, size, random);
-        break;
-      case BLOCK.wood:
-        drawWood(g, size, random);
-        break;
-      case BLOCK.leaves:
-        drawLeaves(g, size, random);
-        break;
-      case BLOCK.sand:
-        drawSand(g, size, random);
-        break;
-      case BLOCK.planks:
-        drawPlanks(g, size, random);
-        break;
-      case BLOCK.glass:
-        drawGlass(g, size);
-        break;
-      default:
-        fill(g, "#9e9e9e", 0, 0, size, size);
-    }
-  }
-
-  function getTexture(block, variant) {
-    const key = block + ":" + variant;
-    if (textureCache.has(key)) {
-      return textureCache.get(key);
-    }
-    const canvas = makeCanvas(TILE);
-    const g = canvas.getContext("2d");
-    const scale = TILE / 32;
-    g.setTransform(scale, 0, 0, scale, 0, 0);
-    drawBlockTexture(g, block, variant, 32);
-    textureCache.set(key, canvas);
-    return canvas;
-  }
-
-  function drawSky(ctx, viewWidth, viewHeight) {
-    const sky = ctx.createLinearGradient(0, 0, 0, viewHeight);
-    sky.addColorStop(0, "#22577e");
-    sky.addColorStop(0.32, "#4f9bbd");
-    sky.addColorStop(0.58, "#93cddd");
-    sky.addColorStop(0.82, "#ecd6a6");
-    sky.addColorStop(1, "#f4c98a");
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, viewWidth, viewHeight);
-
-    const sunX = viewWidth * 0.78;
-    const sunY = viewHeight * 0.18;
-    const glow = ctx.createRadialGradient(sunX, sunY, 8, sunX, sunY, Math.max(viewWidth, viewHeight) * 0.34);
-    glow.addColorStop(0, "rgba(255, 246, 201, 0.9)");
-    glow.addColorStop(0.18, "rgba(255, 232, 160, 0.35)");
-    glow.addColorStop(0.5, "rgba(255, 214, 138, 0.1)");
-    glow.addColorStop(1, "rgba(255, 214, 138, 0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, viewWidth, viewHeight);
-    ctx.fillStyle = "#fff7d6";
+  function paintGlass(ctx, tile) {
+    ctx.fillStyle = "rgba(168, 216, 232, 0.22)";
+    ctx.fillRect(0, 0, tile, tile);
+    ctx.strokeStyle = "rgba(214, 244, 255, 0.75)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, tile - 2, tile - 2);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
     ctx.beginPath();
-    ctx.arc(sunX, sunY, Math.max(22, viewWidth * 0.026), 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(3, tile - 4);
+    ctx.lineTo(tile - 4, 3);
+    ctx.stroke();
   }
 
-  function drawCloud(ctx, x, y, scale, alpha) {
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = "#f6fbff";
-    const puffs = [
-      [0, 0, 42, 16],
-      [14, -8, 30, 16],
-      [30, -2, 26, 14],
-      [50, 3, 34, 12]
-    ];
-    for (let index = 0; index < puffs.length; index += 1) {
-      const puff = puffs[index];
+  const PAINTERS = {
+    1: paintGrass,
+    2: paintDirt,
+    3: paintStone,
+    4: paintWood,
+    5: paintLeaves,
+    6: paintSand,
+    7: paintPlanks,
+    8: paintCobblestone,
+    9: paintGlass
+  };
+
+  function buildTileCache(tile) {
+    if (!hasDocument() || tile <= 0) {
+      return null;
+    }
+    const variants = {};
+    Object.keys(PAINTERS).forEach(function (key) {
+      const block = Number(key);
+      const list = [];
+      for (let variant = 0; variant < TILE_VARIANTS; variant += 1) {
+        const canvas = document.createElement("canvas");
+        canvas.width = tile;
+        canvas.height = tile;
+        const ctx = canvas.getContext("2d");
+        const random = RNG.createRandom((block * 977 + variant * 131 + 7) >>> 0);
+        PAINTERS[key](ctx, tile, random);
+        list.push(canvas);
+      }
+      variants[block] = list;
+    });
+    return variants;
+  }
+
+  function ensureTileCache(tile) {
+    if (!hasDocument()) {
+      return null;
+    }
+    if (!tileCache.variants || tileCache.tile !== tile) {
+      tileCache.tile = tile;
+      tileCache.variants = buildTileCache(tile);
+    }
+    return tileCache.variants;
+  }
+
+  function tileVariant(x, y, seed) {
+    return Math.floor(RNG.hash2(x, y, seed) * TILE_VARIANTS) % TILE_VARIANTS;
+  }
+
+  function depthShade(depth) {
+    const value = Number(depth);
+    if (!Number.isFinite(value) || value <= 0) {
+      return 0;
+    }
+    return Math.min(0.42, value * 0.055);
+  }
+
+  function crackStages(progress) {
+    const value = Math.min(1, Math.max(0, Number(progress) || 0));
+    if (value <= 0) {
+      return 0;
+    }
+    return Math.min(4, Math.ceil(value * 4));
+  }
+
+  function surfaceFor(world) {
+    if (!surfaceCache) {
+      return null;
+    }
+    let surface = surfaceCache.get(world);
+    if (!surface) {
+      // Lazy import avoids a hard dependency at module load time.
+      surface = null;
+      if (typeof require === "function") {
+        try {
+          surface = require("./world.js").surfaceMap(world);
+        } catch (error) {
+          surface = null;
+        }
+      }
+      if (!surface) {
+        const map = new Uint8Array(world.width);
+        for (let x = 0; x < world.width; x += 1) {
+          map[x] = world.height;
+          for (let y = 0; y < world.height; y += 1) {
+            const block = world.data[y * world.width + x];
+            if (block === 1 || block === 2 || block === 3 || block === 6) {
+              map[x] = y;
+              break;
+            }
+          }
+        }
+        surface = map;
+      }
+      surfaceCache.set(world, surface);
+    }
+    return surface;
+  }
+
+  function drawSky(ctx, state) {
+    const view = { width: CONFIG.viewWidth, height: CONFIG.viewHeight };
+    const palette = DAYNIGHT.skyColors(state.time);
+    const gradient = ctx.createLinearGradient(0, 0, 0, view.height);
+    gradient.addColorStop(0, palette.top);
+    gradient.addColorStop(0.55, palette.mid);
+    gradient.addColorStop(1, palette.bottom);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, view.width, view.height);
+
+    const light = palette.light;
+    const stars = 44;
+    if (light < 0.55) {
+      for (let index = 0; index < stars; index += 1) {
+        const x = RNG.hash2(index, 3, state.seed) * view.width;
+        const y = RNG.hash2(index, 9, state.seed) * view.height * 0.55;
+        const alpha = (1 - light) * (0.25 + RNG.hash2(index, 17, state.seed) * 0.6);
+        ctx.fillStyle = "rgba(235, 244, 255, " + alpha.toFixed(3) + ")";
+        ctx.fillRect(x, y, 2, 2);
+      }
+    }
+
+    const bodies = DAYNIGHT.celestial(state.time);
+    function disc(position, radius, inner, outer) {
+      const x = position.x * view.width;
+      const y = view.height * 0.62 - position.y * view.height * 0.45;
+      const glow = ctx.createRadialGradient(x, y, radius * 0.4, x, y, radius * 2.6);
+      glow.addColorStop(0, inner);
+      glow.addColorStop(1, outer);
+      ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.ellipse(x + puff[0] * scale, y + puff[1] * scale, puff[2] * scale, puff[3] * scale, 0, 0, Math.PI * 2);
+      ctx.arc(x, y, radius * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = inner;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.restore();
+    disc(bodies.sun, 16, "rgba(255, 236, 168, 0.95)", "rgba(255, 214, 120, 0)");
+    disc(bodies.moon, 13, "rgba(222, 235, 255, 0.9)", "rgba(150, 190, 255, 0)");
+
+    drawClouds(ctx, state, view);
+    drawHills(ctx, state, view);
   }
 
-  function drawClouds(ctx, viewWidth, viewHeight, time, reducedMotion) {
-    for (let index = 0; index < CLOUDS.length; index += 1) {
-      const cloud = CLOUDS[index];
-      const drift = reducedMotion ? 0 : time * cloud.speed * viewWidth * 0.12;
-      const span = viewWidth + 280;
-      const x = ((cloud.x * span + drift) % span) - 140;
-      drawCloud(ctx, x, cloud.y * viewHeight, cloud.scale, cloud.alpha);
-    }
-  }
-
-  function drawRidge(ctx, viewWidth, viewHeight, camera, time, color, baseY, amplitude, frequency, parallax, drift) {
-    ctx.beginPath();
-    ctx.moveTo(-20, viewHeight + 20);
-    for (let sx = -20; sx <= viewWidth + 20; sx += 14) {
-      const worldX = sx + camera.x * parallax + time * drift;
-      const y =
-        baseY +
-        Math.sin(worldX * frequency) * amplitude +
-        Math.sin(worldX * frequency * 2.37 + 1.4) * amplitude * 0.34;
-      ctx.lineTo(sx, y);
-    }
-    ctx.lineTo(viewWidth + 20, viewHeight + 20);
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-  }
-
-  function drawRidges(ctx, viewWidth, viewHeight, camera, time, reducedMotion) {
-    const drift = reducedMotion ? 0 : 6;
-    ctx.save();
-    drawRidge(ctx, viewWidth, viewHeight, camera, time, "rgba(178, 210, 221, 0.62)", viewHeight * 0.5, 30, 0.0055, 0.05, drift * 0.1);
-    drawRidge(ctx, viewWidth, viewHeight, camera, time, "rgba(112, 160, 172, 0.68)", viewHeight * 0.59, 38, 0.0085, 0.1, drift * 0.18);
-    drawRidge(ctx, viewWidth, viewHeight, camera, time, "rgba(63, 112, 110, 0.76)", viewHeight * 0.68, 34, 0.0125, 0.18, drift * 0.26);
-    ctx.restore();
-  }
-
-  function drawBirds(ctx, viewWidth, viewHeight, time, reducedMotion) {
-    if (reducedMotion) {
-      return;
-    }
-    ctx.save();
-    ctx.strokeStyle = "rgba(30, 52, 66, 0.45)";
-    ctx.lineWidth = 1.6;
-    ctx.lineCap = "round";
-    for (let index = 0; index < 3; index += 1) {
-      const x = ((time * (9 + index * 2) + index * 190) % (viewWidth + 160)) - 80;
-      const y = viewHeight * (0.16 + index * 0.035) + Math.sin(time * 0.9 + index * 1.7) * 5;
-      const size = 4.5 + index * 1.4;
+  function drawClouds(ctx, state, view) {
+    const drift = state.time * 140 + state.camera.x * 0.18;
+    for (let index = 0; index < 5; index += 1) {
+      const span = view.width + 320;
+      const x = ((index * 231 + drift) % span) - 160;
+      const y = 42 + index * 27 + RNG.hash2(index, 5, state.seed) * 24;
+      const scale = 0.7 + RNG.hash2(index, 11, state.seed) * 0.7;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.34)";
       ctx.beginPath();
-      ctx.moveTo(x - size, y);
-      ctx.lineTo(x, y - size * 0.55);
-      ctx.lineTo(x + size, y);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function drawHaze(ctx, viewWidth, viewHeight) {
-    const haze = ctx.createLinearGradient(0, viewHeight * 0.34, 0, viewHeight * 0.64);
-    haze.addColorStop(0, "rgba(255, 233, 190, 0)");
-    haze.addColorStop(0.55, "rgba(255, 233, 190, 0.13)");
-    haze.addColorStop(1, "rgba(255, 233, 190, 0)");
-    ctx.fillStyle = haze;
-    ctx.fillRect(0, viewHeight * 0.34, viewWidth, viewHeight * 0.3);
-  }
-
-  function drawUnderground(ctx, world, camera, viewWidth, viewHeight, firstColumn, lastColumn) {
-    const path = new Path2D();
-    let hasArea = false;
-    for (let x = firstColumn; x <= lastColumn; x += 1) {
-      const surfaceY = WORLD.surfaceHeightAt(world, x) * TILE - camera.y;
-      const top = surfaceY > viewHeight ? 0 : Math.max(0, surfaceY);
-      const screenX = x * TILE - camera.x;
-      path.rect(screenX, top, TILE + 1, viewHeight - top + 40);
-      hasArea = true;
-    }
-    if (!hasArea) {
-      return;
-    }
-    ctx.save();
-    ctx.clip(path);
-    const pattern = getCavePattern(ctx);
-    if (pattern) {
-      ctx.save();
-      ctx.translate(-Math.round(camera.x) % 64, -Math.round(camera.y) % 64);
-      ctx.fillStyle = pattern;
-      ctx.fillRect(-64, -64, viewWidth + 256, viewHeight + 256);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = "#121b22";
-      ctx.fillRect(0, 0, viewWidth, viewHeight);
-    }
-    const depth = ctx.createLinearGradient(0, 0, 0, viewHeight);
-    depth.addColorStop(0, "rgba(34, 50, 60, 0.04)");
-    depth.addColorStop(0.55, "rgba(14, 22, 30, 0.1)");
-    depth.addColorStop(1, "rgba(7, 13, 19, 0.22)");
-    ctx.fillStyle = depth;
-    ctx.fillRect(0, 0, viewWidth, viewHeight);
-    ctx.restore();
-  }
-
-  function drawCliffWalls(ctx, world, camera, viewWidth, viewHeight, firstColumn, lastColumn) {
-    for (let x = firstColumn; x <= lastColumn; x += 1) {
-      const surface = WORLD.surfaceHeightAt(world, x);
-      const left = WORLD.surfaceHeightAt(world, x - 1);
-      const right = WORLD.surfaceHeightAt(world, x + 1);
-      const top = Math.min(left, right);
-      if (top >= surface) {
-        continue;
-      }
-      const screenX = x * TILE - camera.x;
-      const y0 = top * TILE - camera.y;
-      const y1 = surface * TILE - camera.y;
-      if (y1 < 0 || y0 > viewHeight) {
-        continue;
-      }
-      const wall = ctx.createLinearGradient(0, y0, 0, y1);
-      wall.addColorStop(0, "rgba(24, 16, 10, 0.1)");
-      wall.addColorStop(1, "rgba(18, 12, 8, 0.46)");
-      const wallTexture = getTexture(BLOCK.dirt, (x * 5) % 3);
-      for (let row = top; row < surface; row += 1) {
-        ctx.drawImage(wallTexture, screenX, Math.round(row * TILE - camera.y));
-      }
-      ctx.fillStyle = wall;
-      ctx.fillRect(screenX, y0, TILE + 1, y1 - y0);
-      ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
-      for (let line = y0 + 10; line < y1; line += 14) {
-        ctx.fillRect(screenX + 3, line, TILE - 6, 2);
-      }
-      if (left < surface) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.24)";
-        ctx.fillRect(screenX, y0, 4, y1 - y0);
-      }
-      if (right < surface) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.24)";
-        ctx.fillRect(screenX + TILE - 4, y0, 4, y1 - y0);
-      }
+      ctx.ellipse(x, y, 62 * scale, 16 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + 38 * scale, y + 4, 40 * scale, 12 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(x - 42 * scale, y + 5, 36 * scale, 11 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
-  function drawOcclusion(ctx, screenX, screenY, world, x, y) {
-    const shade = "rgba(8, 13, 17, 0.18)";
-    if (!WORLD.isSolid(world, x, y - 1)) {
-      ctx.fillStyle = shade;
-      ctx.fillRect(screenX, screenY, TILE, 4);
-      ctx.fillStyle = "rgba(8, 13, 17, 0.1)";
-      ctx.fillRect(screenX, screenY + 4, TILE, 3);
-    }
-    if (!WORLD.isSolid(world, x - 1, y)) {
-      ctx.fillStyle = shade;
-      ctx.fillRect(screenX, screenY, 3, TILE);
-    }
-    if (!WORLD.isSolid(world, x + 1, y)) {
-      ctx.fillStyle = shade;
-      ctx.fillRect(screenX + TILE - 3, screenY, 3, TILE);
-    }
+  function drawHills(ctx, state, view) {
+    const layers = [
+      { parallax: 0.22, base: 0.62, amplitude: 46, frequency: 0.006, color: "rgba(84, 118, 132, 0.45)" },
+      { parallax: 0.42, base: 0.72, amplitude: 34, frequency: 0.011, color: "rgba(58, 92, 88, 0.55)" }
+    ];
+    layers.forEach(function (layer, index) {
+      const offset = state.camera.x * layer.parallax;
+      const phase = RNG.hash2(index, 2, state.seed) * Math.PI * 2;
+      ctx.fillStyle = layer.color;
+      ctx.beginPath();
+      ctx.moveTo(0, view.height);
+      for (let x = 0; x <= view.width; x += 12) {
+        const worldX = x + offset;
+        const y =
+          view.height * layer.base -
+          layer.amplitude * (Math.sin(worldX * layer.frequency + phase) * 0.6 + 0.4) -
+          layer.amplitude * 0.5 * Math.sin(worldX * layer.frequency * 2.7 + phase * 1.6);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(view.width, view.height);
+      ctx.closePath();
+      ctx.fill();
+    });
   }
 
-  function drawDecoration(ctx, world, x, y, screenX, screenY, time, reducedMotion) {
-    if (WORLD.getBlock(world, x, y) !== BLOCK.grass) {
-      return;
-    }
-    if (WORLD.isSolid(world, x, y - 1)) {
-      return;
-    }
-    const noise = WORLD.hash2(x, y, world.seed, 137);
-    const scale = TILE / 32;
-    const sway = reducedMotion ? 0 : Math.sin(time * 1.5 + x * 0.7) * 1.2;
-    ctx.save();
-    ctx.translate(screenX, screenY);
-    ctx.scale(scale, scale);
-    if (noise > 0.9) {
-      const color =
-        FLOWER_COLORS[Math.floor(WORLD.hash2(x, y, world.seed, 149) * FLOWER_COLORS.length) % FLOWER_COLORS.length];
-      const cx = 32 * (0.28 + WORLD.hash2(x, y, world.seed, 151) * 0.44) + sway;
-      ctx.fillStyle = "#3f7f3a";
-      ctx.fillRect(cx, -9, 1, 9);
-      ctx.fillRect(cx - 3, -4, 3, 1);
-      ctx.fillRect(cx + 1, -6, 3, 1);
-      ctx.fillStyle = color;
-      ctx.fillRect(cx - 3, -14, 7, 4);
-      ctx.fillRect(cx - 2, -15, 5, 6);
-      ctx.fillStyle = "rgba(255,255,255,0.6)";
-      ctx.fillRect(cx - 1, -14, 2, 2);
-      ctx.fillStyle = "#ffe9a8";
-      ctx.fillRect(cx + 1, -13, 1, 1);
-    } else if (noise > 0.7) {
-      ctx.fillStyle = "rgba(70, 145, 62, 0.92)";
-      const baseX = 4;
-      ctx.fillRect(baseX + sway, -6, 1, 6);
-      ctx.fillRect(baseX + 5 - sway, -9, 1, 9);
-      ctx.fillRect(baseX + 10 + sway * 0.5, -5, 1, 5);
-      ctx.fillStyle = "rgba(116, 196, 96, 0.85)";
-      ctx.fillRect(baseX + 2, -4, 1, 4);
-      ctx.fillRect(baseX + 8 - sway * 0.5, -6, 1, 6);
-    } else if (noise > 0.63) {
-      ctx.fillStyle = "#f2ddb5";
-      ctx.fillRect(18, -5, 2, 5);
-      ctx.fillStyle = "#b4553f";
-      ctx.fillRect(16, -8, 6, 3);
-      ctx.fillStyle = "#d9785f";
-      ctx.fillRect(17, -9, 4, 2);
-    }
-    ctx.restore();
-  }
-
-  function drawWorld(ctx, state) {
+  function drawTiles(ctx, state, surface) {
     const world = state.world;
     const camera = state.camera;
-    const viewWidth = state.viewWidth;
-    const viewHeight = state.viewHeight;
-    const firstColumn = Math.max(0, Math.floor(camera.x / TILE) - 1);
-    const lastColumn = Math.min(world.width - 1, Math.ceil((camera.x + viewWidth) / TILE) + 1);
-    const firstRow = Math.max(0, Math.floor(camera.y / TILE) - 1);
-    const lastRow = Math.min(world.height - 1, Math.ceil((camera.y + viewHeight) / TILE) + 1);
-
-    for (let y = firstRow; y <= lastRow; y += 1) {
-      for (let x = firstColumn; x <= lastColumn; x += 1) {
+    const tile = CONFIG.tileSize;
+    const view = { width: CONFIG.viewWidth, height: CONFIG.viewHeight };
+    const range = CAMERA.visibleRange(camera, world, view, tile);
+    const variants = ensureTileCache(tile);
+    for (let y = range.firstY; y <= range.lastY; y += 1) {
+      for (let x = range.firstX; x <= range.lastX; x += 1) {
         const block = world.data[y * world.width + x];
-        if (block === AIR) {
+        const px = Math.round(x * tile - camera.x);
+        const py = Math.round(y * tile - camera.y);
+        if (!block) {
+          const depth = surface ? y - surface[x] : 0;
+          if (depth > 0) {
+            const darkness = Math.min(0.78, 0.42 + depth * 0.035);
+            ctx.fillStyle = "rgba(9, 13, 20, " + darkness.toFixed(3) + ")";
+            ctx.fillRect(px, py, tile, tile);
+          }
           continue;
         }
-        const screenX = Math.round(x * TILE - camera.x);
-        const screenY = Math.round(y * TILE - camera.y);
-        const variant = Math.floor(WORLD.hash2(x, y, world.seed, 211) * 3);
-        const texture = getTexture(block, variant);
-        const sway =
-          block === BLOCK.leaves && !state.reducedMotion
-            ? Math.sin(state.time * 1.35 + x * 0.34 + y * 0.11) * 1.2
-            : 0;
-        if (block === BLOCK.glass) {
-          ctx.save();
-          ctx.globalAlpha = 0.82;
-          ctx.drawImage(texture, screenX, screenY);
-          ctx.restore();
+        if (variants && variants[block]) {
+          const list = variants[block];
+          ctx.drawImage(list[tileVariant(x, y, world.seed)], px, py, tile, tile);
         } else {
-          ctx.drawImage(texture, screenX + sway, screenY);
+          ctx.fillStyle = BLOCK_COLORS[block] || "#9e9e9e";
+          ctx.fillRect(px, py, tile, tile);
         }
-        drawOcclusion(ctx, screenX, screenY, world, x, y);
+        const shade = surface ? depthShade(y - surface[x]) : 0;
+        if (shade > 0) {
+          ctx.fillStyle = "rgba(6, 10, 18, " + shade.toFixed(3) + ")";
+          ctx.fillRect(px, py, tile, tile);
+        }
       }
     }
-
-    for (let x = firstColumn; x <= lastColumn; x += 1) {
-      for (let y = firstRow; y <= lastRow; y += 1) {
-        drawDecoration(
-          ctx,
-          world,
-          x,
-          y,
-          Math.round(x * TILE - camera.x),
-          Math.round(y * TILE - camera.y),
-          state.time,
-          state.reducedMotion
-        );
-      }
-    }
-  }
-
-  function drawPlayer(ctx, state) {
-    const player = state.player;
-    const camera = state.camera;
-    const time = state.time;
-    const sx = player.x * TILE - camera.x;
-    const feet = player.y * TILE - camera.y;
-    const height = player.height * TILE;
-    const width = player.width * TILE;
-    const direction = player.facing < 0 ? -1 : 1;
-    const characterScale = TILE / 32;
-    const moving = Boolean(player.moving);
-    const phase = player.animTime;
-    const swing = moving ? Math.sin(phase) * 4.5 : Math.sin(time * 2.1) * 0.8;
-    const bob = moving ? Math.abs(Math.sin(phase)) * 1.6 : Math.sin(time * 2.1) * 0.7;
-
-    ctx.save();
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = "#04130d";
-    ctx.beginPath();
-    ctx.ellipse(sx, feet + 3 * characterScale, width * 0.72, 5.5 * characterScale, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    const lanternX = sx + direction * 13 * characterScale;
-    const lanternY = feet - height * 0.42;
-    const glow = ctx.createRadialGradient(lanternX, lanternY, 2, lanternX, lanternY, 44 * characterScale);
-    glow.addColorStop(0, "rgba(255, 206, 112, 0.28)");
-    glow.addColorStop(1, "rgba(255, 206, 112, 0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(lanternX - 46 * characterScale, lanternY - 46 * characterScale, 92 * characterScale, 92 * characterScale);
-
-    ctx.save();
-    ctx.translate(sx, feet - bob * characterScale);
-    ctx.scale(direction * characterScale, characterScale);
-
-    // Backpack
-    ctx.fillStyle = "#5a3d28";
-    ctx.fillRect(-14, -36, 8, 17);
-    ctx.fillStyle = "#452d1c";
-    ctx.fillRect(-14, -30, 8, 2);
-    ctx.fillRect(-14, -24, 8, 2);
-    ctx.fillStyle = "#7a5636";
-    ctx.fillRect(-13, -35, 2, 15);
-
-    // Legs
-    const leftLift = moving ? Math.max(0, Math.sin(phase) * 4.5) : 0;
-    const rightLift = moving ? Math.max(0, -Math.sin(phase) * 4.5) : 0;
-    ctx.fillStyle = "#33546b";
-    ctx.fillRect(-8, -18 - leftLift, 6, 16);
-    ctx.fillRect(2, -18 - rightLift, 6, 16);
-    ctx.fillStyle = "#243b4d";
-    ctx.fillRect(-8, -4 - leftLift, 6, 4);
-    ctx.fillRect(2, -4 - rightLift, 6, 4);
-    ctx.fillStyle = "rgba(255,255,255,0.16)";
-    ctx.fillRect(-7, -17 - leftLift, 1, 12);
-    ctx.fillRect(3, -17 - rightLift, 1, 12);
-
-    // Body
-    ctx.fillStyle = "#2f8f9d";
-    ctx.fillRect(-9, -38, 18, 22);
-    ctx.fillStyle = "#257886";
-    ctx.fillRect(-9, -22, 18, 4);
-    ctx.fillStyle = "#3fa8b6";
-    ctx.fillRect(-8, -36, 4, 13);
-    ctx.fillStyle = "#e1b45c";
-    ctx.fillRect(-9, -26, 18, 2);
-    ctx.fillStyle = "#f2d38a";
-    ctx.fillRect(-1, -26, 3, 2);
-
-    // Scarf
-    ctx.fillStyle = "#e8743b";
-    ctx.fillRect(-7, -42, 14, 5);
-    ctx.fillStyle = "#ff9a5a";
-    ctx.fillRect(-7, -42, 14, 2);
-    ctx.beginPath();
-    ctx.moveTo(-6, -40);
-    ctx.lineTo(-14 - swing * 0.8, -35 + swing * 0.5);
-    ctx.lineTo(-13 - swing * 0.8, -31 + swing * 0.5);
-    ctx.lineTo(-5, -37);
-    ctx.closePath();
-    ctx.fillStyle = "#d9612c";
-    ctx.fill();
-
-    // Head
-    ctx.fillStyle = "#f2c9a3";
-    ctx.fillRect(-7, -55, 14, 14);
-    ctx.fillStyle = "#e3b78e";
-    ctx.fillRect(-7, -44, 14, 3);
-    ctx.fillStyle = "#2a2019";
-    ctx.fillRect(1, -50, 2, 3);
-    ctx.fillStyle = "#c98c65";
-    ctx.fillRect(3, -45, 3, 1);
-
-    // Helmet
-    ctx.fillStyle = "#3d6ea8";
-    ctx.fillRect(-8, -58, 16, 9);
-    ctx.fillStyle = "#2f5a8c";
-    ctx.fillRect(-8, -51, 16, 2);
-    ctx.fillStyle = "#5b8fc9";
-    ctx.fillRect(-6, -57, 11, 2);
-    ctx.fillStyle = "#3d6ea8";
-    ctx.fillRect(-6, -50, 17, 2);
-    ctx.fillStyle = "#f6d878";
-    ctx.fillRect(7, -54, 3, 3);
-    ctx.fillStyle = "#fff1b8";
-    ctx.fillRect(8, -53, 1, 1);
-
-    // Front arm and lantern
-    ctx.fillStyle = "#f2c9a3";
-    ctx.fillRect(6, -34 + swing * 0.5, 4, 12);
-    ctx.fillStyle = "#2a4e63";
-    ctx.fillRect(6, -32 + swing * 0.5, 4, 4);
-    ctx.fillStyle = "#e1b45c";
-    ctx.fillRect(8, -24 + swing * 0.5, 2, 2);
-    ctx.fillStyle = "#6b4b2a";
-    ctx.fillRect(9, -22 + swing * 0.5, 1, 6);
-    ctx.fillStyle = "#ffcf6b";
-    ctx.fillRect(8, -17 + swing * 0.5, 5, 6);
-    ctx.fillStyle = "#fff3c4";
-    ctx.fillRect(9, -16 + swing * 0.5, 3, 3);
-    ctx.fillStyle = "#b8802f";
-    ctx.fillRect(7, -18 + swing * 0.5, 7, 1);
-    ctx.fillRect(7, -11 + swing * 0.5, 7, 1);
-
-    ctx.restore();
   }
 
   function drawHover(ctx, state) {
-    const hover = state.hover;
-    if (!hover) {
+    if (!state.hovered) {
       return;
     }
+    const tile = CONFIG.tileSize;
     const camera = state.camera;
-    const player = state.player;
-    const time = state.time;
-
-    if (hover.reason === "reach") {
-      const px = player.x * TILE - camera.x;
-      const py = (player.y - player.height / 2) * TILE - camera.y;
-      ctx.save();
-      ctx.strokeStyle = "rgba(255, 199, 96, 0.35)";
-      ctx.setLineDash([5, 6]);
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(px, py, CONFIG.reach * TILE, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if (hover.mine && hover.mine.ok) {
-      const screenX = hover.cell.x * TILE - camera.x;
-      const screenY = hover.cell.y * TILE - camera.y;
-      const pulse = 0.68 + Math.sin(time * 7) * 0.2;
-      ctx.save();
-      ctx.fillStyle = "rgba(255, 213, 128, 0.11)";
-      ctx.fillRect(screenX + 2, screenY + 2, TILE - 4, TILE - 4);
-      ctx.strokeStyle = "rgba(255, 210, 120, " + pulse.toFixed(3) + ")";
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(screenX + 1, screenY + 1, TILE - 2, TILE - 2);
-      ctx.strokeStyle = "rgba(255, 244, 205, 0.95)";
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(screenX + 3.5, screenY + 3.5, TILE - 7, TILE - 7);
-      ctx.strokeStyle = "rgba(255, 250, 226, 1)";
-      ctx.lineWidth = 2;
-      const corner = 7;
-      ctx.beginPath();
-      ctx.moveTo(screenX + 1, screenY + corner);
-      ctx.lineTo(screenX + 1, screenY + 1);
-      ctx.lineTo(screenX + corner, screenY + 1);
-      ctx.moveTo(screenX + TILE - corner, screenY + 1);
-      ctx.lineTo(screenX + TILE - 1, screenY + 1);
-      ctx.lineTo(screenX + TILE - 1, screenY + corner);
-      ctx.moveTo(screenX + 1, screenY + TILE - corner);
-      ctx.lineTo(screenX + 1, screenY + TILE - 1);
-      ctx.lineTo(screenX + corner, screenY + TILE - 1);
-      ctx.moveTo(screenX + TILE - corner, screenY + TILE - 1);
-      ctx.lineTo(screenX + TILE - 1, screenY + TILE - 1);
-      ctx.lineTo(screenX + TILE - 1, screenY + TILE - corner);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if (hover.placeCell && hover.place) {
-      const screenX = hover.placeCell.x * TILE - camera.x;
-      const screenY = hover.placeCell.y * TILE - camera.y;
-      if (hover.place.ok) {
-        const texture = getTexture(state.selectedBlock, 0);
+    const px = Math.round(state.hovered.x * tile - camera.x);
+    const py = Math.round(state.hovered.y * tile - camera.y);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = state.hoverValid ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 116, 96, 0.9)";
+    ctx.strokeRect(px + 1, py + 1, tile - 2, tile - 2);
+    if (state.mining && state.mining.cell) {
+      const stages = crackStages(state.mining.progress);
+      if (stages > 0) {
         ctx.save();
-        ctx.globalAlpha = 0.58;
-        ctx.drawImage(texture, screenX, screenY);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = "rgba(198, 244, 255, 0.12)";
-        ctx.fillRect(screenX + 1, screenY + 1, TILE - 2, TILE - 2);
-        ctx.strokeStyle = "rgba(160, 246, 160, 0.95)";
-        ctx.setLineDash([5, 4]);
-        ctx.lineWidth = 2.5;
-        ctx.strokeRect(screenX + 1, screenY + 1, TILE - 2, TILE - 2);
-        ctx.restore();
-      } else if (hover.place.reason === "player") {
-        ctx.save();
-        ctx.strokeStyle = "rgba(255, 116, 116, 0.8)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(screenX + 2, screenY + 2, TILE - 4, TILE - 4);
-        ctx.restore();
-      } else {
-        ctx.save();
-        ctx.strokeStyle = "rgba(255, 196, 140, 0.38)";
-        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.rect(px, py, tile, tile);
+        ctx.clip();
+        ctx.strokeStyle = "rgba(16, 18, 22, 0.75)";
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(screenX + 2, screenY + 2, TILE - 4, TILE - 4);
+        const random = RNG.createRandom((state.hovered.x * 31 + state.hovered.y * 17 + stages) >>> 0);
+        for (let index = 0; index < stages * 2; index += 1) {
+          const startX = px + random.range(2, tile - 2);
+          const startY = py + random.range(2, tile - 2);
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(startX + random.range(-7, 7), startY + random.range(-7, 7));
+          ctx.stroke();
+        }
         ctx.restore();
       }
     }
   }
 
   function drawParticles(ctx, state) {
-    const particles = state.particles || [];
+    if (!state.particles) {
+      return;
+    }
     const camera = state.camera;
-    for (let index = 0; index < particles.length; index += 1) {
-      const particle = particles[index];
-      if (particle.life <= 0) {
-        continue;
-      }
-      const alpha = clamp(particle.life / particle.maxLife, 0, 1);
-      const size = Math.max(1, particle.size * alpha);
-      ctx.save();
+    state.particles.forEach(function (particle) {
+      const alpha = Math.max(0, Math.min(1, particle.life / particle.maxLife));
       ctx.globalAlpha = alpha;
       ctx.fillStyle = particle.color;
-      ctx.fillRect(
-        Math.round(particle.x * TILE - camera.x),
-        Math.round(particle.y * TILE - camera.y),
-        size,
-        size
-      );
-      ctx.restore();
+      ctx.fillRect(Math.round(particle.x - camera.x), Math.round(particle.y - camera.y), particle.size, particle.size);
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  function drawPlayer(ctx, state) {
+    const player = state.player;
+    const tile = CONFIG.tileSize;
+    const camera = state.camera;
+    const reduced = Boolean(state.reducedMotion);
+    const baseX = player.x * tile - camera.x;
+    const feetY = player.y * tile - camera.y;
+    const width = Math.max(12, player.width * tile);
+    const height = player.height * tile;
+    const moving = Math.abs(player.vx) > 0.2 && player.onGround;
+    const swing = reduced ? 0 : Math.sin(player.walkTime * 9) * (moving ? 1 : 0);
+    const bob = reduced ? 0 : Math.abs(Math.sin(player.walkTime * 9)) * (moving ? 1.5 : 0);
+    const facing = player.facing || 1;
+    const mining = state.mining && state.mining.progress > 0;
+    const armSwing = mining ? Math.sin(state.time * 26) * 0.7 : swing * 0.8;
+
+    ctx.save();
+    ctx.translate(Math.round(baseX), Math.round(feetY + bob));
+
+    // Ground shadow.
+    ctx.fillStyle = "rgba(6, 12, 18, 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(0, 1, width * 0.62, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const headSize = width * 0.78;
+    const bodyHeight = height * 0.42;
+    const legHeight = height * 0.36;
+
+    // Legs.
+    ctx.fillStyle = "#2f3b56";
+    const legWidth = width * 0.34;
+    ctx.save();
+    ctx.translate(-width * 0.2, -legHeight);
+    ctx.rotate(swing * 0.35);
+    ctx.fillRect(-legWidth / 2, 0, legWidth, legHeight);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(width * 0.2, -legHeight);
+    ctx.rotate(-swing * 0.35);
+    ctx.fillRect(-legWidth / 2, 0, legWidth, legHeight);
+    ctx.restore();
+
+    // Body.
+    ctx.fillStyle = "#3f7fb8";
+    ctx.fillRect(-width * 0.44, -legHeight - bodyHeight, width * 0.88, bodyHeight);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
+    ctx.fillRect(-width * 0.44, -legHeight - bodyHeight, width * 0.88, 3);
+
+    // Arms.
+    ctx.strokeStyle = "#e0a878";
+    ctx.lineCap = "round";
+    ctx.lineWidth = Math.max(3, width * 0.22);
+    ctx.beginPath();
+    ctx.moveTo(-width * 0.4, -legHeight - bodyHeight * 0.82);
+    ctx.lineTo(-width * 0.52, -legHeight - bodyHeight * 0.2 + armSwing * 6);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(width * 0.4, -legHeight - bodyHeight * 0.82);
+    ctx.lineTo(width * 0.55 * facing + width * 0.4 * (facing > 0 ? 0 : 0), -legHeight - bodyHeight * 0.2 - armSwing * 8);
+    ctx.stroke();
+
+    // Head.
+    const headX = -headSize / 2 + facing * width * 0.04;
+    const headY = -legHeight - bodyHeight - headSize * 0.92;
+    ctx.fillStyle = "#e6b58a";
+    ctx.fillRect(headX, headY, headSize, headSize);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.fillRect(headX, headY, headSize, 3);
+    ctx.fillStyle = "#3b2a22";
+    ctx.fillRect(headX + (facing > 0 ? headSize * 0.52 : headSize * 0.2), headY + headSize * 0.36, 2, 3);
+    ctx.fillRect(headX + (facing > 0 ? headSize * 0.78 : headSize * 0.46), headY + headSize * 0.36, 2, 3);
+
+    // Tool nub while mining, so the action reads as intentional.
+    if (mining) {
+      ctx.fillStyle = "#c9d4dc";
+      ctx.fillRect(width * 0.62 * facing, -legHeight - bodyHeight * 0.5, 8, 3);
+    }
+
+    ctx.restore();
+  }
+
+  function drawCrosshair(ctx, state) {
+    if (!state.hovered) {
+      return;
+    }
+    const tile = CONFIG.tileSize;
+    const x = Math.round((state.hovered.x + 0.5) * tile - state.camera.x);
+    const y = Math.round((state.hovered.y + 0.5) * tile - state.camera.y);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x - 5, y);
+    ctx.lineTo(x + 5, y);
+    ctx.moveTo(x, y - 5);
+    ctx.lineTo(x, y + 5);
+    ctx.stroke();
+  }
+
+  function drawNight(ctx, state) {
+    const tint = DAYNIGHT.nightTint(state.time);
+    if (tint <= 0.01) {
+      return;
+    }
+    ctx.fillStyle = "rgba(8, 12, 34, " + tint.toFixed(3) + ")";
+    ctx.fillRect(0, 0, CONFIG.viewWidth, CONFIG.viewHeight);
+  }
+
+  function drawEdges(ctx, state) {
+    const world = state.world;
+    const camera = state.camera;
+    const tile = CONFIG.tileSize;
+    const range = CAMERA.visibleRange(camera, world, { width: CONFIG.viewWidth, height: CONFIG.viewHeight }, tile);
+    for (let y = range.firstY; y <= range.lastY; y += 1) {
+      for (let x = range.firstX; x <= range.lastX; x += 1) {
+        const block = world.data[y * world.width + x];
+        if (!block) {
+          continue;
+        }
+        const px = Math.round(x * tile - camera.x);
+        const py = Math.round(y * tile - camera.y);
+        const airAbove = y === 0 || world.data[(y - 1) * world.width + x] === 0;
+        const airBelow = y === world.height - 1 || world.data[(y + 1) * world.width + x] === 0;
+        const airLeft = x === 0 || world.data[y * world.width + x - 1] === 0;
+        const airRight = x === world.width - 1 || world.data[y * world.width + x + 1] === 0;
+        if (airAbove) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.14)";
+          ctx.fillRect(px, py, tile, 2);
+        }
+        if (airBelow) {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.24)";
+          ctx.fillRect(px, py + tile - 2, tile, 2);
+        }
+        if (airLeft) {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+          ctx.fillRect(px, py, 2, tile);
+        }
+        if (airRight) {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.14)";
+          ctx.fillRect(px + tile - 2, py, 2, tile);
+        }
+      }
     }
   }
 
-  function drawVignette(ctx, viewWidth, viewHeight, paused) {
-    const vignette = ctx.createRadialGradient(
-      viewWidth * 0.5,
-      viewHeight * 0.42,
-      Math.min(viewWidth, viewHeight) * 0.32,
-      viewWidth * 0.5,
-      viewHeight * 0.42,
-      Math.max(viewWidth, viewHeight) * 0.78
+  function drawDecor(ctx, state, surface) {
+    if (!surface) {
+      return;
+    }
+    const world = state.world;
+    const camera = state.camera;
+    const tile = CONFIG.tileSize;
+    const range = CAMERA.visibleRange(camera, world, { width: CONFIG.viewWidth, height: CONFIG.viewHeight }, tile);
+    for (let x = range.firstX; x <= range.lastX; x += 1) {
+      const surfaceY = surface[x];
+      if (surfaceY < range.firstY - 1 || surfaceY > range.lastY + 1) {
+        continue;
+      }
+      if (world.data[surfaceY * world.width + x] !== 1) {
+        continue;
+      }
+      const px = x * tile - camera.x;
+      const py = surfaceY * tile - camera.y;
+      const roll = RNG.hash2(x, 31, state.seed);
+      if (roll < 0.16) {
+        const bloom = RNG.hash2(x, 47, state.seed);
+        const flowerX = px + 6 + bloom * 12;
+        const flowerY = py - 4 - bloom * 3;
+        ctx.strokeStyle = "rgba(38, 92, 44, 0.9)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(flowerX, py);
+        ctx.lineTo(flowerX, flowerY);
+        ctx.stroke();
+        ctx.fillStyle = bloom > 0.6 ? "#ffd166" : bloom > 0.3 ? "#ff8f6b" : "#f5f0e6";
+        ctx.fillRect(flowerX - 1.5, flowerY - 2, 3, 3);
+      } else if (roll < 0.55) {
+        ctx.strokeStyle = "rgba(28, 74, 34, 0.75)";
+        ctx.lineWidth = 1;
+        for (let blade = 0; blade < 3; blade += 1) {
+          const bladeX = px + 5 + blade * 5 + RNG.hash2(x, blade, state.seed) * 3;
+          ctx.beginPath();
+          ctx.moveTo(bladeX, py);
+          ctx.lineTo(bladeX + (blade - 1) * 1.5, py - 3 - RNG.hash2(x, blade + 9, state.seed) * 3);
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function drawVignette(ctx) {
+    const gradient = ctx.createRadialGradient(
+      CONFIG.viewWidth / 2,
+      CONFIG.viewHeight / 2,
+      CONFIG.viewHeight * 0.35,
+      CONFIG.viewWidth / 2,
+      CONFIG.viewHeight / 2,
+      CONFIG.viewWidth * 0.72
     );
-    vignette.addColorStop(0, "rgba(4, 10, 14, 0)");
-    vignette.addColorStop(1, "rgba(4, 10, 14, 0.34)");
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, viewWidth, viewHeight);
-    if (paused) {
-      ctx.fillStyle = "rgba(3, 8, 12, 0.42)";
-      ctx.fillRect(0, 0, viewWidth, viewHeight);
+    gradient.addColorStop(0, "rgba(4, 8, 14, 0)");
+    gradient.addColorStop(1, "rgba(4, 8, 14, 0.26)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, CONFIG.viewWidth, CONFIG.viewHeight);
+  }
+
+  function drawFireflies(ctx, state, surface) {
+    if (!surface) {
+      return;
     }
-  }
-
-  function createCamera(world, player, viewWidth, viewHeight) {
-    const camera = { x: 0, y: 0 };
-    updateCamera(camera, world, player, viewWidth, viewHeight, 1, true);
-    return camera;
-  }
-
-  function updateCamera(camera, world, player, viewWidth, viewHeight, dt, instant) {
-    const lookAhead = (player.facing || 1) * 34;
-    const targetX = player.x * TILE - viewWidth / 2 + lookAhead;
-    const targetY = player.y * TILE - viewHeight * 0.5;
-    const maxX = Math.max(0, world.width * TILE - viewWidth);
-    const maxY = Math.max(0, world.height * TILE - viewHeight);
-    const smooth = instant ? 1 : Math.min(1, Math.max(0, dt) * 6.5);
-    camera.x += (clamp(targetX, 0, maxX) - camera.x) * smooth;
-    camera.y += (clamp(targetY, 0, maxY) - camera.y) * smooth;
-    camera.x = clamp(camera.x, 0, maxX);
-    camera.y = clamp(camera.y, 0, maxY);
-    return camera;
+    const light = DAYNIGHT.daylight(state.time);
+    if (light > 0.36) {
+      return;
+    }
+    const strength = Math.min(0.95, (0.36 - light) * 2.4);
+    const tile = CONFIG.tileSize;
+    const camera = state.camera;
+    const firstX = Math.floor(camera.x / tile);
+    const span = Math.ceil(CONFIG.viewWidth / tile) + 1;
+    for (let index = 0; index < 22; index += 1) {
+      const offset = RNG.hash2(index, 23, state.seed) * span;
+      const worldX = Math.min(state.world.width - 1, Math.max(0, firstX + Math.floor(offset)));
+      const surfaceY = surface[worldX];
+      if (surfaceY >= state.world.height) {
+        continue;
+      }
+      const drift = Math.sin(state.time * 5 + index * 1.7);
+      const sx = worldX * tile - camera.x + offset % 1 * tile + drift * 7;
+      const sy =
+        surfaceY * tile -
+        camera.y -
+        8 -
+        (0.5 + RNG.hash2(index, 41, state.seed) * 0.5) * 26 -
+        Math.sin(state.time * 2.2 + index) * 12;
+      if (sy < 0 || sy > CONFIG.viewHeight || sx < 0 || sx > CONFIG.viewWidth) {
+        continue;
+      }
+      ctx.fillStyle = "rgba(255, 220, 130, " + (strength * 0.18).toFixed(3) + ")";
+      ctx.beginPath();
+      ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 238, 168, " + strength.toFixed(3) + ")";
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function renderFrame(ctx, state) {
-    const viewWidth = state.viewWidth;
-    const viewHeight = state.viewHeight;
-    const world = state.world;
-
-    ctx.setTransform(state.pixelRatio || 1, 0, 0, state.pixelRatio || 1, 0, 0);
-    ctx.clearRect(0, 0, viewWidth, viewHeight);
-
-    drawSky(ctx, viewWidth, viewHeight);
-    drawClouds(ctx, viewWidth, viewHeight, state.time, state.reducedMotion);
-    drawBirds(ctx, viewWidth, viewHeight, state.time, state.reducedMotion);
-    drawRidges(ctx, viewWidth, viewHeight, state.camera, state.time, state.reducedMotion);
-    drawHaze(ctx, viewWidth, viewHeight);
-
-    const firstColumn = Math.max(0, Math.floor(state.camera.x / TILE) - 1);
-    const lastColumn = Math.min(world.width - 1, Math.ceil((state.camera.x + viewWidth) / TILE) + 1);
-    drawUnderground(ctx, world, state.camera, viewWidth, viewHeight, firstColumn, lastColumn);
-    drawCliffWalls(ctx, world, state.camera, viewWidth, viewHeight, firstColumn, lastColumn);
-    drawWorld(ctx, state);
+    const surface = surfaceFor(state.world);
+    drawSky(ctx, state);
+    drawTiles(ctx, state, surface);
+    drawEdges(ctx, state);
+    drawDecor(ctx, state, surface);
+    drawHover(ctx, state);
     drawParticles(ctx, state);
     drawPlayer(ctx, state);
-    drawHover(ctx, state);
-    drawVignette(ctx, viewWidth, viewHeight, state.paused);
+    drawNight(ctx, state);
+    drawFireflies(ctx, state, surface);
+    drawCrosshair(ctx, state);
+    drawVignette(ctx);
   }
 
   return {
     renderFrame: renderFrame,
-    createCamera: createCamera,
-    updateCamera: updateCamera,
-    getTexture: getTexture,
-    drawBlockTexture: drawBlockTexture,
-    BLOCK_COLORS: BLOCK_COLORS
+    BLOCK_COLORS: BLOCK_COLORS,
+    TILE_VARIANTS: TILE_VARIANTS,
+    tileVariant: tileVariant,
+    depthShade: depthShade,
+    crackStages: crackStages,
+    surfaceFor: surfaceFor
   };
 });

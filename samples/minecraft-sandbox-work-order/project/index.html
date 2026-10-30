@@ -3,115 +3,143 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Terra — a 2D sandbox</title>
-  <meta name="description" content="A playable offline 2D sandbox: seeded terrain, mining, building and saving.">
+  <title>Blockstead — a 2D sandbox</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <main id="app">
-    <canvas id="game" width="960" height="540" tabindex="-1" aria-label="Sandbox world. Use A and D to move, Space to jump, left click to mine and right click to place."></canvas>
+    <section id="stage" aria-label="Blockstead sandbox">
+      <canvas id="game" width="960" height="540" aria-label="Sandbox world"></canvas>
 
-    <div id="hud">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span class="brand-text"><strong>TERRA</strong><small>2D sandbox</small></span>
-      </div>
-      <div class="chips">
-        <button id="seedChip" class="chip chip-button" type="button" title="Change the world seed (H for controls)">
-          <span class="chip-label">Seed</span><span id="seedValue" class="chip-value">—</span>
-        </button>
-        <span id="saveChip" class="chip" data-state="idle">
-          <span class="chip-dot" aria-hidden="true"></span><span id="saveText">Booting</span>
-        </span>
-      </div>
-    </div>
-
-    <div id="topRight" class="cluster">
-      <button id="soundBtn" class="icon-btn" type="button" aria-pressed="true" title="Sound on (M)" aria-label="Toggle sound">
-        <span class="icon-glyph" aria-hidden="true">♪</span>
-      </button>
-      <button id="helpBtn" class="icon-btn" type="button" title="Controls and world settings (H)" aria-label="Open controls">
-        <span class="icon-glyph" aria-hidden="true">?</span>
-      </button>
-    </div>
-
-    <div id="hintBar" class="hint-bar" aria-hidden="true">
-      <span><kbd>A</kbd><kbd>D</kbd> move</span>
-      <span><kbd>Space</kbd> jump</span>
-      <span><kbd>LMB</kbd> mine</span>
-      <span><kbd>RMB</kbd> place</span>
-      <span><kbd>H</kbd> controls</span>
-    </div>
-
-    <div id="hotbar" role="toolbar" aria-label="Block palette"></div>
-
-    <div id="toastRail" aria-live="polite"></div>
-
-    <section id="overlay" class="overlay" hidden aria-modal="true" role="dialog" aria-labelledby="overlayTitle">
-      <div class="panel">
-        <header class="panel-head">
-          <div>
-            <p class="eyebrow">Field guide</p>
-            <h1 id="overlayTitle">Build, dig, wander.</h1>
-            <p class="lede">A quiet little world that fits in one page. Everything saves as you play.</p>
-          </div>
-          <button id="overlayClose" class="icon-btn" type="button" aria-label="Close controls">
-            <span class="icon-glyph" aria-hidden="true">×</span>
-          </button>
-        </header>
-
-        <div class="panel-grid">
-          <div class="panel-col">
-            <h2>Controls</h2>
-            <dl class="controls">
-              <div><dt><kbd>A</kbd><kbd>D</kbd> or <kbd>←</kbd><kbd>→</kbd></dt><dd>Walk left and right</dd></div>
-              <div><dt><kbd>Space</kbd> or <kbd>W</kbd></dt><dd>Jump</dd></div>
-              <div><dt><kbd>LMB</kbd></dt><dd>Mine within reach (hold to repeat)</dd></div>
-              <div><dt><kbd>RMB</kbd></dt><dd>Place a clear, supported block</dd></div>
-              <div><dt><kbd>1</kbd>–<kbd>8</kbd></dt><dd>Pick a material, or scroll</dd></div>
-              <div><dt><kbd>H</kbd> / <kbd>P</kbd></dt><dd>Open or close this guide (<kbd>Esc</kbd>)</dd></div>
-              <div><dt><kbd>M</kbd></dt><dd>Mute or unmute sound</dd></div>
-            </dl>
-
-            <h2>World</h2>
-            <div class="seed-form">
-              <label for="seedInput">World seed</label>
-              <div class="seed-row">
-                <input id="seedInput" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-describedby="seedHint">
-                <button id="seedApply" class="btn btn-primary" type="button">Generate</button>
-              </div>
-              <div class="seed-row">
-                <button id="seedRandom" class="btn" type="button">Surprise me</button>
-                <button id="worldReset" class="btn btn-quiet" type="button">Reset world</button>
-              </div>
-              <p id="seedHint" class="hint">The same number always grows the same world.</p>
-            </div>
-          </div>
-
-          <div class="panel-col">
-            <h2>Materials</h2>
-            <ul id="blockLegend" class="legend"></ul>
-
-            <h2>Field notes</h2>
-            <p class="notes">Reach is five blocks. A placed block needs a solid neighbour, a clear cell, and a body-sized gap — the explorer cannot be built into a wall.</p>
-            <p class="notes">Mined blocks refill the hotbar counts. The camera follows your explorer and stops at the edges of the world. Progress is written to this browser only.</p>
-            <p class="notes quietly">No network, no libraries, no build step. Open the file and play.</p>
-          </div>
+      <div id="hud">
+        <div class="hud-brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-copy">
+            <strong>Blockstead</strong>
+            <small>a 2D sandbox</small>
+          </span>
         </div>
+        <form id="seed-form" class="hud-seed" autocomplete="off">
+          <label for="seed-input">Seed</label>
+          <input id="seed-input" name="seed" inputmode="numeric" spellcheck="false" aria-describedby="seed-hint">
+          <button id="seed-load" type="submit" class="ghost-button">Load</button>
+          <button id="seed-random" type="button" class="ghost-button">Random</button>
+          <span id="seed-hint" class="visually-hidden">Type a whole number and press Load to rebuild the world.</span>
+        </form>
+        <dl class="hud-stats">
+          <div class="stat-wide"><dt>Position</dt><dd id="hud-coords">x – · y –</dd></div>
+          <div><dt>Time</dt><dd id="hud-time">Day</dd></div>
+          <div><dt>Depth</dt><dd id="hud-depth">—</dd></div>
+          <div class="stat-wide"><dt>Target</dt><dd id="hud-target">—</dd></div>
+        </dl>
       </div>
+
+      <div id="top-actions" aria-label="Game options">
+        <button id="mute" type="button" class="icon-button" aria-pressed="false" title="Mute sound (M)">
+          <span aria-hidden="true">♪</span><span class="visually-hidden">Mute sound</span>
+        </button>
+        <button id="pause" type="button" class="icon-button" aria-pressed="false" title="Pause (P)">
+          <span aria-hidden="true">❚❚</span><span class="visually-hidden">Pause</span>
+        </button>
+        <button id="help" type="button" class="icon-button" title="Controls (H)">
+          <span aria-hidden="true">?</span><span class="visually-hidden">Show controls</span>
+        </button>
+      </div>
+
+      <div id="hotbar" role="toolbar" aria-label="Block palette">
+        <button class="slot" type="button" data-slot="0" data-block="grass" aria-checked="false" title="Grass (1)">
+          <span class="slot-swatch" aria-hidden="true"></span>
+          <span class="slot-digit">1</span>
+          <span class="slot-count">0</span>
+        </button>
+        <button class="slot" type="button" data-slot="1" data-block="dirt" aria-checked="false" title="Dirt (2)">
+          <span class="slot-swatch" aria-hidden="true"></span>
+          <span class="slot-digit">2</span>
+          <span class="slot-count">0</span>
+        </button>
+        <button class="slot" type="button" data-slot="2" data-block="stone" aria-checked="false" title="Stone (3)">
+          <span class="slot-swatch" aria-hidden="true"></span>
+          <span class="slot-digit">3</span>
+          <span class="slot-count">0</span>
+        </button>
+        <button class="slot" type="button" data-slot="3" data-block="sand" aria-checked="false" title="Sand (4)">
+          <span class="slot-swatch" aria-hidden="true"></span>
+          <span class="slot-digit">4</span>
+          <span class="slot-count">0</span>
+        </button>
+        <button class="slot" type="button" data-slot="4" data-block="wood" aria-checked="false" title="Wood (5)">
+          <span class="slot-swatch" aria-hidden="true"></span>
+          <span class="slot-digit">5</span>
+          <span class="slot-count">0</span>
+        </button>
+        <button class="slot" type="button" data-slot="5" data-block="leaves" aria-checked="false" title="Leaves (6)">
+          <span class="slot-swatch" aria-hidden="true"></span>
+          <span class="slot-digit">6</span>
+          <span class="slot-count">0</span>
+        </button>
+        <button class="slot" type="button" data-slot="6" data-block="planks" aria-checked="false" title="Planks (7)">
+          <span class="slot-swatch" aria-hidden="true"></span>
+          <span class="slot-digit">7</span>
+          <span class="slot-count">0</span>
+        </button>
+        <button class="slot" type="button" data-slot="7" data-block="cobblestone" aria-checked="false" title="Cobblestone (8)">
+          <span class="slot-swatch" aria-hidden="true"></span>
+          <span class="slot-digit">8</span>
+          <span class="slot-count">0</span>
+        </button>
+        <button class="slot" type="button" data-slot="8" data-block="glass" aria-checked="false" title="Glass (9)">
+          <span class="slot-swatch" aria-hidden="true"></span>
+          <span class="slot-digit">9</span>
+          <span class="slot-count">0</span>
+        </button>
+      </div>
+
+      <div id="hint" aria-hidden="true">
+        <span><kbd>A</kbd><kbd>D</kbd> move</span>
+        <span><kbd>Space</kbd> jump</span>
+        <span><kbd>LMB</kbd> mine</span>
+        <span><kbd>RMB</kbd> place</span>
+        <span><kbd>1-9</kbd> select</span>
+        <span><kbd>P</kbd> pause</span>
+        <span><kbd>H</kbd> help</span>
+      </div>
+
+      <div id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+      <div id="help-overlay" class="overlay" hidden>
+        <section class="panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
+          <header class="panel-head">
+            <h2 id="help-title">Controls</h2>
+            <button id="help-close" type="button" class="icon-button" title="Close controls">×<span class="visually-hidden">Close controls</span></button>
+          </header>
+          <ul id="help-list" class="control-list"></ul>
+          <p class="panel-note">Everything runs locally in this page. Progress saves to this browser automatically.</p>
+        </section>
+      </div>
+
+      <div id="pause-overlay" class="overlay" hidden>
+        <section class="panel panel-small" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+          <h2 id="pause-title">Paused</h2>
+          <p class="panel-note">The world is exactly where you left it.</p>
+          <button id="resume" type="button" class="primary-button">Resume</button>
+          <p class="panel-hint"><kbd>P</kbd> or <kbd>Esc</kbd> also resumes.</p>
+        </section>
+      </div>
+
+      <div id="status" data-state="booting" title="Page status"></div>
     </section>
-
-    <div id="status" data-state="booting" title="Page status" role="status" aria-live="polite"></div>
-
-    <noscript>
-      <div class="noscript">Terra needs JavaScript enabled to grow a world.</div>
-    </noscript>
   </main>
 
   <script src="js/config.js"></script>
+  <script src="js/rng.js"></script>
   <script src="js/world.js"></script>
   <script src="js/player.js"></script>
-  <script src="js/save.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/interaction.js"></script>
+  <script src="js/daynight.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/ui.js"></script>
   <script src="js/render.js"></script>
   <script src="js/main.js"></script>
 </body>

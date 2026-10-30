@@ -1,0 +1,9 @@
+metadata.artifact.audience=internal
+metadata.artifact.content_language=en
+metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.completion.artifacts.path=literal:C:\dev\xcoding-workflow-dev\wf-ablation\standard-sample\workspace\workshop\.xcoding\work-orders\20261030-0000-minecraft-sandbox\artifacts\impl-interaction-storage\implementation.md
+metadata.control_packet.category.approved-work.selectors=["bb:implementation.sources.interaction"]
+metadata.control_packet.category.approved-work.min_sources=2
+metadata.control_packet.category.approved-work.artifact_min=1

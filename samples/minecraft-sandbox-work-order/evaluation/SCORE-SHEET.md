@@ -98,6 +98,17 @@ Run: ____________________  Version/commit: ____________________  Date: _________
 - Verdict (better / equal / regression signal / significant regression):
 - Notes and controversies:
 
+## 0.3.6 current best
+
+The promoted 0.3.6 sample scores **base 62 / core 70 / coverage 49% / base+extras 67**. Domain
+scores: D1 5, D2 3, D3 1, D4 5, D5 5, D6 0, D7 0, D8 1, D9 0, D10 4, D11 5, D12 5. Core T0/T1:
+5, 3, —, 5, 5, 0, 0, 1, —, 3, 5, 5. Coverage is 42/86; pre-correction remains one criterion higher
+at 43/86.
+
+The 0.3.6 run is the first promoted sample with the prior-capability-preservation gate: all twelve
+prior inventory items were dispositioned preserve/improve, and the suite is 124 tests. It is best on
+base, core and base+extras, not on coverage; the remaining coverage gap is the T2/T3 systems layer.
+
 ## Policy
 
 - Compare with the one-shot baseline **and** the previous standard run, not only with the immediately

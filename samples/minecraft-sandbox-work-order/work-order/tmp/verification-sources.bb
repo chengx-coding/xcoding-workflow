@@ -1,0 +1,2 @@
+verification.sources.functional=["rt_work-order-20261030-0000-minecraft-sandbox__dyn-1__impl-world-generation","rt_work-order-20261030-0000-minecraft-sandbox__dyn-1__impl-physics-camera","rt_work-order-20261030-0000-minecraft-sandbox__dyn-1__impl-interaction-storage","rt_work-order-20261030-0000-minecraft-sandbox__dyn-1__impl-presentation-shell"]
+verification.sources.environment=["rt_work-order-20261030-0000-minecraft-sandbox__dyn-1__verify-functional","rt_work-order-20261030-0000-minecraft-sandbox__dyn-1__impl-presentation-shell"]

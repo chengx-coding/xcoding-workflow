@@ -2,102 +2,166 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const config = require("../js/config.js");
-const worldApi = require("../js/world.js");
 const playerApi = require("../js/player.js");
 
-function flatArena(seed) {
-  const world = worldApi.createWorld(seed || config.seed);
-  const base = worldApi.surfaceHeightAt(world, 64);
-  for (let x = 56; x <= 74; x += 1) {
-    for (let y = base - 8; y < base; y += 1) {
-      worldApi.setBlock(world, x, y, config.blocks.air);
+function flatWorld(options) {
+  const settings = options || {};
+  const width = settings.width || 40;
+  const height = settings.height || 40;
+  const ground = settings.ground || 20;
+  const data = new Uint8Array(width * height);
+  for (let x = 0; x < width; x += 1) {
+    for (let y = ground; y < height; y += 1) {
+      data[y * width + x] = settings.block || config.blocks.stone;
     }
-    for (let y = base + 1; y <= base + 12; y += 1) {
-      worldApi.setBlock(world, x, y, config.blocks.air);
-    }
-    worldApi.setBlock(world, x, base, config.blocks.stone);
   }
-  return { world: world, base: base };
+  (settings.blocks || []).forEach((block) => {
+    data[block.y * width + block.x] = block.block || config.blocks.stone;
+  });
+  return { width, height, seed: 1, data };
 }
 
-test("gravity settles the player on the surface", () => {
-  const arena = flatArena();
-  const player = playerApi.createPlayer(64.5, arena.base - 5);
-  for (let step = 0; step < 180; step += 1) {
-    playerApi.stepPlayer(player, arena.world, {}, 1 / 60);
+function settle(player, world, frames) {
+  for (let index = 0; index < (frames || 180); index += 1) {
+    playerApi.stepPlayer(player, world, { left: false, right: false, jump: false }, 1 / 60);
   }
-  assert.equal(player.onGround, true);
-  assert.ok(Math.abs(player.y - arena.base) < 0.02, "feet should rest on the floor");
-  assert.equal(player.vy, 0);
+  return player;
+}
+
+test("createPlayer starts with the seed dimensions and no ground contact", () => {
+  const player = playerApi.createPlayer(5, 8);
+  assert.equal(player.x, 5);
+  assert.equal(player.y, 8);
+  assert.equal(player.onGround, false);
+  assert.equal(player.width, 0.7);
+  assert.equal(player.height, 1.8);
 });
 
-test("horizontal movement is stopped by a solid wall", () => {
-  const arena = flatArena();
-  for (let y = arena.base - 5; y < arena.base; y += 1) {
-    worldApi.setBlock(arena.world, 68, y, config.blocks.stone);
-  }
-  const player = playerApi.createPlayer(62.5, arena.base);
-  for (let step = 0; step < 240; step += 1) {
-    playerApi.stepPlayer(player, arena.world, { right: true }, 1 / 60);
-  }
-  assert.ok(player.x + player.width / 2 <= 68.001, "the player must not pass through the wall");
-  assert.ok(player.x + player.width / 2 > 67.8, "the player should reach the wall");
-  assert.equal(player.onGround, true);
+test("gravity accelerates a falling player", () => {
+  const player = playerApi.createPlayer(5, 2);
+  const world = flatWorld();
+  const before = player.y;
+  playerApi.stepPlayer(player, world, {}, 0.1);
+  assert.ok(player.vy > 0);
+  assert.ok(player.y > before);
 });
 
-test("a rising edge on jump launches the player", () => {
-  const arena = flatArena();
-  const player = playerApi.createPlayer(64.5, arena.base);
-  player.onGround = true;
-  const events = playerApi.stepPlayer(player, arena.world, { jump: true }, 1 / 60);
-  assert.equal(events.jumped, true);
+test("a falling player lands on solid ground", () => {
+  const player = playerApi.createPlayer(5, 8);
+  const world = flatWorld({ ground: 20 });
+  settle(player, world);
+  assert.ok(player.onGround);
+  assert.ok(Math.abs(player.y - 20) < 0.01, "settled at " + player.y);
+});
+
+test("a fast fall does not tunnel through the floor", () => {
+  const player = playerApi.createPlayer(5, 2);
+  const world = flatWorld({ ground: 10 });
+  for (let index = 0; index < 40; index += 1) {
+    playerApi.stepPlayer(player, world, {}, 0.1);
+  }
+  assert.ok(player.y >= 10 - 0.001);
+  assert.ok(player.onGround);
+});
+
+test("horizontal input moves the player in the requested direction", () => {
+  const world = flatWorld();
+  const player = playerApi.createPlayer(5, 20);
+  settle(player, world, 30);
+  const start = player.x;
+  for (let index = 0; index < 60; index += 1) {
+    playerApi.stepPlayer(player, world, { right: true }, 1 / 60);
+  }
+  assert.ok(player.x > start);
+  assert.equal(player.facing, 1);
+  for (let index = 0; index < 30; index += 1) {
+    playerApi.stepPlayer(player, world, { left: true }, 1 / 60);
+  }
+  assert.equal(player.facing, -1);
+});
+
+test("a wall stops horizontal movement", () => {
+  const world = flatWorld({ blocks: [{ x: 10, y: 18 }, { x: 10, y: 19 }] });
+  const player = playerApi.createPlayer(5, 20);
+  settle(player, world, 30);
+  for (let index = 0; index < 180; index += 1) {
+    playerApi.stepPlayer(player, world, { right: true }, 1 / 60);
+  }
+  assert.ok(player.x <= 10 - player.width / 2, "stopped at " + player.x);
+  assert.ok(player.x > 9);
+});
+
+test("jumping only lifts a grounded player", () => {
+  const world = flatWorld();
+  const player = playerApi.createPlayer(5, 20);
+  settle(player, world, 30);
+  assert.ok(player.onGround);
+  playerApi.stepPlayer(player, world, { jump: true }, 1 / 60);
   assert.ok(player.vy < 0);
+  assert.equal(player.onGround, false);
 });
 
-test("holding jump clears more than one block and lands again", () => {
-  const arena = flatArena();
-  const player = playerApi.createPlayer(64.5, arena.base);
-  player.onGround = true;
-  let highest = arena.base;
-  for (let step = 0; step < 90; step += 1) {
-    playerApi.stepPlayer(player, arena.world, { jump: true }, 1 / 60);
+test("a player in mid-air cannot jump again", () => {
+  const world = flatWorld();
+  const player = playerApi.createPlayer(5, 20);
+  settle(player, world, 30);
+  playerApi.stepPlayer(player, world, { jump: true }, 1 / 60);
+  const afterJump = player.vy;
+  for (let index = 0; index < 5; index += 1) {
+    playerApi.stepPlayer(player, world, {}, 1 / 60);
+  }
+  const beforeSecond = player.vy;
+  playerApi.stepPlayer(player, world, { jump: true }, 1 / 60);
+  assert.ok(player.vy > beforeSecond, "gravity should continue; no second impulse");
+  assert.ok(afterJump < 0);
+});
+
+test("a ceiling stops upward movement", () => {
+  const world = flatWorld({ blocks: [{ x: 5, y: 16 }] });
+  const player = playerApi.createPlayer(5.5, 20);
+  settle(player, world, 30);
+  let highest = player.y;
+  for (let index = 0; index < 120; index += 1) {
+    playerApi.stepPlayer(player, world, { jump: index < 10 }, 1 / 60);
     highest = Math.min(highest, player.y);
   }
-  for (let step = 0; step < 120; step += 1) {
-    playerApi.stepPlayer(player, arena.world, { jump: false }, 1 / 60);
-    highest = Math.min(highest, player.y);
-  }
-  assert.ok(arena.base - highest > 1.8, "a held jump should clear at least 1.8 tiles");
-  assert.equal(player.onGround, true);
+  assert.ok(highest >= 17 + player.height - 0.01, "head stayed below the ceiling at " + highest);
+  assert.ok(highest < 20);
 });
 
-test("a ceiling stops an upward jump", () => {
-  const arena = flatArena();
-  for (let x = 56; x <= 74; x += 1) {
-    worldApi.setBlock(arena.world, x, arena.base - 4, config.blocks.stone);
-    worldApi.setBlock(arena.world, x, arena.base - 3, config.blocks.stone);
+test("the player stays inside the world bounds", () => {
+  const world = flatWorld({ width: 20, ground: 20 });
+  const player = playerApi.createPlayer(1, 20);
+  for (let index = 0; index < 240; index += 1) {
+    playerApi.stepPlayer(player, world, { left: true }, 1 / 60);
   }
-  const player = playerApi.createPlayer(64.5, arena.base);
-  player.onGround = true;
-  for (let step = 0; step < 120; step += 1) {
-    playerApi.stepPlayer(player, arena.world, { jump: true }, 1 / 60);
-    assert.ok(player.y - player.height >= arena.base - 3 - 0.01, "the head must not enter the ceiling");
+  assert.ok(player.x >= player.width / 2);
+  player.x = 18;
+  for (let index = 0; index < 240; index += 1) {
+    playerApi.stepPlayer(player, world, { right: true }, 1 / 60);
   }
+  assert.ok(player.x <= world.width - player.width / 2);
 });
 
-test("player serialization round-trips a position and facing", () => {
-  const player = playerApi.createPlayer(91.25, 37.5);
-  player.facing = -1;
-  player.vx = 2.5;
-  const restored = playerApi.restorePlayer(playerApi.serializePlayer(player), 0, 0);
-  assert.equal(restored.x, 91.25);
-  assert.equal(restored.y, 37.5);
-  assert.equal(restored.facing, -1);
-  assert.equal(restored.vx, 2.5);
+test("isSupported detects the ground beneath the player", () => {
+  const world = flatWorld();
+  const grounded = playerApi.createPlayer(5, 20);
+  assert.equal(playerApi.isSupported(grounded, world), true);
+  const airborne = playerApi.createPlayer(5, 5);
+  assert.equal(playerApi.isSupported(airborne, world), false);
 });
 
-test("restorePlayer falls back for invalid data", () => {
-  const restored = playerApi.restorePlayer({ x: "nope", y: null }, 12, 34);
-  assert.equal(restored.x, 12);
-  assert.equal(restored.y, 34);
+test("overlapsCell reports the cells covered by the player box", () => {
+  const player = playerApi.createPlayer(5.5, 20);
+  assert.equal(playerApi.overlapsCell(player, 5, 19), true);
+  assert.equal(playerApi.overlapsCell(player, 5, 17), false);
+  assert.equal(playerApi.overlapsCell(player, 7, 19), false);
+});
+
+test("a zero-length step leaves the player untouched", () => {
+  const world = flatWorld();
+  const player = playerApi.createPlayer(5, 20);
+  const snapshot = JSON.stringify(player);
+  playerApi.stepPlayer(player, world, { right: true }, 0);
+  assert.equal(JSON.stringify(player), snapshot);
 });
