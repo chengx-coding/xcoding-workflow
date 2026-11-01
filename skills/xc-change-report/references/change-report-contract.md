@@ -556,7 +556,6 @@ different steps, and only the validator judges.
                "diagram_refs": ["diagram-1"],
                "evidence": [{"kind": "implementation", "status": "observed",
                               "ref": "#unit-1"}]}]},
-  "related_code": [{"path": "src/x.py", "lines": "10-20", "note": "…", "code": "…"}],
   "glossary": [{"term": "…", "explanation": "…"}],
   "verification": {"commands": [{"command": "…", "result": "…"}], "residual_risks": "…"},
   "diagrams": [{"id": "diagram-1", "type": "flow", "render_mode": "svg", "…": "…"}],
