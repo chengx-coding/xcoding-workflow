@@ -245,12 +245,24 @@ Omitting `operation` or specifying `operation=run` preserves the existing manage
 10. Create `result.md` through document evolution. Publish the terminal goal writer ID in `work_order.objective_source_ids` and the terminal result writer ID in `work_order.result_source_ids`, read the finalizer control packet, and complete `finalize-work-order`.
     Consume `work_order.report_skip_reason`: when `work_order.requires_report=true` and neither a report path nor one of the legal skip reasons is recorded, the work order must not close. A silent skip is not a legal outcome. Record the report path, the manifest path, and the workbench path on one fixed line of the result document's report section; when the same delivery spans other work orders, list their report paths there too, because coverage is proven per work order and this file does not aggregate it.
 
+## Change Report Policy
+
+Resolve `work_order.requires_report` once in preparation: explicit user instruction > project bridge
+(tighten only) > `report.default` in `.xcoding/xc-orchestration-runtime.json` > built-in
+`code-change-only`. `report.default` is `never`, `code-change-only`, or `always`; an unknown mode is
+never read as "no report needed". Record every skip: `read_only_mode`, `zero_analyzable_units`,
+`user_waived`, or `policy_default`; silent skip is illegal. Capture the baseline only when the
+commitment is true, through `capture_baseline.py`; fail closed when version control is unusable. Set
+the initial strength from risk/audit: low+runtime-only = minimal; high/result/full = full; otherwise
+standard. The commitment is not retrospective; step 10 refuses closure without a report or legal skip.
+Pace never changes this decision.
+
 ## Change Report Handoff
 
-The report policy, skip vocabulary, baseline/staleness and refresh loop are owned by
-`xc-change-report`; `xc-work` only commits `work_order.requires_report`, mounts `report-group` after
-verification, and refuses closure when the report obligation is neither satisfied nor explicitly
-skipped. Do not restate the policy here.
+The policy above owns resolution, skip vocabulary and baseline capture. `xc-change-report` owns report
+production, staleness and the bounded refresh loop after that commitment; `xc-work` mounts
+`report-group` after verification and refuses closure when the obligation is neither satisfied nor
+explicitly skipped. Do not restate the report contract here.
 
 When `next` or `summary` reports `awaiting_dynamic_groups`, the main session
 must append the planned subtree or explicitly close an intentionally empty
