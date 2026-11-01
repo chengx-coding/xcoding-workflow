@@ -1,9 +1,9 @@
 # CLI / library / API surface profile
 
 **Scope:** task-class. **Owner:** `xc-work/references/profiles/cli-library-api.md`. **Promotion
-status:** `validated-in-class` (contract probe: `check_version.py` exit 0/2; see
-`applicability-probes.md`). **Evidence surface:** CLI/API/file. **Generality evidence:** executed
-CLI probe; not a universal rule. **Force:** convention-only.
+status:** `proposed` (one contract probe: `check_version.py` exit 0/2; second instance still needed).
+**Evidence surface:** CLI/API/file. **Generality evidence:** one executed CLI probe; not a universal
+rule. **Force:** convention-only.
 
 **Applies when** the user/operator observes the artifact through commands,
 exit codes, stdout/stderr, API status/body, files, side effects or persisted state. **Does not apply**

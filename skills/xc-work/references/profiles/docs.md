@@ -1,9 +1,9 @@
 # Docs surface profile
 
 **Scope:** task-class. **Owner:** `xc-work/references/profiles/docs.md`. **Promotion status:**
-`validated-in-class` (contract probe: docs checker 46 docs / 0 errors; see
-`applicability-probes.md`). **Evidence surface:** source/rendered docs. **Generality evidence:**
-executed docs checker; not a universal rule. **Force:** convention-only.
+`proposed` (one contract probe: docs checker 46 docs / 0 errors; second instance still needed).
+**Evidence surface:** source/rendered docs. **Generality evidence:** one executed docs checker; not a
+universal rule. **Force:** convention-only.
 
 **Applies when** the user/reader observes the artifact through source Markdown/
 text or a rendered documentation page. **Does not apply** to a game/UI or CLI-only artifact with no

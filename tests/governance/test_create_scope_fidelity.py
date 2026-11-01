@@ -113,12 +113,20 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("cli-library-api", public_work)
         self.assertIn("Owner:", visual_profile)
         self.assertIn("Promotion status:", visual_profile)
+        for profile in (visual_profile, cli_profile, docs_profile):
+            self.assertIn("`proposed`", profile)
+        self.assertNotIn("Visible state.", reference_flat)
+        self.assertNotIn("two of them", reference_flat)
         self.assertEqual(reference.count("## Reference-informed signature experience"), 1)
 
     def test_generic_create_scope_assets_do_not_name_the_sample_domain(self):
         paths = [
             SKILLS / "xc-work" / "SKILL.md",
             SKILLS / "xc-work" / "references" / "create-scope.md",
+            SKILLS / "xc-work" / "references" / "profiles" / "visual.md",
+            SKILLS / "xc-work" / "references" / "profiles" / "cli-library-api.md",
+            SKILLS / "xc-work" / "references" / "profiles" / "docs.md",
+            SKILLS / "xc-workflow-evolution" / "references" / "generality-and-applicability.md",
             SKILLS / "xc-analysis" / "SKILL.md",
             SKILLS / "xc-implementation" / "SKILL.md",
             SKILLS / "xc-verification" / "SKILL.md",

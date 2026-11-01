@@ -1,8 +1,9 @@
 # Visual surface profile
 
 **Scope:** task-class. **Owner:** `xc-work/references/profiles/visual.md`. **Promotion status:**
-`validated-in-class` (Wildgrove visual sample). **Evidence surface:** rendered UI/page/canvas.
-**Generality evidence:** 0.3.8 Wildgrove; not a universal rule. **Force:** convention-only.
+`proposed` (0.3.7/0.3.8 visual instances informed it; no second independent profile application).
+**Evidence surface:** rendered UI/page/canvas. **Generality evidence:** visual samples only; not a
+universal rule. **Force:** convention-only.
 
 **Applies when** the requested acceptance depends on a rendered/visual output
 surface (UI, page, canvas, visual document). **Does not apply when** the artifact has no visual output

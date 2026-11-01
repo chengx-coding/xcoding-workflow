@@ -12,9 +12,9 @@ description: "Classifies governance, plans proportional managed effort, or runs 
 A create task selects one or more output surfaces in analysis and passes the profile id to verification.
 Use this public table; do not read another Skill's private references.
 
-| Profile | Applies when | Required evidence |
+| Baseline | Applies when | Required evidence |
 | --- | --- | --- |
-| `universal` | any observable state transition | before/action/after on the declared surface; executed evidence; unrun probe is a gap |
+| `universal` (baseline, not a selectable profile) | any observable state transition | before/action/after on the declared surface; executed evidence; unrun probe is a gap |
 | `visual` | UI/page/canvas/rendered document | visible before/after; at least two materially different visual states when present; background/occlusion/layer/spatial anchor; responsive/accessibility; executed assertion, not a single screenshot |
 | `cli-library-api` | command/library/API/file surface | exact command or call; exit code/stdout/stderr/status/body/diff; success/error/empty/limit/recovery; no screenshot as substitute |
 | `docs` | source or rendered documentation | affected content + render/link/anchor/navigation/search evidence; no game/UI checks; visual profile only if the docs task has a rendered visual design surface |
