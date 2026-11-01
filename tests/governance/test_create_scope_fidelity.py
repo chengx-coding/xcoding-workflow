@@ -19,6 +19,8 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         reference_flat = " ".join(reference.split())
         analysis = read(SKILLS / "xc-analysis" / "SKILL.md")
         verification = read(SKILLS / "xc-verification" / "SKILL.md")
+        implementation = read(SKILLS / "xc-implementation" / "SKILL.md")
+        review = read(SKILLS / "xc-review" / "SKILL.md")
         generality = read(
             SKILLS / "xc-workflow-evolution" / "references" / "generality-and-applicability.md"
         )
@@ -40,6 +42,8 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("solution matrix", reference_flat)
         self.assertIn("Verification and review", reference_flat)
         self.assertIn("Output-Surface Evidence", verification)
+        self.assertIn("capability matrix", implementation)
+        self.assertIn("scope fidelity", review)
 
         evolution_skill = read(SKILLS / "xc-workflow-evolution" / "SKILL.md")
         discipline = read(

@@ -135,12 +135,10 @@ ready leaves, a subtree that is a live dependency target, a subtree containing
 an archived stub, a `pending` subtree, and an empty reason are all still
 rejected.
 
-Recovering this way is an audited bypass, not a silent one. The reason stays
-required, and the archive record and the stub additionally carry the recovered
-status and a fixed warning stating that the work order continued past a state
-that would otherwise have ended it. The command result repeats them under
-`recovery`. An ordinary archive of a succeeded subtree records neither, so a
-recovery archive is always distinguishable from routine cleanup in review.
+Recovering this way is an audited bypass, not a silent one. The reason stays required; the archive
+record and stub carry the recovered status and fixed warning, and the command result repeats them
+under `recovery`. `references/runtime-protocol.md` owns the field/eligibility detail; do not restate
+it here.
 
 ## Distinguishing a Task Blocker From a Tool Defect
 

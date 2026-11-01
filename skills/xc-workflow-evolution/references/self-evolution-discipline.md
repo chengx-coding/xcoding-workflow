@@ -82,13 +82,14 @@ the current session.
 ## 8. Delegated gates
 
 Only an explicit user grant for an autonomous multi-round line can delegate an otherwise user-owned
-gate. The grant states its source, scope and iteration/expiry; expanding it needs a new grant. Run the
-gate, do not skip it. Record grant, scope, alternatives, materiality, evidence, risk, rollback and
-independent review; `result.md` carries an autonomous-decisions section. Material means a contract,
-public behavior, architecture, security/permissions/data or irreversible decision. Non-delegable:
-expanding the grant, security/permissions/secrets/compliance, destructive history/artifact deletion,
-release/tag/publication, core values/explicit user constraints, host restrictions, out-of-grant or
-irreversible decisions.
+gate. Silence is not a grant; only the main session runs the delegated gate, and it cannot be
+delegated to a worker. The grant states its source, scope and iteration/expiry; expanding it needs a
+new grant. Run the gate, do not skip it. Record grant, scope, alternatives, materiality, evidence,
+risk, rollback and independent review; `result.md` carries an autonomous-decisions section. Material
+means a contract, public behavior, architecture, security/permissions/data or irreversible decision.
+Non-delegable: expanding the grant, security/permissions/secrets/compliance, destructive history/
+artifact deletion, release/tag/publication, core values/explicit user constraints, host restrictions,
+out-of-grant or irreversible decisions.
 
 ## 9. Force
 

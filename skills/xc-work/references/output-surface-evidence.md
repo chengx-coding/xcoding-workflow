@@ -51,7 +51,9 @@ to a game/UI or CLI-only artifact with no documentation surface.
 
 ## Status
 
-All task-class profiles are `proposed`: visual informed by 0.3.7/0.3.8 samples without a second
+All task-class profiles are `proposed`: visual informed by prior visual samples without a second
 independent profile application; CLI and docs by one contract probe each. A second independent
 instance is required before `validated-in-class`; universal promotion requires a different-class
 probe and a negative probe.
+
+**Force:** convention-only; no runtime check proves a profile is universal.
