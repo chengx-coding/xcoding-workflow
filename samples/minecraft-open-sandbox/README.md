@@ -45,16 +45,25 @@ The two runs are complete and blind-scored. Identity reveal: **A = one-shot (MOS
 
 | | One-shot A | XC B |
 | --- | ---: | ---: |
-| PES | **89.4** | **60.0** (raw 76.8) |
-| ECS | **87.0** | **88.3** |
-| Composite | **88.8** | **65.0** (raw 79.7) |
-| High / medium / low | 0 / 0 / 3 | **1 / 1 / 3** |
+| PES | **80.8** | **55.0** (raw 63.0; high cap 55) |
+| ECS | **81.3** | **86.1** |
+| Composite | **80.9** | **55.0** (raw 68.8; cap) |
+| Experience tier | **polished** | **prototype** |
+| High / medium / low | 0 / 1 / 1 | **1 / 2 / 2** |
 | Higher | **A** | — |
 
-The XC result has the higher engineering score and a real crafting loop, but one high defect:
-underground air is transparent to the sky/sun/clouds layer. That caps PES at 60 and composite at 65.
-See [`evaluation/SCORE-SHEET.md`](evaluation/SCORE-SHEET.md) and the blind report
-[`evaluation/blind-evaluation.md`](evaluation/blind-evaluation.md).
+The XC result has the higher engineering score and a real crafting loop, but it is visually and
+experientially far behind, and it has one high defect: underground air is transparent to the
+sky/hill layer. The v1.2 standard caps a high defect at 55 and treats a passive `E craft` hint as
+insufficient discoverability; see [`evaluation/SCORE-SHEET.md`](evaluation/SCORE-SHEET.md), the v1.1
+blind report [`evaluation/blind-evaluation-v1.1.md`](evaluation/blind-evaluation-v1.1.md), and the
+v1.0 history [`evaluation/blind-evaluation.md`](evaluation/blind-evaluation.md).
+v1.2 is a standards correction applied mechanically to the v1.1 blind dimension evidence, not a new
+blind run.
+
+The dimension-level gap is larger than the composite: D5 84 vs 58, D4 86 vs 55, D7 86 vs 50. The
+composite is compressed by A's own gaps (no map, no biomes/water physics, no smelting) and B's
+higher ECS; the **tier** label is the clearer product comparison.
 
 ![One-shot MOSSWILD](media/one-shot-mosswild.png)
 
@@ -64,4 +73,5 @@ See [`evaluation/SCORE-SHEET.md`](evaluation/SCORE-SHEET.md) and the blind repor
 
 The runs and scores are recorded after both outputs exist. Do not compare this sample's score with the
 compact `minecraft-sandbox-work-order` score; the prompts and profiles differ.
+
 

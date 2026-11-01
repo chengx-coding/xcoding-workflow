@@ -1,4 +1,4 @@
-# Open 2D sandbox profile
+# Open 2D sandbox profile — v1.2
 
 **Prompt:** the exact `prompt.md`; no feature list and no non-goal list. The agent decides which
 Minecraft systems belong in a small sandbox and records the reasoning.
@@ -27,8 +27,15 @@ Minecraft systems belong in a small sandbox and records the reasoning.
 | Objectives/exploration loop | | | |
 
 Crafting/progression may be a recipe list, a 2×2/3×3 grid, a station, or a small progression chain.
-It must consume inputs and produce outputs; a decorative menu is not a loop. If absent, D4 is capped
-at 50 and the report records the absence; it is **not** a high integrity defect.
+It must consume inputs and produce outputs and be **discoverable from the first-run UI or help**; a
+decorative menu is not a loop. If absent, D4 caps at 40. If crafting exists only behind a passive HUD key hint and no visible
+button/tutorial/quest entry, D4 caps at 55 and D9 at 70; a real user failing to find it is decisive
+evidence. It is **not** a high integrity defect, but it prevents a `polished` tier.
+
+A real map/minimap is required for D6 >60. Coordinates/field notes alone are not a map. Visual
+composition, character readability and tool animation are primary D5 evidence; a plain prototype
+cannot score above 60. Water/sand physics, smelting/ingots and combat are coverage/depth items under
+D2/D4/D1, not high defects.
 
 ## No pre-exclusions
 
@@ -39,7 +46,8 @@ chose a smaller scope, record the reason and the lost experience value.
 ## Integrity
 
 High defects: unsealed floor, underground sky, collision/placement corruption, save/boot failure,
-unplayable controls. A polished but hollow sandbox cannot erase a broken world.
+unplayable controls. One high defect caps PES/composite at 55; two at 45. A high-defect result is
+`prototype` even with strong ECS; a polished but hollow sandbox cannot erase a broken world.
 
 ## Comparison
 

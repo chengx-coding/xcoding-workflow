@@ -1,10 +1,28 @@
-# M2D-SES-OSS v1.0 — Open Sandbox Standard
+# M2D-SES-OSS v1.2 — Open Sandbox Standard
 
 A fixed, reproducible rubric for a **simple, open Minecraft-style 2D sandbox prompt**. It evaluates
 what an agent actually produced, not whether it followed a pre-written feature list.
 
 This standard is intentionally separate from the compact-sample v1.1 rubric. Scores are not
 comparable across the two samples.
+
+## 1a. Experience-first correction (v1.1)
+
+v1.0 under-ranked a technically present but poor experience. v1.1 changes the weighting and adds
+accessibility/discoverability rules **before** re-scoring; it does not change the A/B artifacts.
+
+- A feature counts only if a player can find and use it from the first-run UI or in-game help.
+  Code/README presence without a discoverable entry point is not full credit; a primary system
+  (crafting, inventory, map) that is not discoverable is at most 50% of its dimension.
+- A map/minimap is a real spatial aid. Coordinates or field notes alone do not earn the top D6 band
+  (D6 ≤60 without a map).
+- Visual composition, character readability, animation and tool visualisation are a primary
+  experience dimension, not polish. A plain prototype cannot score above 60 in D5.
+- Biomes, water/sand physics, smelting/ingots and combat/mobs are coverage/depth items under D2/D4/D1;
+  they are not high defects, but their absence lowers the relevant dimension.
+- ECS cannot rescue a poor PES: composite is capped at PES + 10 when PES <70, and at PES when PES <60.
+  The existing high-defect caps still apply.
+
 
 ## 1. Prompt and comparison
 
@@ -18,6 +36,28 @@ Both conditions receive exactly this product prompt:
 One-shot and XC start from the same seed. The XC condition may use workflow process tooling; it must
 not receive extra product requirements. Evaluate anonymized A/B outputs; the evaluator must not know
 the condition.
+
+## 1b. v1.2 correction — discoverability and high-defect severity
+
+A passive HUD key hint is not enough. A core system is discoverable only when the first-run UI has a
+visible button/tutorial/quest entry that a new player can find without reading the README or guessing
+a key. If crafting is reachable only by a passive `E craft` line, D4 ≤55 and D9 ≤70 even if the code
+works. This rule applies to both conditions; it was added after a real user could not find Blockhaven's
+crafting.
+
+A high integrity defect cannot land at 65. v1.2 caps one high defect at **PES ≤55 / composite ≤55**;
+two or more at **PES ≤45 / composite ≤45**; a blocker remains 20/30. The defect is a broken player
+world, not a missing optional feature.
+
+Report the **experience tier** separately from the composite:
+
+- `polished`: PES ≥80, D5 ≥75, D4 ≥75;
+- `solid`: PES 65–79 and D5 ≥60;
+- `prototype`: PES <65 or D5 <55;
+- `broken`: a blocker/high defect prevents normal play.
+
+A high-defect artifact can be `prototype` even when its ECS is strong; engineering does not promote
+the experience tier.
 
 ## 2. Gates and defect caps
 
@@ -36,7 +76,7 @@ High defects (player-visible broken core):
 - save destroys a valid world or prevents boot;
 - controls are unreadable or the game cannot be played.
 
-**Caps:** one high defect → PES ≤60, composite ≤65; two or more → PES ≤50, composite ≤60.
+**Caps:** one high defect → PES ≤55, composite ≤55; two or more → PES ≤45, composite ≤45.
 A blocker (game unplayable / no offline boot) → PES ≤20, composite ≤30.
 
 Medium defects: missing break/place feedback, no spatial orientation, no visible selected hotbar,
@@ -55,15 +95,15 @@ Score each dimension 0–100, then take the weighted sum.
 
 | ID | Dimension | Weight | What earns the score |
 | --- | --- | ---: | --- |
-| D1 | Core verbs and controls | 12 | movement, jump, collision, mining, placing, camera; clear controls and refusal reasons |
-| D2 | World generation and exploration | 14 | seeded terrain, block variety, caves/ores/biomes/structures; a world worth exploring, not a flat strip |
-| D3 | Mining and placement feedback | 12 | target/outline, break progress, particles/sound, animation, placement preview/refusal; actions read without explanation |
-| D4 | Inventory, crafting and progression | 20 | counts/hotbar, gather→craft→build loop, recipes (grid or list), stations/tools, resource pressure, goals/progression. No fixed recipe count; absence of any crafting/progression caps D4 at 50 |
-| D5 | Presentation, UI, audio, atmosphere | 12 | coherent visual identity, readable HUD, day/night/lighting, sound/mute, composition; not a debug canvas |
-| D6 | Orientation and status | 6 | seed/position/time, minimap or equivalent spatial aid, clear feedback |
-| D7 | Replay, objectives and world controls | 6 | seed/new world, pause/help, lightweight goals or exploration loop |
-| D8 | Accessibility, responsive and polish | 6 | keyboard/accessible labels, reduced motion, 800/960/1280 behavior, no clipping/overlap |
-| D9 | First-run and documentation | 12 | immediate playability, visible controls, short README/architecture, no external docs needed |
+| D1 | Core verbs and controls | 10 | movement, jump, collision, mining, placing, camera; clear controls and refusal reasons; combat/health only if present |
+| D2 | World generation, biomes and physics | 16 | seeded terrain, block variety, caves/ores/biomes/structures, water/sand behavior; a world worth exploring, not a flat strip |
+| D3 | Mining and placement feedback | 10 | target/outline, break progress, particles/sound, animation, placement preview/refusal; actions read without explanation |
+| D4 | Inventory, crafting and progression | 22 | counts/hotbar/backpack, **discoverable** gather→craft→build loop, recipes (grid or list), stations/tools, smelting/ingots, resource pressure, goals/progression. No fixed recipe count; no crafting/progression caps at 40; a hidden crafting entry point caps at 55 |
+| D5 | Presentation, character, UI, audio | 18 | composition, character readability, movement/tool animation, readable HUD, lighting, sound/mute, atmosphere; a plain prototype ≤60 |
+| D6 | Orientation and map | 6 | seed/position/time and a real minimap/map; coordinates/field notes alone ≤60 |
+| D7 | Replay, objectives, combat | 8 | seed/new world, pause/help, goals/exploration loop, combat if present |
+| D8 | Accessibility and responsive | 4 | keyboard/accessible labels, reduced motion, 800/960/1280 behavior, no clipping |
+| D9 | First-run discoverability and docs | 6 | immediate play, visible core-system entry points, in-game help, short README; README cannot substitute for discoverability |
 
 D4 is the **signature dimension**. A Minecraft-like result need not implement every Minecraft system,
 but a gather→craft→build loop is the genre's defining progression. A recipe list is acceptable; a
@@ -86,6 +126,9 @@ Node, browser or scripted checks; count is evidence, not score.
 ## 5. Composite and reporting
 
 `composite = 0.75 × PES + 0.25 × ECS`
+
+Experience floor/cap: if PES <70, composite ≤ PES + 10; if PES <60, composite ≤ PES.
+High-defect caps still apply and take precedence. Report the experience tier separately.
 
 Report:
 
