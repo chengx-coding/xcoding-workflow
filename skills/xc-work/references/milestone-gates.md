@@ -16,7 +16,7 @@ A milestone acceptance gate activates when the milestone work group completes an
 
 ## Main-Session Ordering
 
-1. Collect demo evidence first: run outputs, screenshots, and test results, each recorded as a declared node artifact.
+1. Collect demo evidence first: run outputs/CLI transcripts/API responses/file diffs/render checks, screenshots only when the visual profile applies, and test results, each recorded as a declared node artifact.
 2. Publish `bb:milestone.demo_sources` with the terminal evidence-leaf IDs; the same leaves may also appear in `milestone.evidence_sources`.
 3. Request the gate control packet and verify both categories resolve before proceeding.
 4. Start the gate and ask one focused approval question; record the answer as the gate decision.

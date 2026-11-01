@@ -62,11 +62,28 @@ Priorities:
 The map is not a checklist to maximize. It exists to expose omissions and unilateral narrowing before
 they become implementation.
 
-## Stateful experience integrity
+## Observable-state integrity
+
+**Scope:** universal. **Owner:** `xc-work/references/create-scope.md`. **Applies when** acceptance
+depends on a user-observable state transition. **Does not apply when** no stateful surface exists.
+**Evidence surface:** declared in the analysis surface map. **Promotion status:** `proposed`
+(generality evidence: CLI/docs contract probes; no full cross-class study). **Force:** convention-only.
 
 **Trigger.** Apply this section when the requested acceptance depends on a user-observable state that
 can change, persist, fail, empty, or recover. If no such state exists, record "no applicable stateful
 journey" with the reason in the capability map; do not silently omit the decision.
+
+**Surface and profile.** Analysis records the output surface(s) the user/operator observes: UI/render,
+CLI stdout/stderr/exit, API status/body, file/diff, rendered docs, logs or persistence. Load the
+matching task-class profile when the surface needs one:
+
+- `profiles/visual.md` for a rendered/visual surface;
+- `profiles/cli-library-api.md` for commands, libraries, APIs and files;
+- `profiles/docs.md` for source/rendered documentation.
+
+The universal rule below is surface-neutral. A task with no visual surface must not be required to
+produce screenshots/background/occlusion evidence; use the matching profile and record a surface as
+not applicable only with a reason.
 
 When it applies, the capability map must also cover the **states the experience depends on**, not only
 its static features. Add a small set of **user journeys** and **integrity invariants**:
@@ -103,17 +120,11 @@ applies at approval time; this rule applies to the executed evidence after imple
 a fidelity instrument, not a feature count: do not add a journey merely to make the map look thorough,
 and do not import a reference's unrelated states.
 
-**Visible state.** A journey that removes, clears, hides or covers content, changes content, changes
-mode/theme/time or viewport, or reaches a boundary/terminal state must state what the user sees in its
-place. Its
-`acceptance` records the visible before/after: background, empty/fallback content, occlusion, layer
-order and spatial anchor, not only the model or action result. Its `verification` executes the journey
-and asserts the visible state; when the experience has materially different visual states, it checks at
-least two of them (for example light/dark, theme, viewport) rather than one default frame. Where a
-global or screen-space default could misrepresent the state, the verification includes a spatial/layer
-consistency check. A static image alone, a code reading, a narrative claim, or a single default
-screenshot is not evidence. A `must` visible-state gap follows the same fail/block-or-recorded-risk
-consequence as any must journey gap; a `should` gap may remain recorded.
+**Applicability.** This universal rule requires an observable state transition on the declared
+surface; the profile owns the surface-specific evidence. Do not apply a visual profile to a task
+without a visual surface. A `must` journey gap fails/blocks verification until executed or accepted
+as a recorded risk; a `should` gap may be recorded. Do not use a screenshot where the surface is a
+CLI/API/file/doc. The set is a fidelity instrument, not a feature count.
 
 **Force.** This obligation is convention-only: no check rejects a create task that omits a journey; its
 force is the contract text and review.

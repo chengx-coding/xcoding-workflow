@@ -61,5 +61,5 @@
 - **何时调用：** 实现、诊断、采用或功能基线需要项目定义的验证证据时。
 - **用途：** 运行最小充分命令集，把证据映射到验收条件，并记录结果和覆盖缺口。
 - **公开入口：** 必填 `workbench_path`、`verification_scope`、`artifact_path`；可选 `inputs`。
-- **典型用法：** 读取项目验证政策，先运行局部检查，再按风险扩展回归检查，并记录每条命令及未执行前置条件。对 `create`，把证据映射到 accepted matrix 中的每个 must/should capability；测试全过不等于未验证 capability 已证明。对交互或有状态的 create 体验，执行每个 journey/integrity capability，并记录 before- 与 post-state 可观察结果；当内容被移除/清空/隐藏/覆盖或发生变化，或到达边界/终态时，断言可见的背景/空状态/遮挡状态，并在存在时检查至少两个实质性不同的视觉状态。静态图片、代码阅读、叙述性声明或单个默认截图不算证据，`must` gap 会阻塞直到执行或按记录的风险接受。Adaptive regression 或 multi-environment scope 使用独立验证节点；fast pace 不能删除 required scope。
+- **典型用法：** 读取项目验证政策，先运行局部检查，再按风险扩展回归检查，并记录每条命令及未执行前置条件。对 `create`，使用 analysis 选择的 output-surface profile，把证据映射到 accepted matrix 中的每个 must/should capability；测试全过不等于未验证 capability 已证明。对视觉表面，使用 visual profile 的 visible-state/multi-state 检查；对 CLI/API/file 或 docs 表面，使用各自证据，不要求截图。Adaptive regression 或 multi-environment scope 使用独立验证节点；fast pace 不能删除 required scope。
 - **主要边界：** 不编造命令或通过标准，不静默弱化验收条件，也不为强行通过而修改产品行为。

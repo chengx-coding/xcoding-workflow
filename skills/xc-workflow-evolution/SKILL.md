@@ -93,6 +93,24 @@ unchanged. It adds no runtime command, state, node type or configuration surface
 nodes, artifacts and gates. All new rules are convention-only unless an existing mechanical check says
 otherwise.
 
+## Applicability and Generality
+
+Before adding or promoting a self-evolution rule, read
+[`references/generality-and-applicability.md`](references/generality-and-applicability.md). It requires
+every rule to declare its scope (`universal`, `task-class`, `project-specific`, `sample-specific`),
+`applies_when`, `does_not_apply`, evidence surface, owner and promotion status.
+
+- Universal rules must be surface-neutral and live in the generic Skill.
+- Task-class rules live in the owning profile (for example visual, CLI/library/API or docs), never in
+  the universal path. Visual rules apply only when the task has a visual output
+  surface; a pure code/docs task must not produce screenshots or visual-state evidence.
+- A rule from one sample/task is not universal. Promotion to `universal` requires a probe in a
+  different task class plus a negative/not-applicable probe; wording alone is not generality.
+- The independent review must apply the rule to a non-originating class and record an applicability
+  map. A wording-only review cannot support universal promotion.
+- The meta-review must ask whether the rule belongs in the universal core, a profile, the bridge or
+  the sample, and must demote/retire overgeneralized rules.
+
 ## Architecture-Preserving Evolution
 
 Prefer the smallest correct fix that reuses an existing mechanism or established pattern over a new command, new state, new configuration surface, new node type, or new cross-cutting check. A minor or low-value problem does not justify durable added complexity.

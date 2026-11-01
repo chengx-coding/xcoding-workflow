@@ -23,7 +23,7 @@
 
 实现幅度是动态约束，不是固定最小值。目标是**最小充分改动**：在满足正当需求和任务相应质量 bar 的前提下最小的改动，并在不冲突时尽量保持既有结构与一致性。
 
-- `create` 没有最小化预设。它的 goal 必须携带用户可见质量契约，以及保留请求结果的 intended capability scope；实现在约束内最大化产品价值。goal 要为每个 material exclusion 或新增约束记录来源；goal 自己发明的 material exclusion 在没有用户确认时不得成为绑定范围。比较对象是 floor，不是 ceiling。存在可信领域参考时，analysis 还要记录一个小型 signature-experience map，goal 的质量契约携带该挑战；这不是 breadth 指标。对交互或有状态的 create 体验，analysis 还要携带 before/action/after 验收和已执行 verification 的 journey/integrity capability；当内容被移除/清空/隐藏/覆盖或发生变化，或到达边界/终态时，验收与 verification 要包含可见的背景/空状态/遮挡，并在存在时检查至少两个实质性不同的视觉状态，而不只是状态标签或一帧。没有可信参考时明确记录；存在可信参考的小型任务使用缩减后的 decision-changing signature set，而不是一刀切的豁免。提供 prior accepted capability inventory 时，goal 要求对每项 prior capability 做 preserve/improve/replace/retire/defer 处置，无来源移除不被接受；prior should 可带原因、影响、来源和重新进入触发条件而 defer，solution gate 为强制。
+- `create` 没有最小化预设。它的 goal 必须携带用户可见质量契约，以及保留请求结果的 intended capability scope；实现在约束内最大化产品价值。goal 为每个 material exclusion 或新增约束记录来源；自己发明的 material exclusion 在没有用户确认时不得绑定。比较对象是 floor，不是 ceiling。存在可信领域参考时，analysis 记录小型 signature-experience map；提供 prior accepted capability inventory 时，对每项 prior capability 做 preserve/improve/replace/retire/defer 处置。对交互或有状态的 create 任务，analysis 包含 journey/integrity capability，并选择公开的 output-surface profile（`visual`、`cli-library-api` 或 `docs`）；只有存在视觉表面时才适用 visual 规则，非视觉任务使用自己的 profile。
 - `change` 使用中等最小性：优先选择能完整满足需求与质量 bar 的最小一致改动；如果需求或质量 bar 要求更大改动，就降低最小性偏好，按需求实现。尽量保持一致性。
 - `repair` 使用强最小性预设：能局部修复就局部修复；如果根因或正确修复需要改共享机制、设计或需求，则升级为 `change`。
 
