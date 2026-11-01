@@ -16,6 +16,7 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
     def test_output_surface_contract_is_single_source(self):
         work = read(SKILLS / "xc-work" / "SKILL.md")
         reference = read(SKILLS / "xc-work" / "references" / "create-scope.md")
+        reference_flat = " ".join(reference.split())
         analysis = read(SKILLS / "xc-analysis" / "SKILL.md")
         verification = read(SKILLS / "xc-verification" / "SKILL.md")
         generality = read(
@@ -31,8 +32,13 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertFalse((SKILLS / "xc-work" / "references" / "profiles").exists())
         for text in (reference, analysis, verification, generality):
             self.assertNotIn("profiles/", text)
-        self.assertIn("Observable-state", reference)
-        self.assertIn("before/action/after", reference)
+        self.assertIn("Observable-state", reference_flat)
+        self.assertIn("before/action/after", reference_flat)
+        self.assertIn("capability map", reference_flat)
+        self.assertIn("signature", reference_flat)
+        self.assertIn("prior accepted capability inventory", reference_flat)
+        self.assertIn("solution matrix", reference_flat)
+        self.assertIn("Verification and review", reference_flat)
         self.assertIn("Output-Surface Evidence", verification)
 
         evolution_skill = read(SKILLS / "xc-workflow-evolution" / "SKILL.md")
@@ -68,4 +74,4 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
             SKILLS / "xc-orchestration-runtime" / "references" / "runtime-protocol.md"
         )
         section = protocol.split("## Subtree Archiving", 1)[1]
-        self.assertIn("`succeeded`, `failed`, `blocked`", section)
+        self.assertIn("failed/blocked composite or loop", section)

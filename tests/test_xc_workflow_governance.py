@@ -1169,10 +1169,11 @@ class WorkflowGovernanceClassifierTests(unittest.TestCase):
 
     def test_workflow_evolution_uses_only_the_public_xc_work_boundary(self) -> None:
         contract = WORKFLOW_EVOLUTION_SKILL.read_text(encoding="utf-8")
-        self.assertIn("public Skill boundary with `operation=classify`", contract)
-        self.assertIn("public `xc-work operation=run`", contract)
-        self.assertIn("do not create a work order", contract)
-        self.assertIn("depends only on the documented `xc-work` Skill name and public parameters", contract)
+        flattened_contract = " ".join(contract.split())
+        self.assertIn("public `xc-work operation=classify`", flattened_contract)
+        self.assertIn("public `xc-work operation=run`", flattened_contract)
+        self.assertIn("re-enter public `xc-work`", flattened_contract)
+        self.assertNotIn("classify_governance.py", contract)
         self.assertNotIn("classify_governance.py", contract)
 
     def test_workflow_evolution_states_the_core_design_obligation(self) -> None:
@@ -1185,15 +1186,15 @@ class WorkflowGovernanceClassifierTests(unittest.TestCase):
         design or that a user confirmed a change to it.
         """
         contract = WORKFLOW_EVOLUTION_SKILL.read_text(encoding="utf-8")
-        prefix, separator, remainder = contract.partition("## Core Design Alignment")
+        prefix, separator, remainder = contract.partition("## Core design alignment")
         # Control: a failed slice must fail the test rather than pass vacuously.
-        self.assertEqual(separator, "## Core Design Alignment")
-        self.assertIn("## Architecture-Preserving Evolution", prefix)
-        self.assertIn("## Project Version Policy", remainder)
+        self.assertEqual(separator, "## Core design alignment")
+        self.assertIn("## Architecture-preserving evolution", prefix)
+        self.assertIn("## Project version policy", remainder)
         section = remainder.split("\n## ", 1)[0]
         flattened = " ".join(section.split())
         self.assertTrue(flattened, "the core design section must not be empty")
-        self.assertNotIn("## Project Version Policy", section)
+        self.assertNotIn("## Project version policy", section)
         # Duty 1: every self-evolution iteration re-checks the declared design
         # before doing the work.
         self.assertIn("re-check the project's declared authoritative core design", flattened)

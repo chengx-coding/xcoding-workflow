@@ -46,38 +46,23 @@ python "$SKILL_DIR/scripts/install_xc_skills.py" --source-root <source> --target
 
 ## Self-evolution method
 
-For a self-evolution/optimization line, read
+For a self-evolution line, read
 [`references/self-evolution-discipline.md`](references/self-evolution-discipline.md) and
-[`references/generality-and-applicability.md`](references/generality-and-applicability.md) before
-starting or continuing. The references own the method; this Skill owns routing, placement and force.
+[`references/generality-and-applicability.md`](references/generality-and-applicability.md). The
+discipline owns the method (startup, divergence/convergence, meta-review, architecture health, line
+closure and delegated gates); this Skill owns routing, placement, status and force.
 
-- **One owner per rule.** Stable contract/invariants here; method/checklists/record formats in
-  references; stage actions in node instructions. Do not duplicate; when moving content, verify
-  equivalence and update links/tests atomically.
-- **Startup.** Reconstruct the line state first: prior round notes, the project's architecture
-  debt/decision registers when present, the current hypothesis, and what would count as failure.
-- **Divergence → convergence.** Consider context and solution divergence (do nothing, minimal fix,
-  simplify, refactor, change metric/process), then converge with evidence, rejected options,
-  uncertainty, owner, scope, version and a stop/continue reason. Option count is not a metric.
-- **Meta-review.** At three completed iterations, a version boundary, or a direction/patch/
-  architecture/regression/generality/metric/user-report signal, pause for an independent review with a
-  bounded time-box. Record a minimal meta-review: what was learned about the process, what to
-  keep/demote/retire/refactor, and the next trigger. It cannot make material changes unilaterally and
-  is not recursively reviewed.
-- **Architecture health.** Treat duplicate rules, multi-source truth, cross-Skill private reads,
-  patch-on-patch guards, prose-coupled tests, undocumented runtime drift and version churn as refactor
-  signals. Prefer deletion/consolidation/ownership moves over another guard/profile/mechanism. Record
-  the result as keep/consolidate/refactor/retire, with a target shape and migration when refactoring.
-- **Line closure.** End a line with `continue`, `promote` (rule/profile becomes durable), `refactor`
-  (major iteration) or `stop` (with reason). A line cannot end by saying "defer to line end" without a
-  decision; record the decision, evidence, residual risks and next trigger.
-- **Delegated gates.** Only an explicit user grant for an autonomous multi-round line can delegate an
-  otherwise user-owned gate. A delegated gate is run, not skipped: record grant, scope, alternatives,
-  materiality, evidence, risk, rollback and independent review; `result.md` carries an
-  autonomous-decisions section. Expanding the grant, security/permissions/secrets/compliance,
-  destructive history/artifact deletion, release/tag/publication, core values or user constraints,
-  host restrictions, and out-of-grant/irreversible decisions remain non-delegable.
-- **Force.** Convention-only unless an existing mechanical check says otherwise. No new runtime
+- **One owner per rule.** Stable contract/invariants here; method/checklists/records in references;
+  stage actions in node instructions. Do not duplicate; update links/tests atomically when moving.
+- **Startup.** Reconstruct prior round notes, the project's architecture debt/decisions, the current
+  hypothesis and what would refute it.
+- **Status.** `proposed` → `validated-in-class` → `promoted-universal`; also `demoted`/`retired`.
+  A task-class rule starts `proposed`; a second independent instance is needed for `validated-in-class`;
+  a different-class probe plus a negative/not-applicable probe is needed for universal promotion.
+- **Line closure.** End with `continue`, `promote`, `refactor` or `stop`; a line closure requires a
+  recorded minimal meta-review (what changed, what was learned, keep/demote/retire, architecture
+  signal, decision, next trigger). "Defer to line end" is not a decision.
+- **Force.** Convention-only unless an existing mechanical check says otherwise; no new runtime
   command, state, node type or configuration surface.
 
 This discipline applies to self-evolution lines only; ordinary work orders and user gates are
@@ -95,7 +80,7 @@ review and a user gate. Record deferred work and accepted trade-offs as durable 
 
 Before selecting or implementing a change, re-check the project's declared authoritative core design
 (the bridge names its location). Judge the iteration against its principles, invariants and decision
-criteria. Any change to that design requires the user's prior confirmation; propose it, do not edit it
+criteria. Any change to that design requires the user's prior confirmation before it takes effect; propose it, do not edit it
 as a side effect. This is documentation discipline plus a phrase-level test, not mechanical proof of
 reading or confirmation. Keep project-specific locations/numbering in the bridge.
 

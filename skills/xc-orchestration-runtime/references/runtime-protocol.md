@@ -374,8 +374,8 @@ preserving its complete record inside the managed tree:
 archive-subtree --tree TREE --subtree NODE --reason REASON [--expected-revision N]
 ```
 
-Eligibility requires the subtree root to be `succeeded`, `failed`, `blocked`, or a `closed` dynamic
-group. The runtime root node is never archiveable, and the subtree must not
+Eligibility requires the subtree root to be `succeeded`, a failed/blocked composite or loop, or a
+`closed` dynamic group. The runtime root node is never archiveable, and the subtree must not
 contain running leaves, ready leaves (including pending leaves that the
 readiness predicate would schedule), archived stubs (nested archiving is
 refused so every live stub keeps its own registry record), or dependency
@@ -383,7 +383,9 @@ targets of live nodes outside the subtree; each refusal uses a stable error
 code: `archive_node_not_found`, `archive_root_refused`,
 `archive_status_refused`, `archive_running_leaf`, `archive_ready_leaf`,
 `archive_dependency_target`, `archive_nested_archived_stub`, and
-`archive_reason_required`. Refusals are read-only.
+`archive_reason_required`. Refusals are read-only. A failed/blocked composite or loop archive records
+the recovered status and a fixed recovery warning on the archive record and stub, repeated under
+`recovery` in the command result; a routine succeeded-subtree archive records neither.
 
 The live tree replaces the subtree root with an `archived` stub that keeps
 the node identity (`id`, `template_id`, `role`, `title`, type metadata) plus

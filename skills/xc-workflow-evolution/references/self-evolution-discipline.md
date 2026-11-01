@@ -53,7 +53,9 @@ regression/generality/metric/user-report signal. Use a bounded independent revie
 | Next trigger | date, event or version |
 
 The review cannot make material changes unilaterally and is not recursively reviewed. "Defer to line
-end" is not a decision; line end must record one.
+end" is not a decision; line end must record one. A line closure always records the table above, even
+when no trigger fired; if no independent reviewer is available, record the fallback and limit the
+claim to a self-review, never "independent acceptance".
 
 ## 6. Architecture health
 
@@ -80,8 +82,10 @@ the current session.
 ## 8. Delegated gates
 
 Only an explicit user grant for an autonomous multi-round line can delegate an otherwise user-owned
-gate. Run the gate, do not skip it. Record grant, scope, alternatives, materiality, evidence, risk,
-rollback and independent review; `result.md` carries an autonomous-decisions section. Non-delegable:
+gate. The grant states its source, scope and iteration/expiry; expanding it needs a new grant. Run the
+gate, do not skip it. Record grant, scope, alternatives, materiality, evidence, risk, rollback and
+independent review; `result.md` carries an autonomous-decisions section. Material means a contract,
+public behavior, architecture, security/permissions/data or irreversible decision. Non-delegable:
 expanding the grant, security/permissions/secrets/compliance, destructive history/artifact deletion,
 release/tag/publication, core values/explicit user constraints, host restrictions, out-of-grant or
 irreversible decisions.
