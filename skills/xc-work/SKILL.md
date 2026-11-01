@@ -7,21 +7,23 @@ description: "Classifies governance, plans proportional managed effort, or runs 
 
 `xc-work` is the common lifecycle, governance, and proportional-effort entry point for existing-code work. Its default `run` operation preserves the full durable work-order lifecycle. `adaptive-run` opens the same durable workbench but creates only the nodes, documents, gates, and verification capabilities required by an approved plan. The read-only `classify` and `plan` operations create no managed state. A work order may reference no feature, one existing feature, or multiple existing features.
 
-## Output-Surface Profiles
+## Output-Surface Evidence
 
 A create task selects one or more output surfaces in analysis and passes the profile id to verification.
-Use this public table; do not read another Skill's private references.
+Use this public table; do not read another Skill's private references. The single evidence detail is
+`references/output-surface-evidence.md` for this Skill; other Skills use the public ids and the
+requirements below.
 
-| Baseline | Applies when | Required evidence |
+| Profile / baseline | Applies when | Required evidence |
 | --- | --- | --- |
 | `universal` (baseline, not a selectable profile) | any observable state transition | before/action/after on the declared surface; executed evidence; unrun probe is a gap |
 | `visual` | UI/page/canvas/rendered document | visible before/after; at least two materially different visual states when present; background/occlusion/layer/spatial anchor; responsive/accessibility; executed assertion, not a single screenshot |
-| `cli-library-api` | command/library/API/file surface | exact command or call; exit code/stdout/stderr/status/body/diff; success/error/empty/limit/recovery; no screenshot as substitute |
-| `docs` | source or rendered documentation | affected content + render/link/anchor/navigation/search evidence; no game/UI checks; visual profile only if the docs task has a rendered visual design surface |
+| `cli-library-api` | command/library/API/file surface | exact command or call; exit code/stdout/stderr/status/body/diff; success/error/empty/limit/recovery; side effects/idempotence/cleanup where state changes; no screenshot as substitute |
+| `docs` | source or rendered documentation | affected content + rendered/link/anchor/navigation/search evidence; source diff alone is not enough; no game/UI checks; visual profile only if the docs task has a rendered visual design surface |
 
-The detailed profiles live under this Skill's `references/profiles/`; they are this Skill's private
-method. Analysis and verification use the public profile ids above, not those paths. A task without a
-visual surface must not be required to produce visual evidence.
+A task without a visual surface must not be required to produce visual evidence. A task-class profile
+is `proposed` until a second independent instance of that class; universal promotion requires a
+different-class probe and a negative/not-applicable probe.
 
 ## Parameters
 

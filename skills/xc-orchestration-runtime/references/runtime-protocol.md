@@ -44,7 +44,7 @@ integrity-status     Report access policy and checksum state.
 repair-integrity     Explicitly restore managed metadata after a mismatch.
 validate             Validate a managed runtime tree or template.
 restore-point        Capture, list, or restore workshop-scoped restore points.
-archive-subtree      Archive a succeeded or closed subtree into the read-only archived registry.
+archive-subtree      Archive a terminal succeeded, failed, blocked, or closed subtree into the read-only archived registry.
 ```
 
 All commands return JSON. `--json` is accepted for host compatibility.
@@ -374,7 +374,7 @@ preserving its complete record inside the managed tree:
 archive-subtree --tree TREE --subtree NODE --reason REASON [--expected-revision N]
 ```
 
-Eligibility requires the subtree root to be `succeeded` or a `closed` dynamic
+Eligibility requires the subtree root to be `succeeded`, `failed`, `blocked`, or a `closed` dynamic
 group. The runtime root node is never archiveable, and the subtree must not
 contain running leaves, ready leaves (including pending leaves that the
 readiness predicate would schedule), archived stubs (nested archiving is

@@ -69,65 +69,40 @@ depends on a user-observable state transition. **Does not apply when** no statef
 **Evidence surface:** declared in the analysis surface map. **Promotion status:** `proposed`
 (generality evidence: CLI/docs contract probes; no full cross-class study). **Force:** convention-only.
 
-**Trigger.** Apply this section when the requested acceptance depends on a user-observable state that
-can change, persist, fail, empty, or recover. If no such state exists, record "no applicable stateful
-journey" with the reason in the capability map; do not silently omit the decision.
+**Trigger.** Apply when acceptance depends on a user-observable state that can change, persist, fail,
+empty or recover. If no such state exists, record "no applicable stateful journey" with the reason in
+the capability map; do not silently omit the decision.
 
-**Surface and profile.** Analysis records the output surface(s) the user/operator observes: UI/render,
-CLI stdout/stderr/exit, API status/body, file/diff, rendered docs, logs or persistence. Load the
-matching task-class profile when the surface needs one:
+**Surface and profile.** Analysis records the surface(s) the user/operator observes and selects the
+public profile id from `xc-work/SKILL.md` (`visual`, `cli-library-api` or `docs`). The public table and
+the single detail reference `references/output-surface-evidence.md` own the surface-specific evidence.
+A task with no visual surface must not be required to produce screenshots/background/occlusion
+evidence; a task with a visual surface uses the visual profile. Record a surface as not applicable only
+with a reason.
 
-- `profiles/visual.md` for a rendered/visual surface;
-- `profiles/cli-library-api.md` for commands, libraries, APIs and files;
-- `profiles/docs.md` for source/rendered documentation.
+When it applies, add a small set of **user journeys** and **integrity invariants** covering boundary/
+edge states, removed/cleared/exhausted content, terminal/failure/cancelled states, reload/recovery/
+persistence, and accepted/refused feedback. A journey is a user-observable sequence with a
+before/after state, not an implementation module. Add `must` rows when the requested experience depends
+on them; add `should` only when coherent without them, with reason/impact.
 
-The universal rule below is surface-neutral. A task with no visual surface must not be required to
-produce screenshots/background/occlusion evidence; use the matching profile and record a surface as
-not applicable only with a reason.
+**Row content.** `acceptance` states the before/action/after sequence on the declared surface;
+`verification` names the exact executed probe/manual scenario and assertion. A state-label-only row,
+an "inspection"/"review"-only row, or a test that enters the state but asserts only an internal value
+is not sufficient.
 
-When it applies, the capability map must also cover the **states the experience depends on**, not only
-its static features. Add a small set of **user journeys** and **integrity invariants**:
-
-- boundary and edge states (the end of a list/document, an empty container, a disabled control);
-- content that is removed, cleared, hidden or exhausted, and what the user sees in its place;
-- terminal, failure, cancelled or rejected-action states;
-- reload, restart, recovery and persistence states;
-- the feedback that tells the user an action was accepted or refused.
-
-A journey is a user-observable sequence with a before/after state, not an implementation module. An
-integrity invariant is a condition that must remain true across that sequence. Add these as `must`
-capability-map rows when the requested experience depends on them; add them as `should` only when the
-experience can be coherent without them, with the usual reason and impact.
-
-**Row content.** Each journey/integrity row uses the existing map fields as follows:
-
-- `acceptance` states the before/action/after sequence: the user-observable **before** condition, the
-  action, and the user-observable **after** condition.
-- `verification` names the exact executed probe or manual scenario and the assertion it makes. A row
-  whose acceptance is only a state label, or whose verification is only "inspection", "review", or
-  "manual", is not a journey row. A test that enters the state but asserts only an internal value is
-  not sufficient.
-
-**Executed evidence.** Verification must execute the probe or manual scenario and record the
-before-state and post-state observable. A static image, a code reading, and a narrative claim are not
-evidence, even when attached to a journey row. If the probe is unavailable, record the gap; do not
-write a pass.
-
-A `must` journey gap fails/blocks verification until it is executed, or the create result may close
-only with a user-accepted risk recorded through the existing result/risk gate. A `should` journey gap
-may remain a recorded gap with its reason. The existing "uncovered must blocks solution approval" rule
-applies at approval time; this rule applies to the executed evidence after implementation. The set is
-a fidelity instrument, not a feature count: do not add a journey merely to make the map look thorough,
-and do not import a reference's unrelated states.
+**Executed evidence.** Execute the probe and record the before/post observable. A static image, code
+reading, or narrative claim is not evidence; if the probe is unavailable, record the gap, not a pass.
+A `must` gap fails/blocks verification until executed or accepted as a recorded risk; a `should` gap
+may remain recorded.
 
 **Applicability.** This universal rule requires an observable state transition on the declared
-surface; the profile owns the surface-specific evidence. Do not apply a visual profile to a task
-without a visual surface. A `must` journey gap fails/blocks verification until executed or accepted
-as a recorded risk; a `should` gap may be recorded. Do not use a screenshot where the surface is a
-CLI/API/file/doc. The set is a fidelity instrument, not a feature count.
+surface; the public table owns the surface-specific evidence. Do not apply a visual profile to a task
+without a visual surface, and do not use a screenshot where the surface is CLI/API/file/docs. The set
+is a fidelity instrument, not a feature count.
 
-**Force.** This obligation is convention-only: no check rejects a create task that omits a journey; its
-force is the contract text and review.
+**Force.** Convention-only: no check rejects a create task that omits a journey; its force is this
+contract and review.
 
 ## Reference-informed signature experience
 
