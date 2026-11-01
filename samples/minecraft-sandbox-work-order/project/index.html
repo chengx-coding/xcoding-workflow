@@ -3,144 +3,102 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Blockstead — a 2D sandbox</title>
+  <title>Wildgrove — a tiny 2D sandbox</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <main id="app">
-    <section id="stage" aria-label="Blockstead sandbox">
+    <section id="stage" aria-label="Sandbox game">
       <canvas id="game" width="960" height="540" aria-label="Sandbox world"></canvas>
 
-      <div id="hud">
-        <div class="hud-brand">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span class="brand-copy">
-            <strong>Blockstead</strong>
-            <small>a 2D sandbox</small>
+      <header id="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="brand-text">
+            <strong>Wildgrove</strong>
+            <small>a tiny 2D sandbox</small>
           </span>
         </div>
-        <form id="seed-form" class="hud-seed" autocomplete="off">
-          <label for="seed-input">Seed</label>
-          <input id="seed-input" name="seed" inputmode="numeric" spellcheck="false" aria-describedby="seed-hint">
-          <button id="seed-load" type="submit" class="ghost-button">Load</button>
-          <button id="seed-random" type="button" class="ghost-button">Random</button>
-          <span id="seed-hint" class="visually-hidden">Type a whole number and press Load to rebuild the world.</span>
-        </form>
-        <dl class="hud-stats">
-          <div class="stat-wide"><dt>Position</dt><dd id="hud-coords">x – · y –</dd></div>
-          <div><dt>Time</dt><dd id="hud-time">Day</dd></div>
-          <div><dt>Depth</dt><dd id="hud-depth">—</dd></div>
-          <div class="stat-wide"><dt>Target</dt><dd id="hud-target">—</dd></div>
-        </dl>
+
+        <div class="stats" aria-live="polite">
+          <span class="stat">
+            <span class="stat-label">Position</span>
+            <span id="coords-value" class="stat-value">12, 41</span>
+          </span>
+          <span class="stat">
+            <span class="stat-label">Time</span>
+            <span class="stat-value"><span id="clock-text">07:40</span> <em id="phase-value">day</em></span>
+          </span>
+          <span class="stat">
+            <span class="stat-label">Seed</span>
+            <span id="seed-value" class="stat-value">1337</span>
+          </span>
+        </div>
+
+        <div class="actions">
+          <button id="pause-button" class="chip" type="button" aria-pressed="false" title="Pause or resume (P)">Pause</button>
+          <button id="mute-button" class="chip" type="button" aria-pressed="false" title="Toggle sound (M)">Sound on</button>
+          <form id="seed-form" class="seed-form" autocomplete="off">
+            <label class="sr-only" for="seed-input">World seed</label>
+            <input id="seed-input" class="seed-input" type="text" inputmode="numeric" pattern="[0-9-]*" maxlength="10" value="1337" aria-label="World seed" title="Enter a whole-number seed and press Enter">
+            <button class="chip chip-primary" type="submit" title="Generate a world from this seed">New world</button>
+          </form>
+        </div>
+      </header>
+
+      <aside id="minimap-panel" class="minimap-panel" aria-label="World map">
+        <div class="minimap-head"><span>Map</span><span id="minimap-seed">1337</span></div>
+        <canvas id="minimap" width="180" height="64" aria-label="Minimap of the sandbox world"></canvas>
+      </aside>
+
+      <div id="hud" aria-live="polite">
+        <span class="hud-dot" aria-hidden="true"></span>
+        <span id="target-value">Looking at the sky</span>
       </div>
 
-      <div id="top-actions" aria-label="Game options">
-        <button id="mute" type="button" class="icon-button" aria-pressed="false" title="Mute sound (M)">
-          <span aria-hidden="true">♪</span><span class="visually-hidden">Mute sound</span>
-        </button>
-        <button id="pause" type="button" class="icon-button" aria-pressed="false" title="Pause (P)">
-          <span aria-hidden="true">❚❚</span><span class="visually-hidden">Pause</span>
-        </button>
-        <button id="help" type="button" class="icon-button" title="Controls (H)">
-          <span aria-hidden="true">?</span><span class="visually-hidden">Show controls</span>
-        </button>
+      <div id="hotbar" role="toolbar" aria-label="Block palette"></div>
+
+      <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+      <div id="pause-overlay" class="pause-overlay" hidden>
+        <div class="pause-card">
+          <p class="eyebrow">Simulation paused</p>
+          <h1>Paused</h1>
+          <p class="pause-copy">The world is holding still. Your blocks and position are kept.</p>
+          <div class="pause-actions">
+            <button id="resume-button" class="chip chip-primary" type="button">Resume</button>
+            <span class="pause-hint">or press <kbd>P</kbd></span>
+          </div>
+        </div>
       </div>
-
-      <div id="hotbar" role="toolbar" aria-label="Block palette">
-        <button class="slot" type="button" data-slot="0" data-block="grass" aria-checked="false" title="Grass (1)">
-          <span class="slot-swatch" aria-hidden="true"></span>
-          <span class="slot-digit">1</span>
-          <span class="slot-count">0</span>
-        </button>
-        <button class="slot" type="button" data-slot="1" data-block="dirt" aria-checked="false" title="Dirt (2)">
-          <span class="slot-swatch" aria-hidden="true"></span>
-          <span class="slot-digit">2</span>
-          <span class="slot-count">0</span>
-        </button>
-        <button class="slot" type="button" data-slot="2" data-block="stone" aria-checked="false" title="Stone (3)">
-          <span class="slot-swatch" aria-hidden="true"></span>
-          <span class="slot-digit">3</span>
-          <span class="slot-count">0</span>
-        </button>
-        <button class="slot" type="button" data-slot="3" data-block="sand" aria-checked="false" title="Sand (4)">
-          <span class="slot-swatch" aria-hidden="true"></span>
-          <span class="slot-digit">4</span>
-          <span class="slot-count">0</span>
-        </button>
-        <button class="slot" type="button" data-slot="4" data-block="wood" aria-checked="false" title="Wood (5)">
-          <span class="slot-swatch" aria-hidden="true"></span>
-          <span class="slot-digit">5</span>
-          <span class="slot-count">0</span>
-        </button>
-        <button class="slot" type="button" data-slot="5" data-block="leaves" aria-checked="false" title="Leaves (6)">
-          <span class="slot-swatch" aria-hidden="true"></span>
-          <span class="slot-digit">6</span>
-          <span class="slot-count">0</span>
-        </button>
-        <button class="slot" type="button" data-slot="6" data-block="planks" aria-checked="false" title="Planks (7)">
-          <span class="slot-swatch" aria-hidden="true"></span>
-          <span class="slot-digit">7</span>
-          <span class="slot-count">0</span>
-        </button>
-        <button class="slot" type="button" data-slot="7" data-block="cobblestone" aria-checked="false" title="Cobblestone (8)">
-          <span class="slot-swatch" aria-hidden="true"></span>
-          <span class="slot-digit">8</span>
-          <span class="slot-count">0</span>
-        </button>
-        <button class="slot" type="button" data-slot="8" data-block="glass" aria-checked="false" title="Glass (9)">
-          <span class="slot-swatch" aria-hidden="true"></span>
-          <span class="slot-digit">9</span>
-          <span class="slot-count">0</span>
-        </button>
-      </div>
-
-      <div id="hint" aria-hidden="true">
-        <span><kbd>A</kbd><kbd>D</kbd> move</span>
-        <span><kbd>Space</kbd> jump</span>
-        <span><kbd>LMB</kbd> mine</span>
-        <span><kbd>RMB</kbd> place</span>
-        <span><kbd>1-9</kbd> select</span>
-        <span><kbd>P</kbd> pause</span>
-        <span><kbd>H</kbd> help</span>
-      </div>
-
-      <div id="toasts" aria-live="polite" aria-atomic="false"></div>
-
-      <div id="help-overlay" class="overlay" hidden>
-        <section class="panel" role="dialog" aria-modal="true" aria-labelledby="help-title">
-          <header class="panel-head">
-            <h2 id="help-title">Controls</h2>
-            <button id="help-close" type="button" class="icon-button" title="Close controls">×<span class="visually-hidden">Close controls</span></button>
-          </header>
-          <ul id="help-list" class="control-list"></ul>
-          <p class="panel-note">Everything runs locally in this page. Progress saves to this browser automatically.</p>
-        </section>
-      </div>
-
-      <div id="pause-overlay" class="overlay" hidden>
-        <section class="panel panel-small" role="dialog" aria-modal="true" aria-labelledby="pause-title">
-          <h2 id="pause-title">Paused</h2>
-          <p class="panel-note">The world is exactly where you left it.</p>
-          <button id="resume" type="button" class="primary-button">Resume</button>
-          <p class="panel-hint"><kbd>P</kbd> or <kbd>Esc</kbd> also resumes.</p>
-        </section>
-      </div>
-
-      <div id="status" data-state="booting" title="Page status"></div>
     </section>
+
+    <footer id="hintline">
+      <span><kbd>A</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>→</kbd> move</span>
+      <span><kbd>Space</kbd> jump</span>
+      <span><kbd>Left click</kbd> mine</span>
+      <span><kbd>Right click</kbd> build</span>
+      <span><kbd>1</kbd>–<kbd>9</kbd> or wheel select</span>
+      <span><kbd>P</kbd> pause</span>
+      <span><kbd>M</kbd> mute</span>
+    </footer>
+
+    <div id="status" data-state="booting" title="Page status"></div>
   </main>
 
   <script src="js/config.js"></script>
   <script src="js/rng.js"></script>
   <script src="js/world.js"></script>
   <script src="js/player.js"></script>
-  <script src="js/camera.js"></script>
+  <script src="js/inventory.js"></script>
   <script src="js/interaction.js"></script>
-  <script src="js/daynight.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="js/persistence.js"></script>
+  <script src="js/timecycle.js"></script>
+  <script src="js/camera.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/mining.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

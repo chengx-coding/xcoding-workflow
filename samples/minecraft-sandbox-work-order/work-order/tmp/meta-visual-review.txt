@@ -1,0 +1,6 @@
+﻿metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.control_packet.category.verification-evidence.selectors=["bb:verification.sources.review"]
+metadata.control_packet.category.verification-evidence.min_sources=3
+metadata.control_packet.category.verification-evidence.artifact_min=3

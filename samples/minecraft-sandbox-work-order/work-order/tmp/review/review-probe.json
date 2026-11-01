@@ -1,0 +1,124 @@
+{
+  "ok": false,
+  "checks": [
+    {
+      "name": "J3: a block breaks while the button is held",
+      "ok": true,
+      "detail": {
+        "before": 1,
+        "during": 0
+      }
+    },
+    {
+      "name": "J3: no break-progress/animation state is exposed while holding",
+      "ok": true,
+      "detail": [
+        "status",
+        "ready",
+        "seed",
+        "time",
+        "clock",
+        "selected",
+        "paused",
+        "hover",
+        "player",
+        "camera",
+        "view",
+        "world",
+        "inventory",
+        "hotbar",
+        "lastToast",
+        "toastTexts",
+        "pauseOverlayHidden",
+        "muteButton",
+        "hotbarSelection"
+      ]
+    },
+    {
+      "name": "J3: a target readout is visible while hovering",
+      "ok": true,
+      "detail": "Air · right click to build"
+    },
+    {
+      "name": "J3: an interaction toast is raised",
+      "ok": true,
+      "detail": {
+        "message": "+1 grass",
+        "tone": "gain",
+        "at": 1793357040323
+      }
+    },
+    {
+      "name": "J4: the bottom row is ordinary and was mined away",
+      "ok": true,
+      "detail": {
+        "row62": 0,
+        "row63": 0
+      }
+    },
+    {
+      "name": "J4: the exposed underground background is dark, not sky",
+      "ok": true,
+      "detail": [
+        41,
+        42,
+        44,
+        255
+      ]
+    },
+    {
+      "name": "J4: the sampled floor column is outside the hotbar",
+      "ok": true,
+      "detail": {
+        "hotbarLeft": 200,
+        "hotbarTop": 451,
+        "bottomRowY": 524,
+        "bottomRowX": 176
+      }
+    },
+    {
+      "name": "J6: 800x600 has no horizontal overflow",
+      "ok": true,
+      "detail": {
+        "app": 800,
+        "canvas": 800,
+        "barRight": 635,
+        "scrollWidth": 800,
+        "clientWidth": 800
+      }
+    },
+    {
+      "name": "J6: 800x600 keeps the palette inside the viewport",
+      "ok": true,
+      "detail": {
+        "app": 800,
+        "canvas": 800,
+        "barRight": 635,
+        "scrollWidth": 800,
+        "clientWidth": 800
+      }
+    },
+    {
+      "name": "orientation: a minimap/map aid exists",
+      "ok": false,
+      "detail": {
+        "minimap": 0,
+        "mapCanvas": 1,
+        "statusText": "Air · out of reach"
+      }
+    },
+    {
+      "name": "J8: the session stays functional after the underground trip",
+      "ok": true,
+      "detail": {
+        "status": "ready"
+      }
+    }
+  ],
+  "shots": [
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\review\\j3-held-mining.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\review\\j4-bottom.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\review\\j4-floor-gone.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\review\\j6-800x600.png"
+  ]
+}

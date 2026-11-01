@@ -2,146 +2,188 @@
 schema_version: 1
 document_kind: work-order-goal
 content_language: en
-work_order_id: "20261030-0000-minecraft-sandbox"
+work_order_id: "20261030-1819-mc-2d-sandbox"
 feature_ids: []
 orchestration:
-  main_tree_ref: "C:\\dev\\xcoding-workflow-dev\\wf-ablation\\standard-sample\\workspace\\workshop\\.xcoding\\work-orders\\20261030-0000-minecraft-sandbox\\runtime\\orchestration.xml"
+  main_tree_ref: "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\runtime\\orchestration.xml"
 ---
 
-# Goal — 2D Minecraft-style sandbox
+# Goal: a polished, playable offline 2D sandbox
 
 ## Requested outcome
 
-The user asked for a playable, offline 2D sandbox game inspired by Minecraft. The whole game is
-delivered as `index.html` plus its local sibling assets, opened by double-clicking the file from the
-file system: no build step, no package manager, no network access, no external libraries, CDNs or web
-fonts. The finished page must be a game a player can actually sit down and play — generate a world,
-move and jump through it, mine and place blocks, and come back later to the same world — rather than a
-technical demo of those mechanics.
+The user asked for a managed `create` work order that implements the 2D Minecraft-style sandbox
+described in `project/README.md` at the stated quality bar, run through the standard create lifecycle
+on the 0.3.8 workflow, in an isolated workspace seeded only from the sample seed. The request is
+preserved verbatim below; nothing in it is narrowed by this goal.
 
-## Intended capability scope
+> Implement a playable, offline 2D sandbox in the consumer project:
+>
+> - Deterministic procedural terrain generated from a numeric seed, with at least grass, dirt and stone.
+> - A player with horizontal movement, gravity, jumping and tile collision that cannot pass through
+>   solid blocks.
+> - Left-click mining of a block within reach and right-click placement of the selected block in an
+>   empty adjacent cell. Placement must not overwrite the player and must explain a rejected placement.
+> - A hotbar with at least four block types, number-key selection and a visible selected state.
+> - A camera that follows the player and stays inside the world bounds.
+> - Save and load of world and player state through `localStorage`, restored on page load.
+> - A readable page with a hint line for the controls, and no external libraries, CDNs, fonts or
+>   network requests. `index.html` must work when opened directly from the file system.
+> - A short architecture and controls section in `project/README.md`.
+>
+> #### Acceptance
+>
+> - `node --test "tests/**/*.test.js"` passes and covers terrain determinism, block get/set bounds,
+>   collision resolution, placement rules and save/load round-tripping. Add tests; do not weaken the
+>   seed tests.
+> - `python tools/page_check.py` passes: no external network references, required elements present, the
+>   page status marker reports success, and the rendered canvas is not blank.
+> - A 960x600 screenshot is captured under the work order `tmp/`, inspected, and compared with the
+>   one-shot baseline after the run; the final page is at least as good on the quality bar.
+> - The independent visual review is recorded and every required finding is fixed.
+> - The page status marker contract (`#status` with `data-state="ready"` on success and a red error
+>   state on failure) and the existing local file layout are preserved.
+> - `project/README.md` describes what was built, how to run it, the controls and the test commands.
+> - The work order records the standard lifecycle stages: goal, analysis, solution, approval,
+>   implementation, verification and result.
+>
+> The result will be compared side-by-side with a strong one-shot attempt. It must be at least as
+> visually polished and feature-rich as that bar: a distinctive interface with a clear visual
+> hierarchy, satisfying interaction feedback, and world/feature variety.
 
-The player must be able to do and observe the following in the delivered page:
+The user also made binding decisions: keep analysis, solution and the solution gate; carry this quality
+contract in the acceptance conditions; preserve the verbatim request without adding material
+exclusions; add an independent visual review before the result; waive the change report; create no
+project Git commit; ask no questions and self-complete every gate with recorded reasoning; use only the
+runtime public interface; keep temporary files under the work workbench `tmp/`; and keep the run
+isolated from the public sample, the one-shot baseline, prior sample results and any existing
+implementation.
 
-- **Seed-driven world.** A numeric seed produces a deterministic world with grass, dirt and stone,
-  plus further materials, surface variety and vegetation. The same seed always rebuilds the same
-  world; a different seed builds a visibly different one.
-- **Physical player.** Gravity, left/right movement, jumping, and solid collision on every side: the
-  player stands on terrain, cannot walk or jump through solid blocks, and cannot fall out of the world.
-- **Mining and building.** Left-click mines a block within reach; right-click places the selected
-  block into an empty adjacent cell; a block can never be placed inside the player. Every block read
-  and write is bounded by the world.
-- **Block palette.** A hotbar with at least four usable block types, number-key selection, and a
-  clearly visible selected state; the palette is large enough to be expressive while the scene stays
-  readable.
-- **Camera.** Follows the player with smooth motion and stays clamped inside the world bounds.
-- **Persistence.** World edits and player state survive closing the page: reopening restores the same
-  world and where the player left off.
-- **Comprehensible delivery.** Clean, readable code and a short note describing the controls.
+## Scope and constraints
 
-The intended capability scope also carries the product's cumulative accepted capabilities from prior
-standard versions, which this goal must not silently lose: per-block inventory counts in the hotbar,
-the full automated test suite (52+ tests including the seed tests), reduced-motion support, wheel
-selection, 1280-wide page scaling, procedural audio with mute, numeric seed entry, pause, the eighth
-hotbar block, day/night, the nine-slot hotbar, and the coordinate readout. `analysis.md` holds the
-canonical disposition table for these items; the goal requires that every item be dispositioned
-`preserve`, `improve`, `replace`, `retire`, or `defer` with a recorded source, and that no item be
-dropped silently. A `replace` or `retire` needs a reason, impact, and a source independent of the
-solution approval itself, and a wholly undispositioned item blocks solution approval.
+### Intended capability scope
 
-## Quality contract
+A visitor opens `index.html` directly from the file system and can, offline and without any external
+resource:
 
-**Comparison target.** The result will be compared side-by-side against a strong one-shot attempt at
-the same brief. The delivered page must be at least as visually polished and feature-rich as that
-bar: a distinctive interface with an obvious visual hierarchy, satisfying interaction feedback
-(hover, selection, mining, placing, toasts, sound), and genuine world and feature variety. Matching
-the literal requirement list is the floor, not the bar.
+- see a deterministic, seed-generated world with recognizable terrain layers, surface variety
+  (hills, trees, sand, caves or comparable variety), a day/night sky and a visible camera view;
+- move a player left and right, jump, fall under gravity, and be stopped by solid blocks instead of
+  passing through them;
+- mine a block within reach with the left mouse button and see the world change where it was;
+- place the selected block with the right mouse button in an empty adjacent cell, without overwriting
+  the player, and receive a clear explanation when a placement is refused;
+- choose among at least four block types with number keys, a mouse wheel and a visible selected slot;
+- see a camera that follows the player and never shows space outside the world bounds;
+- see live coordinates, the current block palette, collected-block counts and the controls hint;
+- pause the simulation, mute or unmute sound, and enter a numeric seed to generate another world;
+- reload the page and find the world, player and collected counts restored from `localStorage`, with a
+  visible recovery path when a saved payload is unreadable.
 
-**Reference-informed signature challenge.** The request names Minecraft, and the 2D sandbox genre has
-credible references (Minecraft Java Edition; Terraria as the 2D exemplar). `analysis.md` records the
-small signature-experience table for these references. The delivered experience must be recognisably
-a *complete* experience of the requested kind — the signature must/should capabilities accepted in
-the solution must be present, not merely the literal checklist — while not importing unrelated
-reference features.
+These are the user-observable capabilities the request names plus the continuity capabilities the
+project has already accepted. The detailed capability map, the stateful journeys and integrity
+invariants, and the signature-experience decisions are owned by `analysis.md`; this goal fixes the
+required outcome, not an implementation.
 
-**Visual and interaction proof.** Before the result is written, the page must be rendered in headless
-Chrome, its screenshots inspected at the default viewport, at 1280-wide scaling and with
-reduced-motion forced, compared against the bar above, and iterated. An independent visual review of
-the final page is required, and every required finding it raises must be fixed and re-verified before
-the work order closes.
+### Quality contract
 
-## Scope boundaries and provenance
+- The result is compared side-by-side with a strong one-shot attempt and must be at least as visually
+  polished and feature-rich: a distinctive interface with a clear visual hierarchy, satisfying
+  interaction feedback and world/feature variety.
+- "At least as good" is a floor, not a ceiling, and it is not a permission to drop a requested
+  capability.
+- The page must be rendered, screenshotted at 960x600, inspected, compared against that bar and
+  iterated before verification is considered done.
+- A credible domain reference (the Minecraft family of block sandboxes, plus browser-native 2D
+  sandbox exemplars) is used to challenge ambition: the result must be recognizably a complete
+  experience of the requested kind, not merely a literal checklist of the prompt. The reference is a
+  legibility argument, not a feature-count target.
 
-No material exclusions. Nothing requested is dropped, and no capability is silently narrowed. The
-following constraints are recorded with their sources:
+### Exclusions and added constraints (with provenance)
 
-| Constraint | Source |
-| --- | --- |
-| The game is delivered as `index.html` with local sibling CSS and JavaScript files rather than one literal file. | `user` — the request explicitly allows "local files next to it". This is a resolution of the delivery form, not an exclusion. |
-| No third-party libraries, CDN assets, external fonts or network requests at runtime; the page works from `file://` with no build step. | `user` — request constraints; also `project` — the bridge repeats them. |
-| Browser modules must stay loadable in Node so logic tests can require them without a DOM. | `project` — `.xcoding/WORKFLOW.md`. |
-| The `#status` marker contract is kept: `booting` before boot, `ready` after a successful first frame, red error state on failure. | `project` — `.xcoding/WORKFLOW.md`. |
-| Verification uses `node --test "tests/**/*.test.js"` and `python tools/page_check.py`. | `project` — `.xcoding/WORKFLOW.md`; no formatter or linter is configured. |
-| Code, comments, README and work-order documents are English; two-space JavaScript indentation and the existing UMD-style module pattern are kept. | `project` — `.xcoding/WORKFLOW.md`. |
-| No project Git commit is created from this work order. | `user` — run prompt; `project` — `.xcoding/WORKFLOW.md`. |
-| The six seed tests are never deleted or weakened; coverage is added instead. | `project` — `.xcoding/WORKFLOW.md`. |
+| Item | Source | Note |
+| --- | --- | --- |
+| No third-party libraries, CDN assets, external fonts or runtime network requests | user, project | Requested constraint and bridge rule |
+| `index.html` must run from `file://` with no build step or server | user, project | Requested constraint and bridge rule |
+| Keep the `#status` marker contract and the existing local file layout | user, project | Requested constraint and bridge rule |
+| Keep browser modules loadable in Node; do not weaken the seed tests | user, project | Requested constraint and bridge rule |
+| No project Git commit from this work order | user, project | Explicit user decision; the enclosing repository owns the sample commit |
+| The change-report stage is waived (`requires_report=false`, `report_skip_reason=user_waived`) | user | Explicit user decision |
+| No user questions; main-session gates self-approve with recorded reasoning | user | No user is available |
+| Do not consult the public sample, baseline, prior results or any existing implementation | user | Regression isolation for the published sample |
 
-No capability is ambiguous enough to need a user decision in this work order. Where the request
-leaves a detail open (for example the exact block palette, world size or visual style), the
-implementation chooses the option that best serves the requested experience, and `analysis.md`
-records that choice as a recorded open decision rather than as an exclusion.
+No material exclusion is `goal-authored`. There is no minimality presumption for this create task: the
+goal keeps the requested scope and lets analysis/solution prioritize must and should work. Where a
+capability is ambiguous and no user is available (for example how collected blocks interact with
+placement), the ambiguity is carried as an open decision into analysis and resolved there by recorded
+reasoning; it is not converted into a silent exclusion.
+
+### Prior accepted capability inventory
+
+Source and version: the initiating user instruction for this run ("Prior accepted capability
+inventory", cumulative across prior standard versions). No version tag is given; the inventory is
+treated as the accepted capability set of the product line, and that uncertainty is recorded rather
+than inferred.
+
+Every item below must receive a `preserve` / `improve` / `replace` / `retire` / `defer` disposition in
+`analysis.md`, and the solution must account for every disposition. No item may be silently dropped.
+
+1. per-block inventory counts
+2. 52 automated tests (including the seed tests)
+3. reduced-motion support
+4. wheel selection
+5. 1280-wide scaling
+6. audio/mute
+7. numeric seed entry
+8. pause
+9. the eighth hotbar block
+10. day/night
+11. nine-slot hotbar
+12. coordinates
+
+### Signature-experience challenge
+
+A credible reference exists: the block-sandbox genre as defined by Minecraft, with browser-native 2D
+exemplars as supporting evidence. Analysis records a small decision-changing signature table
+(reference, signature capability, evidence, current goal coverage, must/should/non-goal decision) and
+the solution covers accepted signature must/should capabilities. The reference may raise ambition
+(for example terrain legibility, mining feedback, palette identity); it may not remove a requested
+capability and may not become a feature-count target.
+
+### Open decisions carried into analysis
+
+- Whether mining should accumulate inventory that placement consumes, and how a rejected placement is
+  surfaced when the selected block is unavailable. The request requires explanation of rejected
+  placements but does not fix the resource model.
+- How much world/feature variety is proportionate to the quality bar without weakening the requested
+  minimum (for example trees, sand, caves, day/night, sound).
+- Which interaction feedback is required for the quality bar versus optional polish.
 
 ## Acceptance conditions
 
-1. A numeric seed deterministically generates terrain containing grass, dirt and stone, with surface
-   variety and vegetation; entering a different seed rebuilds a visibly different world.
-2. The player obeys gravity, moves left and right, jumps only from the ground, and collides with
-   solid blocks on the ground and on both sides without passing through or leaving the world.
-3. Left-click mines a reachable block; right-click places the selected block in an empty adjacent
-   cell; placement inside the player, outside reach, or into an occupied cell is refused.
-4. The nine-slot hotbar has at least four usable block types, number-key and wheel selection, a
-   clearly visible selected state, and visible per-block counts that change with mining and placing.
-5. The camera follows the player and remains inside the world bounds.
-6. World edits, player position, hotbar state, selected slot, time of day and settings survive a page
-   reload through `localStorage`, and a corrupt payload is ignored safely.
-7. The page opens from `file://`, makes no network request, boots to `data-state="ready"`, and
-   `python tools/page_check.py` passes with a non-blank canvas and the ready status pixel.
-8. `node --test "tests/**/*.test.js"` passes with at least 52 automated tests, including the six
-   browser-free seed tests, and the suite covers generation, physics, interaction, persistence,
-   rendering helpers, UI state, day/night and setting persistence.
-9. Prior accepted capabilities are all delivered or explicitly dispositioned: per-block counts,
-   52+ tests, reduced motion, wheel selection, 1280-wide scaling, audio/mute, numeric seed entry,
-   pause, the eighth hotbar block, day/night, nine-slot hotbar, and coordinates each have
-   implementation and verification evidence.
-10. The quality contract is met: rendered screenshots are inspected and compared against the strong
-    one-shot bar, day/night and world variety are visible, interaction feedback is present, and the
-    1280-wide and reduced-motion renders are checked.
-11. `README.md` accurately documents what the page is, how to open it, the controls, how to run the
-    checks, and a brief architecture overview.
-12. An independent visual review of the final page is recorded, and every required finding is fixed
-    and re-verified before the result is written.
-
-## Verbatim request
-
-```text
-# Build a 2D Minecraft-style sandbox
-
-Create a playable, offline 2D sandbox game inspired by Minecraft. The whole game must live in a
-single self-contained `index.html` file (inline CSS and JavaScript, or local files next to it), open
-by double-clicking the file, with no build step and no network access.
-
-Requirements:
-
-- Procedurally generated terrain from a numeric seed, with at least grass, dirt and stone blocks.
-- A player with gravity, left/right movement and jumping. The player collides with solid blocks and
-  cannot pass through them.
-- Left-click mines a block within reach. Right-click places the selected block in an empty adjacent
-  cell. Blocks cannot be placed inside the player.
-- A hotbar with at least four block types, number-key selection and a clearly visible selected state.
-- A camera that follows the player and stays inside the world bounds.
-- World and player state saved to `localStorage` and restored when the page is reopened.
-- Clean, readable code and a short note describing the controls.
-
-Deliver the finished page as `index.html` in the current working directory. Do not use external
-libraries, CDNs, web fonts or network requests of any kind.
-```
+1. `node --test "tests/**/*.test.js"` passes from `project/`, with at least 52 tests including the six
+   unchanged seed tests, and covers terrain determinism (same seed → same world), block get/set
+   bounds, collision resolution (no passing through solids, landing, ceiling, walls), placement rules
+   (empty cell only, never over the player, refusal reason) and save/load round-tripping.
+2. `python tools/page_check.py` passes from `project/`: no external network references, required
+   elements present, `#status` reports `data-state="ready"`, and the rendered canvas is not blank.
+3. A 960x600 screenshot is captured under this work order's `tmp/`, inspected, and compared with the
+   one-shot baseline after the run; the final page is at least as good on the quality bar.
+4. An independent visual review is recorded through `xc-review`, every required finding is fixed and
+   re-checked, and the review is scored against M2D-SES v1.1 as required by the round-specific
+   instruction.
+5. The `#status` marker contract (`booting` → `ready`, red error state on failure) and the existing
+   local file layout are preserved; the page remains a static, offline, `file://`-runnable page.
+6. `project/README.md` describes what was built, how to run it, the controls and the test commands.
+7. The work order records the standard lifecycle stages: goal, analysis, solution, approval,
+   implementation, verification and result, with a self-approved solution gate that records its
+   reasoning because no user is available.
+8. The create-scope obligations are met: a capability map with source/priority/user value/acceptance/
+   verification, stateful journeys and integrity invariants including visible before/after state at
+   two materially different visual states, executed journey evidence, a credible signature-experience
+   table with decisions, and a complete prior-capability disposition table; the solution records the
+   accepted capability matrix and maps every must capability to implementation and verification.
+9. The result stays offline: no external libraries, fonts, CDNs or network requests at runtime, and
+   the logic modules remain require-able from Node.
+10. No project Git commit is created; the enclosing repository owns the sample commit, and the result
+    records that decision.

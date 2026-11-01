@@ -1,0 +1,1 @@
+﻿metadata.completion.required_fields=["summary","validation"]

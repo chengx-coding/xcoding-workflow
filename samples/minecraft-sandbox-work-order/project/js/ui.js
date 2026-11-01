@@ -1,140 +1,94 @@
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./rng.js"));
+    module.exports = factory(require("./config.js"), require("./inventory.js"), require("./timecycle.js"));
   } else {
-    root.SandboxUi = factory(root.SandboxRng);
+    root.SandboxUi = factory(root.SandboxConfig, root.SandboxInventory, root.SandboxTime);
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (RNG) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, Inventory, Time) {
   "use strict";
 
-  const KEY_ACTIONS = Object.freeze({
-    a: "left",
-    arrowleft: "left",
-    d: "right",
-    arrowright: "right",
-    " ": "jump",
-    spacebar: "jump",
-    w: "jump",
-    arrowup: "jump",
-    p: "pause",
-    escape: "pause",
-    m: "mute",
-    h: "help",
-    "?": "help",
-    r: "respawn"
-  });
-
-  const HELP_CONTROLS = Object.freeze([
-    { keys: "A / D or ← / →", action: "Move left and right" },
-    { keys: "Space or W", action: "Jump" },
-    { keys: "Left click (hold)", action: "Mine the block under the pointer" },
-    { keys: "Right click", action: "Place the selected block next to the pointer" },
-    { keys: "1 - 9", action: "Select a hotbar slot" },
-    { keys: "Mouse wheel", action: "Cycle the hotbar" },
-    { keys: "P or Esc", action: "Pause and resume" },
-    { keys: "M", action: "Mute or unmute sound" },
-    { keys: "H or ?", action: "Show or hide this help" },
-    { keys: "R", action: "Return to a safe spot on the surface" }
-  ]);
-
-  function keyToAction(key) {
-    if (key === null || key === undefined) {
-      return "none";
-    }
-    const normalised = String(key).toLowerCase();
-    if (Object.prototype.hasOwnProperty.call(KEY_ACTIONS, normalised)) {
-      return KEY_ACTIONS[normalised];
-    }
-    if (/^[1-9]$/.test(normalised)) {
-      return "slot" + normalised;
-    }
-    return "none";
+  function hotbarModel(inventory, selected) {
+    return CONFIG.palette.map(function (blockId, index) {
+      const info = CONFIG.blockInfo[blockId];
+      return {
+        index: index,
+        key: index + 1,
+        blockId: blockId,
+        name: info.name,
+        label: info.label,
+        color: info.color,
+        accent: info.accent,
+        count: Inventory.count(inventory, blockId),
+        selected: index === selected
+      };
+    });
   }
 
-  function isTextEntryTarget(tagName) {
-    const name = String(tagName || "").toLowerCase();
-    return name === "input" || name === "textarea" || name === "select";
+  function selectedBlockId(selected) {
+    const index = clampIndex(selected, CONFIG.palette.length);
+    return CONFIG.palette[index];
   }
 
-  function formatCoords(player) {
-    if (!player || !Number.isFinite(player.x) || !Number.isFinite(player.y)) {
-      return "x – · y –";
-    }
-    return "x " + Math.floor(player.x) + " · y " + Math.floor(player.y);
+  function selectedBlockLabel(selected) {
+    return CONFIG.blockInfo[selectedBlockId(selected)].label;
   }
 
-  function formatDepth(player, surfaceY) {
-    if (!player || !Number.isFinite(player.y) || !Number.isFinite(surfaceY)) {
-      return "depth –";
+  function clampIndex(index, size) {
+    const length = size || CONFIG.palette.length;
+    const value = Number(index);
+    if (!Number.isInteger(value)) {
+      return 0;
     }
-    const depth = Math.floor(surfaceY - player.y);
-    if (depth > 0) {
-      return depth + " above ground";
-    }
-    if (depth < 0) {
-      return Math.abs(depth) + " below surface";
-    }
-    return "at the surface";
+    const wrapped = ((value % length) + length) % length;
+    return wrapped;
   }
 
-  function formatCount(count) {
-    const value = Number(count);
-    if (!Number.isFinite(value) || value < 0) {
-      return "0";
-    }
-    if (value > 99) {
-      return "99+";
-    }
-    return String(Math.floor(value));
+  function stepSelection(selected, delta, size) {
+    return clampIndex(clampIndex(selected, size) + delta, size);
   }
 
-  function parseSeedInput(text) {
-    return RNG.parseSeedText(text);
+  function coordinates(player) {
+    const x = Math.floor(player.x);
+    const y = Math.floor(player.y + 0.01);
+    return { x: x, y: y, text: x + ", " + y };
   }
 
-  function prefersReducedMotion(matchMedia) {
-    if (typeof matchMedia !== "function") {
-      return false;
-    }
-    try {
-      const query = matchMedia("(prefers-reduced-motion: reduce)");
-      return Boolean(query && query.matches);
-    } catch (error) {
-      return false;
-    }
+  function clockModel(fraction) {
+    const phase = Time.phaseOf(fraction);
+    return {
+      label: Time.clockLabel(fraction),
+      phase: phase,
+      phaseLabel: phase.charAt(0).toUpperCase() + phase.slice(1)
+    };
   }
 
-  const TOASTS = Object.freeze({
-    saved: "World saved",
-    loaded: "Welcome back",
-    seeded: "Seed loaded",
-    regenerated: "New world generated",
-    muted: "Sound muted",
-    unmuted: "Sound on",
-    paused: "Paused",
-    resumed: "Back to it",
-    reset: "Returned to the surface",
-    corrupt: "Saved world could not be read — starting fresh",
-    unavailable: "Saving is unavailable in this browser",
-    noStock: "No blocks left in that slot",
-    denied: "Can't build there"
-  });
+  function targetModel(hover, blockId, reachable) {
+    if (!hover) {
+      return { text: "Looking at the sky", refused: false };
+    }
+    const name = blockId === CONFIG.blocks.air ? "Air" : CONFIG.blockInfo[blockId].label;
+    if (reachable === false) {
+      return { text: name + " · out of reach", refused: true };
+    }
+    if (blockId === CONFIG.blocks.air) {
+      return { text: name + " · right click to build", refused: false };
+    }
+    return { text: name + " · left click to mine", refused: false };
+  }
 
-  function toastMessage(kind, detail) {
-    const base = TOASTS[kind] || String(detail || "");
-    return detail && TOASTS[kind] ? base + ": " + detail : base;
+  function toastLifetime(tone) {
+    return tone === "refuse" ? 2600 : 1900;
   }
 
   return {
-    keyToAction: keyToAction,
-    isTextEntryTarget: isTextEntryTarget,
-    formatCoords: formatCoords,
-    formatDepth: formatDepth,
-    formatCount: formatCount,
-    parseSeedInput: parseSeedInput,
-    prefersReducedMotion: prefersReducedMotion,
-    toastMessage: toastMessage,
-    TOASTS: TOASTS,
-    HELP_CONTROLS: HELP_CONTROLS
+    hotbarModel: hotbarModel,
+    selectedBlockId: selectedBlockId,
+    selectedBlockLabel: selectedBlockLabel,
+    clampIndex: clampIndex,
+    stepSelection: stepSelection,
+    coordinates: coordinates,
+    clockModel: clockModel,
+    targetModel: targetModel,
+    toastLifetime: toastLifetime
   };
 });

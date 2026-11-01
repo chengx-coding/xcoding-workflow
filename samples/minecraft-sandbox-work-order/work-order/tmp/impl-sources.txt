@@ -1,0 +1,3 @@
+﻿work_order.solution_source_ids=["rt_work-order-20261030-1819-mc-2d-sandbox__solution__write-document"]
+implementation.sources.core=["rt_work-order-20261030-1819-mc-2d-sandbox__solution__write-document","rt_work-order-20261030-1819-mc-2d-sandbox__root__approve-work-order-solution"]
+implementation.sources.experience=["rt_work-order-20261030-1819-mc-2d-sandbox__solution__write-document","rt_work-order-20261030-1819-mc-2d-sandbox__root__approve-work-order-solution"]

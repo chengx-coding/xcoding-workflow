@@ -1,0 +1,6 @@
+﻿metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.control_packet.category.approved-work.selectors=["bb:implementation.sources.core"]
+metadata.control_packet.category.approved-work.min_sources=1
+metadata.control_packet.category.approved-work.artifact_min=1

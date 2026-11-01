@@ -2,161 +2,209 @@
 schema_version: 1
 document_kind: work-order-analysis
 content_language: en
-work_order_id: "20261030-0000-minecraft-sandbox"
+work_order_id: "20261030-1819-mc-2d-sandbox"
 feature_ids: []
 orchestration:
-  main_tree_ref: "C:\\dev\\xcoding-workflow-dev\\wf-ablation\\standard-sample\\workspace\\workshop\\.xcoding\\work-orders\\20261030-0000-minecraft-sandbox\\runtime\\orchestration.xml"
+  main_tree_ref: "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\runtime\\orchestration.xml"
 ---
 
-# Analysis — 2D Minecraft-style sandbox
+# Analysis: create scope, capability map and design evidence
 
 ## Evidence and current state
 
-The seed project is a static shell: a 960x540 canvas, a HUD, a four-slot text hotbar, the `#status`
-marker, and five classic UMD-style scripts (`config`, `world`, `player`, `render`, `main`) that boot a
-flat world and mark it ready. Six Node tests cover the seed's world contract; `tools/page_check.py`
-performs static asset/network checks and a headless-Chrome screenshot, status-pixel and canvas-colour
-check. Movement, collision, mining, building, camera input, persistence, day/night, audio and every
-prior capability are absent; the work order owns them. Environment: Python 3.12.10, Node v24.13.1,
-Chrome available. `project/` is not a Git worktree, so no project commit exists or is expected. The
-detailed evidence is in `artifacts/analysis-evidence/evidence.md`.
+The seed at `project/` is a static shell, not an implementation:
 
-This is a `create` task, so the analysis records constraints and the quality contract rather than a
-minimality presumption: the goal explicitly says matching the requirement list is the floor, and the
-delivered experience must be at least as polished and feature-rich as a strong one-shot attempt, with
-a reference-informed signature challenge.
+- `index.html` provides ids `game`, `hud`, `hotbar`, `status`, four slots and five classic scripts;
+  `#status` starts `data-state="booting"`.
+- `css/style.css` supplies a dark 960x540 shell, a HUD box, a four-slot hotbar with `.is-selected`,
+  and the yellow/green/red status marker.
+- `js/config.js` fixes block ids (air/grass/dirt/stone/wood/leaves), tile 24, world 128x64, gravity,
+  move speed, jump speed, reach 5 and `saveKey`.
+- `js/world.js` builds a flat 128x64 world with the surface at `floor(height*0.65)=41` and offers
+  bounded `getBlock`/`setBlock`, `isSolid` and JSON serialization.
+- `js/player.js` is a placeholder: gravity and horizontal intent, no collision, no jump.
+- `js/render.js` paints a sky gradient, flat blocks and a rectangle player; `js/main.js` renders once,
+  then runs a static loop, sets `ready`, and exposes `window.__sandbox`.
+- `tests/world.test.js` contains the six seed tests that pin the surface at x=10 (grass y=41, dirt y=42,
+  stone y=63), air at (0,0), bounded block access, serialization and solidity. They must not change.
+- `tools/page_check.py` checks required ids, local assets, no network references in the page and its
+  references, the `ready` marker pixel and canvas colour variety, with `--screenshot` and
+  `--window 960x600`.
 
-## Capability map
+Baseline commands before the change:
 
-Priorities follow `xc-work` `references/create-scope.md`: `must` is required for the request or
-quality contract; `should` materially improves the experience; `non-goal` is deliberate and sourced.
-The map is a fidelity instrument, not a breadth target.
+```console
+node --test "tests/**/*.test.js"   # 6 seed tests pass
+python tools/page_check.py         # static and headless runtime checks pass
+```
+
+The project bridge (`.xcoding/WORKFLOW.md`) fixes English/UTF-8/LF, no project commit, no build step,
+`file://` operation, no third-party or network assets, Node-loadable modules, two-space JavaScript, the
+`#status` marker contract and the two verification commands. `.xcoding/KNOWLEDGE.md` does not exist.
+The L1 convention scan (node artifact of `prepare-work-order`) reported `not-applicable`: it enumerated
+no project-owned C1/C2 file, and the bridge is the only declared convention source.
+
+## Reconciliation
+
+### Capability map
+
+Sources: `request` = verbatim user request; `prior` = cumulative prior accepted inventory supplied by
+the user; `project` = `.xcoding/WORKFLOW.md` and explicit user decisions; `reference` = the
+block-sandbox genre evidence below. This table is canonical; the goal references it and the solution
+carries it into the accepted capability matrix.
 
 | # | Capability | Source | Priority | User value | Acceptance | Verification |
 | --- | --- | --- | --- | --- | --- | --- |
-| M1 | Seed-driven procedural terrain with grass, dirt and stone, plus surface height variety and vegetation | Request | must | The world itself; seeds make worlds repeatable and shareable | Same seed rebuilds the identical world; another seed differs visibly; grass/dirt/stone present; trees on the surface | `tests/generation.test.js`; screenshot |
-| M2 | Player gravity, left/right movement, jumping and solid collision | Request | must | Embodied play in the world | Falls and lands, cannot pass through solids on any side, jumps only from the ground, stays inside world bounds | `tests/player.test.js`; browser check |
-| M3 | Left-click mining of a block within reach, with feedback | Request | must | The core verb | Reachable solid removed and added to stock; out-of-reach refused; crack stages and particles | `tests/interaction.test.js`; screenshot |
-| M4 | Right-click placement into an empty adjacent cell, never inside the player | Request | must | The second core verb | Placement validates empty target, adjacency, reach, player overlap and stock | `tests/interaction.test.js` |
-| M5 | Hotbar with at least four block types, number-key selection and clearly visible selected state | Request | must | Choosing building material | Nine slots; keys 1-9 select; selected slot visibly and accessibly marked | `tests/ui.test.js`; screenshot |
-| M6 | Camera follows the player and stays inside world bounds | Request | must | You can see where you move | Camera centres when possible, clamps at all edges, smooth follow | `tests/camera.test.js` |
-| M7 | World and player state saved to `localStorage` and restored | Request | must | Sessions continue | Round-trips world edits, player, inventory, selection, time and settings; corrupt data ignored | `tests/storage.test.js` |
-| M8 | Offline delivery: `file://`, no network, no external assets, `#status` marker contract | Request + project | must | Double-click and it runs | Static checks clean; boots ready; canvas non-blank | `tools/page_check.py` |
-| M9 | Clean readable code and a controls note | Request + project | must | The result is understandable and usable | README documents controls, checks and architecture; code organised in small modules | README and review |
-| M10 | Automated suite at or above 52 tests including the six seed tests | Prior + project | must | Behaviour stays protected | Suite passes with >= 52 tests; seed test file untouched | `node --test` |
-| M11 | Nine-slot hotbar with per-block inventory counts | Prior | must | Stock is visible while building | Every slot shows a count that changes on mine/place; empty stock blocks placement | `tests/interaction.test.js`; screenshot |
-| M12 | Numeric seed entry | Prior | must | Replay and share worlds | Valid integer seeds rebuild the world; invalid input is rejected with feedback | `tests/ui.test.js`; browser check |
-| M13 | Day/night cycle | Prior | must | Atmosphere and time | Clock advances; sky, light, sun/moon change; time persists | `tests/daynight.test.js`; screenshots |
-| M14 | Pause | Prior | must | Stop without losing state | Simulation and time freeze; overlay shows; resume continues | `tests/ui.test.js`; screenshot |
-| M15 | Procedural audio with mute | Prior | must | Physical feedback and control | Distinct sounds; mute persists and silences output | `tests/audio.test.js` |
-| M16 | Reduced-motion support | Prior | must | Accessibility | CSS media query and reduced JS motion when the preference is set | `tests/ui.test.js`; forced-reduced-motion render |
-| M17 | Wheel selection | Prior | must | Fast palette switching | Wheel cycles slots with wrap-around | `tests/interaction.test.js` |
-| M18 | 1280-wide scaling | Prior | must | Uses wide screens | `min-width: 1280px` scaling keeps proportions | CSS assertion; 1280 screenshot |
-| M19 | Coordinate readout | Prior | must | Orientation | Live block coordinates and depth displayed | `tests/ui.test.js`; screenshot |
-| M20 | Eighth hotbar block | Prior | must | Palette breadth | Slot 8 holds a distinct placeable block present in the model | `tests/interaction.test.js` |
-| S1 | Visible mining/placement feedback: hover outline, crack stages, particles | Reference + quality bar | should | Actions feel physical and legible | Crack overlay while mining; particle burst on break/place; valid/invalid hover state | Render-helper tests; screenshot; visual review |
-| S2 | Distinct procedural sound design | Reference + prior quality | should | Feedback beyond the visual | Mine/place/jump/select sounds differ; mute toggles | `tests/audio.test.js` |
-| S3 | Visual depth and variety: parallax hills and clouds, textured tiles, depth shading, trees, caves | Reference + quality bar | should | The world reads as a place, not a grid | Screenshots show layered background, depth shading and vegetation | Screenshots; visual review |
-| S4 | Polished HUD and onboarding: help panel, toasts, pause overlay, hover block info | Reference + quality bar | should | First-time players can start immediately | Help and pause overlays list controls; toasts confirm save/seed changes | Screenshots; visual review |
-| S5 | In-page controls note | Request + quality bar | should | Controls discoverable in-page | Help panel lists all controls | Screenshot; `tests/ui.test.js` |
+| C1 | Deterministic procedural terrain from a numeric seed with grass, dirt and stone | request | must | A seeded, authored-feeling world instead of a placeholder strip | Two worlds from one seed are identical, two seeds differ, layers are present, and the seed is visible/editable | determinism + layer unit tests; seeded page probe |
+| C2 | Horizontal movement, gravity, jumping and tile collision that cannot be passed through | request | must | The sandbox is playable | Player moves, jumps, falls, lands and never overlaps a solid tile | physics unit tests; journey probe |
+| C3 | Left-click mining of a block within reach | request | must | The genre's primary verb | A click within reach removes that block; out-of-reach/invalid clicks refuse with a reason | interaction unit tests; CDP click probe |
+| C4 | Right-click placement in an empty adjacent cell, never over the player, with an explanation on refusal | request | must | Building is trustworthy and understandable | Valid placement places and consumes; occupied, player-overlap, unsupported, out-of-reach and empty-inventory attempts visibly refuse and leave the world unchanged | interaction unit tests; DOM toast probe |
+| C5 | Hotbar with ≥4 block types, number-key selection and a visible selected state | request + prior | must | The palette is the player's inventory and mode indicator | Nine slots, keys 1–9, wheel cycling, exactly one selected ring, HUD names the block | UI unit tests; visual probe |
+| C6 | Camera follows the player and stays inside the world bounds | request | must | The view stays legible and never shows void | Camera eases toward the player and clamps on both axes | camera unit tests; boundary probe |
+| C7 | Save/load world and player state through localStorage, restored on page load | request | must | A sandbox that forgets is not a sandbox | Mine/place/move then reload restores world, position, counts and clock | persistence unit tests; real reload probe |
+| C8 | Readable page with a controls hint, offline, `file://`, no external resources | request + project | must | Opens by double-click and stays self-contained | Hint visible; page check static clean; no network request | `page_check`; source inspection |
+| C9 | README describes what was built, how to run it, controls and test commands | request | must | A reader can start and verify the page | README sections present and accurate | document review |
+| C10 | `#status` marker contract preserved (`booting` → `ready`, red error) | project | must | Keeps the project's verification contract working | Marker reaches `ready`; an induced error turns it red | `page_check`; error-state probe |
+| C11 | Automated tests, seed tests unchanged, covering terrain/collision/placement/persistence | request | must | Correctness evidence that survives future changes | `node --test` passes with ≥52 tests including the six seed tests | test run |
+| C12 | No external libraries, CDNs, fonts or network requests | request + project | must | Portability and the sample's constraints | Page and its files contain no network reference | `page_check` |
+| C13 | 960x600 screenshot inspected against the quality bar, plus an independent visual review | request (user) | must | The result is judged as an interface | Screenshot under `tmp/`; independent review artifact; required findings fixed and re-checked; M2D-SES v1.1 score | screenshot; `xc-review`; score sheet |
+| C14 | Standard lifecycle stages recorded | request | must | The sample is a workflow reference | goal, analysis, solution, approval, implementation, verification and result artifacts exist | runtime + document validation |
+| C15 | Per-block inventory counts | prior | must | Mining rewards the player and the palette shows progress | Mining adds a per-block count; placement consumes one; every slot shows its count | inventory tests; probe |
+| C16 | 52 automated tests including the seed tests | prior | must | Regression depth | ≥52 tests pass | `node --test` count |
+| C17 | Reduced-motion support | prior | should | Respects the OS preference | `prefers-reduced-motion` removes transitions and camera easing/particles | CSS check; matchMedia test |
+| C18 | Wheel selection | prior | should | Fast palette switching | Wheel over the page cycles the selected slot | UI test; probe |
+| C19 | 1280-wide scaling | prior | should | Intentional look on a desktop monitor | Layout grows to 1280 px keeping aspect ratio without overflow | CSS check; 1280x800 screenshot |
+| C20 | Audio and mute | prior | should | Feedback without assets | Generated tones on mine/place/jump/select; one mute control, persisted | audio test; probe |
+| C21 | Numeric seed entry | prior | should | Replayable worlds | Entering a seed regenerates and saves the world; invalid input refuses visibly | UI test; probe |
+| C22 | Pause | prior | should | The player can stop the simulation | Pause freezes time and player and shows an overlay; resume restores | journey probe with two states |
+| C23 | The eighth hotbar block | prior | should | Palette depth | At least eight distinct placeable block types | config/UI test |
+| C24 | Day/night | prior | should | World atmosphere | Time advances; sky, lighting and clock change; foreground stays readable | time-cycle test; two screenshots |
+| C25 | Nine-slot hotbar | prior | should | Palette breadth | Exactly nine slots with keys 1–9 | UI test; visual probe |
+| C26 | Coordinates | prior | should | Orientation in the world | HUD shows live tile coordinates | UI test; probe |
+| N1 | Multiplayer/network play | request (offline) | non-goal | — | — | — |
+| N2 | Third-party libraries, CDN assets, external fonts | request + project | non-goal | — | — | — |
+| N3 | Build step, bundler or server requirement | request + project | non-goal | — | — | — |
+| N4 | Project Git commit | user (explicit) | non-goal | — | — | — |
+| N5 | Change report | user (explicit waiver) | non-goal | — | — | — |
 
-Reference-observed capabilities the request does not ask for — mobs/combat, health/hunger/survival
-inventory, crafting, multi-biome worlds — are recorded as open decisions (below). They are not
-classified as non-goals by inference and they do not remove any requested capability.
+The map is a fidelity instrument, not a breadth target. C15–C26 are the prior accepted inventory and
+are carried as continuity, not as an invitation to add unrelated features.
+
+### Stateful journeys and integrity invariants
+
+| # | Journey | Before → action → after (visible state) | Probe |
+| --- | --- | --- | --- |
+| J1 | Mine a surface block | Grass tile at the hovered cell, count 0 → left-click → the tile is replaced by the sky/background at the same spatial anchor, dust appears, toast `+1 grass`, badge shows 1 | CDP click; before/after screenshots; tile pixel becomes sky; badge increments |
+| J2 | Place a block | Empty adjacent cell, selected block count ≥1 → right-click → the block is drawn in exactly that cell, count decreases, placement puff | CDP right-click; block pixel equals palette colour; badge decrements |
+| J3 | Refused: occupied cell | Occupied cell → right-click → world visually unchanged, refusal toast names the reason | CDP right-click; block pixel unchanged; toast text |
+| J4 | Refused: player overlap | Cell under the player → right-click → player sprite unchanged, refusal toast | CDP right-click; player pixel unchanged; toast text |
+| J5 | Refused: no inventory | Selected leaves with count 0, valid empty cell → right-click → no block appears, toast `No leaves left — mine some first`, badge 0 | CDP right-click; cell stays background; toast text |
+| J6 | Reload persistence | Mined/placed state, moved player, counts → reload → same layout, position and counts, `ready` marker, restore toast | CDP reload; read `window.__sandbox` snapshot; compare |
+| J7 | Corrupt save recovery | `localStorage` replaced with `"{oops"` → reload → fresh world, `ready` marker, visible unreadable-save notice | CDP corrupt + reload; assert status and notice |
+| J8 | Pause overlay | Running world, advancing clock → press `P` → canvas dimmed by an overlay with a centred `Paused` card, time/player frozen; press `P` → overlay gone, motion resumes | CDP key press; two screenshots; assert overlay visibility and dimmed canvas pixel |
+| J9 | Day and night | Midday bright sky, strong contrast → advance the clock → deep-blue sky with stars/moon, darkened but readable world, night clock; day frame stays bright | CDP clock advance; two 960x600 screenshots; top-of-canvas pixels differ; foreground anchor visible in both |
+| J10 | World boundary | Player near the world edge → walk outward → camera stops at the boundary, no out-of-world void, player stays inside | CDP held key; camera clamp values; edge pixel check |
+| J11 | Hotbar selection | Slot 1 selected → press `5`, then wheel → exactly one selected ring at the correct slot, HUD name and coordinates agree, all counts visible | CDP key/wheel; class placement and HUD text |
+
+Integrity invariants: I1 placement never overwrites solids or the player AABB; I2 the player never
+intersects a solid tile after a step; I3 a save round-trip preserves seed, blocks, position, inventory
+and clock or falls back with a visible notice (never a red error); I4 the camera rectangle never leaves
+the world; I5 the selected index stays 0–8 and counts never go negative.
+
+Visible-state obligation: J1 states the replacement background at the removed block's anchor;
+J3–J5 state that the world stays visually unchanged while the refusal occupies the toast layer;
+J8 names the occlusion layer and its dimming; J9 checks two materially different visual states with a
+foreground anchor. All are executed probes at 960x600, not inspection-only claims.
 
 ### Signature-experience table
 
-| Reference | Signature capability | Evidence | Goal coverage | Decision |
-| --- | --- | --- | --- | --- |
-| Minecraft (named in the request) | Break/place feedback: selection outline, staged breaking, particles, sound | Block breaking and placing in Minecraft are staged and audible | Mechanics requested; feedback absent | **must** — sharpens M3/M4 into S1/S2 |
-| Minecraft | Day/night change of light and sky | A defining ambient system of the reference | Absent from the request, present in the prior inventory | **must** M13; recorded as continuity, not a new demand |
-| Minecraft | Seed-driven, layered terrain | Seeded world generation is a headline feature | Literal coverage in M1 | **should** S3 — depth and trees make "procedural" legible |
-| Terraria (2D exemplar) | Parallax background and tile variety | Terraria's layered backgrounds sell 2D depth | Absent | **should** S3 — layered sky/hills and textured tiles |
-| Terraria | Side-on mining/building with a palette | The genre's core loop in 2D | Covered by M3/M4/M5 | **must** as requested; no extra feature import |
+Reference: **Minecraft**, the genre's defining product; supporting evidence from browser-native 2D
+block sandboxes for Canvas/`file://` delivery. The request itself names "Minecraft-style", so the
+reference is credible and directly relevant; evidence is the reference's player-visible interaction
+grammar.
 
-The signature set is reduced to five decision-changing rows because the deliverable is one bounded
-page: each row changes either the accepted matrix or the quality contract, and no row is padding.
+| Signature capability | Evidence | Goal coverage | Decision |
+| --- | --- | --- | --- |
+| Immediate tactile break/build feedback | Blocks respond instantly with break animation, particles and sound | Covered in principle, must be explicit | must |
+| Palette identity: small hotbar, per-block identity, selection and counts | Numbered hotbar with stack counts | Covered | must |
+| Living atmosphere: day/night sky, light, sun/moon, parallax depth | Cycle changes mood without hiding the world | Prior day/night, not yet designed | must |
+| Seed-driven world variety: layers, hills, trees, sand, caves | Seeded worlds yield landmarks and biomes | Requested terrain; variety is quality depth | must |
+| "Return to your world" persistence with a visible restore cue | Worlds persist across sessions | Covered | must |
+| Sound feedback with mute | Break/place sounds | Prior only | should |
 
-## Prior capability dispositions
+Reduced set rationale: one compact sample page; six decision-changing rows instead of importing mobs,
+crafting, redstone or multiplayer. A reference never removes a requested capability and is not a
+feature-count target.
 
-Source: cumulative prior standard versions (the binding run prompt supplies the inventory; the
-inventory has no per-item version tags, so item-level provenance is the inventory itself).
+### Prior accepted capability dispositions
 
-| # | Prior capability | Disposition | Reason / impact | Source |
-| --- | --- | --- | --- | --- |
-| P1 | Per-block inventory counts | improve | Counts on every slot; mine adds, place spends, empty stock refuses placement | Prior inventory; M11 |
-| P2 | 52 automated tests including seed tests | preserve | Floor kept; seed file untouched; new suites add coverage | Prior inventory; bridge |
-| P3 | Reduced-motion support | improve | CSS query plus JS particle/bob reduction | Prior inventory |
-| P4 | Wheel selection | preserve | Wheel cycles nine slots and wraps | Prior inventory |
-| P5 | 1280-wide scaling | preserve | `min-width: 1280px` scaling media query | Prior inventory |
-| P6 | Audio/mute | improve | Procedural WebAudio SFX, persisted mute, `M` shortcut | Prior inventory |
-| P7 | Numeric seed entry | improve | Validated seed field rebuilds world and updates state | Prior inventory |
-| P8 | Pause | improve | `P`/`Escape` freeze simulation and time; overlay; state persists | Prior inventory |
-| P9 | Eighth hotbar block | preserve | Nine distinct blocks; slot 8 cobblestone, slot 9 glass | Prior inventory |
-| P10 | Day/night | improve | Continuous clock drives sky, light, sun/moon, stars, HUD label | Prior inventory |
-| P11 | Nine-slot hotbar | preserve | Nine slots with digits, icons, selection and counts | Prior inventory |
-| P12 | Coordinates | improve | Live block X/Y and depth in the HUD | Prior inventory |
+Source/version: initiating user instruction, cumulative inventory; no version tag supplied (uncertainty
+recorded).
 
-No item is replaced, retired or deferred, so no replace/retire source is required and no item is
-dropped. This table is the canonical record the solution matrix and verification must map to.
+| Prior capability | Disposition | Reason / impact |
+| --- | --- | --- |
+| per-block inventory counts | improve | Mining adds, placement consumes, every slot shows a count; adds a resource model and empty-inventory refusal |
+| 52 automated tests including the seed tests | improve | Keep all six seed tests; grow the suite to ≥52 over terrain, physics, interaction, persistence, time, camera, render, UI and journeys |
+| reduced-motion support | preserve | `prefers-reduced-motion` disables transitions and JS camera easing/particles |
+| wheel selection | preserve | Wheel cycles the nine slots |
+| 1280-wide scaling | preserve | Layout scales to 1280 px with the canvas aspect ratio |
+| audio/mute | preserve | WebAudio-generated tones with a persisted mute control |
+| numeric seed entry | preserve | Seed field + generate action regenerates and saves a world |
+| pause | preserve | `P`/button toggles a paused overlay and freezes simulation |
+| the eighth hotbar block | preserve | Nine block types ship in the palette (at least eight placeable) |
+| day/night | improve | A visible cycle drives sky, light and a clock badge |
+| nine-slot hotbar | preserve | Exactly nine slots with keys 1–9 |
+| coordinates | preserve | Live tile coordinates in the HUD |
 
-## Goal-versus-request comparison
+No replace, retire or defer disposition is proposed; nothing is silently dropped.
 
-Every requested outcome is present in the goal's scope (M1-M9). The goal's only added constraint is
-the delivery-form resolution — local sibling files rather than one literal file — which the request
-itself permits ("or local files next to it") and the project bridge requires for Node-loadable
-modules; it is recorded as `user`-sourced, not an exclusion. The goal adds the prior capability set,
-the quality contract and the screenshot/visual-review requirement from the binding prompt, each with
-a `user` or `project` source. No material capability is missing, no material exclusion exists, and no
-`goal-authored` binding exclusion exists, so no exclusion needs user confirmation. No capability is
-ambiguous enough to require a user decision; the choices the request leaves open (palette, world
-size, art direction) are implementation choices recorded below as open decisions.
+### Goal-request comparison
+
+- Every requested functional and acceptance bullet maps to C1–C14; no requested capability is missing
+  from the goal.
+- Goal-added constraints all have a `user` or `project` source; none is `goal-authored`.
+- No unilateral narrowing: the goal's 52-test threshold and prior inventory raise ambition rather than
+  remove requested work.
+- Open decisions (resource model, variety depth, feedback set) are resolved in the alternatives below
+  with recorded reasoning because no user is available; none becomes a silent exclusion.
 
 ## Impact and risks
 
-- **Seed-test compatibility.** The generation must keep column 10 grass at `floor(height*0.65)`, dirt
-  below and stone at the bottom. Mitigation: flat spawn plateau near the origin; the untouched seed
-  suite proves it.
-- **Playability of any seed.** Deterministic spawn search plus a guaranteed flat area near spawn.
-- **Persistence robustness.** Schema-checked payload, defensive parsing, safe fallback to a fresh
-  world and a visible message; settings stored separately.
-- **Audio autoplay policy.** Audio context created/resumed on first gesture; silent until then.
-- **Performance.** Pre-rendered tile variants, visible-cell culling, capped particles, clamped delta.
-- **Scope drift into survival systems.** The accepted matrix is the boundary; extras stay open
-  decisions rather than silently inferred exclusions.
-- **Visual quality risk.** Mitigated by screenshot inspection at 960, 1280 and forced reduced motion,
-  plus an independent visual review with required findings fixed before closure.
+- The six seed tests pin the surface at x=10, so terrain keeps a deliberate flat spawn plateau while
+  varying elsewhere; this is a design constraint, not a test change.
+- `file://` localStorage in Chrome works per file path but has origin quirks; the reload probe verifies
+  it, and a corrupt/unavailable payload falls back to a fresh world with a visible notice.
+- AudioContext requires a user gesture; audio initialises lazily on first input and fails silent.
+- Headless capture depends on the first frame; `#status` reaches `ready` only after that frame.
+- Pixel probes must read stable anchors with tolerance; clouds and particles must not cover the sampled
+  anchors.
+- `window.__sandbox` is a thin read/command surface for automated probes; it must not become a second
+  control path for the UI.
+- Scope risk: the accepted set is large for one page. Mitigation: two implementation units (simulation
+  core; experience/presentation) with focused verification after each.
 
-## Alternatives and recommended direction
+## Alternatives
 
-1. **Terrain.** Chosen: deterministic sine-mix height field with a flat spawn plateau, layered
-   grass/dirt/stone/sand, caves and seeded trees. Rejected: keeping the flat generator (fails the
-   request), full value noise (more code, no visible benefit at this scale).
-2. **Rendering.** Chosen: canvas with pre-rendered textured tile variants, parallax sky/hills/clouds,
-   depth shading, sprite animation and particles. Rejected: flat rect fills (poor quality), DOM tiles
-   (heavy).
-3. **Physics.** Chosen: axis-separated AABB collision with fixed sub-steps; testable without a DOM.
-4. **Persistence.** Chosen: one versioned JSON payload under the existing save key plus a settings
-   key, defensively validated. Rejected: many individual keys (non-atomic, harder to validate).
-5. **Audio.** Chosen: procedural WebAudio tones/noise on gesture, persisted mute.
-6. **UI.** Chosen: static accessible DOM overlay (HUD, hotbar, seed panel, help/pause overlays,
-   toasts) over one canvas.
-7. **Day/night.** Chosen: continuous normalised clock with palette interpolation and phase labels.
-8. **Accessibility and scaling.** Chosen: CSS media queries plus JS `matchMedia` checks for
-   reduced motion, and a 1280-wide scaling query.
+1. **Terrain**: seeded value-noise heightmap over a flat spawn plateau with layer fill, trees, sand
+   patches and carved caves (chosen) vs. cellular-automata caves on a flat surface vs. handcrafted maps.
+   Chosen option is deterministic, seed-sensitive, survives the seed tests and produces visible variety
+   in one pass.
+2. **Collision**: axis-separated AABB resolution with sub-stepping at high fall speed (chosen) vs.
+   per-pixel collision vs. an external physics library (forbidden).
+3. **Resource model**: survival counts with a small starter kit, mining adds and placement consumes,
+   explicit refusal reasons (chosen) vs. unlimited creative placement with counts as statistics vs. a
+   crafting chain (out of scope). The chosen model preserves the prior inventory counts as a real
+   mechanic and gives the required refusal explanation a second meaningful case.
+4. **Persistence**: versioned JSON with run-length encoded blocks, a storage adapter and a corruption
+   fallback (chosen) vs. raw arrays vs. IndexedDB. Chosen option is compact, inspectable, Node-testable
+   and safe on `file://`.
+5. **Rendering**: Canvas 2D with procedurally shaded tiles, sky/time, parallax and particles (chosen)
+   vs. DOM tiles vs. WebGL. Chosen option needs no assets, fits `file://`, renders ~500 visible tiles
+   comfortably and stays unit-testable with a recording context.
+6. **Architecture**: keep the UMD module style and add focused modules — config, rng, world, player,
+   inventory, interaction, persistence, timecycle, camera, render, ui model, audio, main — with pure
+   logic importable in Node and DOM wiring only in `ui.js`/`main.js` (chosen) vs. one large script.
 
-Recommended direction: implement all M1-M20 and S1-S5 in the modular static-page architecture above,
-keep the seed modules' UMD style and testability, and verify with the project's two commands plus
-screenshot review at the three required viewports/settings.
-
-## Open decisions (no user available)
-
-| Open decision | Why it is open | Recorded handling |
-| --- | --- | --- |
-| Mobs, combat, health/hunger, crafting and survival inventory are not requested but exist in the reference | The request is silent and no user is available to accept them as a should or non-goal | Not bound and not delivered this version; recorded here so a later request can add them. This is not a silent exclusion of anything requested. |
-| Multi-biome world generation | Reference-observed, request silent, and not needed for the requested seeded terrain | Deferred by the same open decision; the generator still varies height, caves and vegetation per seed |
-| Exact block palette beyond the required four | The request names a minimum, not a full list | Implementation choice recorded in the solution: nine placeable blocks, slot 8 cobblestone and slot 9 glass |
-| World size, art direction and UI styling | Request leaves them open | Implementation choices recorded in the solution and proven by screenshots |
-
-No open decision blocks an accepted must capability: each is either a reference extra or an
-implementation detail, and every requested capability has an accepted path.
+Recommendation: adopt the chosen option in each row, keep the accepted capability matrix in the
+solution, and treat every must capability as blocking. No material ambiguity remains for solution
+selection; the solution gate will record a self-approval decision because no user is available.

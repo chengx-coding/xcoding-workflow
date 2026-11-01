@@ -1,86 +1,109 @@
-# Blockstead — a 2D Minecraft-style sandbox
+# Wildgrove — a tiny 2D sandbox
 
-A playable, offline 2D sandbox game inspired by Minecraft. The whole game is this page and its local
-files: plain HTML, CSS and JavaScript with no framework, no build step and no network access. Open
-`index.html` directly in a browser (double-click it) and play.
+A complete, offline 2D Minecraft-style sandbox in plain HTML, CSS and JavaScript. It is a static page:
+no framework, no build step, no package manager, no third-party assets and no network requests.
+
+Open `index.html` directly in a browser (double-click it). Everything works from `file://`.
+
+## What you can do
+
+- Explore a deterministic world generated from a numeric seed: grass, dirt and stone layers, hills,
+  dunes, trees and underground caves. The bottom two rows are a sealed bedrock floor that cannot be
+  mined, and removing underground blocks exposes a dark cave backdrop rather than the sky.
+- Walk and jump with a collidable player that cannot pass through solid blocks or leave the world.
+- Mine a block within reach with the left mouse button: the target shows a growing crack
+  meter and a pickaxe swing, then breaks into a dust burst with a `+1 <block>` readout.
+- Build with the right mouse button into an empty adjacent cell. Placements that would overwrite a
+  block, cover the player, float without support, reach too far, or use an empty palette slot are
+  refused with a visible explanation.
+- Collect per-block counts; every hotbar slot shows how many of that block you are carrying. Mining
+  adds, building consumes.
+- Choose among nine block types with number keys, the mouse wheel or by clicking the palette.
+- Watch a live minimap under the top bar show the world profile, your position and the visible camera
+  window as you travel.
+- Watch a day/night cycle change the sky, sun/moon, stars and ambient light while the world stays
+  readable.
+- Pause, mute, and generate a new world from any whole-number seed.
+- Reload the page and return to the same world, player position, inventory and clock, restored from
+  `localStorage`. An unreadable save is replaced by a fresh world with a visible notice.
+
+The seed is part of the world: `1337` always produces the same terrain, and changing the number
+recreates the terrain deterministically.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
 | `A` / `D` or `←` / `→` | Move left and right |
-| `Space` or `W` | Jump |
-| Left click (hold) | Mine the block under the pointer, within reach |
+| `Space` (or `W` / `↑`) | Jump |
+| Left click | Mine the block under the pointer, within reach |
 | Right click | Place the selected block in an empty adjacent cell |
 | `1` – `9` | Select a hotbar slot |
 | Mouse wheel | Cycle the hotbar |
-| `P` or `Esc` | Pause and resume |
+| `P` | Pause or resume |
 | `M` | Mute or unmute sound |
-| `H` or `?` | Show or hide the controls panel |
-| `R` | Return to a safe spot on the surface |
+| Seed field + `New world` | Generate a world from a whole-number seed |
 
-Mining and building are checked for reach, empty cells and stock. A block can never be placed inside
-the player. Each hotbar slot shows its remaining stock; mining adds to the matching slot and placing
-spends one.
+## Run and verify
 
-## The world
+Open the page:
 
-- Terrain is generated from a numeric seed: hills, layered grass, dirt and stone, sand in the
-  valleys, cave pockets and trees. The same seed always rebuilds the same world.
-- Type a whole number into the **Seed** field and press **Load** to rebuild the world (or **Random**
-  for a fresh one). The current seed is editable at any time.
-- A day/night cycle runs continuously; the HUD shows the time of day and the sun, moon and stars
-  follow it.
-- The camera follows the player and stays inside the world bounds.
-- The HUD shows live coordinates and depth, the hovered block and the current phase of the day.
+```console
+start index.html        # Windows; or double-click index.html
+```
 
-## Saving
-
-Edits, the player position, the hotbar stock and the current time save to `localStorage`
-automatically (every few seconds, on pause and when the page is hidden) and are restored the next
-time the page opens. If the saved data is unreadable, the page starts a fresh world instead of
-failing. Sound and mute preference are stored separately.
-
-## Checks
+Run the logic tests (Node 18+):
 
 ```console
 node --test "tests/**/*.test.js"
-python tools/page_check.py
 ```
 
-`node --test` runs the logic tests; the browser modules are written so they can be required in Node
-without a DOM. `python tools/page_check.py` runs the static checks (required elements, local assets,
-no network references) and then loads the page in headless Chrome to verify the status marker and a
-non-blank canvas. Pass `--screenshot <path>` to keep the captured image.
+Run the static and headless-browser page check:
+
+```console
+python tools/page_check.py
+python tools/page_check.py --screenshot capture.png     # keep the screenshot
+```
+
+Run the automated journey probe (Node 22+ with a local Chrome; drives the real page over the
+DevTools protocol):
+
+```console
+node tools/journey_check.js --out tmp/journeys
+```
+
+It executes mining, placement and every refusal, reload persistence, corrupt-save recovery, pause,
+day/night, boundary clamping and hotbar selection, saves screenshots under `--out`, and writes
+`journey-report.json`.
 
 ## Architecture
 
 ```text
-index.html            page shell: canvas, HUD, hotbar, seed panel, overlays, status marker
-css/style.css         visual design, 1280px scaling, reduced-motion rules
-js/config.js          constants, block palette, hotbar order, stock and hardness
-js/rng.js             seed hashing, PRNG helpers, seed parsing
-js/world.js           terrain, caves, trees, block access, spawn search, serialization
-js/player.js          gravity, jumping, and block collision
-js/camera.js          camera follow and world-bound clamping
-js/interaction.js     targeting, reach, mining, placement, inventory and hotbar model
-js/daynight.js        day/night clock and sky palette
-js/storage.js         versioned localStorage save/load and settings
-js/audio.js           procedural WebAudio sound effects and mute
-js/ui.js              HUD formatting, key mapping, help content, reduced-motion detection
-js/render.js          textured tiles, sky, parallax, particles, player sprite
-js/main.js            boot, loop, input wiring, autosave, pause, seed loading
-tests/                Node logic and static-page tests
-tools/page_check.py   static and headless-browser checks
+index.html            page shell: canvas, top bar, HUD, hotbar, toasts, pause overlay, status marker
+css/style.css         visual design, responsive 1280px layout, reduced-motion support
+js/config.js          block catalogue, palette order, physics, time, save and starter-kit constants
+js/rng.js             deterministic hash, mulberry32 and value-noise helpers
+js/world.js           seeded terrain, trees, dunes, caves, block access, JSON/RLE serialization
+js/player.js          axis-separated AABB physics with sub-stepping, jump and grounding
+js/inventory.js       per-block counts, add/consume with a non-negative invariant
+js/interaction.js     mining and placement rules with structured refusal reasons
+js/persistence.js     versioned localStorage payload with corruption and version fallbacks
+js/timecycle.js       day clock, phases, sky colours and light level
+js/camera.js          eased follow camera clamped to the world bounds
+js/render.js          canvas presentation: sky, parallax hills, textured blocks, player, particles,
+                      crack/pickaxe break animation and the minimap renderer
+js/ui.js              presentation model helpers: hotbar, coordinates, clock and target text
+js/audio.js           lazy WebAudio sound cues with mute
+js/main.js            boot, input, loop, saving, status marker and the probe surface
+tests/                Node logic tests (terrain, physics, interaction, persistence, render, UI, ...)
+tools/page_check.py   static and headless-browser page checks
+tools/journey_check.js automated browser journey probe
 ```
 
-The status marker is part of the verification contract: `#status` starts at `data-state="booting"`,
-becomes `data-state="ready"` after a successful first frame, and becomes `data-state="error"` if boot
-fails.
+The browser files are classic UMD scripts so the same logic modules load in Node for tests without a
+DOM. `window.__sandbox` exposes a small read/command probe surface used only by the automated browser
+checks; the page itself never depends on it.
 
-## Constraints
-
-- No third-party libraries, CDNs, external fonts or network requests.
-- The page runs from `file://`; no bundler or development server is required.
-- Browser modules stay loadable in Node for the logic tests.
-- Existing tests are never weakened; coverage is added instead.
+The `#status` element keeps its contract: `data-state="booting"` before the first frame,
+`data-state="ready"` after a successful frame, and `data-state="error"` (red) if boot or a runtime
+error fails.

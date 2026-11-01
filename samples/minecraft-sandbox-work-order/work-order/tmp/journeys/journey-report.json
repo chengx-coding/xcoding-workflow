@@ -1,0 +1,599 @@
+{
+  "ok": true,
+  "page": "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project\\index.html",
+  "viewport": [
+    960,
+    600
+  ],
+  "checks": [
+    {
+      "name": "boot: status is ready",
+      "ok": true,
+      "detail": "ready"
+    },
+    {
+      "name": "boot: nine palette slots",
+      "ok": true,
+      "detail": 9
+    },
+    {
+      "name": "boot: hotbar starts on slot 1",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "name": "boot: canvas is not blank",
+      "ok": true,
+      "detail": 105
+    },
+    {
+      "name": "boot: controls hint line is present",
+      "ok": true,
+      "detail": "AD / ←→ move Space jump Left click mine Right click build 1–9 or wheel select P pause M mute"
+    },
+    {
+      "name": "boot: no horizontal overflow at 960",
+      "ok": true,
+      "detail": {
+        "scrollWidth": 960,
+        "clientWidth": 960
+      }
+    },
+    {
+      "name": "hotbar: number key selects slot 5",
+      "ok": true,
+      "detail": {
+        "selected": 4,
+        "ring": 4
+      }
+    },
+    {
+      "name": "hotbar: wheel advances the selection",
+      "ok": true,
+      "detail": 5
+    },
+    {
+      "name": "hotbar: exactly one visible selected slot",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "name": "hotbar: wheel wraps back and key 1 restores grass",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "name": "mining: a held break exposes a live progress state",
+      "ok": true,
+      "detail": {
+        "active": true,
+        "tile": {
+          "x": 9,
+          "y": 42
+        },
+        "progress": 0.5299999999999995,
+        "duration": 0.22
+      }
+    },
+    {
+      "name": "mining: the held break completes and removes the block",
+      "ok": true,
+      "detail": {
+        "block": 0,
+        "dirt": 25
+      }
+    },
+    {
+      "name": "mining: the break is confirmed by a toast",
+      "ok": true,
+      "detail": {
+        "message": "+1 dirt",
+        "tone": "gain",
+        "at": 1793357667555
+      }
+    },
+    {
+      "name": "mine: target starts solid grass",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "mine: block removed from the world",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "mine: inventory gained one grass",
+      "ok": true,
+      "detail": 17
+    },
+    {
+      "name": "mine: a gain toast is visible",
+      "ok": true,
+      "detail": {
+        "message": "+1 grass",
+        "tone": "gain",
+        "at": 1793357668588
+      }
+    },
+    {
+      "name": "mine: removed tile shows the background in place",
+      "ok": true,
+      "detail": {
+        "before": [
+          101,
+          154,
+          73,
+          255
+        ],
+        "after": [
+          116,
+          135,
+          149,
+          255
+        ]
+      }
+    },
+    {
+      "name": "place: planks occupy the cell",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "place: inventory consumed one plank",
+      "ok": true,
+      "detail": 11
+    },
+    {
+      "name": "place: a placement toast is visible",
+      "ok": true,
+      "detail": {
+        "message": "Placed planks",
+        "tone": "gain",
+        "at": 1793357669537
+      }
+    },
+    {
+      "name": "place: the new block is visibly drawn there",
+      "ok": true,
+      "detail": [
+        142,
+        99,
+        50,
+        255
+      ]
+    },
+    {
+      "name": "refuse: occupied cell stays unchanged",
+      "ok": true,
+      "detail": {
+        "before": [
+          142,
+          99,
+          50,
+          255
+        ],
+        "after": [
+          142,
+          99,
+          50,
+          255
+        ]
+      }
+    },
+    {
+      "name": "refuse: occupied cell explains itself",
+      "ok": true,
+      "detail": {
+        "message": "That spot is not empty.",
+        "tone": "refuse",
+        "at": 1793357670031
+      }
+    },
+    {
+      "name": "refuse: the explanation is visible to the user",
+      "ok": true,
+      "detail": [
+        "+1 grass",
+        "Placed planks",
+        "That spot is not empty."
+      ]
+    },
+    {
+      "name": "refuse: player body is protected",
+      "ok": true,
+      "detail": {
+        "message": "You are standing there.",
+        "tone": "refuse",
+        "at": 1793357670793
+      }
+    },
+    {
+      "name": "refuse: player cell stays air",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "refuse: empty palette explains the shortage",
+      "ok": true,
+      "detail": {
+        "message": "No leaves left - mine some first.",
+        "tone": "refuse",
+        "at": 1793357671537
+      }
+    },
+    {
+      "name": "refuse: empty palette leaves the cell air",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "pause: state and overlay agree",
+      "ok": true,
+      "detail": {
+        "paused": true,
+        "hidden": false
+      }
+    },
+    {
+      "name": "pause: overlay covers the stage",
+      "ok": true,
+      "detail": {
+        "visible": true,
+        "width": 960,
+        "height": 539,
+        "bg": "rgba(3, 7, 12, 0.58)",
+        "backdrop": "blur(4px)"
+      }
+    },
+    {
+      "name": "pause: clock is frozen",
+      "ok": true,
+      "detail": {
+        "before": 0.34465166666667046,
+        "after": 0.34465166666667046
+      }
+    },
+    {
+      "name": "pause: resume hides the overlay",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "pause: clock advances after resume",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "reload: world edit restored",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "reload: placed block restored",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "reload: inventory restored",
+      "ok": true,
+      "detail": {
+        "before": {
+          "1": 17,
+          "2": 25,
+          "3": 16,
+          "4": 8,
+          "5": 0,
+          "6": 8,
+          "7": 11,
+          "8": 8,
+          "9": 12
+        },
+        "after": {
+          "1": 17,
+          "2": 25,
+          "3": 16,
+          "4": 8,
+          "5": 0,
+          "6": 8,
+          "7": 11,
+          "8": 8,
+          "9": 12
+        }
+      }
+    },
+    {
+      "name": "reload: player position restored",
+      "ok": true,
+      "detail": {
+        "before": 12.5,
+        "after": 12.5
+      }
+    },
+    {
+      "name": "reload: restore notice is shown",
+      "ok": true,
+      "detail": [
+        "World restored from your last session."
+      ]
+    },
+    {
+      "name": "recover: status stays ready",
+      "ok": true,
+      "detail": "ready"
+    },
+    {
+      "name": "recover: a fresh world is generated",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "recover: the recovery notice is visible",
+      "ok": true,
+      "detail": [
+        "The saved world could not be read. A fresh world was generated."
+      ]
+    },
+    {
+      "name": "day/night: sky changes materially",
+      "ok": true,
+      "detail": {
+        "day": [
+          124,
+          176,
+          201,
+          255
+        ],
+        "night": [
+          10,
+          17,
+          36,
+          255
+        ]
+      }
+    },
+    {
+      "name": "day/night: HUD clock changes",
+      "ok": true,
+      "detail": {
+        "day": "12:02 day",
+        "night": "00:02 night"
+      }
+    },
+    {
+      "name": "day/night: foreground stays drawn at night",
+      "ok": true,
+      "detail": [
+        45,
+        34,
+        36,
+        255
+      ]
+    },
+    {
+      "name": "day/night: foreground is darker at night but still visible",
+      "ok": true,
+      "detail": {
+        "day": [
+          136,
+          89,
+          58,
+          255
+        ],
+        "night": [
+          45,
+          34,
+          36,
+          255
+        ]
+      }
+    },
+    {
+      "name": "boundary: camera clamps to the left edge",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "name": "boundary: player stays inside the world",
+      "ok": true,
+      "detail": 0.35
+    },
+    {
+      "name": "boundary: camera clamps to the right edge",
+      "ok": true,
+      "detail": 3136
+    },
+    {
+      "name": "boundary: player stays inside the right edge",
+      "ok": true,
+      "detail": 126.6499
+    },
+    {
+      "name": "floor: the palette tucks away so the bottom row stays reachable",
+      "ok": true,
+      "detail": {
+        "tucked": true,
+        "top": 535
+      }
+    },
+    {
+      "name": "underground: the exposed background is dark, not sky",
+      "ok": true,
+      "detail": [
+        45,
+        46,
+        48,
+        255
+      ]
+    },
+    {
+      "name": "floor: the bottom row is still sealed after a mine click",
+      "ok": true,
+      "detail": {
+        "before": 3,
+        "after": 3
+      }
+    },
+    {
+      "name": "floor: the refusal explains the unbreakable floor",
+      "ok": true,
+      "detail": {
+        "message": "The world floor is unbreakable.",
+        "tone": "refuse",
+        "at": 1793357679779
+      }
+    },
+    {
+      "name": "floor: the bottommost row is also refused",
+      "ok": true,
+      "detail": {
+        "ok": false,
+        "reason": "The world floor is unbreakable.",
+        "block": 0,
+        "blockName": ""
+      }
+    },
+    {
+      "name": "floor: the player stands on the floor and cannot end up below it",
+      "ok": true,
+      "detail": 61.9999
+    },
+    {
+      "name": "floor: the palette returns after leaving the floor zone",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "hud: coordinates track the player",
+      "ok": true,
+      "detail": "20, 41"
+    },
+    {
+      "name": "orientation: the minimap exists and is non-blank",
+      "ok": true,
+      "detail": {
+        "exists": true,
+        "buckets": 14,
+        "checksum": 7486956
+      }
+    },
+    {
+      "name": "orientation: the minimap tracks the player",
+      "ok": true,
+      "detail": {
+        "before": 7486956,
+        "after": 7488734
+      }
+    },
+    {
+      "name": "mute: control mutes and persists",
+      "ok": true,
+      "detail": {
+        "button": "Muted",
+        "stored": "1"
+      }
+    },
+    {
+      "name": "mute: control restores sound",
+      "ok": true,
+      "detail": {
+        "button": "Sound on",
+        "stored": "0"
+      }
+    },
+    {
+      "name": "reduced motion: media query and CSS apply",
+      "ok": true,
+      "detail": {
+        "matches": true,
+        "duration": "1e-05s"
+      }
+    },
+    {
+      "name": "seed: numeric entry regenerates the world",
+      "ok": true,
+      "detail": {
+        "seed": 4242,
+        "toasts": [
+          "The world floor is unbreakable.",
+          "Sound muted.",
+          "Sound on.",
+          "New world · seed 4242"
+        ]
+      }
+    },
+    {
+      "name": "seed: the regenerated terrain differs",
+      "ok": true,
+      "detail": {
+        "before": 1378885672,
+        "after": 4154613141
+      }
+    },
+    {
+      "name": "status: an error turns the marker red",
+      "ok": true,
+      "detail": {
+        "state": "error",
+        "bg": "rgb(231, 76, 60)"
+      }
+    },
+    {
+      "name": "status: reload recovers the ready marker",
+      "ok": true,
+      "detail": "ready"
+    },
+    {
+      "name": "wide: layout grows to 1280",
+      "ok": true,
+      "detail": {
+        "app": 1280,
+        "canvas": 1280,
+        "canvasHeight": 719,
+        "barRight": 920,
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      }
+    },
+    {
+      "name": "wide: no horizontal overflow",
+      "ok": true,
+      "detail": {
+        "app": 1280,
+        "canvas": 1280,
+        "canvasHeight": 719,
+        "barRight": 920,
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      }
+    },
+    {
+      "name": "wide: hotbar stays inside the viewport",
+      "ok": true,
+      "detail": {
+        "app": 1280,
+        "canvas": 1280,
+        "canvasHeight": 719,
+        "barRight": 920,
+        "scrollWidth": 1280,
+        "clientWidth": 1280
+      }
+    }
+  ],
+  "failed": [],
+  "screenshots": [
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\mining-progress.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\mine-before.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\mine-after.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\paused.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\day.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\night.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\underground.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\underground-floor.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\final-960x600.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\final-day.png",
+    "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\0.3.8\\project-xc-workshop\\.xcoding\\work-orders\\20261030-1819-mc-2d-sandbox\\tmp\\journeys\\wide-1280x800.png"
+  ],
+  "exceptions": [],
+  "consoleErrors": []
+}

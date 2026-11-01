@@ -1,0 +1,6 @@
+﻿metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.control_packet.category.implementation-records.selectors=["bb:verification.sources.tests"]
+metadata.control_packet.category.implementation-records.min_sources=1
+metadata.control_packet.category.implementation-records.artifact_min=1

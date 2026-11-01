@@ -1,0 +1,3 @@
+﻿verification.sources.tests=["rt_work-order-20261030-1819-mc-2d-sandbox__dyn-1__impl-simulation","rt_work-order-20261030-1819-mc-2d-sandbox__dyn-1__impl-experience"]
+verification.sources.page=["rt_work-order-20261030-1819-mc-2d-sandbox__dyn-1__impl-experience"]
+verification.sources.journeys=["rt_work-order-20261030-1819-mc-2d-sandbox__dyn-1__impl-experience"]

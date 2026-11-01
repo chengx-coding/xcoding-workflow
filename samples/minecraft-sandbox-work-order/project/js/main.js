@@ -1,585 +1,323 @@
 (function () {
   "use strict";
 
-  const config = window.SandboxConfig;
+  const CONFIG = window.SandboxConfig;
   const RNG = window.SandboxRng;
-  const WORLD = window.SandboxWorld;
-  const PLAYER = window.SandboxPlayer;
-  const CAMERA = window.SandboxCamera;
-  const INTERACTION = window.SandboxInteraction;
-  const DAYNIGHT = window.SandboxDayNight;
-  const STORAGE = window.SandboxStorage;
-  const AUDIO = window.SandboxAudio;
-  const UI = window.SandboxUi;
-  const RENDER = window.SandboxRender;
+  const World = window.SandboxWorld;
+  const Player = window.SandboxPlayer;
+  const Inventory = window.SandboxInventory;
+  const Interaction = window.SandboxInteraction;
+  const Persistence = window.SandboxPersistence;
+  const Time = window.SandboxTime;
+  const Camera = window.SandboxCamera;
+  const Render = window.SandboxRender;
+  const Ui = window.SandboxUi;
+  const AudioKit = window.SandboxAudio;
+  const Mining = window.SandboxMining;
 
-  const canvas = document.getElementById("game");
-  const ctx = canvas.getContext("2d", { alpha: false });
-  const status = document.getElementById("status");
-  const hudCoords = document.getElementById("hud-coords");
-  const hudTime = document.getElementById("hud-time");
-  const hudDepth = document.getElementById("hud-depth");
-  const hudTarget = document.getElementById("hud-target");
-  const hotbar = document.getElementById("hotbar");
-  const toasts = document.getElementById("toasts");
-  const seedForm = document.getElementById("seed-form");
-  const seedInput = document.getElementById("seed-input");
-  const seedRandom = document.getElementById("seed-random");
-  const muteButton = document.getElementById("mute");
-  const pauseButton = document.getElementById("pause");
-  const helpButton = document.getElementById("help");
-  const helpOverlay = document.getElementById("help-overlay");
-  const helpClose = document.getElementById("help-close");
-  const helpList = document.getElementById("help-list");
-  const pauseOverlay = document.getElementById("pause-overlay");
-  const resumeButton = document.getElementById("resume");
-
-  const view = { width: config.viewWidth, height: config.viewHeight };
-  const store = STORAGE.createStore();
-  const savedSettings = store.loadSettings();
-  const audio = AUDIO.createAudioBoard({ muted: savedSettings.muted });
-  const input = { left: false, right: false, jump: false };
-  const pointer = { x: view.width / 2, y: view.height / 2, inside: false };
-  const mining = INTERACTION.createMiningState();
-  const particles = [];
-  const reduceQuery =
-    typeof window.matchMedia === "function" ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
-
-  let world = null;
-  let player = null;
-  let inventory = null;
-  let camera = CAMERA.createCamera();
-  let timeOfDay = config.startTimeOfDay;
-  let paused = false;
-  let muted = Boolean(savedSettings.muted);
-  let helpOpen = false;
-  let pausedByHelp = false;
-  let reducedMotion = UI.prefersReducedMotion(reduceQuery ? window.matchMedia.bind(window) : undefined);
-  let hovered = null;
-  let hoverValid = false;
-  let miningActive = false;
-  let lastTimestamp = 0;
-  let autosaveTimer = 0;
-  let frameCount = 0;
-  let booted = false;
-
-  function setStatus(state, note) {
-    status.dataset.state = state;
-    status.title = note || state;
+  if (!CONFIG || !World || !Player || !Inventory || !Interaction || !Persistence || !Time || !Camera || !Render || !Ui || !AudioKit || !Mining) {
+    throw new Error("One or more sandbox modules failed to load");
   }
 
-  function toast(kind, detail) {
-    const message = UI.toastMessage(kind, detail);
-    if (!message) {
+  const elements = {
+    canvas: document.getElementById("game"),
+    status: document.getElementById("status"),
+    hotbar: document.getElementById("hotbar"),
+    hud: document.getElementById("hud"),
+    target: document.getElementById("target-value"),
+    coords: document.getElementById("coords-value"),
+    clockText: document.getElementById("clock-text"),
+    phaseValue: document.getElementById("phase-value"),
+    seedValue: document.getElementById("seed-value"),
+    seedInput: document.getElementById("seed-input"),
+    seedForm: document.getElementById("seed-form"),
+    minimap: document.getElementById("minimap"),
+    minimapSeed: document.getElementById("minimap-seed"),
+    pauseButton: document.getElementById("pause-button"),
+    resumeButton: document.getElementById("resume-button"),
+    muteButton: document.getElementById("mute-button"),
+    toasts: document.getElementById("toasts"),
+    pauseOverlay: document.getElementById("pause-overlay"),
+    stage: document.getElementById("stage")
+  };
+
+  const canvas = elements.canvas;
+  const ctx = canvas.getContext("2d");
+  const minimapCtx = elements.minimap ? elements.minimap.getContext("2d") : null;
+  const MINIMAP_SIZE = { width: 180, height: 64 };
+  const view = { width: CONFIG.viewWidth, height: CONFIG.viewHeight };
+  const MUTE_KEY = "xc-sandbox-muted-v1";
+
+  const reduceQuery = typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-reduced-motion: reduce)")
+    : null;
+  let reducedMotion = !!(reduceQuery && reduceQuery.matches);
+
+  const audio = AudioKit.createAudio(window);
+  let muted = false;
+  try {
+    muted = window.localStorage.getItem(MUTE_KEY) === "1";
+  } catch (error) {
+    muted = false;
+  }
+  audio.setMuted(muted);
+
+  const storage = (function () {
+    try {
+      const candidate = window.localStorage;
+      const probe = "__xc-sandbox-probe__";
+      candidate.setItem(probe, "1");
+      candidate.removeItem(probe);
+      return candidate;
+    } catch (error) {
+      return null;
+    }
+  })();
+
+  const keys = { left: false, right: false, jump: false };
+  const particles = [];
+  const slotElements = [];
+  let slotCounts = [];
+  let state = null;
+  let statusReady = false;
+  let saveFailed = storage === null;
+  let dirty = false;
+  let lastSaveAt = 0;
+  let lastFrameAt = 0;
+  let lastToast = null;
+  let hotbarCaption = null;
+
+  function setStatus(nextState, text) {
+    elements.status.dataset.state = nextState;
+    elements.status.title = text || nextState;
+  }
+
+  function readDefaultSeed() {
+    const value = Number(elements.seedInput.value);
+    return Number.isFinite(value) ? value >>> 0 : CONFIG.seed;
+  }
+
+  function snapCamera(game) {
+    Camera.update(game.camera, game.player, game.world, view, 1 / 60, { reducedMotion: true });
+  }
+
+  function createGame(seed) {
+    const world = World.createWorld(seed);
+    const spawn = World.spawnPoint(world);
+    const player = Player.createPlayer(spawn.x, spawn.y);
+    const game = {
+      world: world,
+      player: player,
+      inventory: Inventory.starterInventory(),
+      clock: Time.createClock(CONFIG.time.startFraction),
+      camera: Camera.createCamera(),
+      selected: Ui.clampIndex(CONFIG.starterSelected),
+      hover: null,
+      mining: Mining.createMining(),
+      paused: false
+    };
+    snapCamera(game);
+    return game;
+  }
+
+  function restoreGame(defaultSeed) {
+    const loaded = Persistence.loadState(storage, CONFIG.saveKey);
+    if (loaded.ok) {
+      const saved = loaded.state;
+      const game = {
+        world: saved.world,
+        player: Player.createPlayer(saved.player.x, saved.player.y),
+        inventory: saved.inventory,
+        clock: Time.createClock(saved.time),
+        camera: Camera.createCamera(),
+        selected: Ui.clampIndex(saved.selected),
+        hover: null,
+        mining: Mining.createMining(),
+        paused: false
+      };
+      game.player.facing = saved.player.facing;
+      snapCamera(game);
+      return { game: game, notice: "World restored from your last session." };
+    }
+    if (loaded.reason === "corrupt" || loaded.reason === "version") {
+      return {
+        game: createGame(defaultSeed),
+        notice: "The saved world could not be read. A fresh world was generated."
+      };
+    }
+    if (loaded.reason === "unavailable") {
+      return {
+        game: createGame(defaultSeed),
+        notice: "Saving is unavailable in this browser. This session will not persist."
+      };
+    }
+    return { game: createGame(defaultSeed), notice: null };
+  }
+
+  function fitCanvas() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const width = Math.round(CONFIG.viewWidth * dpr);
+    const height = Math.round(CONFIG.viewHeight * dpr);
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function fitMinimap() {
+    if (!minimapCtx) {
       return;
     }
-    const node = document.createElement("div");
-    node.className = "toast";
-    node.textContent = message;
-    toasts.appendChild(node);
-    window.setTimeout(function () {
-      node.classList.add("is-leaving");
-      window.setTimeout(function () {
-        if (node.parentNode) {
-          node.parentNode.removeChild(node);
-        }
-      }, 240);
-    }, 2400);
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const width = Math.round(MINIMAP_SIZE.width * dpr);
+    const height = Math.round(MINIMAP_SIZE.height * dpr);
+    if (elements.minimap.width !== width || elements.minimap.height !== height) {
+      elements.minimap.width = width;
+      elements.minimap.height = height;
+    }
+    minimapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function draw() {
+    Render.renderFrame(ctx, {
+      world: state.world,
+      player: state.player,
+      camera: state.camera,
+      time: state.clock.fraction,
+      hover: state.hover,
+      mining: state.mining,
+      particles: particles,
+      reducedMotion: reducedMotion
+    });
+    if (minimapCtx) {
+      Render.renderMinimap(minimapCtx, state.world, state.player, state.camera, MINIMAP_SIZE);
+    }
+  }
+
+  function updateHotbar() {
+    const model = Ui.hotbarModel(state.inventory, state.selected);
+    for (let index = 0; index < model.length; index += 1) {
+      const slot = model[index];
+      const element = slotElements[index];
+      if (!element) {
+        continue;
+      }
+      element.classList.toggle("is-selected", slot.selected);
+      element.setAttribute("aria-pressed", slot.selected ? "true" : "false");
+      element.setAttribute("aria-label", slot.label + " — " + slot.count + " in inventory — key " + slot.key);
+      const countElement = slotCounts[index];
+      if (countElement) {
+        countElement.textContent = String(slot.count);
+        countElement.classList.toggle("is-empty", slot.count === 0);
+      }
+    }
+    if (hotbarCaption) {
+      const active = model[state.selected];
+      hotbarCaption.textContent = active.label + " · " + active.count + " in hand";
+    }
   }
 
   function updateHud() {
-    if (!world || !player) {
-      return;
+    elements.coords.textContent = Ui.coordinates(state.player).text;
+    const clock = Ui.clockModel(state.clock.fraction);
+    elements.clockText.textContent = clock.label;
+    elements.phaseValue.textContent = clock.phaseLabel.toLowerCase();
+    elements.seedValue.textContent = String(state.world.seed);
+    if (elements.minimapSeed) {
+      elements.minimapSeed.textContent = String(state.world.seed);
     }
-    const surface = RENDER.surfaceFor(world);
-    const surfaceY = surface ? surface[Math.max(0, Math.min(world.width - 1, Math.floor(player.x)))] : null;
-    hudCoords.textContent = UI.formatCoords(player);
-    hudDepth.textContent = UI.formatDepth(player, surfaceY);
-    hudTime.textContent = DAYNIGHT.labelOf(timeOfDay);
-    hudTime.dataset.phase = DAYNIGHT.phaseOf(timeOfDay);
-    if (hovered) {
-      const block = WORLD.getBlock(world, hovered.x, hovered.y);
-      if (block === config.blocks.air) {
-        hudTarget.textContent = "Air";
-      } else {
-        const name = config.blockNames[block] || "Block";
-        hudTarget.textContent = name + (INTERACTION.inReach(player, hovered.x, hovered.y, config.reach) ? "" : " · far");
-      }
+
+    let target;
+    if (state.hover) {
+      const block = Interaction.blockAt(state.world, state.hover.x, state.hover.y);
+      const reachable = Interaction.withinReach(state.player, state.hover.x, state.hover.y);
+      target = Ui.targetModel(state.hover, block, reachable);
     } else {
-      hudTarget.textContent = "—";
+      target = Ui.targetModel(null, CONFIG.blocks.air, true);
     }
+    elements.target.textContent = target.text;
+    elements.target.classList.toggle("is-refused", target.refused);
   }
 
-  function refreshHotbar() {
-    if (!inventory) {
-      return;
+  function toast(message, tone) {
+    const element = document.createElement("div");
+    element.className = "toast";
+    element.dataset.tone = tone || "gain";
+    element.textContent = message;
+    elements.toasts.appendChild(element);
+    lastToast = { message: message, tone: tone || "gain", at: Date.now() };
+    window.requestAnimationFrame(function () {
+      element.classList.add("is-visible");
+    });
+    while (elements.toasts.children.length > 4) {
+      elements.toasts.removeChild(elements.toasts.firstElementChild);
     }
-    const model = INTERACTION.hotbarModel(inventory);
-    const slots = hotbar.querySelectorAll(".slot");
-    for (let index = 0; index < slots.length; index += 1) {
-      const slot = slots[index];
-      const entry = model[index];
-      if (!entry) {
-        continue;
-      }
-      slot.dataset.block = config.blockNames[entry.block]
-        ? config.blockNames[entry.block].toLowerCase()
-        : slot.dataset.block;
-      slot.title = entry.name + " (" + entry.digit + ")";
-      const count = slot.querySelector(".slot-count");
-      if (count) {
-        count.textContent = UI.formatCount(entry.count);
-        count.classList.toggle("is-empty", entry.count <= 0);
-      }
-      slot.classList.toggle("is-selected", entry.selected);
-      slot.setAttribute("aria-checked", entry.selected ? "true" : "false");
-    }
-  }
-
-  function syncMuteButton() {
-    muteButton.setAttribute("aria-pressed", muted ? "true" : "false");
-    muteButton.title = muted ? "Unmute sound (M)" : "Mute sound (M)";
-    muteButton.classList.toggle("is-active", muted);
-    const glyph = muteButton.querySelector("span[aria-hidden]");
-    if (glyph) {
-      glyph.textContent = muted ? "✕" : "♪";
-    }
-  }
-
-  function syncPauseButton() {
-    pauseButton.setAttribute("aria-pressed", paused ? "true" : "false");
-    pauseButton.classList.toggle("is-active", paused && !helpOpen);
-    pauseOverlay.hidden = !paused || helpOpen;
-  }
-
-  function selectSlot(index) {
-    INTERACTION.selectSlot(inventory, index, config.hotbar.length);
-    audio.play("select");
-    refreshHotbar();
-    updateTargeting();
-  }
-
-  function cycleSlot(delta) {
-    INTERACTION.cycleSlot(inventory, delta, config.hotbar.length);
-    audio.play("select");
-    refreshHotbar();
-    updateTargeting();
-  }
-
-  function togglePause(force) {
-    paused = typeof force === "boolean" ? force : !paused;
-    if (paused) {
-      miningActive = false;
-      mining.cell = null;
-      mining.progress = 0;
-      input.left = false;
-      input.right = false;
-      input.jump = false;
-      save(false);
-    }
-    syncPauseButton();
-    updateHud();
-  }
-
-  function toggleHelp(force) {
-    const next = typeof force === "boolean" ? force : !helpOpen;
-    if (next === helpOpen) {
-      return;
-    }
-    helpOpen = next;
-    helpOverlay.hidden = !helpOpen;
-    if (helpOpen) {
-      // Reading the controls should never cost the player their footing: freeze
-      // the simulation while the dialog is open and restore the exact state after.
-      pausedByHelp = !paused;
-      if (pausedByHelp) {
-        paused = true;
-        miningActive = false;
-        mining.cell = null;
-        mining.progress = 0;
-        input.left = false;
-        input.right = false;
-        input.jump = false;
-      }
-      syncPauseButton();
-      helpClose.focus();
-    } else {
-      if (pausedByHelp) {
-        paused = false;
-        pausedByHelp = false;
-      }
-      syncPauseButton();
-      helpButton.focus();
-    }
-  }
-
-  function toggleMute() {
-    muted = !muted;
-    audio.setMuted(muted);
-    store.saveSettings({ muted: muted });
-    syncMuteButton();
-    toast(muted ? "muted" : "unmuted");
-    if (!muted) {
-      audio.play("select");
-    }
-  }
-
-  function snapCamera() {
-    camera = CAMERA.createCamera();
-    if (!world || !player) {
-      return camera;
-    }
-    const target = CAMERA.targetCamera(player, world, view, config.tileSize);
-    camera.x = target.x;
-    camera.y = target.y;
-    return camera;
-  }
-
-  function respawn() {
-    const spawn = WORLD.findSpawn(world);
-    player = PLAYER.createPlayer(spawn.x, spawn.y);
-    snapCamera();
-    toast("reset");
-    save(false);
-  }
-
-  function overlapAnySolid(candidate) {
-    const half = candidate.width / 2;
-    const left = Math.floor(candidate.x - half);
-    const right = Math.floor(candidate.x + half);
-    const top = Math.floor(candidate.y - candidate.height);
-    const bottom = Math.floor(candidate.y);
-    for (let y = top; y <= bottom; y += 1) {
-      for (let x = left; x <= right; x += 1) {
-        if (WORLD.isSolid(world, x, y)) {
-          return true;
+    window.setTimeout(function () {
+      element.classList.remove("is-visible");
+      window.setTimeout(function () {
+        if (element.parentNode) {
+          element.parentNode.removeChild(element);
         }
+      }, 240);
+    }, Ui.toastLifetime(tone));
+  }
+
+  function markDirty() {
+    dirty = true;
+  }
+
+  function saveNow(reason) {
+    if (!storage) {
+      if (!saveFailed) {
+        saveFailed = true;
+        toast("Saving is unavailable in this browser. This session will not persist.", "refuse");
       }
+      return { ok: false, reason: "unavailable" };
     }
-    return false;
+    const result = Persistence.saveState(
+      storage,
+      {
+        world: state.world,
+        player: state.player,
+        inventory: state.inventory,
+        time: state.clock.fraction,
+        selected: state.selected
+      },
+      CONFIG.saveKey
+    );
+    if (result.ok) {
+      dirty = false;
+      lastSaveAt = window.performance.now();
+      return result;
+    }
+    if (!saveFailed) {
+      saveFailed = true;
+      toast("Saving is unavailable in this browser. This session will not persist.", "refuse");
+    }
+    return result;
   }
 
-  function seedWorld(seed, options) {
-    const settings = options || {};
-    world = WORLD.createWorld(seed);
-    const spawn = WORLD.findSpawn(world);
-    player = PLAYER.createPlayer(spawn.x, spawn.y);
-    inventory = INTERACTION.createInventory();
-    camera = CAMERA.createCamera();
-    particles.length = 0;
-    miningActive = false;
-    mining.cell = null;
-    mining.progress = 0;
-    if (!settings.keepTime) {
-      timeOfDay = config.startTimeOfDay;
-    }
-    seedInput.value = String(world.seed);
-    seedInput.removeAttribute("aria-invalid");
-    snapCamera();
-    refreshHotbar();
-    updateHud();
-    if (settings.announce) {
-      toast(settings.announce, String(world.seed));
-    }
-  }
-
-  function loadSaved() {
-    const result = store.loadGame();
-    if (!result.ok) {
-      if (result.reason === "corrupt") {
-        toast("corrupt");
-      } else if (result.reason === "unavailable") {
-        toast("unavailable");
-      }
-      seedWorld(config.seed);
-      return;
-    }
-    let restoredWorld = null;
-    try {
-      restoredWorld = WORLD.deserializeWorld(result.state.worldText);
-    } catch (error) {
-      toast("corrupt");
-      seedWorld(config.seed);
-      return;
-    }
-    world = restoredWorld;
-    player = PLAYER.createPlayer(result.state.player.x, result.state.player.y);
-    if (overlapAnySolid(player)) {
-      const spawn = WORLD.findSpawn(world);
-      player = PLAYER.createPlayer(spawn.x, spawn.y);
-    }
-    inventory = INTERACTION.createInventory();
-    Object.keys(result.state.inventory.counts).forEach(function (key) {
-      inventory.counts[key] = result.state.inventory.counts[key];
-    });
-    INTERACTION.selectSlot(inventory, result.state.inventory.selected, config.hotbar.length);
-    timeOfDay = DAYNIGHT.normalizeTime(result.state.timeOfDay);
-    seedInput.value = String(world.seed);
-    snapCamera();
-    refreshHotbar();
-    updateHud();
-    toast("loaded");
-  }
-
-  function save(announce) {
-    if (!world || !player || !inventory) {
-      return;
-    }
-    const result = store.saveGame({
-      seed: world.seed,
-      worldText: WORLD.serializeWorld(world),
-      player: { x: player.x, y: player.y },
-      inventory: { counts: inventory.counts, selected: inventory.selected },
-      timeOfDay: timeOfDay
-    });
-    if (!result.ok) {
-      if (result.reason === "unavailable" && announce) {
-        toast("unavailable");
-      }
-      return;
-    }
-    if (announce) {
-      toast("saved");
-    }
-  }
-
-  function applySeed(text) {
-    const parsed = UI.parseSeedInput(text);
-    if (!parsed.ok) {
-      seedInput.setAttribute("aria-invalid", "true");
-      toast("denied", parsed.message);
-      seedInput.focus();
-      seedInput.select();
-      return false;
-    }
-    seedWorld(parsed.seed, { announce: "seeded" });
-    save(false);
-    return true;
-  }
-
-  function randomSeed() {
-    const seed = Math.floor(Math.random() * 4294967295) >>> 0;
-    seedWorld(seed, { announce: "regenerated" });
-    save(false);
-  }
-
-  function canvasPoint(event) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width ? config.viewWidth / rect.width : 1;
-    const scaleY = rect.height ? config.viewHeight / rect.height : 1;
-    return {
-      x: (event.clientX - rect.left) * scaleX,
-      y: (event.clientY - rect.top) * scaleY
-    };
-  }
-
-  function updateTargeting() {
-    if (!pointer.inside || !world) {
-      hovered = null;
-      hoverValid = false;
-      return;
-    }
-    const cell = INTERACTION.targetCell(camera, pointer.x, pointer.y, config.tileSize);
-    if (cell.x < 0 || cell.y < 0 || cell.x >= world.width || cell.y >= world.height) {
-      hovered = null;
-      hoverValid = false;
-      return;
-    }
-    hovered = cell;
-    const block = WORLD.getBlock(world, cell.x, cell.y);
-    if (block !== config.blocks.air) {
-      hoverValid = INTERACTION.canMine(world, player, cell.x, cell.y, config.reach).ok;
-    } else {
-      const target = INTERACTION.placementTarget(world, player, cell.x, cell.y);
-      hoverValid = Boolean(target) && INTERACTION.canPlace(world, player, inventory, target.x, target.y, config.reach).ok;
-    }
-  }
-
-  function spawnParticles(cellX, cellY, block, count, energy) {
-    const base = RENDER.BLOCK_COLORS[block] || "#c9d4dc";
-    const total = reducedMotion ? Math.max(2, Math.round(count * 0.35)) : count;
-    for (let index = 0; index < total; index += 1) {
+  function spawnParticles(tileX, tileY, blockId, count) {
+    const color = Render.hexToRgb(CONFIG.blockInfo[blockId].color);
+    for (let index = 0; index < count; index += 1) {
       particles.push({
-        x: (cellX + 0.1 + Math.random() * 0.8) * config.tileSize,
-        y: (cellY + 0.1 + Math.random() * 0.8) * config.tileSize,
-        vx: (Math.random() - 0.5) * energy,
-        vy: -energy * (0.3 + Math.random() * 0.8),
-        life: 0.35 + Math.random() * 0.35,
-        maxLife: 0.7,
-        size: 2 + Math.floor(Math.random() * 3),
-        color: base
+        x: tileX + 0.15 + Math.random() * 0.7,
+        y: tileY + 0.15 + Math.random() * 0.7,
+        vx: (Math.random() - 0.5) * 3.4,
+        vy: -1.2 - Math.random() * 3.4,
+        life: 0.45 + Math.random() * 0.4,
+        maxLife: 0.85,
+        size: 2 + Math.random() * 3,
+        color: color
       });
-    }
-    if (particles.length > 120) {
-      particles.splice(0, particles.length - 120);
-    }
-  }
-
-  function mineCurrentTarget() {
-    if (!hovered) {
-      return false;
-    }
-    const result = INTERACTION.mineBlock(world, player, inventory, hovered.x, hovered.y, config.reach);
-    if (!result.ok) {
-      audio.play("deny");
-      toast("denied");
-      return false;
-    }
-    spawnParticles(hovered.x, hovered.y, result.block, 10, 90);
-    audio.play("break");
-    refreshHotbar();
-    updateHud();
-    return true;
-  }
-
-  function placeAtHover() {
-    if (!hovered) {
-      return false;
-    }
-    const target = INTERACTION.placementTarget(world, player, hovered.x, hovered.y);
-    if (!target) {
-      audio.play("deny");
-      toast("denied");
-      return false;
-    }
-    const result = INTERACTION.placeBlock(world, player, inventory, target.x, target.y, config.reach);
-    if (!result.ok) {
-      audio.play("deny");
-      toast(result.reason === "stock" ? "noStock" : "denied");
-      return false;
-    }
-    spawnParticles(target.x, target.y, result.block, 5, 55);
-    audio.play("place");
-    refreshHotbar();
-    updateHud();
-    return true;
-  }
-
-  function onPointerDown(event) {
-    audio.ensure();
-    if (paused) {
-      return;
-    }
-    pointer.inside = true;
-    const point = canvasPoint(event);
-    pointer.x = point.x;
-    pointer.y = point.y;
-    updateTargeting();
-    if (event.button === 2 || event.button === 1) {
-      placeAtHover();
-      return;
-    }
-    if (event.button !== 0) {
-      return;
-    }
-    if (!hovered) {
-      return;
-    }
-    const check = INTERACTION.canMine(world, player, hovered.x, hovered.y, config.reach);
-    if (!check.ok) {
-      audio.play("deny");
-      return;
-    }
-    miningActive = true;
-    mining.cell = { x: hovered.x, y: hovered.y };
-    mining.progress = 0;
-    audio.play("mine");
-  }
-
-  function onPointerUp(event) {
-    if (event.button === 0) {
-      miningActive = false;
-      mining.cell = null;
-      mining.progress = 0;
-    }
-  }
-
-  function onPointerMove(event) {
-    const point = canvasPoint(event);
-    pointer.x = point.x;
-    pointer.y = point.y;
-    pointer.inside = true;
-    updateTargeting();
-  }
-
-  function onPointerLeave() {
-    pointer.inside = false;
-    hovered = null;
-    hoverValid = false;
-    miningActive = false;
-    mining.cell = null;
-    mining.progress = 0;
-  }
-
-  function onWheel(event) {
-    if (paused) {
-      event.preventDefault();
-      return;
-    }
-    cycleSlot(event.deltaY > 0 ? 1 : -1);
-    event.preventDefault();
-  }
-
-  function onKeyDown(event) {
-    if (UI.isTextEntryTarget(event.target && event.target.tagName)) {
-      return;
-    }
-    const action = UI.keyToAction(event.key);
-    if (action === "left" || action === "right" || action === "jump") {
-      if (action === "left") {
-        input.left = true;
-      } else if (action === "right") {
-        input.right = true;
-      } else {
-        input.jump = true;
-      }
-      event.preventDefault();
-      return;
-    }
-    if (action === "pause") {
-      togglePause();
-      event.preventDefault();
-      return;
-    }
-    if (action === "mute") {
-      toggleMute();
-      return;
-    }
-    if (action === "help") {
-      toggleHelp();
-      event.preventDefault();
-      return;
-    }
-    if (action === "respawn") {
-      respawn();
-      return;
-    }
-    if (action.indexOf("slot") === 0) {
-      const digit = Number(action.slice(4));
-      const changed = INTERACTION.selectByNumber(inventory, digit, config.hotbar.length);
-      if (changed.ok) {
-        audio.play("select");
-        refreshHotbar();
-        updateTargeting();
-      }
-    }
-  }
-
-  function onKeyUp(event) {
-    const action = UI.keyToAction(event.key);
-    if (action === "left") {
-      input.left = false;
-    } else if (action === "right") {
-      input.right = false;
-    } else if (action === "jump") {
-      input.jump = false;
     }
   }
 
   function updateParticles(dt) {
     for (let index = particles.length - 1; index >= 0; index -= 1) {
       const particle = particles[index];
-      particle.vy += 190 * dt;
+      particle.vy += 26 * dt;
       particle.x += particle.vx * dt;
       particle.y += particle.vy * dt;
       particle.life -= dt;
@@ -589,231 +327,151 @@
     }
   }
 
-  function frame(timestamp) {
-    const dt = lastTimestamp ? Math.min(0.05, Math.max(0, (timestamp - lastTimestamp) / 1000)) : 0;
-    lastTimestamp = timestamp;
-
-    if (!paused && world && player) {
-      PLAYER.stepPlayer(player, world, input, dt);
-      timeOfDay = DAYNIGHT.advanceTime(timeOfDay, dt, config.dayCycleSeconds);
-      if (miningActive && hovered) {
-        const block = WORLD.getBlock(world, hovered.x, hovered.y);
-        if (block) {
-          const step = INTERACTION.advanceMining(mining, hovered, block, dt);
-          if (step.progress > 0 && Math.random() < 0.25) {
-            spawnParticles(hovered.x, hovered.y, block, 1, 35);
-          }
-          if (step.done) {
-            mineCurrentTarget();
-            miningActive = false;
-            mining.cell = null;
-            mining.progress = 0;
-          }
-        } else {
-          miningActive = false;
-          mining.cell = null;
-          mining.progress = 0;
-        }
-      }
-      updateParticles(dt);
-      autosaveTimer += dt;
-      if (autosaveTimer >= 8) {
-        autosaveTimer = 0;
-        save(false);
-      }
+  function mineAt(tile) {
+    const result = Interaction.mineBlock(state.world, state.player, tile.x, tile.y, state.inventory);
+    if (result.ok) {
+      spawnParticles(tile.x, tile.y, result.block, 11);
+      audio.play("mine");
+      toast("+1 " + result.blockName, "gain");
+      markDirty();
+      updateHotbar();
+    } else {
+      audio.play("refuse");
+      toast(result.reason, "refuse");
     }
+    updateHud();
+    draw();
+    return result;
+  }
 
-    if (world && player) {
-      CAMERA.followCamera(camera, player, world, view, config.tileSize, dt || 0.016, 9);
-      updateTargeting();
-      RENDER.renderFrame(ctx, {
-        world: world,
-        player: player,
-        camera: camera,
-        time: timeOfDay,
-        seed: world.seed,
-        hovered: hovered,
-        hoverValid: hoverValid,
-        mining: mining,
-        particles: particles,
-        reducedMotion: reducedMotion
-      });
+  function startMining(tile) {
+    if (!tile) {
+      return { ok: false, reason: "Outside the world." };
     }
-
-    frameCount += 1;
-    if (frameCount % 6 === 0) {
+    const validation = Interaction.validateMine(state.world, state.player, tile.x, tile.y);
+    if (!validation.ok) {
+      audio.play("refuse");
+      toast(validation.reason, "refuse");
       updateHud();
-      refreshHotbar();
+      return validation;
     }
-    if (!booted) {
-      booted = true;
-      setStatus("ready", "ready");
-    }
-    window.requestAnimationFrame(frame);
+    Mining.start(state.mining, tile.x, tile.y);
+    audio.play("select");
+    updateHud();
+    return validation;
   }
 
-  function buildHelp() {
-    helpList.textContent = "";
-    UI.HELP_CONTROLS.forEach(function (entry) {
-      const item = document.createElement("li");
-      const keys = document.createElement("span");
-      keys.className = "control-keys";
-      keys.textContent = entry.keys;
-      const action = document.createElement("span");
-      action.className = "control-action";
-      action.textContent = entry.action;
-      item.appendChild(keys);
-      item.appendChild(action);
-      helpList.appendChild(item);
-    });
-  }
-
-  function bindEvents() {
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("blur", function () {
-      input.left = false;
-      input.right = false;
-      input.jump = false;
-    });
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerdown", onPointerDown);
-    canvas.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("pointerleave", onPointerLeave);
-    canvas.addEventListener("contextmenu", function (event) {
-      event.preventDefault();
-    });
-    canvas.addEventListener("wheel", onWheel, { passive: false });
-    hotbar.addEventListener("click", function (event) {
-      const slot = event.target.closest(".slot");
-      if (slot) {
-        selectSlot(Number(slot.dataset.slot));
-      }
-    });
-    seedForm.addEventListener("submit", function (event) {
-      event.preventDefault();
-      applySeed(seedInput.value);
-    });
-    seedRandom.addEventListener("click", randomSeed);
-    muteButton.addEventListener("click", function () {
-      audio.ensure();
-      toggleMute();
-    });
-    pauseButton.addEventListener("click", function () {
-      togglePause();
-    });
-    helpButton.addEventListener("click", function () {
-      toggleHelp();
-    });
-    helpClose.addEventListener("click", function () {
-      toggleHelp(false);
-    });
-    resumeButton.addEventListener("click", function () {
-      togglePause(false);
-    });
-    window.addEventListener("pagehide", function () {
-      save(false);
-    });
-    if (reduceQuery) {
-      const onChange = function (event) {
-        reducedMotion = Boolean(event.matches);
-      };
-      if (typeof reduceQuery.addEventListener === "function") {
-        reduceQuery.addEventListener("change", onChange);
-      } else if (typeof reduceQuery.addListener === "function") {
-        reduceQuery.addListener(onChange);
-      }
+  function placeAt(tile) {
+    const blockId = Ui.selectedBlockId(state.selected);
+    const result = Interaction.placeBlock(state.world, state.player, tile.x, tile.y, blockId, state.inventory);
+    if (result.ok) {
+      spawnParticles(tile.x, tile.y, blockId, 8);
+      audio.play("place");
+      toast("Placed " + result.blockName, "gain");
+      markDirty();
+      updateHotbar();
+    } else {
+      audio.play("refuse");
+      toast(result.reason, "refuse");
     }
-    window.addEventListener("error", function (event) {
-      setStatus("error", event.message || "runtime error");
-    });
-    window.addEventListener("unhandledrejection", function (event) {
-      setStatus("error", String(event.reason));
-    });
+    updateHud();
+    draw();
+    return result;
   }
 
-  function boot() {
+  function tileFromEvent(event) {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      return null;
+    }
+    const x = Math.floor((event.clientX - rect.left) / rect.width * CONFIG.viewWidth);
+    const y = Math.floor((event.clientY - rect.top) / rect.height * CONFIG.viewHeight);
+    const tileX = Math.floor((x + state.camera.x) / CONFIG.tileSize);
+    const tileY = Math.floor((y + state.camera.y) / CONFIG.tileSize);
+    if (tileX < 0 || tileY < 0 || tileX >= state.world.width || tileY >= state.world.height) {
+      return null;
+    }
+    return { x: tileX, y: tileY };
+  }
+
+  function selectSlot(index) {
+    const next = Ui.clampIndex(index);
+    const changed = next !== state.selected;
+    state.selected = next;
+    updateHotbar();
+    updateHud();
+    if (changed) {
+      audio.play("select");
+      markDirty();
+    }
+  }
+
+  function togglePause(force) {
+    state.paused = typeof force === "boolean" ? force : !state.paused;
+    if (state.paused) {
+      Mining.cancel(state.mining);
+    }
+    elements.pauseOverlay.hidden = !state.paused;
+    elements.pauseButton.textContent = state.paused ? "Resume" : "Pause";
+    elements.pauseButton.setAttribute("aria-pressed", state.paused ? "true" : "false");
+    if (state.paused) {
+      saveNow("pause");
+    }
+    draw();
+  }
+
+  function toggleMute() {
+    muted = !audio.isMuted();
+    audio.setMuted(muted);
+    elements.muteButton.textContent = muted ? "Muted" : "Sound on";
+    elements.muteButton.setAttribute("aria-pressed", muted ? "true" : "false");
     try {
-      buildHelp();
-      bindEvents();
-      loadSaved();
-      syncMuteButton();
-      syncPauseButton();
+      window.localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
+    } catch (error) {
+      // A blocked storage area only costs the preference, not the game.
+    }
+    toast(muted ? "Sound muted." : "Sound on.", "notice");
+  }
+
+  function update(dt, now) {
+    if (state.paused) {
+      return;
+    }
+    Time.advance(state.clock, dt, CONFIG.time.cycleSeconds);
+    Player.stepPlayer(state.player, state.world, keys, dt);
+    if (state.mining.active) {
+      const complete = Mining.advance(state.mining, dt);
+      if (complete) {
+        const target = state.mining.tile;
+        Mining.cancel(state.mining);
+        mineAt(target);
+      }
+    }
+    updateParticles(dt);
+    Camera.update(state.camera, state.player, state.world, view, dt, { reducedMotion: reducedMotion });
+    const floorZone = state.player.y > state.world.height - 5;
+    if (elements.hotbar.classList.contains("is-tucked") !== floorZone) {
+      elements.hotbar.classList.toggle("is-tucked", floorZone);
+    }
+    if (dirty && now - lastSaveAt > 3500) {
+      saveNow("auto");
+    }
+  }
+
+  function frame(now) {
+    try {
+      if (!lastFrameAt) {
+        lastFrameAt = now;
+      }
+      const dt = Math.min(0.05, Math.max(0, (now - lastFrameAt) / 1000));
+      lastFrameAt = now;
+      update(dt, now);
       updateHud();
-      refreshHotbar();
-      window.__sandbox = {
-        getWorld: function () {
-          return world;
-        },
-        getPlayer: function () {
-          return player;
-        },
-        getInventory: function () {
-          return inventory;
-        },
-        getCamera: function () {
-          return camera;
-        },
-        getTime: function () {
-          return timeOfDay;
-        },
-        isPaused: function () {
-          return paused;
-        },
-        seed: applySeed,
-        save: function () {
-          save(true);
-        },
-        setTime: function (value) {
-          timeOfDay = DAYNIGHT.normalizeTime(value);
-          updateHud();
-          return timeOfDay;
-        },
-        setPaused: function (value) {
-          togglePause(Boolean(value));
-          return paused;
-        },
-        snapshot: function () {
-          return {
-            seed: world.seed,
-            time: timeOfDay,
-            paused: paused,
-            selected: inventory.selected,
-            counts: Object.assign({}, inventory.counts),
-            player: { x: player.x, y: player.y, onGround: player.onGround },
-            status: status.dataset.state
-          };
-        },
-        mineAt: function (x, y) {
-          const result = INTERACTION.mineBlock(world, player, inventory, x, y, config.reach);
-          refreshHotbar();
-          updateHud();
-          return result;
-        },
-        placeAt: function (x, y) {
-          const result = INTERACTION.placeBlock(world, player, inventory, x, y, config.reach);
-          refreshHotbar();
-          updateHud();
-          return result;
-        },
-        placeNextTo: function (x, y) {
-          const target = INTERACTION.placementTarget(world, player, x, y);
-          if (!target) {
-            return { ok: false, reason: "target", block: 0 };
-          }
-          const result = INTERACTION.placeBlock(world, player, inventory, target.x, target.y, config.reach);
-          refreshHotbar();
-          updateHud();
-          result.x = target.x;
-          result.y = target.y;
-          return result;
-        },
-        blockAt: function (x, y) {
-          return WORLD.getBlock(world, x, y);
-        },
-        mine: mineCurrentTarget,
-        place: placeAtHover
-      };
+      draw();
+      if (!statusReady) {
+        statusReady = true;
+        setStatus("ready", "ready");
+      }
       window.requestAnimationFrame(frame);
     } catch (error) {
       setStatus("error", error && error.message ? error.message : String(error));
@@ -821,5 +479,328 @@
     }
   }
 
-  boot();
+  function bindEvents() {
+    window.addEventListener("keydown", function (event) {
+      const tag = event.target && event.target.tagName ? event.target.tagName.toLowerCase() : "";
+      if (tag === "input" || tag === "textarea" || tag === "select") {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key === "a" || key === "arrowleft") {
+        keys.left = true;
+        event.preventDefault();
+      } else if (key === "d" || key === "arrowright") {
+        keys.right = true;
+        event.preventDefault();
+      } else if (key === " " || key === "spacebar" || key === "arrowup" || key === "w") {
+        keys.jump = true;
+        audio.unlock();
+        event.preventDefault();
+      } else if (key === "p") {
+        togglePause();
+        event.preventDefault();
+      } else if (key === "m") {
+        toggleMute();
+        event.preventDefault();
+      } else if (/^[1-9]$/.test(key)) {
+        selectSlot(Number(key) - 1);
+        event.preventDefault();
+      }
+    });
+
+    window.addEventListener("keyup", function (event) {
+      const key = event.key.toLowerCase();
+      if (key === "a" || key === "arrowleft") {
+        keys.left = false;
+      } else if (key === "d" || key === "arrowright") {
+        keys.right = false;
+      } else if (key === " " || key === "spacebar" || key === "arrowup" || key === "w") {
+        keys.jump = false;
+      }
+    });
+
+    window.addEventListener("blur", function () {
+      keys.left = false;
+      keys.right = false;
+      keys.jump = false;
+    });
+
+    canvas.addEventListener("mousemove", function (event) {
+      const tile = tileFromEvent(event);
+      state.hover = tile ? {
+        x: tile.x,
+        y: tile.y,
+        reachable: Interaction.withinReach(state.player, tile.x, tile.y)
+      } : null;
+      if (state.mining.active && (!tile || tile.x !== state.mining.tile.x || tile.y !== state.mining.tile.y)) {
+        Mining.cancel(state.mining);
+      }
+      updateHud();
+    });
+
+    canvas.addEventListener("mouseleave", function () {
+      state.hover = null;
+      updateHud();
+    });
+
+    canvas.addEventListener("mousedown", function (event) {
+      audio.unlock();
+      const tile = tileFromEvent(event);
+      if (!tile || state.paused) {
+        return;
+      }
+      if (event.button === 0) {
+        event.preventDefault();
+        startMining(tile);
+      } else if (event.button === 2) {
+        event.preventDefault();
+        placeAt(tile);
+      }
+    });
+
+    canvas.addEventListener("contextmenu", function (event) {
+      event.preventDefault();
+    });
+
+    elements.stage.addEventListener("wheel", function (event) {
+      if (state.paused) {
+        return;
+      }
+      event.preventDefault();
+      const direction = event.deltaY > 0 ? 1 : -1;
+      selectSlot(Ui.stepSelection(state.selected, direction));
+    }, { passive: false });
+
+    elements.pauseButton.addEventListener("click", function () {
+      togglePause();
+    });
+
+    elements.resumeButton.addEventListener("click", function () {
+      togglePause(false);
+    });
+
+    elements.muteButton.addEventListener("click", function () {
+      audio.unlock();
+      toggleMute();
+    });
+
+    elements.seedForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const text = elements.seedInput.value.trim();
+      if (!/^\d{1,10}$/.test(text)) {
+        toast("Enter a whole-number seed (digits only).", "refuse");
+        audio.play("refuse");
+        return;
+      }
+      const seed = Number(text) >>> 0;
+      state = createGame(seed);
+      elements.seedInput.value = String(seed);
+      elements.pauseOverlay.hidden = true;
+      elements.pauseButton.textContent = "Pause";
+      elements.pauseButton.setAttribute("aria-pressed", "false");
+      updateHotbar();
+      updateHud();
+      draw();
+      saveNow("new-world");
+      toast("New world · seed " + seed, "notice");
+      audio.play("place");
+    });
+
+    window.addEventListener("resize", function () {
+      fitCanvas();
+      fitMinimap();
+      draw();
+    });
+
+    window.addEventListener("pagehide", function () {
+      saveNow("pagehide");
+    });
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) {
+        saveNow("hidden");
+      }
+    });
+
+    if (reduceQuery) {
+      const onChange = function (event) {
+        reducedMotion = event.matches;
+      };
+      if (typeof reduceQuery.addEventListener === "function") {
+        reduceQuery.addEventListener("change", onChange);
+      } else if (typeof reduceQuery.addListener === "function") {
+        reduceQuery.addListener(onChange);
+      }
+    }
+  }
+
+  function buildHotbar() {
+    hotbarCaption = document.createElement("div");
+    hotbarCaption.className = "hotbar-caption";
+    hotbarCaption.textContent = Ui.selectedBlockLabel(CONFIG.starterSelected);
+    elements.hotbar.appendChild(hotbarCaption);
+
+    CONFIG.palette.forEach(function (blockId, index) {
+      const info = CONFIG.blockInfo[blockId];
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "slot";
+      button.dataset.index = String(index);
+      button.dataset.block = info.name;
+      button.setAttribute("aria-label", info.label + " — key " + (index + 1));
+
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.setProperty("--block-light", info.accent);
+      swatch.style.setProperty("--block-dark", info.color);
+
+      const key = document.createElement("span");
+      key.className = "key";
+      key.textContent = String(index + 1);
+
+      const count = document.createElement("span");
+      count.className = "count";
+      count.textContent = "0";
+
+      button.appendChild(swatch);
+      button.appendChild(key);
+      button.appendChild(count);
+      button.addEventListener("click", function () {
+        audio.unlock();
+        selectSlot(index);
+      });
+
+      elements.hotbar.appendChild(button);
+      slotElements.push(button);
+      slotCounts.push(count);
+    });
+  }
+
+  function boot() {
+    fitCanvas();
+    fitMinimap();
+    buildHotbar();
+    elements.muteButton.textContent = muted ? "Muted" : "Sound on";
+    elements.muteButton.setAttribute("aria-pressed", muted ? "true" : "false");
+    const defaultSeed = readDefaultSeed();
+    const restored = restoreGame(defaultSeed);
+    state = restored.game;
+    elements.seedInput.value = String(state.world.seed);
+    updateHotbar();
+    updateHud();
+    bindEvents();
+    draw();
+    setStatus("ready", "ready");
+    statusReady = true;
+    saveNow("boot");
+    if (restored.notice) {
+      toast(restored.notice, "notice");
+    }
+
+    const api = {
+      getSnapshot: function () {
+        return {
+          status: elements.status.dataset.state,
+          ready: statusReady,
+          seed: state.world.seed,
+          time: state.clock.fraction,
+          clock: Ui.clockModel(state.clock.fraction),
+          selected: state.selected,
+          paused: state.paused,
+          mining: Mining.describe(state.mining),
+          hover: state.hover,
+          player: {
+            x: state.player.x,
+            y: state.player.y,
+            onGround: state.player.onGround,
+            facing: state.player.facing
+          },
+          camera: { x: state.camera.x, y: state.camera.y },
+          view: { width: view.width, height: view.height },
+          world: { width: state.world.width, height: state.world.height },
+          inventory: Inventory.toJSON(state.inventory),
+          hotbar: Ui.hotbarModel(state.inventory, state.selected),
+          lastToast: lastToast,
+          toastTexts: Array.prototype.map.call(elements.toasts.children, function (element) {
+            return element.textContent;
+          }),
+          pauseOverlayHidden: elements.pauseOverlay.hidden,
+          muteButton: elements.muteButton.textContent,
+          hotbarSelection: Array.prototype.map.call(elements.hotbar.querySelectorAll(".slot"), function (element, index) {
+            return element.classList.contains("is-selected") ? index : -1;
+          }).filter(function (index) { return index >= 0; }).pop()
+        };
+      },
+      pixel: function (x, y) {
+        const scale = canvas.width / view.width;
+        const data = ctx.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data;
+        return [data[0], data[1], data[2], data[3]];
+      },
+      screenForTile: function (tileX, tileY) {
+        return {
+          x: tileX * CONFIG.tileSize - state.camera.x + CONFIG.tileSize / 2,
+          y: tileY * CONFIG.tileSize - state.camera.y + CONFIG.tileSize / 2
+        };
+      },
+      blockAt: function (tileX, tileY) {
+        return Interaction.blockAt(state.world, tileX, tileY);
+      },
+      mine: function (tileX, tileY) {
+        return mineAt({ x: tileX, y: tileY });
+      },
+      place: function (tileX, tileY) {
+        return placeAt({ x: tileX, y: tileY });
+      },
+      select: function (index) {
+        selectSlot(index);
+      },
+      setPaused: function (value) {
+        togglePause(value === true);
+      },
+      setTime: function (fraction) {
+        state.clock.fraction = Time.normalize(fraction);
+        draw();
+      },
+      teleport: function (x, y) {
+        state.player.x = x;
+        state.player.y = y;
+        state.player.vy = 0;
+        snapCamera(state);
+        draw();
+      },
+      save: function () {
+        return saveNow("manual");
+      },
+      clearSave: function () {
+        Persistence.clearState(storage, CONFIG.saveKey);
+        dirty = false;
+      }
+    };
+
+    window.__sandbox = {
+      ready: true,
+      seed: state.world.seed,
+      world: state.world,
+      player: state.player,
+      camera: state.camera,
+      inventory: state.inventory,
+      api: api
+    };
+
+    window.requestAnimationFrame(frame);
+  }
+
+  window.addEventListener("error", function (event) {
+    setStatus("error", event.message || "runtime error");
+  });
+  window.addEventListener("unhandledrejection", function (event) {
+    setStatus("error", String(event.reason));
+  });
+
+  try {
+    boot();
+  } catch (error) {
+    setStatus("error", error && error.message ? error.message : String(error));
+    throw error;
+  }
 })();

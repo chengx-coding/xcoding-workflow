@@ -37,8 +37,10 @@ v1.1 PES/ECS with a v1.0 base.
 
 | Artifact | PES | PES cap | ECS | Composite | Gate | High / medium | Coverage | Extras |
 | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | ---: |
+| **0.3.8 Wildgrove** | 69.2 | 69.2 | 80.0 | **71.9** (strict 71.4) | pass | **0 / 1** | — | — |
 | 0.3.3 pre-correction | 70.4 | 70.4 | 74.0 | **71.3** | pass | 0 / 4 | 43/86 | +2 |
 | E3 / Verdant Hollow | **71.2** | 71.2 | 65.5 | **69.8** | pass | 0 / 3 | 40/86 | +2 |
+| 0.3.7 LOAM | 60.0 | 60.0 | 84.5 | **65.0** | pass | **1 / 3** | 42/86 | — |
 | 0.3.3 standard | 57.6 | 57.6 | 81.0 | **63.5** | pass | **1 / 2** | 40/86 | — |
 | 0.3.6 standard | 60.0 | 50.0 | 92.5 | **60.6** | pass | **2 / 2** | 42/86 | +2 |
 | one-shot baseline | 55.8 | 55.8 | 38.0 | **51.4** | pass | 0 / 3 | 27/86* | — |
@@ -50,11 +52,15 @@ v1.0 historical scores remain 55/61/47% and 55/62/47%; no v1.1 score is fabricat
 
 Consolidated verdict:
 
-- **pre-correction is #1 on the composite (71.3)** and **E3 is #1 on PES (71.2)**; they are within
-  the rubric's resolution (tie on experience).
-- **0.3.3 standard is #3 (63.5)**; it has one high defect (no bedrock/floor), but strong ECS (81.0)
+- **0.3.8 Wildgrove is #1 on the composite (71.9; independent strict 71.4)**, above the previous
+  best 71.3, and **E3 is #1 on PES (71.2)**. The composite margin is only 0.1–0.6; 0.3.8's PES is
+  69.2, below E3, and the independent stop-gate found **one medium** legacy-save defect. Do not
+  describe it as a clean 0/0/1 or a pure experience win.
+- **pre-correction is #2 on composite (71.3)** with 0 high / 4 medium; E3 is #3 (69.8).
+- **0.3.7 LOAM is #4 (65.0)**; it fixed the floor but still had an underground-sky high defect.
+- **0.3.3 standard is #5 (63.5)**; it has one high defect (no bedrock/floor), but strong ECS (81.0)
   keeps it above 0.3.6.
-- **0.3.6 is #4 (60.6)** despite having the **highest ECS (92.5)**. Its 124 tests and strong
+- **0.3.6 is #6 (60.6)** despite having the **highest ECS (92.5)**. Its 124 tests and strong
   architecture are credited; they cannot offset the two high world-integrity defects.
 - **The one-shot baseline is last on composite (51.4)** because its ECS is 38.0 (no tests/README/
   tools), but its PES (55.8) is **above 0.3.6's 50.0**: it has a sealed floor and underground
