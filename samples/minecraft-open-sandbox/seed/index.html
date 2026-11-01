@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sandbox — XC work-order sample</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main id="app">
+    <canvas id="game" width="960" height="540" aria-label="Sandbox world"></canvas>
+    <div id="hud" aria-live="polite">Sandbox skeleton</div>
+    <div id="hotbar" role="toolbar" aria-label="Block palette">
+      <span class="slot" data-block="grass">1</span>
+      <span class="slot" data-block="dirt">2</span>
+      <span class="slot" data-block="stone">3</span>
+      <span class="slot" data-block="wood">4</span>
+    </div>
+    <div id="status" data-state="booting" title="Page status"></div>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

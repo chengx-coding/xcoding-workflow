@@ -1,0 +1,2 @@
+﻿verification.sources.unit=["rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__core-simulation","rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__presentation-shell","rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__documentation"]
+verification.sources.browser=["rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__core-simulation","rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__presentation-shell","rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__documentation"]

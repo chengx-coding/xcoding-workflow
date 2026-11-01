@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS RUNTIME TREE THROUGH THE xc-orchestration-runtime SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY. -->
+<orchestration schema_version="1" name="open-sandbox-xc" work_order_id="20261101-2045-open-sandbox-xc-2" status="succeeded" created_at="2026-11-01T12:45:39+00:00" revision="73" artifact_kind="runtime" managed_by_skill="xc-orchestration-runtime" read_policy="runtime-skill-only" updated_at="2026-11-01T13:12:11+00:00" sealed_at="2026-11-01T13:12:11+00:00" sealed_revision="73" sealed_epoch="0">
+  <meta>
+    <access_policy required_skill="xc-orchestration-runtime" read_policy="runtime-skill-only">ATTENTION: AGENTS MUST ONLY READ OR OPERATE THIS RUNTIME TREE THROUGH THE xc-orchestration-runtime SKILL AND ITS PUBLIC COMMANDS. DO NOT OPEN, SUMMARIZE, EDIT, PATCH, OR REFORMAT THIS FILE DIRECTLY.</access_policy>
+    <integrity algorithm="sha256" canonicalization="orchestration-tree-v1" checksum="644abf5df0111521e07b0e1087ff181e58b8cf95db50f0fafe1890a13f25d8a9" />
+    <template_instances>
+      <instance id="root" template_name="work-order" template_root_id="root" />
+      <instance id="goal" template_name="document-evolution" template_root_id="root" />
+      <instance id="analysis" template_name="document-evolution" template_root_id="root" />
+      <instance id="solution" template_name="document-evolution" template_root_id="root" />
+      <instance id="result" template_name="document-evolution" template_root_id="root" />
+    </template_instances>
+  </meta>
+  <blackboard>
+    <var key="work_order.has_features">false</var>
+    <var key="work_order.document_language">en</var>
+    <var key="work_order.requires_analysis">true</var>
+    <var key="work_order.requires_clarification">false</var>
+    <var key="work_order.requires_solution">true</var>
+    <var key="work_order.solution_gate_required">true</var>
+    <var key="work_order.solution_gate_outcome" updated_at="2026-11-01T12:53:27+00:00" source="rt_work-order-20261101-2045-open-sandbox-xc-2__root__approve-work-order-solution">approved</var>
+    <var key="work_order.solution_source_ids" updated_at="2026-11-01T12:53:22+00:00" source="main">["rt_work-order-20261101-2045-open-sandbox-xc-2__solution__write-document"]</var>
+    <var key="work_order.objective_source_ids" updated_at="2026-11-01T13:12:02+00:00" source="main">["rt_work-order-20261101-2045-open-sandbox-xc-2__goal__write-document"]</var>
+    <var key="work_order.result_source_ids" updated_at="2026-11-01T13:12:02+00:00" source="main">["rt_work-order-20261101-2045-open-sandbox-xc-2__result__write-document"]</var>
+    <var key="work_order.requires_implementation">true</var>
+    <var key="work_order.requires_verification">true</var>
+    <var key="work_order.requires_report" updated_at="2026-11-01T12:48:12+00:00" source="main">false</var>
+    <var key="work_order.report_skip_reason" updated_at="2026-11-01T12:48:12+00:00" source="main">user_waived</var>
+    <var key="work_order.report_baseline" />
+    <var key="report.path" />
+    <var key="report.manifest_path" />
+    <var key="report.baseline_commit" />
+    <var key="report.baseline_digest" />
+    <var key="report.language">en</var>
+    <var key="report.strength">standard</var>
+    <var key="report.gate_required">false</var>
+    <var key="report.gate_outcome">not-run</var>
+    <var key="report.gate_rework_required">false</var>
+    <var key="report.gate_recovery_required">false</var>
+    <var key="report.round">1</var>
+    <var key="report.refresh_count">0</var>
+    <var key="report.refresh_reason">initial</var>
+    <var key="work_order_id" updated_at="2026-11-01T12:45:39+00:00" source="init">20261101-2045-open-sandbox-xc-2</var>
+    <var key="today" updated_at="2026-11-01T12:45:39+00:00" source="init">2026-11-01</var>
+    <var key="work_order.convention_discovery" updated_at="2026-11-01T12:48:12+00:00" source="main">found</var>
+    <var key="work_order.convention_discovery_path" updated_at="2026-11-01T12:48:12+00:00" source="main">.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/prepare-work-order/convention-discovery.md</var>
+    <var key="work_order.mode" updated_at="2026-11-01T12:48:12+00:00" source="main">create</var>
+    <var key="work_order.requested_scope" updated_at="2026-11-01T12:48:12+00:00" source="main">create a playable offline 2D Minecraft-inspired sandbox from the seed</var>
+    <var key="document.path" updated_at="2026-11-01T13:11:37+00:00" source="main">C:\dev\xcoding-workflow-dev\wf-iterations\open-sample\xc\project\.xcoding\work-orders\20261101-2045-open-sandbox-xc-2\result.md</var>
+    <var key="document.kind" updated_at="2026-11-01T13:11:37+00:00" source="main">work-order-result</var>
+    <var key="document.template" updated_at="2026-11-01T13:11:37+00:00" source="main">C:\Users\Admin\.agents\skills\xc-document\assets\templates\work-order-result.md</var>
+    <var key="document.inputs" updated_at="2026-11-01T13:11:37+00:00" source="main">C:\dev\xcoding-workflow-dev\wf-iterations\open-sample\xc\project\.xcoding\work-orders\20261101-2045-open-sandbox-xc-2\goal.md, C:\dev\xcoding-workflow-dev\wf-iterations\open-sample\xc\project\.xcoding\work-orders\20261101-2045-open-sandbox-xc-2\analysis.md, C:\dev\xcoding-workflow-dev\wf-iterations\open-sample\xc\project\.xcoding\work-orders\20261101-2045-open-sandbox-xc-2\solution.md, C:\dev\xcoding-workflow-dev\wf-iterations\open-sample\xc\project\.xcoding\work-orders\20261101-2045-open-sandbox-xc-2\artifacts\verification-unit\unit-and-static.md, C:\dev\xcoding-workflow-dev\wf-iterations\open-sample\xc\project\.xcoding\work-orders\20261101-2045-open-sandbox-xc-2\artifacts\verification-browser\browser-and-regression.md</var>
+    <var key="document.contract" updated_at="2026-11-01T13:11:37+00:00" source="main">xc-work result rules and xc-document work-order-result</var>
+    <var key="document.content_language" updated_at="2026-11-01T13:11:37+00:00" source="main">en</var>
+    <var key="document.receipt.content_language" updated_at="2026-11-01T13:11:37+00:00" source="main">en</var>
+    <var key="document.receipt.audience" updated_at="2026-11-01T13:11:37+00:00" source="main" />
+    <var key="document.review_required" updated_at="2026-11-01T13:11:37+00:00" source="main">false</var>
+    <var key="document.gate_required" updated_at="2026-11-01T13:11:37+00:00" source="main">false</var>
+    <var key="document.gate_outcome" updated_at="2026-11-01T13:11:37+00:00" source="main">accepted</var>
+    <var key="document.authoring_requirements" updated_at="2026-11-01T13:11:37+00:00" source="main" />
+    <var key="implementation.sources.core-simulation" updated_at="2026-11-01T12:54:14+00:00" source="main">["rt_work-order-20261101-2045-open-sandbox-xc-2__solution__write-document","rt_work-order-20261101-2045-open-sandbox-xc-2__root__approve-work-order-solution"]</var>
+    <var key="implementation.sources.presentation-shell" updated_at="2026-11-01T12:54:14+00:00" source="main">["rt_work-order-20261101-2045-open-sandbox-xc-2__solution__write-document","rt_work-order-20261101-2045-open-sandbox-xc-2__root__approve-work-order-solution"]</var>
+    <var key="implementation.sources.documentation" updated_at="2026-11-01T12:54:14+00:00" source="main">["rt_work-order-20261101-2045-open-sandbox-xc-2__solution__write-document","rt_work-order-20261101-2045-open-sandbox-xc-2__root__approve-work-order-solution"]</var>
+    <var key="verification.sources.unit" updated_at="2026-11-01T13:10:27+00:00" source="main">["rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__core-simulation","rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__presentation-shell","rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__documentation"]</var>
+    <var key="verification.sources.browser" updated_at="2026-11-01T13:10:27+00:00" source="main">["rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__core-simulation","rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__presentation-shell","rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__documentation"]</var>
+  </blackboard>
+  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__root" template_id="root" origin_template_id="root" origin_instance_id="root" title="Work Order" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+    <children>
+      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__prepare-work-order" template_id="prepare-work-order" origin_template_id="prepare-work-order" origin_instance_id="root" title="Prepare work order" type="task" executor="main" status="succeeded" role="work-order-prepare" started_at="2026-11-01T12:47:58+00:00" agent="main" completed_at="2026-11-01T12:48:18+00:00">
+        <instructions>Read the project bridge, open the work order through xc-open-work-order, validate requested feature IDs without creating features, determine and validate work_order.document_language through xc-document from the explicit parameter or initiating user request, and record the requested scope. Write the report commitment work_order.requires_report in this same preparation step, resolved through the report policy rather than from the mode alone: an explicit user instruction first, then the project bridge which may only tighten, then report.default in the workshop configuration, then the built-in default. The shipped code-change-only tier means true for create, change, repair, and maintenance and false for investigation and review, and true when the mode cannot be confirmed, because an unknown mode is never interpreted as no report needed. Record work_order.report_skip_reason whenever the report is deliberately skipped, and capture work_order.report_baseline once, as the baseline commit, the worktree digest and the digest algorithm, and only when that resolved commitment is true: a work order that resolves to no report captures nothing, and the record keeps its three values and its publishable --format keys form. Where version control is unusable for the repository - it is not a worktree, or no baseline commit is resolvable - the capture fails closed and copies nothing; a full copy is admissible only through the explicit consent opt-in of the capture command, whose reference must name the user's explicit decision obtained through a main-session gate, and no new configuration item exists for it. The commitment, the initial report strength and, when the commitment is true, the baseline record are preparation-phase records, never retrospective notes, and a missing commitment fails this node.</instructions>
+        <deliverables>An authoritative workbench and explicit feature associations.</deliverables>
+        <acceptance>The workbench is independent, feature associations are explicit, work_order.document_language is set before any document write, no unmanaged feature directory was created, and the mode-derived report commitment is written rather than assumed: work_order.requires_report carries the value the resolved report policy produced, every skip records one of the legal work_order.report_skip_reason values (read_only_mode, zero_analyzable_units, user_waived, policy_default), work_order.report_baseline records the baseline commit, the worktree digest and the digest algorithm only when the resolved commitment is true, a capture where version control was unusable failed closed with nothing copied unless the explicit consent opt-in of the capture command carried a reference naming the user's explicit decision, and a missing commitment fails this node.</acceptance>
+        <result>
+          <summary>Workbench reused at prepared identity; bridge and runner read; language en validated; features empty; report waived (requires_report=false, user_waived); no baseline captured; L1 convention discovery found (bridge rules + empty scanner result); requested scope recorded.</summary>
+          <artifacts>
+            <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/prepare-work-order/preparation.md" />
+            <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/prepare-work-order/convention-discovery.md" />
+          </artifacts>
+          <validation>xc-document validated both node artifacts; validate_language en ok; convention scan ok=true scanned_files=0; runtime set persisted.</validation>
+        </result>
+      </node>
+      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__goal-document" template_id="goal-document" origin_template_id="goal-document" origin_instance_id="root" title="Define work order goal" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" dynamic.state="closed">
+        <children>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__root" template_id="root" origin_template_id="root" origin_instance_id="goal" title="Document Evolution" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+            <children>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__write-document" template_id="write-document" origin_template_id="write-document" origin_instance_id="goal" title="Write or revise document" type="task" executor="subagent" status="succeeded" role="document-write" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" started_at="2026-11-01T12:48:55+00:00" agent="main" completed_at="2026-11-01T12:48:55+00:00">
+                <instructions>Read document.path, document.template, document.inputs, document.contract, document.content_language, and document.authoring_requirements from the supplied blackboard and node references. Follow the public xc-document human-readable authoring default unless explicit document.authoring_requirements override its style preferences. Preserve exact commands, identifiers, paths, logs, and machine output where literal accuracy matters. Write or revise the target document immediately, preserve valid frontmatter, and do not read the runtime XML directly.</instructions>
+                <deliverables>The managed document at document.path.</deliverables>
+                <acceptance>The target document exists, follows its domain and human-readable authoring contracts plus explicit user requirements, preserves key information, and has complete YAML frontmatter.</acceptance>
+                <result>
+                  <summary>Wrote goal.md with requested outcome, intended capability scope, 7-point user-facing quality contract, reference signature challenge, sourced scope constraints and 8 testable acceptance conditions.</summary>
+                  <artifacts>
+                    <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/goal.md" />
+                  </artifacts>
+                  <validation>Document written and manually checked against the goal template; xc-document validation follows in the validate-draft node.</validation>
+                </result>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__validate-draft" template_id="validate-draft" origin_template_id="validate-draft" origin_instance_id="goal" title="Validate draft document" type="task" executor="tool" status="succeeded" role="document-validate" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" started_at="2026-11-01T12:49:04+00:00" agent="main" completed_at="2026-11-01T12:49:18+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind.</instructions>
+                <deliverables>A validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the draft without errors.</acceptance>
+                <result>
+                  <summary>xc-document validated goal.md as work-order-goal with no errors.</summary>
+                  <validation>validate_document.py exit 0, ok=true, receipt emitted.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\wf-iterations\\open-sample\\xc\\project\\.xcoding\\work-orders\\20261101-2045-open-sandbox-xc-2\\goal.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-goal"}}</check>
+                  </checks>
+                </result>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__review-loop" template_id="review-loop" origin_template_id="review-loop" origin_instance_id="goal" title="Review and revise document" type="loop" executor="main" status="skipped" role="document-review-loop" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" when="document.review_required == true" when.policy="latched" loop.iteration="1" when.latched="false" skip_reason="when" skipped_at="2026-11-01T12:49:18+00:00">
+                <children>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__review-document" template_id="review-document" origin_template_id="review-document" origin_instance_id="goal" title="Review document" type="task" executor="subagent" status="pending" role="document-review" metadata.artifact.audience="internal" metadata.artifact.content_language="en" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
+                    <instructions>Review document.path against the domain review dimensions, explicit document.authoring_requirements, and the public xc-document human-readable dimensions: audience fit, progressive disclosure, first-use terminology explanations, concision, and preservation of key information. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
+                    <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
+                    <acceptance>The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues.</acceptance>
+                  </node>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__revise-document" template_id="revise-document" origin_template_id="revise-document" origin_instance_id="goal" title="Revise document from review" type="task" executor="subagent" status="pending" role="document-revise" when="document.review.open_issues == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" depends_on="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__review-document">
+                    <instructions>Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.</instructions>
+                    <deliverables>An updated managed document.</deliverables>
+                    <acceptance>Required domain and human-readability findings are resolved or explicitly escalated to a user gate.</acceptance>
+                  </node>
+                </children>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__document-gate" template_id="document-gate" origin_template_id="document-gate" origin_instance_id="goal" title="Confirm document decisions" type="gate" executor="main" status="skipped" role="document-confirmation" when="document.gate_required == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;accepted&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="document.gate_outcome" when.latched="false" skip_reason="when" skipped_at="2026-11-01T12:49:18+00:00">
+                <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
+                <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
+                <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__document-gate-recovery-group" template_id="document-gate-recovery-group" origin_template_id="document-gate-recovery-group" origin_instance_id="goal" title="Recover non-accepting document decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="document.gate_outcome != accepted" when.policy="latched" dynamic.state="open" when.latched="false" skip_reason="when" skipped_at="2026-11-01T12:49:18+00:00" />
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__goal__validate-final" template_id="validate-final" origin_template_id="validate-final" origin_instance_id="goal" title="Validate final document" type="task" executor="tool" status="succeeded" role="document-validate-final" when="document.gate_outcome == accepted" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" when.latched="true" started_at="2026-11-01T12:49:31+00:00" agent="main" completed_at="2026-11-01T12:49:31+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
+                <deliverables>A final validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the final document without errors.</acceptance>
+                <result>
+                  <summary>Final xc-document validation of goal.md passed; no review or user gate was required.</summary>
+                  <validation>validate_document.py exit 0, ok=true, receipt emitted.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\wf-iterations\\open-sample\\xc\\project\\.xcoding\\work-orders\\20261101-2045-open-sandbox-xc-2\\goal.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-goal"}}</check>
+                  </checks>
+                </result>
+              </node>
+            </children>
+          </node>
+        </children>
+      </node>
+      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__analysis-group" template_id="analysis-group" origin_template_id="analysis-group" origin_instance_id="root" title="Analyze requested work" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" when="work_order.requires_analysis == true" dynamic.state="closed">
+        <children>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__seed-and-constraints" logical_key="seed-and-constraints" origin_instance_id="dyn-1" title="Analyze seed, constraints and verification surface" type="task" executor="main" status="succeeded" role="analysis-evidence" metadata.artifact.audience="internal" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/analysis-seed/seed-and-constraints.md" started_at="2026-11-01T12:50:16+00:00" agent="main" completed_at="2026-11-01T12:51:16+00:00">
+            <instructions>Investigate the seed implementation, the project bridge constraints, the existing tests and page check, and the file:// runtime environment. Record confirmed facts, the verification surface, and the risks that constrain the design. Do not modify product code. Write the node artifact.</instructions>
+            <deliverables>Evidence artifact on the seed, constraints, verification surface and risks.</deliverables>
+            <acceptance>Facts cite real files and command outcomes; constraints and risks are explicit; the artifact is written.</acceptance>
+            <result>
+              <summary>Seed inventory, bridge constraints, seed-test compatibility constraints, verification surface and risks recorded with command evidence.</summary>
+              <artifacts>
+                <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/analysis-seed/seed-and-constraints.md" />
+              </artifacts>
+              <validation>xc-document validated the artifact; node tests 6/6 pass; page_check ok=true on the unchanged seed.</validation>
+            </result>
+          </node>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__product-signature" logical_key="product-signature" origin_instance_id="dyn-1" title="Analyze Minecraft reference, capability map and design options" type="task" executor="main" status="succeeded" role="analysis-evidence" metadata.artifact.audience="internal" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/analysis-product/product-signature.md" started_at="2026-11-01T12:51:49+00:00" agent="main" completed_at="2026-11-01T12:51:50+00:00">
+            <instructions>Record the credible Minecraft reference and its 2D translation, a small signature-experience table, a source-tagged capability map (must/should/non-goal) for this create task, the Minecraft-system in/out decisions with rationale, and technical design alternatives with a recommendation. Do not modify product code. Write the node artifact.</instructions>
+            <deliverables>Evidence artifact with signature table, capability map, system decisions and design alternatives.</deliverables>
+            <acceptance>Every capability has a source, priority, user value, acceptance and verification; reference signatures are classified; system exclusions are decisions with rationale, not pre-declared requirements.</acceptance>
+            <result>
+              <summary>Reference and signature table, source-tagged must/should/non-goal capability map, system in/out decisions under user delegation, technical alternatives and create scope assessment recorded.</summary>
+              <artifacts>
+                <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/analysis-product/product-signature.md" />
+              </artifacts>
+              <validation>xc-document validated the node artifact; every capability has source, priority, user value, acceptance and verification; goal comparison covers all prompt capabilities.</validation>
+            </result>
+          </node>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__root" template_id="root" origin_template_id="root" origin_instance_id="analysis" title="Document Evolution" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+            <children>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__write-document" template_id="write-document" origin_template_id="write-document" origin_instance_id="analysis" title="Write or revise document" type="task" executor="subagent" status="succeeded" role="document-write" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" started_at="2026-11-01T12:52:12+00:00" agent="main" completed_at="2026-11-01T12:52:16+00:00">
+                <instructions>Read document.path, document.template, document.inputs, document.contract, document.content_language, and document.authoring_requirements from the supplied blackboard and node references. Follow the public xc-document human-readable authoring default unless explicit document.authoring_requirements override its style preferences. Preserve exact commands, identifiers, paths, logs, and machine output where literal accuracy matters. Write or revise the target document immediately, preserve valid frontmatter, and do not read the runtime XML directly.</instructions>
+                <deliverables>The managed document at document.path.</deliverables>
+                <acceptance>The target document exists, follows its domain and human-readable authoring contracts plus explicit user requirements, preserves key information, and has complete YAML frontmatter.</acceptance>
+                <result>
+                  <summary>Synthesized analysis.md from the seed and product evidence: current state, not-applicable reconciliation, risks, alternatives, accepted capability map, recorded Minecraft-system decisions and the create scope recommendation.</summary>
+                  <artifacts>
+                    <artifact path="C:\dev\xcoding-workflow-dev\wf-iterations\open-sample\xc\project\.xcoding\work-orders\20261101-2045-open-sandbox-xc-2\analysis.md" />
+                  </artifacts>
+                  <validation>Cross-checked every claim against the two analysis artifacts and goal.md; no unsupported claim retained.</validation>
+                </result>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__validate-draft" template_id="validate-draft" origin_template_id="validate-draft" origin_instance_id="analysis" title="Validate draft document" type="task" executor="tool" status="succeeded" role="document-validate" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" started_at="2026-11-01T12:52:21+00:00" agent="main" completed_at="2026-11-01T12:52:21+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind.</instructions>
+                <deliverables>A validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the draft without errors.</acceptance>
+                <result>
+                  <summary>xc-document validated analysis.md as work-order-analysis.</summary>
+                  <validation>validate_document.py exit 0, ok=true, receipt emitted.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\wf-iterations\\open-sample\\xc\\project\\.xcoding\\work-orders\\20261101-2045-open-sandbox-xc-2\\analysis.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-analysis"}}</check>
+                  </checks>
+                </result>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__review-loop" template_id="review-loop" origin_template_id="review-loop" origin_instance_id="analysis" title="Review and revise document" type="loop" executor="main" status="skipped" role="document-review-loop" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" when="document.review_required == true" when.policy="latched" loop.iteration="1" when.latched="false" skip_reason="when" skipped_at="2026-11-01T12:52:21+00:00">
+                <children>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__review-document" template_id="review-document" origin_template_id="review-document" origin_instance_id="analysis" title="Review document" type="task" executor="subagent" status="pending" role="document-review" metadata.artifact.audience="internal" metadata.artifact.content_language="en" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
+                    <instructions>Review document.path against the domain review dimensions, explicit document.authoring_requirements, and the public xc-document human-readable dimensions: audience fit, progressive disclosure, first-use terminology explanations, concision, and preservation of key information. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
+                    <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
+                    <acceptance>The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues.</acceptance>
+                  </node>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__revise-document" template_id="revise-document" origin_template_id="revise-document" origin_instance_id="analysis" title="Revise document from review" type="task" executor="subagent" status="pending" role="document-revise" when="document.review.open_issues == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" depends_on="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__review-document">
+                    <instructions>Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.</instructions>
+                    <deliverables>An updated managed document.</deliverables>
+                    <acceptance>Required domain and human-readability findings are resolved or explicitly escalated to a user gate.</acceptance>
+                  </node>
+                </children>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__document-gate" template_id="document-gate" origin_template_id="document-gate" origin_instance_id="analysis" title="Confirm document decisions" type="gate" executor="main" status="skipped" role="document-confirmation" when="document.gate_required == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;accepted&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="document.gate_outcome" when.latched="false" skip_reason="when" skipped_at="2026-11-01T12:52:21+00:00">
+                <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
+                <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
+                <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__document-gate-recovery-group" template_id="document-gate-recovery-group" origin_template_id="document-gate-recovery-group" origin_instance_id="analysis" title="Recover non-accepting document decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="document.gate_outcome != accepted" when.policy="latched" dynamic.state="open" when.latched="false" skip_reason="when" skipped_at="2026-11-01T12:52:21+00:00" />
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__analysis__validate-final" template_id="validate-final" origin_template_id="validate-final" origin_instance_id="analysis" title="Validate final document" type="task" executor="tool" status="succeeded" role="document-validate-final" when="document.gate_outcome == accepted" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" when.latched="true" started_at="2026-11-01T12:52:22+00:00" agent="main" completed_at="2026-11-01T12:52:22+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
+                <deliverables>A final validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the final document without errors.</acceptance>
+                <result>
+                  <summary>Final xc-document validation of analysis.md passed; no review or user gate was required.</summary>
+                  <validation>validate_document.py exit 0, ok=true, receipt emitted.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\wf-iterations\\open-sample\\xc\\project\\.xcoding\\work-orders\\20261101-2045-open-sandbox-xc-2\\analysis.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-analysis"}}</check>
+                  </checks>
+                </result>
+              </node>
+            </children>
+          </node>
+        </children>
+      </node>
+      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__reconciliation-group" template_id="reconciliation-group" origin_template_id="reconciliation-group" origin_instance_id="root" title="Reconcile related feature baselines" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="work_order.has_features == true" dynamic.state="open" skip_reason="when" skipped_at="2026-11-01T12:51:50+00:00" />
+      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__clarification-group" template_id="clarification-group" origin_template_id="clarification-group" origin_instance_id="root" title="Clarify material decisions" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="work_order.requires_clarification == true" dynamic.state="open" skip_reason="when" skipped_at="2026-11-01T12:51:50+00:00" />
+      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__work-order-solution-document" template_id="work-order-solution-document" origin_template_id="work-order-solution-document" origin_instance_id="root" title="Select work order solution" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" when="work_order.requires_solution == true" dynamic.state="closed">
+        <children>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__root" template_id="root" origin_template_id="root" origin_instance_id="solution" title="Document Evolution" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+            <children>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__write-document" template_id="write-document" origin_template_id="write-document" origin_instance_id="solution" title="Write or revise document" type="task" executor="subagent" status="succeeded" role="document-write" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" started_at="2026-11-01T12:53:05+00:00" agent="main" completed_at="2026-11-01T12:53:05+00:00">
+                <instructions>Read document.path, document.template, document.inputs, document.contract, document.content_language, and document.authoring_requirements from the supplied blackboard and node references. Follow the public xc-document human-readable authoring default unless explicit document.authoring_requirements override its style preferences. Preserve exact commands, identifiers, paths, logs, and machine output where literal accuracy matters. Write or revise the target document immediately, preserve valid frontmatter, and do not read the runtime XML directly.</instructions>
+                <deliverables>The managed document at document.path.</deliverables>
+                <acceptance>The target document exists, follows its domain and human-readable authoring contracts plus explicit user requirements, preserves key information, and has complete YAML frontmatter.</acceptance>
+                <result>
+                  <summary>Wrote solution.md: create scope decision, accepted C1-C15 matrix, module contracts, world/interaction/persistence design, documentation plan and verification strategy mapped to acceptance.</summary>
+                  <artifacts>
+                    <artifact path="C:\dev\xcoding-workflow-dev\wf-iterations\open-sample\xc\project\.xcoding\work-orders\20261101-2045-open-sandbox-xc-2\solution.md" />
+                  </artifacts>
+                  <validation>Checked against analysis.md and the goal; every must and should capability has an implementation and verification path; no feature baseline exists.</validation>
+                </result>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__validate-draft" template_id="validate-draft" origin_template_id="validate-draft" origin_instance_id="solution" title="Validate draft document" type="task" executor="tool" status="succeeded" role="document-validate" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" started_at="2026-11-01T12:53:10+00:00" agent="main" completed_at="2026-11-01T12:53:11+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind.</instructions>
+                <deliverables>A validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the draft without errors.</acceptance>
+                <result>
+                  <summary>xc-document validated solution.md as work-order-solution.</summary>
+                  <validation>validate_document.py exit 0, ok=true.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\wf-iterations\\open-sample\\xc\\project\\.xcoding\\work-orders\\20261101-2045-open-sandbox-xc-2\\solution.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-solution"}}</check>
+                  </checks>
+                </result>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__review-loop" template_id="review-loop" origin_template_id="review-loop" origin_instance_id="solution" title="Review and revise document" type="loop" executor="main" status="skipped" role="document-review-loop" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" when="document.review_required == true" when.policy="latched" loop.iteration="1" when.latched="false" skip_reason="when" skipped_at="2026-11-01T12:53:11+00:00">
+                <children>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__review-document" template_id="review-document" origin_template_id="review-document" origin_instance_id="solution" title="Review document" type="task" executor="subagent" status="pending" role="document-review" metadata.artifact.audience="internal" metadata.artifact.content_language="en" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
+                    <instructions>Review document.path against the domain review dimensions, explicit document.authoring_requirements, and the public xc-document human-readable dimensions: audience fit, progressive disclosure, first-use terminology explanations, concision, and preservation of key information. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
+                    <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
+                    <acceptance>The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues.</acceptance>
+                  </node>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__revise-document" template_id="revise-document" origin_template_id="revise-document" origin_instance_id="solution" title="Revise document from review" type="task" executor="subagent" status="pending" role="document-revise" when="document.review.open_issues == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" depends_on="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__review-document">
+                    <instructions>Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.</instructions>
+                    <deliverables>An updated managed document.</deliverables>
+                    <acceptance>Required domain and human-readability findings are resolved or explicitly escalated to a user gate.</acceptance>
+                  </node>
+                </children>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__document-gate" template_id="document-gate" origin_template_id="document-gate" origin_instance_id="solution" title="Confirm document decisions" type="gate" executor="main" status="skipped" role="document-confirmation" when="document.gate_required == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;accepted&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="document.gate_outcome" when.latched="false" skip_reason="when" skipped_at="2026-11-01T12:53:11+00:00">
+                <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
+                <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
+                <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__document-gate-recovery-group" template_id="document-gate-recovery-group" origin_template_id="document-gate-recovery-group" origin_instance_id="solution" title="Recover non-accepting document decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="document.gate_outcome != accepted" when.policy="latched" dynamic.state="open" when.latched="false" skip_reason="when" skipped_at="2026-11-01T12:53:11+00:00" />
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__solution__validate-final" template_id="validate-final" origin_template_id="validate-final" origin_instance_id="solution" title="Validate final document" type="task" executor="tool" status="succeeded" role="document-validate-final" when="document.gate_outcome == accepted" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" when.latched="true" started_at="2026-11-01T12:53:11+00:00" agent="main" completed_at="2026-11-01T12:53:11+00:00">
+                <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
+                <deliverables>A final validation result recorded in the node result.</deliverables>
+                <acceptance>xc-document validates the final document without errors.</acceptance>
+                <result>
+                  <summary>Final xc-document validation of solution.md passed.</summary>
+                  <validation>validate_document.py exit 0, ok=true.</validation>
+                  <checks>
+                    <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\wf-iterations\\open-sample\\xc\\project\\.xcoding\\work-orders\\20261101-2045-open-sandbox-xc-2\\solution.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-solution"}}</check>
+                  </checks>
+                </result>
+              </node>
+            </children>
+          </node>
+        </children>
+      </node>
+      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__approve-work-order-solution" template_id="approve-work-order-solution" origin_template_id="approve-work-order-solution" origin_instance_id="root" title="Approve work order solution" type="gate" executor="main" status="succeeded" role="solution-approval" when="work_order.solution_gate_required == true" metadata.control_packet.category.selected-solution.selectors="[&quot;bb:work_order.solution_source_ids&quot;]" metadata.control_packet.category.selected-solution.min_sources="1" metadata.control_packet.category.selected-solution.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;work_order.document_language&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;approved&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="work_order.solution_gate_outcome" started_at="2026-11-01T12:53:15+00:00" agent="main" completed_at="2026-11-01T12:53:27+00:00">
+        <instructions>Present the selected change solution, baseline impact, implementation strategy, verification strategy, and unresolved decisions. Record approval or add revision nodes.</instructions>
+        <deliverables>An approval decision or explicit revision work.</deliverables>
+        <acceptance>Implementation cannot proceed on a material unresolved solution decision.</acceptance>
+        <result>
+          <summary>Solution approved: create scope with accepted C1-C15, module contracts, interaction/progression, persistence, docs and a unit plus real-browser verification strategy. No feature baseline impact; no unresolved material decision.</summary>
+          <validation>Approval control packet resolved the terminal solution writer and its solution.md artifact; scope matches goal and analysis; verification maps every must and accepted should capability.</validation>
+          <gate_outcome>approved</gate_outcome>
+          <decision>Approved by the work-order main session under the initiating user instruction to run the full managed lifecycle to closure; this delegated run had no interactive reviewer available. Scope, capability matrix and verification strategy match the request and analysis.</decision>
+        </result>
+      </node>
+      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__solution-recovery-group" template_id="solution-recovery-group" origin_template_id="solution-recovery-group" origin_instance_id="root" title="Recover non-accepting solution decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="work_order.solution_gate_outcome != approved" dynamic.state="open" skip_reason="when" skipped_at="2026-11-01T12:53:27+00:00" />
+      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__approved-solution-continuation" template_id="approved-solution-continuation" origin_template_id="approved-solution-continuation" origin_instance_id="root" title="Continue approved work order" type="composite" executor="main" status="succeeded" role="gate-continuation" mode="sequence" when="work_order.solution_gate_outcome == approved">
+        <children>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__implementation-group" template_id="implementation-group" origin_template_id="implementation-group" origin_instance_id="root" title="Implement approved change" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" when="work_order.requires_implementation == true" dynamic.state="closed">
+            <children>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__core-simulation" logical_key="core-simulation" origin_instance_id="dyn-1" title="Implement core simulation modules and unit tests" type="task" executor="main" status="succeeded" role="implementation-unit" metadata.artifact.audience="internal" metadata.control_packet.category.approved-work.selectors="[&quot;bb:implementation.sources.core-simulation&quot;]" metadata.control_packet.category.approved-work.min_sources="2" metadata.control_packet.category.approved-work.artifact_min="1" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/implementation-core/core-simulation.md" started_at="2026-11-01T12:54:27+00:00" agent="main" completed_at="2026-11-01T12:57:37+00:00">
+                <instructions>Implement the accepted solution's simulation layer exactly: config, seeded world generation (192x96, seed-test anchor at column 10, caves, ores, trees, static lakes, unbreakable bottom row), fixed-step player physics and collision, mining reach/hardness/tool/drop rules, inventory and hotbar model, crafting recipes, per-tile lighting, and versioned save encode/decode with RLE and corruption validation. Add the corresponding node:test suites and keep the seed test file unchanged. Follow the L1 convention record. Write the node artifact with changed paths, commands, convention accounting and residual risk.</instructions>
+                <deliverables>Simulation modules under js/ and their node:test suites.</deliverables>
+                <acceptance>All new unit suites pass, the six seed tests still pass unchanged, and the artifact accounts for the accepted must/should capabilities in this unit.</acceptance>
+                <result>
+                  <summary>Implemented config, world generation, player physics, mining, inventory, crafting, lighting and save modules plus 35 new unit tests; 41/41 tests pass with the seed suite unchanged.</summary>
+                  <artifacts>
+                    <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/implementation-core/core-simulation.md" />
+                  </artifacts>
+                  <validation>node --test tests/**/*.test.js: 41 pass, 0 fail; xc-document validated the implementation artifact.</validation>
+                </result>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__presentation-shell" logical_key="presentation-shell" origin_instance_id="dyn-1" title="Implement presentation, input, UI, browser check and game loop" type="task" executor="main" status="succeeded" role="implementation-unit" metadata.artifact.audience="internal" metadata.control_packet.category.approved-work.selectors="[&quot;bb:implementation.sources.presentation-shell&quot;]" metadata.control_packet.category.approved-work.min_sources="2" metadata.control_packet.category.approved-work.artifact_min="1" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/implementation-presentation/presentation-shell.md" started_at="2026-11-01T13:09:51+00:00" agent="main" completed_at="2026-11-01T13:09:51+00:00">
+                <instructions>Implement the accepted solution's presentation and shell on top of the core modules: procedural tile textures and sky/day-night rendering, player and particle rendering, light overlay, water, HUD, hotbar, help/pause/craft overlays, pointer/keyboard input with CSS-scaled canvas mapping, WebAudio feedback, autosave and the fixed-step game loop; update index.html and css/style.css. Add tools/browser_check.mjs (Node built-ins only) that drives real Chrome over the DevTools Protocol with real key/mouse events, exercises movement, jumping, mining, placing, crafting, help, pause/save and reload persistence, records network requests and console errors, and captures day/night screenshots. Follow the L1 convention record. Write the node artifact with changed paths, commands, convention accounting and residual risk.</instructions>
+                <deliverables>Playable browser shell, presentation modules, page markup/styles and the browser check harness.</deliverables>
+                <acceptance>Opening index.html reaches a playable world with no console error; the browser harness exercises the real interaction loop and reload persistence; page_check still passes.</acceptance>
+                <result>
+                  <summary>Implemented the playable shell: rendering, input, UI, audio, game loop, save/new-world flow and a dependency-free CDP browser check; all unit, page and 16 interactive browser steps pass.</summary>
+                  <artifacts>
+                    <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/implementation-presentation/presentation-shell.md" />
+                  </artifacts>
+                  <validation>node --test: 41/41; page_check ok=true with 173 buckets; browser_check ok=true, 0 console errors, 0 remote requests, reload persistence verified.</validation>
+                </result>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__documentation" logical_key="documentation" origin_instance_id="dyn-1" title="Document the controls, run method and verification" type="task" executor="main" status="succeeded" role="implementation-unit" metadata.artifact.audience="internal" metadata.control_packet.category.approved-work.selectors="[&quot;bb:implementation.sources.documentation&quot;]" metadata.control_packet.category.approved-work.min_sources="2" metadata.control_packet.category.approved-work.artifact_min="1" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/implementation-docs/documentation.md" started_at="2026-11-01T13:10:18+00:00" agent="main" completed_at="2026-11-01T13:10:18+00:00">
+                <instructions>Rewrite README.md for the finished game: what it is, how to run from file://, the full controls table matching the in-game help, saving and new-world behaviour, the implemented Minecraft-inspired systems and recorded non-goals, the verification commands including the browser check, and the project layout. Keep it accurate to the delivered code and commands; do not claim unverified behaviour. Follow the xc-document human-readable default. Write the node artifact with changed paths, commands and residual risk.</instructions>
+                <deliverables>Updated README.md documenting the delivered game.</deliverables>
+                <acceptance>README controls match the game and config; run and verification commands are exact; the document is validated as needed.</acceptance>
+                <result>
+                  <summary>Rewrote README.md for the delivered game: run method, complete controls table matching config and in-game help, implemented systems, recorded scope, saving/recovery, verification commands and final layout.</summary>
+                  <artifacts>
+                    <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/implementation-docs/documentation.md" />
+                  </artifacts>
+                  <validation>Every documented number cross-checked against config.js; documented commands executed successfully in this work order; xc-document validated the doc artifact.</validation>
+                </result>
+              </node>
+            </children>
+          </node>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__verification-group" template_id="verification-group" origin_template_id="verification-group" origin_instance_id="root" title="Verify work order outcome" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" when="work_order.requires_verification == true" dynamic.state="closed">
+            <children>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__unit-and-static" logical_key="unit-and-static" origin_instance_id="dyn-1" title="Verify unit suites and static page contract" type="task" executor="main" status="succeeded" role="verification-unit" metadata.artifact.audience="internal" metadata.control_packet.category.implementation-records.selectors="[&quot;bb:verification.sources.unit&quot;]" metadata.control_packet.category.implementation-records.min_sources="3" metadata.control_packet.category.implementation-records.artifact_min="3" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/verification-unit/unit-and-static.md" started_at="2026-11-01T13:10:34+00:00" agent="main" completed_at="2026-11-01T13:10:53+00:00">
+                <instructions>Execute the project's focused verification: node --test for every suite and the static half of tools/page_check.py. Map evidence to capabilities C2-C7 and C9-C11, confirm the six seed tests are unchanged, record command outputs, coverage and any gaps, and write the node artifact.</instructions>
+                <deliverables>Unit and static verification evidence mapped to the accepted capability matrix.</deliverables>
+                <acceptance>Commands are real and pass; seed tests unchanged; every must/should capability in scope has evidence or a recorded gap.</acceptance>
+                <result>
+                  <summary>Focused unit and static verification passed: 41/41 tests with the unchanged seed suite, page_check ok=true, capability coverage recorded with browser gaps assigned onward.</summary>
+                  <artifacts>
+                    <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/verification-unit/unit-and-static.md" />
+                  </artifacts>
+                  <validation>node --test 41 pass 0 fail; page_check static ok and status/colour checks ok; artifact validated by xc-document.</validation>
+                </result>
+              </node>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__dyn-1__browser-and-regression" logical_key="browser-and-regression" origin_instance_id="dyn-1" title="Verify interactive browser behaviour and offline regression" type="task" executor="main" status="succeeded" role="verification-unit" metadata.artifact.audience="internal" metadata.control_packet.category.implementation-records.selectors="[&quot;bb:verification.sources.browser&quot;]" metadata.control_packet.category.implementation-records.min_sources="3" metadata.control_packet.category.implementation-records.artifact_min="3" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="literal:.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/verification-browser/browser-and-regression.md" started_at="2026-11-01T13:10:59+00:00" agent="main" completed_at="2026-11-01T13:11:28+00:00">
+                <instructions>Execute the interactive verification: python tools/page_check.py and node tools/browser_check.mjs with captured screenshots, plus the full unit suite as regression. Confirm the real input loop, persistence, day/night, responsive mapping, audio feedback, new world, zero console errors and zero remote requests; review the screenshots; record evidence, coverage and gaps; write the node artifact.</instructions>
+                <deliverables>Browser interaction, persistence, offline and visual verification evidence.</deliverables>
+                <acceptance>Both checks pass; the browser run exercises the required capabilities with real input; screenshots reviewed; gaps recorded rather than hidden.</acceptance>
+                <result>
+                  <summary>Interactive and regression verification passed: 16/16 browser steps with real input, reload persistence, day/night brightness change, responsive mapping, audio feedback, new world, zero console errors and zero remote requests; 41/41 regression tests.</summary>
+                  <artifacts>
+                    <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/verification-browser/browser-and-regression.md" />
+                  </artifacts>
+                  <validation>page_check ok=true; browser_check ok=true consoleErrors=[] remoteRequests=[]; node tests 41 pass; screenshots reviewed; artifact validated by xc-document.</validation>
+                </result>
+              </node>
+            </children>
+          </node>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__report-group" template_id="report-group" origin_template_id="report-group" origin_instance_id="root" title="Produce change review report" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="work_order.requires_report == true" dynamic.state="open" skip_reason="when" skipped_at="2026-11-01T13:11:28+00:00">
+            <instructions>Produce the change report for this work order after verification and before the result document. The group is mounted by the commitment value work_order.requires_report. Embed the xc-change-report subtree once under this group, or run a single role=report node that carries the same contract. Resolve the subtree's template path from the committed setup record at .agents/.xcoding-setup/manifest.json, which holds the installed xc-change-report package's absolute path; change-report-template.xml is read from it, and the host-to-Skill-root table is the fallback for a project with no such record. Before the group's first node runs, publish all thirteen caller-seeded keys with the values this work order actually uses, never merely accepting their declared defaults: report.path, report.manifest_path, report.baseline_commit, report.baseline_digest, report.language, report.strength, report.gate_required, report.gate_outcome, report.gate_rework_required, report.gate_recovery_required, report.round, report.refresh_count, and report.refresh_reason. report.round is the 1-based index of the pass being entered. When prepare-manifest measures one or more analyzable units, produce the report; when it measures zero analyzable units, record work_order.report_skip_reason=zero_analyzable_units and produce no report; a user waiver records work_order.report_skip_reason=user_waived, and a skip the resolved report policy produced records work_order.report_skip_reason=policy_default. A skipped gate records report.gate_outcome=not-run, never accepted.</instructions>
+            <deliverables>On the produced outcome: one change-report.html, one change-report-manifest.json, and one change-report-verdicts.json under the workbench report node artifact directory. On the skipped outcome: no report file is required, and the deliverable is the recorded work_order.report_skip_reason with report.run_required=false.</deliverables>
+            <acceptance>Exactly one of the two outcomes holds: either the report exists at report.path and is proven by report.manifest_path, or report.run_required is false and work_order.report_skip_reason records one of the legal reasons (read_only_mode, zero_analyzable_units, user_waived, policy_default); a produced report is never accepted without its manifest, and a skip is never accepted without its reason. The caller publishes all thirteen caller-seeded report.* keys with the values this work order uses before the group's first node runs, and the subtree's template is resolved from the installed package path the setup record holds, so the guards and completion-fact selectors the subtree evaluates resolve against those thirteen declarations or against a key one of the subtree's own nodes writes before that expression reads it.</acceptance>
+          </node>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__result-document" template_id="result-document" origin_template_id="result-document" origin_instance_id="root" title="Record work order result" type="composite" executor="main" status="succeeded" role="dynamic-group" mode="sequence" dynamic.state="closed">
+            <children>
+              <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__result__root" template_id="root" origin_template_id="root" origin_instance_id="result" title="Document Evolution" type="composite" executor="main" status="succeeded" role="root" mode="sequence">
+                <children>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__result__write-document" template_id="write-document" origin_template_id="write-document" origin_instance_id="result" title="Write or revise document" type="task" executor="subagent" status="succeeded" role="document-write" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" started_at="2026-11-01T13:11:37+00:00" agent="main" completed_at="2026-11-01T13:11:56+00:00">
+                    <instructions>Read document.path, document.template, document.inputs, document.contract, document.content_language, and document.authoring_requirements from the supplied blackboard and node references. Follow the public xc-document human-readable authoring default unless explicit document.authoring_requirements override its style preferences. Preserve exact commands, identifiers, paths, logs, and machine output where literal accuracy matters. Write or revise the target document immediately, preserve valid frontmatter, and do not read the runtime XML directly.</instructions>
+                    <deliverables>The managed document at document.path.</deliverables>
+                    <acceptance>The target document exists, follows its domain and human-readable authoring contracts plus explicit user requirements, preserves key information, and has complete YAML frontmatter.</acceptance>
+                    <result>
+                      <summary>Wrote result.md: actual changes, validation evidence, baseline synchronization, waived report record, deviations and residual risks.</summary>
+                      <artifacts>
+                        <artifact path="C:\dev\xcoding-workflow-dev\wf-iterations\open-sample\xc\project\.xcoding\work-orders\20261101-2045-open-sandbox-xc-2\result.md" />
+                      </artifacts>
+                      <validation>Cross-checked against the verification artifacts, solution and goal; report skip recorded on one fixed line.</validation>
+                    </result>
+                  </node>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__result__validate-draft" template_id="validate-draft" origin_template_id="validate-draft" origin_instance_id="result" title="Validate draft document" type="task" executor="tool" status="succeeded" role="document-validate" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" started_at="2026-11-01T13:11:56+00:00" agent="main" completed_at="2026-11-01T13:11:57+00:00">
+                    <instructions>Run xc-document validation for document.path and document.kind.</instructions>
+                    <deliverables>A validation result recorded in the node result.</deliverables>
+                    <acceptance>xc-document validates the draft without errors.</acceptance>
+                    <result>
+                      <summary>xc-document validated result.md as work-order-result.</summary>
+                      <validation>validate_document.py exit 0, ok=true.</validation>
+                      <checks>
+                        <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\wf-iterations\\open-sample\\xc\\project\\.xcoding\\work-orders\\20261101-2045-open-sandbox-xc-2\\result.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-result"}}</check>
+                      </checks>
+                    </result>
+                  </node>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__result__review-loop" template_id="review-loop" origin_template_id="review-loop" origin_instance_id="result" title="Review and revise document" type="loop" executor="main" status="skipped" role="document-review-loop" loop.break_when="document.review.open_issues == false" loop.continue_when="document.review.open_issues == true" loop.max_iterations="3" loop.on_limit="blocked" mode="sequence" when="document.review_required == true" when.policy="latched" loop.iteration="1" when.latched="false" skip_reason="when" skipped_at="2026-11-01T13:11:57+00:00">
+                    <children>
+                      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__result__review-document" template_id="review-document" origin_template_id="review-document" origin_instance_id="result" title="Review document" type="task" executor="subagent" status="pending" role="document-review" metadata.artifact.audience="internal" metadata.artifact.content_language="en" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1">
+                        <instructions>Review document.path against the domain review dimensions, explicit document.authoring_requirements, and the public xc-document human-readable dimensions: audience fit, progressive disclosure, first-use terminology explanations, concision, and preservation of key information. Write findings to the declared node artifact and set document.review.open_issues to true or false through the runtime.</instructions>
+                        <deliverables>A review artifact with prioritized findings and closure criteria.</deliverables>
+                        <acceptance>The review distinguishes required findings from optional observations, covers domain correctness and human readability, and sets document.review.open_issues.</acceptance>
+                      </node>
+                      <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__result__revise-document" template_id="revise-document" origin_template_id="revise-document" origin_instance_id="result" title="Revise document from review" type="task" executor="subagent" status="pending" role="document-revise" when="document.review.open_issues == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;]" metadata.completion.artifacts.min="1" metadata.completion.artifacts.max="1" metadata.completion.artifacts.path="bb:document.path" depends_on="rt_work-order-20261101-2045-open-sandbox-xc-2__result__review-document">
+                        <instructions>Read the latest review artifact and document.authoring_requirements, then revise only document.path. Apply the public xc-document human-readable authoring default except where explicit requirements override style preferences. Preserve document.content_language, valid frontmatter, exact technical evidence, and key information, then record the updated document as the node artifact.</instructions>
+                        <deliverables>An updated managed document.</deliverables>
+                        <acceptance>Required domain and human-readability findings are resolved or explicitly escalated to a user gate.</acceptance>
+                      </node>
+                    </children>
+                  </node>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__result__document-gate" template_id="document-gate" origin_template_id="document-gate" origin_instance_id="result" title="Confirm document decisions" type="gate" executor="main" status="skipped" role="document-confirmation" when="document.gate_required == true" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.gate.outcomes="[&quot;accepted&quot;,&quot;rejected&quot;,&quot;revision-required&quot;]" metadata.gate.decision_required="true" metadata.gate.outcome_key="document.gate_outcome" when.latched="false" skip_reason="when" skipped_at="2026-11-01T13:11:57+00:00">
+                    <instructions>Present the document-specific decisions to the user. Record short choices in the blackboard and create revision nodes when feedback changes the document.</instructions>
+                    <deliverables>Structured user decisions or an explicit continuation decision.</deliverables>
+                    <acceptance>Required user decisions are recorded and any necessary revision nodes are scheduled.</acceptance>
+                  </node>
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__result__document-gate-recovery-group" template_id="document-gate-recovery-group" origin_template_id="document-gate-recovery-group" origin_instance_id="result" title="Recover non-accepting document decision" type="composite" executor="main" status="skipped" role="dynamic-group" mode="sequence" when="document.gate_outcome != accepted" when.policy="latched" dynamic.state="open" when.latched="false" skip_reason="when" skipped_at="2026-11-01T13:11:57+00:00" />
+                  <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__result__validate-final" template_id="validate-final" origin_template_id="validate-final" origin_instance_id="result" title="Validate final document" type="task" executor="tool" status="succeeded" role="document-validate-final" when="document.gate_outcome == accepted" when.policy="latched" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" metadata.completion.artifacts.min="0" metadata.completion.artifacts.max="0" metadata.completion.checks="[&quot;xc-document&quot;]" metadata.completion.check.xc-document.subject="bb:document.path" metadata.completion.check.xc-document.facts.document_kind="bb:document.kind" metadata.completion.check.xc-document.facts.content_language="bb:document.receipt.content_language" metadata.completion.check.xc-document.facts.audience="bb:document.receipt.audience" when.latched="true" started_at="2026-11-01T13:11:57+00:00" agent="main" completed_at="2026-11-01T13:11:57+00:00">
+                    <instructions>Run xc-document validation for document.path and document.kind after review and user decisions.</instructions>
+                    <deliverables>A final validation result recorded in the node result.</deliverables>
+                    <acceptance>xc-document validates the final document without errors.</acceptance>
+                    <result>
+                      <summary>Final xc-document validation of result.md passed.</summary>
+                      <validation>validate_document.py exit 0, ok=true.</validation>
+                      <checks>
+                        <check>{"schema_version":1,"check":"xc-document","ok":true,"subject":"C:\\dev\\xcoding-workflow-dev\\wf-iterations\\open-sample\\xc\\project\\.xcoding\\work-orders\\20261101-2045-open-sandbox-xc-2\\result.md","facts":{"audience":"","content_language":"en","document_kind":"work-order-result"}}</check>
+                      </checks>
+                    </result>
+                  </node>
+                </children>
+              </node>
+            </children>
+          </node>
+          <node id="rt_work-order-20261101-2045-open-sandbox-xc-2__root__finalize-work-order" template_id="finalize-work-order" origin_template_id="finalize-work-order" origin_instance_id="root" title="Finalize ordinary work order" type="task" executor="main" status="succeeded" role="work-order-finalize" metadata.control_packet.category.supporting-records.selectors="[&quot;bb:work_order.result_source_ids&quot;]" metadata.control_packet.category.supporting-records.min_sources="1" metadata.control_packet.category.supporting-records.artifact_min="1" metadata.control_packet.category.work-order-objective.selectors="[&quot;bb:work_order.objective_source_ids&quot;]" metadata.control_packet.category.work-order-objective.min_sources="1" metadata.control_packet.category.work-order-objective.artifact_min="1" metadata.control_packet.blackboard_keys="[&quot;work_order.document_language&quot;]" metadata.completion.required_fields="[&quot;summary&quot;,&quot;validation&quot;]" started_at="2026-11-01T13:12:05+00:00" agent="main" completed_at="2026-11-01T13:12:11+00:00">
+            <instructions>Confirm the work order result, declared artifacts, feature baseline synchronization, code provenance, and residual risks, then close the work order. Consume work_order.report_skip_reason: when work_order.requires_report is true and neither a report path nor one of the legal skip reasons (read_only_mode, zero_analyzable_units, user_waived, policy_default) is recorded, the work order must not close.</instructions>
+            <deliverables>A completed, failed, or blocked work order with durable evidence.</deliverables>
+            <acceptance>The runtime tree and workbench documents accurately describe the work order outcome, and a committed report obligation is either satisfied by a report path or explicitly recorded as a skip decision.</acceptance>
+            <result>
+              <summary>Work order closed as complete: Blockhaven, a playable offline 2D Minecraft-inspired sandbox is delivered with generated world, mining/building, inventory/hotbar, crafting/tools, day/night light, saving, audio, documented controls and README; 41/41 unit tests, page_check and a 16-step real-browser check pass with zero console errors and zero remote requests.</summary>
+              <artifacts>
+                <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/result.md" />
+                <artifact path=".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/goal.md" />
+              </artifacts>
+              <validation>Goal, analysis, solution, implementation, verification and result artifacts are terminal; no feature baselines exist; the report obligation is satisfied by the recorded user_waived skip; no unresolved blocker remains.</validation>
+            </result>
+          </node>
+        </children>
+      </node>
+    </children>
+  </node>
+</orchestration>

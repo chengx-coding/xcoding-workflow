@@ -1,0 +1,156 @@
+﻿{
+  "ok": true,
+  "page": "file:///C:/dev/xcoding-workflow-dev/wf-iterations/open-sample/xc/project/index.html",
+  "screenshots": "C:\\dev\\xcoding-workflow-dev\\wf-iterations\\open-sample\\xc\\project\\.xcoding\\work-orders\\20261101-2045-open-sandbox-xc-2\\tmp\\shots4",
+  "steps": [
+    {
+      "name": "boot",
+      "ok": true,
+      "detail": {
+        "width": 192,
+        "height": 96,
+        "slots": 8
+      }
+    },
+    {
+      "name": "no-network",
+      "ok": true,
+      "detail": {
+        "requests": 15,
+        "remote": 0
+      }
+    },
+    {
+      "name": "initial-state",
+      "ok": true,
+      "detail": {
+        "x": 96.5,
+        "y": 60.999999,
+        "onGround": true,
+        "seed": 3958703378,
+        "persistent": true
+      }
+    },
+    {
+      "name": "jump",
+      "ok": true,
+      "detail": {
+        "rise": 1.7822222222222166,
+        "landedAt": 60.999999
+      }
+    },
+    {
+      "name": "move-right",
+      "ok": true,
+      "detail": {
+        "before": 96.5,
+        "after": 99.64999900000001
+      }
+    },
+    {
+      "name": "mine-tree",
+      "ok": true,
+      "detail": {
+        "target": {
+          "x": 100,
+          "y": 60,
+          "clientX": 464.4173736697435,
+          "clientY": 294.0000372492432
+        },
+        "before": {},
+        "after": {
+          "wood": 1
+        }
+      }
+    },
+    {
+      "name": "craft-planks",
+      "ok": true,
+      "detail": {
+        "planks": 4
+      }
+    },
+    {
+      "name": "place-planks",
+      "ok": true,
+      "detail": {
+        "point": {
+          "x": 96,
+          "y": 57,
+          "clientX": 368.4000245368668,
+          "clientY": 222.00002400040967
+        },
+        "block": 11,
+        "items": {
+          "planks": 3
+        }
+      }
+    },
+    {
+      "name": "help-overlay",
+      "ok": true,
+      "detail": {
+        "rows": 10
+      }
+    },
+    {
+      "name": "pause-save",
+      "ok": true,
+      "detail": {
+        "saved": true
+      }
+    },
+    {
+      "name": "reload-persistence",
+      "ok": true,
+      "detail": {
+        "x": 99.64999900000001,
+        "items": {
+          "planks": 3
+        },
+        "seed": 3958703378,
+        "placed": 11
+      }
+    },
+    {
+      "name": "day-night-light",
+      "ok": true,
+      "detail": {
+        "daySky": 15,
+        "nightSky": 4,
+        "dayBrightness": 115.17225555947833,
+        "nightBrightness": 19.98356669412081
+      }
+    },
+    {
+      "name": "responsive-mapping",
+      "ok": true,
+      "detail": {
+        "rect": {
+          "left": 160,
+          "top": 0,
+          "width": 960,
+          "height": 540
+        },
+        "point": {
+          "x": 600.4000239999996,
+          "y": 270.00002399999994
+        },
+        "viewport": {
+          "width": 1280,
+          "height": 720
+        }
+      }
+    },
+    {
+      "name": "console-clean",
+      "ok": true,
+      "detail": {
+        "errors": 0
+      }
+    }
+  ],
+  "consoleErrors": [],
+  "networkRequests": 30,
+  "remoteRequests": []
+}

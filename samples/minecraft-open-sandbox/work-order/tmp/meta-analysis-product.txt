@@ -1,0 +1,5 @@
+﻿metadata.artifact.audience=internal
+metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.completion.artifacts.path=literal:.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/analysis-product/product-signature.md

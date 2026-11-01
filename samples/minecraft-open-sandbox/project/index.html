@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blockhaven — a small 2D Minecraft</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main id="app">
+    <canvas id="game" width="960" height="540" aria-label="2D block world"></canvas>
+
+    <div id="hud" aria-live="polite">
+      <div id="hud-title">Blockhaven</div>
+      <div id="hud-hint">A/D move · Space jump · Left-click mine · Right-click place · E craft · H help</div>
+      <div id="hud-time">Day 1 · Morning</div>
+    </div>
+
+    <div id="crosshair" aria-hidden="true"></div>
+    <div id="hotbar" role="toolbar" aria-label="Block hotbar"></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="save-indicator" aria-live="polite"></div>
+
+    <div id="overlay" class="overlay hidden">
+      <section id="help-panel" class="panel hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <h1 id="help-title">Controls</h1>
+        <div id="help-controls" class="controls-grid"></div>
+        <p class="panel-note">Mine a tree for wood, craft planks and sticks with <strong>E</strong>, then a
+          pickaxe. Coal makes torches; crystal needs a stone pickaxe and glows. Progress saves
+          automatically.</p>
+        <div class="panel-actions">
+          <button type="button" class="button" data-action="close-help">Back to the world</button>
+        </div>
+      </section>
+
+      <section id="pause-panel" class="panel hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <h1 id="pause-title">Paused</h1>
+        <p id="pause-status" class="panel-note">Your world is paused.</p>
+        <div class="panel-actions column">
+          <button type="button" class="button primary" data-action="resume">Resume</button>
+          <button type="button" class="button" data-action="save">Save now</button>
+          <button type="button" class="button" data-action="help">Controls</button>
+          <button type="button" class="button danger" data-action="new-world">New world</button>
+        </div>
+        <p id="pause-seed" class="panel-meta"></p>
+      </section>
+
+      <section id="craft-panel" class="panel wide hidden" role="dialog" aria-modal="true" aria-labelledby="craft-title">
+        <h1 id="craft-title">Crafting</h1>
+        <p class="panel-note">Gather blocks, then turn them into better tools. <strong>1 wood</strong> is
+          the whole tree.</p>
+        <div id="craft-list" class="craft-list"></div>
+        <div class="panel-actions">
+          <button type="button" class="button" data-action="close-craft">Close (E)</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="status" data-state="booting" title="Page status"></div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/mining.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/crafting.js"></script>
+  <script src="js/lighting.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
