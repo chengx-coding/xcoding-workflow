@@ -7,7 +7,7 @@
   "input_hashes": {
     "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
     "tests/workflow_scenario_harness.py": "3b91258dc832cafd00299068b59b0bc76942a6c77e4100b5fe09a8e6d5bc01cc",
-    "tests/test_xc_workflow_governance.py": "1bba588fb7278f70ed43ae75a5a66fe52f0e7eebb80141b872e13a68d803bdf5",
+    "tests/test_xc_workflow_governance.py": "f54a0d744ede73a5de689e28edf9cc55077e071629454978c00de2e929810577",
     "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
     "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
     "skills/xc-open-work-order/scripts/open_work_order.py": "5afd6c67aaadb218833fc51d195bce3a3847c02afc659fb7d864ce7df9ffc0eb",
@@ -30,7 +30,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "e72eeaafcdd99a66979c8f7b52c8cab33c3094a4",
+  "recording_base_commit": "3519060ce8b62dec9912ef5cd450b46e6bd74879",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -479,21 +479,21 @@
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
         "current_value": 113283,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 48530
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 5
       },
       {
@@ -504,27 +504,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Dynamic scope policy: create mode and report policy update"
+        "explanation": "0.4.1 governance test update"
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
         "current_value": 113947,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 48530
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 33,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 38,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 5
       },
       {
@@ -535,27 +535,27 @@
           "status_before_result_document": "pending",
           "selected_before_result_document": true
         },
-        "explanation": "Dynamic scope policy: create mode and report policy update"
+        "explanation": "0.4.1 governance test update"
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
         "current_value": 143316,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 52770
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 4
       },
       {
@@ -566,27 +566,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Dynamic scope policy: create mode and report policy update"
+        "explanation": "0.4.1 governance test update"
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
         "current_value": 144229,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 52770
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 42,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 49,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 4
       },
       {
@@ -597,27 +597,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Dynamic scope policy: create mode and report policy update"
+        "explanation": "0.4.1 governance test update"
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
         "current_value": 209688,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 69550
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 6
       },
       {
@@ -628,27 +628,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Dynamic scope policy: create mode and report policy update"
+        "explanation": "0.4.1 governance test update"
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
         "current_value": 211099,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 69550
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 53,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 76,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 6
       },
       {
@@ -659,27 +659,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Dynamic scope policy: create mode and report policy update"
+        "explanation": "0.4.1 governance test update"
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
         "current_value": 237859,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 72965
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 6
       },
       {
@@ -690,27 +690,27 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Dynamic scope policy: create mode and report policy update"
+        "explanation": "0.4.1 governance test update"
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
         "current_value": 239519,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 72965
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 56,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 7
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 91,
-        "explanation": "Dynamic scope policy: create mode and report policy update",
+        "explanation": "0.4.1 governance test update",
         "numeric_delta": 6
       },
       {
@@ -721,12 +721,12 @@
           "status_before_result_document": "skipped",
           "selected_before_result_document": false
         },
-        "explanation": "Dynamic scope policy: create mode and report policy update"
+        "explanation": "0.4.1 governance test update"
       }
     ]
   },
   "change_note": {
-    "reason": "Dynamic scope policy: create mode and report policy update",
+    "reason": "0.4.1 governance test update",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1560,7 +1560,7 @@
     "input_hashes": {
       "tests/fixtures/model_robust_workflow/scenarios-v1.json": "31aa4835b429e4ca90c8ff8242b9f18549dfc4abe4d4db086ac43f774d524757",
       "tests/workflow_scenario_harness.py": "3b91258dc832cafd00299068b59b0bc76942a6c77e4100b5fe09a8e6d5bc01cc",
-      "tests/test_xc_workflow_governance.py": "1bba588fb7278f70ed43ae75a5a66fe52f0e7eebb80141b872e13a68d803bdf5",
+      "tests/test_xc_workflow_governance.py": "f54a0d744ede73a5de689e28edf9cc55077e071629454978c00de2e929810577",
       "skills/xc-work/scripts/classify.py": "e56a35260daf4d6be8eaf8757bcba02527bf5ef18efd0aa41933146000e65260",
       "skills/xc-work/scripts/classify_governance.py": "c38765d5614fdab7f13ae985325c20264b60da0652bbbd739ea90dc27c674ab9",
       "skills/xc-open-work-order/scripts/open_work_order.py": "5afd6c67aaadb218833fc51d195bce3a3847c02afc659fb7d864ce7df9ffc0eb",
