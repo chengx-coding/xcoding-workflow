@@ -41,27 +41,28 @@ and the new standard score what the agent actually chooses.
 ## Result
 
 The two runs are complete and blind-scored. Identity reveal: **A = one-shot (MOSSWILD)**, **B = XC
-0.4.4 (Cubewood)**.
+0.4.4 (Cubewood)**. Standard: **v1.3** (real-pointer interaction truth, blind pairwise art).
 
 | | One-shot A | XC 0.4.4 B |
 | --- | ---: | ---: |
-| PES | 83.9 | **84.8** |
-| ECS | 86.8 | **88.7** |
-| Composite | 84.6 | **85.8** |
-| Experience tier | polished | **polished** |
-| High / medium / low | 0 / 1 / 1 | 0 / 2 / 2 |
-| Higher | — | **B** |
+| PES | 78.9 | 55.0 (raw 70.1; high cap) |
+| ECS | 81.7 | 83.1 |
+| Composite | 79.6 | 55.0 (raw 73.3; cap) |
+| Experience tier | solid | prototype |
+| High / medium / low | 0 / 1 / 1 | **1** / 2 / 2 |
+| Higher | **A** | — |
 
-Cubewood wins by 1.2 composite and edges the one-shot on both PES and ECS. Its medium persistence
-defect (`world.surface` is not restored after reload; caves flatten after a save) is recorded as
-medium/borderline high; if it were high, B would cap at 55. The earlier 0.4.1/0.4.2 comparisons are
-retained below this result in the score sheet and blind reports.
+**v1.2's 85.8 is invalid.** Its craft check used `element.click()`; a normal real click on Craft
+no-ops because the craft list is rebuilt ~15×/s between mousedown and mouseup. The v1.3 evaluator
+reproduced 0/10 normal clicks and applied the high-defect cap at 55. The art comparison is also
+decisive: D5 83 vs 53, a 30-point gap.
 
-![XC 0.4.4 Cubewood — day](media/xc-cubewood-day.png)
-
-![XC 0.4.4 Cubewood — before/after backdrop](media/xc-cubewood-backdrop.png)
+The earlier v1.2 numbers (A 84.6 / B 85.8) are retained only as history. Do not use them as a stop
+or promotion claim.
 
 ![One-shot MOSSWILD](media/one-shot-mosswild.png)
+
+![XC 0.4.4 Cubewood](media/xc-cubewood-day.png)
 
 ## Status
 
