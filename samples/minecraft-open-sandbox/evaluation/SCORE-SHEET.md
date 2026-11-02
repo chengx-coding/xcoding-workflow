@@ -55,8 +55,8 @@ playable. If it were reclassified high, B would cap at PES/composite 55 and woul
 | Version | PES | ECS | Composite | Tier | Note |
 | --- | ---: | ---: | ---: | --- | --- |
 | one-shot | 83.9 | 86.8 | 84.6 | polished | fixed reference |
-| XC 0.4.2 | 66.1 | 86.1 | 71.1 | prototype | H1 fixed; hidden crafting |
-| XC 0.4.3 | 66.1 | 86.1 | 71.1 | prototype | Blockfall, H1 fixed |
+| XC 0.4.2 | 55.0 | 82.8 | 55.0 | prototype | H1 remains; proposed lens ineffective |
+| XC 0.4.3 | 66.1 | 86.1 | 71.1 | prototype | Smallcraft, H1 fixed; hidden crafting |
 | **XC 0.4.4** | **84.8** | **88.7** | **85.8** | polished | first-run + backdrop + persistence caveat |
 
 ## Evidence
