@@ -91,7 +91,9 @@ sandbox, simulation, or interactive visual tool whose acceptance is experiential
 `references/experience-quality.md` lens: record first-run discoverability, visual review, coherent
 state-dependent backdrop/occlusion, and a small reference-signature/progression decision. The lens does
 not add a universal must or a hidden feature: a signature loop the request is silent about is a
-proposed should with its evidence and gap; a no-user analysis may choose a smaller scope but must not
+For a stateful experience product that claims save/restore, add **must** capabilities for full
+state round-trip (all rendered layers) and display-state consistency; verify a before/after state
+manifest. proposed should with its evidence and gap; a no-user analysis may choose a smaller scope but must not
 silently non-goal it. Do not apply the lens to a pure library/CLI/docs/data dashboard task; record
 not-applicable with the reason.
 
