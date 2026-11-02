@@ -80,6 +80,11 @@ A task with no visual surface must not be required to produce screenshots/backgr
 evidence; a task with a visual surface uses the visual profile. Record a surface as not applicable only
 with a reason.
 
+**Visual-state backdrop.** For a visual product where content can be removed/cleared/hidden/covered
+or a mode/theme/time/viewport changes, add a **must** capability for the state-dependent
+backdrop/empty/fallback and execute before/after evidence. This is a task-class must, not a universal
+requirement; a pure code/docs task records not-applicable.
+
 **Experience products.** If the deliverable is a visual/interactive experience product (game,
 sandbox, simulation, or interactive visual tool whose acceptance is experiential), use the proposed
 `references/experience-quality.md` lens: record first-run discoverability, visual review, coherent

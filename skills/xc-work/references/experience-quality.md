@@ -27,13 +27,17 @@ Before result, obtain an **independent visual review** when an independent revie
 Record the reviewed before/after states and required findings, and re-check fixes. If no independent
 reviewer is available, record a self-review with that limitation; do not claim independent review.
 
-## 3. State-dependent backdrop
+## 3. Visual-state backdrop (task-class must)
 
-When content is removed, cleared, hidden or covered, or a mode/theme/time/viewport changes, the
-surface should show a coherent backdrop/empty/fallback for that state. An unrelated default background
-is an experience gap. Record before/after on the declared surface; a code reading or a single default
-frame is not enough. This is an application of universal observable-state integrity, not a new
-mechanism.
+**Scope:** visual products where content can be removed, cleared, hidden or covered, or a mode/theme/
+time/viewport changes. **Promotion status:** `validated-in-class` (two independent visual products
+showed the same failure: removed/underground content exposed an unrelated default background).
+
+This is a **must** capability for that class, not the proposed lens: the state must show a coherent
+backdrop/empty/fallback, not an unrelated sky/void/default layer. Record before/after on the declared
+surface and execute the state transition; a code reading or a single default frame is not evidence.
+A missing backdrop is a must gap: fail/block verification or record a user-accepted risk. This is an
+application of universal observable-state integrity, not a new mechanism.
 
 ## 4. Reference signature and progression
 
