@@ -54,8 +54,11 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("must owned by the visual output-surface", experience)
         self.assertIn("mode/theme/time/viewport", reference_flat)
         self.assertIn("first-run affordance", work)
-        self.assertIn("first-run affordance must", verification)
-        self.assertIn("state-dependent backdrop must", verification)
+        self.assertIn("first-run affordance", verification)
+        self.assertNotIn("fresh first-run discoverability", verification)
+        self.assertIn("validated-in-class", read(detail))
+        self.assertIn("first-run affordance", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
+        self.assertIn("visual-state backdrop", verification)
         self.assertIn("mode/theme/time/viewport", verification)
         for heading in ("## 1. First-run discoverability", "## 2. Visual composition and review", "## 3. Visual-state backdrop", "## 4. Reference signature and progression", "## 5. Verification"):
             self.assertIn(heading, experience)

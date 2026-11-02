@@ -22,8 +22,11 @@ after assertion with a surface-specific screenshot or a state label.
 product must expose its primary systems from the first-run UI: a visible button/tutorial/task/menu
 entry. A passive key hint, in-game help, or README alone is insufficient. Verify from a fresh state
 that a new user can find the primary system without prior knowledge; record the visible entry point.
-This is a must for the 2D sandbox subclass, not for all visual products; other visual subclasses use
-the proposed experience lens.
+This is a must for the defined 2D sandbox visual-product subclass, not for all visual products or
+informational dashboards; other experience products use the proposed experience lens. A 2D sandbox
+visual product is a side-view/2D block-or-tile sandbox game where the player removes/places world
+content and sees a rendered state. Its primary systems are the core actions of the first-run loop
+(for example play, inventory/crafting, help/save); define the concrete set in analysis.
 
 - Visible before/after when content is removed/cleared/hidden/covered/changed, mode/theme/time or
   viewport changes, or a boundary/terminal state is reached.
