@@ -58,6 +58,10 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertNotIn("fresh first-run discoverability", verification)
         self.assertIn("validated-in-class", read(detail))
         self.assertIn("first-run affordance", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
+        self.assertIn("2D sandbox visual products", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
+        self.assertIn("0.3.6", read(detail))
+        self.assertIn("0.4.3", read(detail))
+        self.assertIn("2D 沙盒视觉产品", read(ROOT / "docs" / "zh-CN" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertIn("visual-state backdrop", verification)
         self.assertIn("mode/theme/time/viewport", verification)
         for heading in ("## 1. First-run discoverability", "## 2. Visual composition and review", "## 3. Visual-state backdrop", "## 4. Reference signature and progression", "## 5. Verification"):
