@@ -5,60 +5,85 @@ const config = require("../js/config.js");
 const worldApi = require("../js/world.js");
 const lighting = require("../js/lighting.js");
 
-test("sky light reaches the surface and stops at solid ground", () => {
-  const world = worldApi.createWorld(config.seed);
-  const spawn = worldApi.getSpawn(world);
-  const light = lighting.computeLight(world, config.skyDay);
-  assert.equal(lighting.lightAt(light, world, 0, 0), config.skyDay);
-  assert.equal(lighting.lightAt(light, world, spawn.x, spawn.y - 1), config.skyDay);
-  assert.equal(lighting.lightAt(light, world, spawn.x, spawn.y + 30), 0);
-});
+const SEED = 20261102;
 
-test("night lowers the sky light and phases are stable", () => {
-  assert.equal(lighting.skyLevelForTime(0.25), config.skyDay);
-  assert.equal(lighting.skyLevelForTime(0.75), config.skyNight);
-  assert.equal(lighting.phaseForTime(0.25), "day");
-  assert.equal(lighting.phaseForTime(0.75), "night");
-  assert.equal(lighting.phaseForTime(0.02), "dawn");
-  assert.equal(lighting.phaseForTime(0.5), "dusk");
-});
-
-test("a torch lights nearby air and darkness is bounded", () => {
-  const world = worldApi.createWorld(config.seed);
-  const spawn = worldApi.getSpawn(world);
-  const dark = lighting.computeLight(world, config.skyNight);
-  const before = lighting.lightAt(dark, world, spawn.x + 3, spawn.y - 3);
-  worldApi.setBlock(world, spawn.x + 3, spawn.y - 3, config.blocks.torch);
-  const lit = lighting.computeLight(world, config.skyNight);
-  const after = lighting.lightAt(lit, world, spawn.x + 3, spawn.y - 3);
-  assert.ok(after > before, "expected torch light to raise the tile");
-  assert.ok(after >= 14);
-  const nearby = lighting.lightAt(lit, world, spawn.x + 1, spawn.y - 3);
-  assert.ok(nearby >= 12, "expected light to spread, got " + nearby);
-  assert.equal(lighting.darknessForLevel(config.lightMax), 0);
-  assert.ok(lighting.darknessForLevel(0) > 0.9);
-});
-
-test("crystal ore emits light and water attenuates it", () => {
-  const width = 24;
-  const height = 24;
-  const data = new Uint8Array(width * height);
-  const world = { width: width, height: height, seed: 1, data: data };
-  for (let x = 0; x < width; x += 1) {
-    for (let y = 12; y < height; y += 1) {
-      data[y * width + x] = config.blocks.stone;
+function clearWorld(world, fill) {
+  for (let y = 0; y < world.height; y += 1) {
+    for (let x = 0; x < world.width; x += 1) {
+      worldApi.setBlock(world, x, y, fill);
     }
   }
-  for (let x = 0; x < 12; x += 1) {
-    data[8 * width + x] = config.blocks.air;
-    data[9 * width + x] = config.blocks.air;
+}
+
+test("sky light reaches the surface and stops at solid ground", () => {
+  const world = worldApi.generateWorld(SEED);
+  const light = lighting.relight(world, lighting.createLight(world));
+  const x = Math.floor(world.width / 2);
+  const top = worldApi.surfaceHeightAt(world, x);
+  assert.ok(light.sky[(top - 1) * world.width + x] >= 14, "open sky above the surface should be bright");
+  assert.ok(light.sky[(top + 20) * world.width + x] < 8, "deep underground should be much darker than the surface");
+});
+
+test("skylight spreads sideways from an opening", () => {
+  const world = worldApi.generateWorld(SEED);
+  clearWorld(world, config.blocks.air);
+  for (let x = 0; x < world.width; x += 1) {
+    worldApi.setBlock(world, x, 20, config.blocks.stone);
   }
-  data[8 * width + 2] = config.blocks.crystal;
-  data[8 * width + 6] = config.blocks.water;
-  const light = lighting.computeLight(world, config.skyNight);
-  const crystal = lighting.lightAt(light, world, 2, 8);
-  assert.ok(crystal >= 12);
-  const throughAir = lighting.lightAt(light, world, 5, 8);
-  const throughWater = lighting.lightAt(light, world, 7, 8);
-  assert.ok(throughAir > throughWater, "water should attenuate more than air");
+  worldApi.setBlock(world, 50, 20, config.blocks.air);
+  const light = lighting.relight(world, lighting.createLight(world));
+  const nearHole = light.sky[21 * world.width + 50];
+  const beside = light.sky[21 * world.width + 49];
+  const threeAway = light.sky[21 * world.width + 47];
+  assert.equal(nearHole, 15, "the open column under the hole keeps direct sky");
+  assert.equal(beside, 14, "one tile sideways should receive sky minus one");
+  assert.equal(threeAway, 12, "light should fade one level per tile");
+  assert.equal(light.sky[21 * world.width + 10], 0, "distant sealed tiles stay dark");
+});
+
+test("torches light sealed underground rooms", () => {
+  const world = worldApi.generateWorld(SEED);
+  const x = 20;
+  const top = worldApi.surfaceHeightAt(world, x);
+  const roomY = top + 6;
+  for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+    for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+      worldApi.setBlock(world, x + offsetX, roomY + offsetY, config.blocks.stone);
+    }
+  }
+  worldApi.setBlock(world, x, roomY, config.blocks.air);
+  worldApi.setBlock(world, x + 1, roomY, config.blocks.air);
+  let light = lighting.relight(world, lighting.createLight(world));
+  assert.equal(light.block[roomY * world.width + x], 0, "the room starts dark");
+  worldApi.setBlock(world, x, roomY, config.blocks.torch);
+  light = lighting.relight(world, lighting.createLight(world));
+  assert.equal(light.block[roomY * world.width + x], 14);
+  assert.ok(light.block[roomY * world.width + x + 1] >= 13, "torch light should reach the neighbour");
+  assert.ok(lighting.brightnessAt(light, x + 1, roomY, 0.2, world.width) > 0.7);
+});
+
+test("light is blocked by solid blocks and passes through glass", () => {
+  assert.equal(lighting.opaque(config.blocks.stone), true);
+  assert.equal(lighting.opaque(config.blocks.dirt), true);
+  assert.equal(lighting.opaque(config.blocks.glass), false);
+  assert.equal(lighting.opaque(config.blocks.air), false);
+
+  const world = worldApi.generateWorld(SEED);
+  clearWorld(world, config.blocks.stone);
+  worldApi.setBlock(world, 30, 40, config.blocks.air);
+  worldApi.setBlock(world, 31, 40, config.blocks.glass);
+  worldApi.setBlock(world, 32, 40, config.blocks.air);
+  worldApi.setBlock(world, 33, 40, config.blocks.air);
+  worldApi.setBlock(world, 30, 40, config.blocks.torch);
+  const light = lighting.relight(world, lighting.createLight(world));
+  assert.ok(light.block[40 * world.width + 32] >= 12, "light should pass through glass");
+  assert.equal(light.block[40 * world.width + 29], 0, "stone blocks light completely");
+});
+
+test("daylight factor peaks at noon and falls at night", () => {
+  assert.ok(lighting.daylightAt(0.25) > lighting.daylightAt(0.04));
+  assert.ok(lighting.daylightAt(0.25) > 0.9);
+  assert.ok(lighting.daylightAt(0.75) < 0.25);
+  assert.ok(lighting.daylightAt(0.5) < lighting.daylightAt(0.25));
+  assert.equal(lighting.daylightAt(0.25), lighting.daylightAt(1.25));
 });

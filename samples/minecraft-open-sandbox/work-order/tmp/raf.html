@@ -1,0 +1,4 @@
+﻿<!doctype html><html><body><pre id="out">none</pre><script>
+let n=0; function tick(){n++; document.getElementById('out').textContent='n='+n; if(n<5) requestAnimationFrame(tick);} requestAnimationFrame(tick);
+setTimeout(()=>{document.getElementById('out').textContent+=' timeout';},500);
+</script></body></html>

@@ -1,164 +1,126 @@
 (function (root) {
   "use strict";
 
+  // Procedural sound: every effect is synthesized, so the page stays free of
+  // audio files and network requests. Contexts are created lazily on a gesture
+  // so autoplay policies never block the game.
   function createAudio() {
     let context = null;
-    let master = null;
     let muted = false;
-    let unavailable = false;
+    let played = 0;
+    let lastError = null;
 
     function ensureContext() {
-      if (unavailable) {
-        return null;
-      }
       if (context) {
-        if (context.state === "suspended") {
-          context.resume().catch(function () {});
-        }
         return context;
       }
-      const Ctor = root.AudioContext || root.webkitAudioContext;
-      if (!Ctor) {
-        unavailable = true;
+      const Constructor = root.AudioContext || root.webkitAudioContext;
+      if (!Constructor) {
         return null;
       }
       try {
-        context = new Ctor();
-        master = context.createGain();
-        master.gain.value = 0.22;
-        master.connect(context.destination);
+        context = new Constructor();
       } catch (error) {
-        unavailable = true;
-        return null;
+        lastError = error && error.message ? error.message : String(error);
+        context = null;
       }
       return context;
     }
 
-    function tone(frequency, duration, type, startFrequency, volume) {
-      if (muted) {
+    function blip(frequency, duration, type, volume, delay) {
+      const ctx = ensureContext();
+      if (!ctx || muted) {
         return;
       }
-      const audio = ensureContext();
-      if (!audio) {
-        return;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch(function () {});
       }
-      const now = audio.currentTime;
-      const oscillator = audio.createOscillator();
-      const gain = audio.createGain();
-      oscillator.type = type || "square";
-      oscillator.frequency.setValueAtTime(frequency, now);
-      if (typeof startFrequency === "number") {
-        oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, startFrequency), now + duration);
-      }
-      gain.gain.setValueAtTime(volume === undefined ? 0.18 : volume, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      const start = ctx.currentTime + (delay || 0);
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = type || "sine";
+      oscillator.frequency.setValueAtTime(frequency, start);
+      const peak = Math.max(0.0001, volume || 0.06);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(peak, start + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
       oscillator.connect(gain);
-      gain.connect(master);
-      oscillator.start(now);
-      oscillator.stop(now + duration + 0.02);
+      gain.connect(ctx.destination);
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.02);
+      played += 1;
     }
 
-    function noise(duration, volume, lowpass) {
-      if (muted) {
+    function noiseBurst(duration, volume) {
+      const ctx = ensureContext();
+      if (!ctx || muted) {
         return;
       }
-      const audio = ensureContext();
-      if (!audio) {
-        return;
+      const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
+      const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let index = 0; index < length; index += 1) {
+        data[index] = (Math.random() * 2 - 1) * (1 - index / length);
       }
-      const sampleCount = Math.max(1, Math.floor(audio.sampleRate * duration));
-      const buffer = audio.createBuffer(1, sampleCount, audio.sampleRate);
-      const channel = buffer.getChannelData(0);
-      for (let i = 0; i < sampleCount; i += 1) {
-        channel[i] = (Math.random() * 2 - 1) * (1 - i / sampleCount);
-      }
-      const source = audio.createBufferSource();
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      gain.gain.value = volume || 0.05;
       source.buffer = buffer;
-      const filter = audio.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.value = lowpass || 1400;
-      const gain = audio.createGain();
-      gain.gain.value = volume === undefined ? 0.2 : volume;
-      source.connect(filter);
-      filter.connect(gain);
-      gain.connect(master);
+      source.connect(gain);
+      gain.connect(ctx.destination);
       source.start();
+      played += 1;
     }
+
+    const sounds = {
+      mine: function () { blip(180, 0.05, "square", 0.03); },
+      break: function () { noiseBurst(0.12, 0.08); blip(96, 0.09, "triangle", 0.05); },
+      place: function () { blip(320, 0.06, "square", 0.04); },
+      craft: function () { blip(523, 0.1, "triangle", 0.05); blip(784, 0.14, "triangle", 0.05, 0.08); },
+      quest: function () { blip(523, 0.12, "sine", 0.06); blip(659, 0.12, "sine", 0.06, 0.1); blip(784, 0.2, "sine", 0.06, 0.2); },
+      jump: function () { blip(420, 0.09, "sine", 0.035); },
+      hurt: function () { blip(140, 0.18, "sawtooth", 0.05); },
+      save: function () { blip(660, 0.07, "sine", 0.04); blip(880, 0.09, "sine", 0.04, 0.06); },
+      error: function () { blip(110, 0.16, "square", 0.04); }
+    };
 
     function play(name) {
-      if (muted) {
-        return;
+      const sound = sounds[name];
+      if (!sound || muted) {
+        return false;
       }
-      switch (name) {
-        case "dig":
-          noise(0.045, 0.16, 700);
-          break;
-        case "break":
-          noise(0.14, 0.3, 1200);
-          tone(180, 0.09, "triangle", 90, 0.1);
-          break;
-        case "place":
-          tone(240, 0.07, "square", 180, 0.14);
-          noise(0.04, 0.1, 500);
-          break;
-        case "jump":
-          tone(300, 0.09, "sine", 460, 0.12);
-          break;
-        case "land":
-          noise(0.06, 0.12, 400);
-          break;
-        case "craft":
-          tone(523, 0.08, "triangle", 523, 0.14);
-          root.setTimeout(function () {
-            tone(784, 0.12, "triangle", 784, 0.12);
-          }, 80);
-          break;
-        case "click":
-          tone(620, 0.03, "square", 620, 0.08);
-          break;
-        case "save":
-          tone(660, 0.07, "sine", 660, 0.11);
-          root.setTimeout(function () {
-            tone(990, 0.1, "sine", 990, 0.09);
-          }, 70);
-          break;
-        case "error":
-          tone(140, 0.12, "sawtooth", 110, 0.12);
-          break;
-        default:
-          break;
+      try {
+        sound();
+        return true;
+      } catch (error) {
+        lastError = error && error.message ? error.message : String(error);
+        return false;
       }
-    }
-
-    function toggleMute() {
-      muted = !muted;
-      if (muted && context) {
-        master.gain.value = 0;
-      } else if (!muted && master) {
-        master.gain.value = 0.22;
-      }
-      return muted;
-    }
-
-    function isMuted() {
-      return muted;
-    }
-
-    function unlock() {
-      ensureContext();
     }
 
     return {
       play: play,
-      toggleMute: toggleMute,
-      isMuted: isMuted,
-      unlock: unlock
+      setMuted: function (value) {
+        muted = Boolean(value);
+        return muted;
+      },
+      toggle: function () {
+        muted = !muted;
+        return muted;
+      },
+      isMuted: function () {
+        return muted;
+      },
+      state: function () {
+        return {
+          muted: muted,
+          available: Boolean(context),
+          played: played,
+          error: lastError
+        };
+      }
     };
   }
 
-  if (typeof module === "object" && module.exports) {
-    module.exports = { createAudio: createAudio };
-  } else {
-    root.SandboxAudio = { createAudio: createAudio };
-  }
+  root.SandboxAudio = { createAudio: createAudio };
 })(typeof globalThis !== "undefined" ? globalThis : this);

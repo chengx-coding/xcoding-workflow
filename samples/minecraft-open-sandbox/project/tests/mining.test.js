@@ -3,90 +3,93 @@ const assert = require("node:assert/strict");
 
 const config = require("../js/config.js");
 const worldApi = require("../js/world.js");
+const inventory = require("../js/inventory.js");
 const mining = require("../js/mining.js");
 
-function testWorld() {
-  const world = worldApi.createWorld(config.seed);
-  const spawn = worldApi.getSpawn(world);
-  const player = {
-    x: spawn.x + 0.5,
-    y: spawn.y,
-    width: 0.7,
-    height: 1.8
-  };
-  return { world: world, spawn: spawn, player: player };
+const B = config.blocks;
+const GROUND = Math.floor(config.worldHeight * 0.65);
+const STONE_TILE = GROUND + 3;
+
+function flatWorld() {
+  return worldApi.createWorld(config.seed);
 }
 
-function findStone(world, x, fromY) {
-  for (let y = fromY; y < world.height - 1; y += 1) {
-    if (worldApi.getBlock(world, x, y) === config.blocks.stone) {
-      return y;
-    }
-  }
-  return -1;
+function emptyBag() {
+  return inventory.createInventory();
 }
 
-test("hand rules allow soft blocks and refuse stone", () => {
-  const { world, spawn } = testWorld();
-  const grass = mining.blockRule(world, spawn.x, spawn.y, []);
-  assert.equal(grass.allowed, true);
-  assert.ok(grass.seconds > 0.1 && grass.seconds < 0.4);
-  const stoneX = spawn.x + 10;
-  const stoneY = findStone(world, stoneX, spawn.y + 4);
-  assert.ok(stoneY > 0, "expected stone below the surface");
-  const stone = mining.blockRule(world, stoneX, stoneY, []);
-  assert.equal(stone.allowed, false);
-  assert.equal(stone.reason, "tool");
+test("stone target info depends on the held pickaxe", () => {
+  const world = flatWorld();
+  const bag = emptyBag();
+  const bare = mining.targetInfo(world, bag, 10, STONE_TILE);
+  assert.equal(bare.ok, true);
+  assert.equal(bare.canHarvest, false);
+  assert.equal(bare.time, 1.6);
+
+  inventory.add(bag, 110, 1);
+  const wooden = mining.targetInfo(world, bag, 10, STONE_TILE);
+  assert.equal(wooden.canHarvest, true);
+  assert.ok(wooden.time < 1, "a wooden pickaxe should mine stone faster than bare hands");
+
+  inventory.add(bag, 111, 1);
+  const stone = mining.targetInfo(world, bag, 10, STONE_TILE);
+  assert.ok(stone.time < wooden.time, "a stone pickaxe should beat a wooden one");
+  assert.equal(stone.drop, B.cobblestone);
 });
 
-test("pickaxe tiers gate stone and crystal with different speeds", () => {
-  const { world, spawn } = testWorld();
-  const stoneX = spawn.x + 10;
-  const stoneY = findStone(world, stoneX, spawn.y + 4);
-  assert.ok(stoneY > 0, "expected stone below the surface");
-  const wooden = mining.blockRule(world, stoneX, stoneY, ["wood_pickaxe"]);
-  assert.equal(wooden.allowed, true);
-  const stoneTool = mining.blockRule(world, stoneX, stoneY, ["stone_pickaxe"]);
-  assert.equal(stoneTool.allowed, true);
-  assert.ok(stoneTool.seconds < wooden.seconds);
-
-  worldApi.setBlock(world, stoneX, stoneY, config.blocks.crystal);
-  assert.equal(mining.blockRule(world, stoneX, stoneY, ["wood_pickaxe"]).allowed, false);
-  assert.equal(mining.blockRule(world, stoneX, stoneY, ["stone_pickaxe"]).allowed, true);
+test("unbreakable blocks and air cannot be mined", () => {
+  const world = flatWorld();
+  const bag = emptyBag();
+  worldApi.setBlock(world, 10, world.height - 1, B.bedrock);
+  assert.equal(mining.targetInfo(world, bag, 10, world.height - 1).reason, "unbreakable");
+  assert.equal(mining.targetInfo(world, bag, 10, 0).reason, "empty");
 });
 
-test("reach is limited to the configured distance", () => {
-  const { player } = testWorld();
-  assert.equal(mining.canReach(player, Math.floor(player.x) + 5, Math.floor(player.y) - 1), true);
-  assert.equal(mining.canReach(player, Math.floor(player.x) + 7, Math.floor(player.y) - 1), false);
-});
-
-test("mining progresses, resets on a new target and completes with a drop", () => {
-  const { world, spawn, player } = testWorld();
+test("holding a mine action fills progress over the expected time", () => {
+  const world = flatWorld();
+  const bag = emptyBag();
+  inventory.add(bag, 110, 1);
   const state = mining.createMining();
-  const result = mining.updateMining(state, world, player, spawn.x, spawn.y, [], 0.1, true);
-  assert.equal(result.active, true);
-  assert.ok(result.progress > 0 && result.progress < 1);
-  assert.equal(result.rule.drop, config.items.dirt);
-
-  const reset = mining.updateMining(state, world, player, spawn.x - 1, spawn.y - 1, [], 0.1, true);
-  assert.notEqual(state.progress, result.progress);
-
-  let completed = false;
-  for (let i = 0; i < 100 && !completed; i += 1) {
-    const frame = mining.updateMining(state, world, player, spawn.x, spawn.y, [], 1 / 30, true);
-    completed = frame.complete;
+  const info = mining.targetInfo(world, bag, 10, STONE_TILE);
+  let elapsed = 0;
+  let done = false;
+  while (!done && elapsed < 5) {
+    const step = mining.advance(state, world, bag, 10, STONE_TILE, 0.1);
+    done = step.done;
+    elapsed += 0.1;
   }
-  assert.equal(completed, true);
-  assert.equal(mining.blockRule(world, spawn.x, spawn.y, []).allowed, true);
+  assert.equal(done, true);
+  assert.ok(Math.abs(elapsed - info.time) <= 0.11, "break time should match hardness / tool speed");
 });
 
-test("unbreakable and empty targets are refused", () => {
-  const { world, spawn } = testWorld();
-  const bottom = mining.blockRule(world, 0, world.height - 1, ["stone_pickaxe"]);
-  assert.equal(bottom.allowed, false);
-  assert.equal(bottom.reason, "unbreakable");
-  const sky = mining.blockRule(world, 0, 0, ["stone_pickaxe"]);
-  assert.equal(sky.allowed, false);
-  assert.equal(sky.reason, "empty");
+test("switching targets resets mining progress", () => {
+  const world = flatWorld();
+  const bag = emptyBag();
+  inventory.add(bag, 110, 1);
+  const state = mining.createMining();
+  mining.advance(state, world, bag, 10, STONE_TILE, 0.4);
+  assert.ok(state.progress > 0);
+  mining.advance(state, world, bag, 11, STONE_TILE, 0.05);
+  assert.ok(state.progress < 0.4);
+});
+
+test("breaking a block removes it, drops the right item and records the tool rule", () => {
+  const world = flatWorld();
+  const bag = emptyBag();
+  const bare = mining.breakBlock(world, bag, 10, STONE_TILE);
+  assert.equal(bare.ok, true);
+  assert.equal(bare.drop, 0);
+  assert.equal(bare.reason, "tool-too-weak");
+  assert.equal(worldApi.getBlock(world, 10, STONE_TILE), B.air);
+
+  inventory.add(bag, 110, 1);
+  const withPick = mining.breakBlock(world, bag, 10, STONE_TILE + 1);
+  assert.equal(withPick.drop, B.cobblestone);
+  assert.equal(inventory.count(bag, B.cobblestone), 1);
+});
+
+test("reach is measured from the player centre", () => {
+  const player = { x: 10.5, y: GROUND, height: 1.78 };
+  assert.equal(mining.reachable(player, 12, GROUND - 1), true);
+  assert.equal(mining.reachable(player, 30, GROUND - 1), false);
 });

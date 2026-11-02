@@ -1,113 +1,152 @@
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"));
+    module.exports = factory(require("./config.js"), require("./blocks.js"));
   } else {
-    root.SandboxInventory = factory(root.SandboxConfig);
+    root.SandboxInventory = factory(root.SandboxConfig, root.SandboxBlocks);
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, BLOCKS) {
   "use strict";
 
-  if (!CONFIG) {
-    throw new Error("SandboxConfig is required before SandboxInventory");
+  if (!CONFIG || !BLOCKS) {
+    throw new Error("SandboxConfig and SandboxBlocks are required before SandboxInventory");
   }
 
-  function createInventory(items, selected) {
-    const copy = {};
-    if (items && typeof items === "object") {
-      Object.keys(items).forEach(function (key) {
-        const value = items[key];
-        if (Number.isInteger(value) && value > 0) {
-          copy[key] = value;
-        }
-      });
-    }
+  function createInventory() {
     return {
-      items: copy,
-      selected: clampSlot(selected)
+      items: Object.create(null),
+      hotbar: new Array(CONFIG.hotbarSize).fill(0),
+      selected: 0
     };
   }
 
-  function clampSlot(index) {
-    if (!Number.isInteger(index)) {
+  function count(inventory, id) {
+    return inventory.items[id] || 0;
+  }
+
+  function has(inventory, id, amount) {
+    return count(inventory, id) >= (amount || 1);
+  }
+
+  function add(inventory, id, amount) {
+    const quantity = Math.max(0, Math.floor(amount || 1));
+    if (!BLOCKS.item(id) || quantity <= 0) {
       return 0;
     }
-    return Math.max(0, Math.min(CONFIG.hotbar.length - 1, index));
+    inventory.items[id] = count(inventory, id) + quantity;
+    ensureHotbar(inventory, id);
+    return quantity;
   }
 
-  function count(inventory, item) {
-    const value = inventory.items[item];
-    return Number.isInteger(value) && value > 0 ? value : 0;
-  }
-
-  function has(inventory, item, amount) {
-    const wanted = amount === undefined ? 1 : amount;
-    return count(inventory, item) >= wanted;
-  }
-
-  function add(inventory, item, amount) {
-    const quantity = amount === undefined ? 1 : amount;
-    if (!Number.isInteger(quantity) || quantity <= 0) {
+  function remove(inventory, id, amount) {
+    const quantity = Math.max(0, Math.floor(amount || 1));
+    if (count(inventory, id) < quantity) {
       return false;
     }
-    inventory.items[item] = count(inventory, item) + quantity;
-    return true;
-  }
-
-  function remove(inventory, item, amount) {
-    const quantity = amount === undefined ? 1 : amount;
-    if (!Number.isInteger(quantity) || quantity <= 0) {
-      return false;
-    }
-    if (count(inventory, item) < quantity) {
-      return false;
-    }
-    const remaining = count(inventory, item) - quantity;
-    if (remaining === 0) {
-      delete inventory.items[item];
+    const left = count(inventory, id) - quantity;
+    if (left === 0) {
+      delete inventory.items[id];
+      // Keep hotbar assignments honest: clear slots that no longer hold items.
+      for (let index = 0; index < inventory.hotbar.length; index += 1) {
+        if (inventory.hotbar[index] === id) {
+          inventory.hotbar[index] = 0;
+        }
+      }
     } else {
-      inventory.items[item] = remaining;
+      inventory.items[id] = left;
     }
     return true;
   }
 
-  function selectSlot(inventory, index) {
-    if (!Number.isInteger(index) || index < 0 || index >= CONFIG.hotbar.length) {
+  function ensureHotbar(inventory, id) {
+    if (inventory.hotbar.indexOf(id) >= 0) {
+      return true;
+    }
+    for (let index = 0; index < inventory.hotbar.length; index += 1) {
+      if (!inventory.hotbar[index]) {
+        inventory.hotbar[index] = id;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function select(inventory, index) {
+    if (index < 0 || index >= inventory.hotbar.length) {
       return false;
     }
     inventory.selected = index;
     return true;
   }
 
-  function cycleSlot(inventory, direction) {
-    const step = direction < 0 ? -1 : 1;
-    const size = CONFIG.hotbar.length;
-    inventory.selected = (inventory.selected + step + size) % size;
-    return inventory.selected;
+  function selectedId(inventory) {
+    return inventory.hotbar[inventory.selected] || 0;
   }
 
-  function selectedItem(inventory) {
-    return CONFIG.hotbar[inventory.selected];
+  function selectedDefinition(inventory) {
+    return BLOCKS.item(selectedId(inventory));
   }
 
-  function hotbarSlot(item) {
-    return CONFIG.hotbar.indexOf(item);
+  function entries(inventory) {
+    return Object.keys(inventory.items)
+      .map(function (key) {
+        return { id: Number(key), count: inventory.items[key] };
+      })
+      .filter(function (entry) {
+        return entry.count > 0;
+      })
+      .sort(function (a, b) {
+        return a.id - b.id;
+      });
   }
 
-  function tools(inventory) {
-    return Object.keys(CONFIG.tools).filter(function (tool) {
-      return count(inventory, tool) > 0;
+  function totalItems(inventory) {
+    return entries(inventory).reduce(function (sum, entry) {
+      return sum + entry.count;
+    }, 0);
+  }
+
+  function bestTool(inventory, toolKind) {
+    let best = null;
+    Object.keys(inventory.items).forEach(function (key) {
+      const definition = BLOCKS.item(Number(key));
+      if (!definition || definition.kind !== "tool" || definition.tool !== toolKind) {
+        return;
+      }
+      if (!best || definition.tier > best.tier || (definition.tier === best.tier && definition.speed > best.speed)) {
+        best = definition;
+      }
     });
+    return best;
   }
 
-  function placeableSelected(inventory) {
-    const item = selectedItem(inventory);
-    if (!item) {
-      return null;
+  function serialize(inventory) {
+    return {
+      items: entries(inventory),
+      hotbar: inventory.hotbar.slice(),
+      selected: inventory.selected
+    };
+  }
+
+  function deserialize(payload) {
+    const inventory = createInventory();
+    if (!payload || !Array.isArray(payload.items)) {
+      return inventory;
     }
-    if (!CONFIG.placeable[item]) {
-      return null;
+    payload.items.forEach(function (entry) {
+      if (entry && BLOCKS.item(entry.id) && entry.count > 0) {
+        inventory.items[entry.id] = Math.floor(entry.count);
+      }
+    });
+    if (Array.isArray(payload.hotbar)) {
+      for (let index = 0; index < inventory.hotbar.length; index += 1) {
+        const value = payload.hotbar[index];
+        inventory.hotbar[index] = BLOCKS.item(value) && inventory.items[value] ? value : 0;
+      }
     }
-    return count(inventory, item) > 0 ? item : null;
+    if (Number.isInteger(payload.selected)) {
+      select(inventory, payload.selected);
+    }
+    return inventory;
   }
 
   return {
@@ -116,11 +155,14 @@
     has: has,
     add: add,
     remove: remove,
-    selectSlot: selectSlot,
-    cycleSlot: cycleSlot,
-    selectedItem: selectedItem,
-    hotbarSlot: hotbarSlot,
-    tools: tools,
-    placeableSelected: placeableSelected
+    ensureHotbar: ensureHotbar,
+    select: select,
+    selectedId: selectedId,
+    selectedDefinition: selectedDefinition,
+    entries: entries,
+    totalItems: totalItems,
+    bestTool: bestTool,
+    serialize: serialize,
+    deserialize: deserialize
   };
 });

@@ -1,3 +1,0 @@
-﻿implementation.sources.core-simulation=["rt_work-order-20261101-2045-open-sandbox-xc-2__solution__write-document","rt_work-order-20261101-2045-open-sandbox-xc-2__root__approve-work-order-solution"]
-implementation.sources.presentation-shell=["rt_work-order-20261101-2045-open-sandbox-xc-2__solution__write-document","rt_work-order-20261101-2045-open-sandbox-xc-2__root__approve-work-order-solution"]
-implementation.sources.documentation=["rt_work-order-20261101-2045-open-sandbox-xc-2__solution__write-document","rt_work-order-20261101-2045-open-sandbox-xc-2__root__approve-work-order-solution"]

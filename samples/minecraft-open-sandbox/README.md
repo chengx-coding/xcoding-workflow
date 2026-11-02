@@ -41,33 +41,27 @@ and the new standard score what the agent actually chooses.
 ## Result
 
 The two runs are complete and blind-scored. Identity reveal: **A = one-shot (MOSSWILD)**, **B = XC
-(Blockhaven)**.
+0.4.4 (Cubewood)**.
 
-| | One-shot A | XC B |
+| | One-shot A | XC 0.4.4 B |
 | --- | ---: | ---: |
-| PES | **80.8** | **55.0** (raw 63.0; high cap 55) |
-| ECS | **81.3** | **86.1** |
-| Composite | **80.9** | **55.0** (raw 68.8; cap) |
-| Experience tier | **polished** | **prototype** |
-| High / medium / low | 0 / 1 / 1 | **1 / 2 / 2** |
-| Higher | **A** | — |
+| PES | 83.9 | **84.8** |
+| ECS | 86.8 | **88.7** |
+| Composite | 84.6 | **85.8** |
+| Experience tier | polished | **polished** |
+| High / medium / low | 0 / 1 / 1 | 0 / 2 / 2 |
+| Higher | — | **B** |
 
-The XC result has the higher engineering score and a real crafting loop, but it is visually and
-experientially far behind, and it has one high defect: underground air is transparent to the
-sky/hill layer. The v1.2 standard caps a high defect at 55 and treats a passive `E craft` hint as
-insufficient discoverability; see [`evaluation/SCORE-SHEET.md`](evaluation/SCORE-SHEET.md), the v1.1
-blind report [`evaluation/blind-evaluation-v1.1.md`](evaluation/blind-evaluation-v1.1.md), and the
-v1.0 history [`evaluation/blind-evaluation.md`](evaluation/blind-evaluation.md).
-v1.2 is a standards correction applied mechanically to the v1.1 blind dimension evidence, not a new
-blind run.
+Cubewood wins by 1.2 composite and edges the one-shot on both PES and ECS. Its medium persistence
+defect (`world.surface` is not restored after reload; caves flatten after a save) is recorded as
+medium/borderline high; if it were high, B would cap at 55. The earlier 0.4.1/0.4.2 comparisons are
+retained below this result in the score sheet and blind reports.
 
-The dimension-level gap is larger than the composite: D5 84 vs 58, D4 86 vs 55, D7 86 vs 50. The
-composite is compressed by A's own gaps (no map, no biomes/water physics, no smelting) and B's
-higher ECS; the **tier** label is the clearer product comparison.
+![XC 0.4.4 Cubewood — day](media/xc-cubewood-day.png)
+
+![XC 0.4.4 Cubewood — before/after backdrop](media/xc-cubewood-backdrop.png)
 
 ![One-shot MOSSWILD](media/one-shot-mosswild.png)
-
-![XC Blockhaven](media/xc-blockhaven.png)
 
 ## Status
 

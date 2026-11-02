@@ -1,6 +1,0 @@
-﻿work_order.requires_report=false
-work_order.report_skip_reason=user_waived
-work_order.convention_discovery=found
-work_order.convention_discovery_path=.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/prepare-work-order/convention-discovery.md
-work_order.mode=create
-work_order.requested_scope=create a playable offline 2D Minecraft-inspired sandbox from the seed

@@ -2,62 +2,106 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const config = require("../js/config.js");
-const inventoryApi = require("../js/inventory.js");
+const worldApi = require("../js/world.js");
+const inventory = require("../js/inventory.js");
 const crafting = require("../js/crafting.js");
+const tasks = require("../js/tasks.js");
 
-test("planks, sticks and torches consume and yield the documented amounts", () => {
-  const inventory = inventoryApi.createInventory({ wood: 1 });
-  const planks = crafting.recipeById("planks");
-  assert.equal(crafting.canCraft(inventory, planks), true);
-  assert.equal(crafting.craft(inventory, planks).ok, true);
-  assert.equal(inventoryApi.count(inventory, "wood"), 0);
-  assert.equal(inventoryApi.count(inventory, "planks"), 4);
+const B = config.blocks;
 
-  const sticks = crafting.recipeById("sticks");
-  assert.equal(crafting.craft(inventory, sticks).ok, true);
-  assert.equal(inventoryApi.count(inventory, "planks"), 2);
-  assert.equal(inventoryApi.count(inventory, "stick"), 4);
+function bagWith(entries) {
+  const bag = inventory.createInventory();
+  Object.keys(entries).forEach(function (key) {
+    inventory.add(bag, Number(key), entries[key]);
+  });
+  return bag;
+}
 
-  inventoryApi.add(inventory, "coal", 1);
-  const torches = crafting.recipeById("torches");
-  assert.equal(crafting.craft(inventory, torches).ok, true);
-  assert.equal(inventoryApi.count(inventory, "torch"), 4);
-  assert.equal(inventoryApi.count(inventory, "stick"), 3);
-  assert.equal(inventoryApi.count(inventory, "coal"), 0);
+function readyProgress() {
+  const progress = tasks.createProgress();
+  progress.collected[B.cobblestone] = 8;
+  progress.collected[101] = 2;
+  progress.collected[102] = 4;
+  progress.collected[B.planks] = 8;
+  return progress;
+}
+
+test("planks convert wood into building material", () => {
+  const bag = bagWith({ [B.wood]: 2 });
+  const recipe = crafting.recipeById("planks");
+  const result = crafting.craft(bag, recipe, tasks.createProgress());
+  assert.equal(result.ok, true);
+  assert.equal(inventory.count(bag, B.wood), 1);
+  assert.equal(inventory.count(bag, B.planks), 4);
 });
 
-test("pickaxes are unique and cost the documented materials", () => {
-  const inventory = inventoryApi.createInventory({ planks: 3, stick: 2 });
-  const wooden = crafting.recipeById("wood-pickaxe");
-  assert.equal(crafting.craft(inventory, wooden).ok, true);
-  assert.equal(inventoryApi.count(inventory, "wood_pickaxe"), 1);
-  assert.equal(inventoryApi.count(inventory, "planks"), 0);
-  assert.equal(crafting.canCraft(inventory, wooden), false);
+test("crafting consumes every ingredient and refuses when short", () => {
+  const bag = bagWith({ [B.planks]: 3, 100: 2 });
+  const recipe = crafting.recipeById("wooden_pickaxe");
+  const progress = tasks.createProgress();
+  progress.collected[B.planks] = 3;
+  const result = crafting.craft(bag, recipe, progress);
+  assert.equal(result.ok, true);
+  assert.equal(inventory.count(bag, B.planks), 0);
+  assert.equal(inventory.count(bag, 100), 0);
+  assert.equal(inventory.count(bag, 110), 1);
 
-  inventoryApi.add(inventory, "stone", 3);
-  inventoryApi.add(inventory, "stick", 2);
-  const stone = crafting.recipeById("stone-pickaxe");
-  assert.equal(crafting.craft(inventory, stone).ok, true);
-  assert.equal(inventoryApi.count(inventory, "stone_pickaxe"), 1);
+  const again = crafting.craft(bag, recipe, progress);
+  assert.equal(again.ok, false);
+  assert.equal(again.reason, "missing");
 });
 
-test("insufficient materials fail atomically", () => {
-  const inventory = inventoryApi.createInventory({ planks: 1, stick: 1 });
-  const wooden = crafting.recipeById("wood-pickaxe");
-  assert.equal(crafting.canCraft(inventory, wooden), false);
-  assert.equal(crafting.craft(inventory, wooden).ok, false);
-  assert.equal(inventoryApi.count(inventory, "planks"), 1);
-  assert.equal(inventoryApi.count(inventory, "stick"), 1);
+test("recipes stay locked until their material has been collected", () => {
+  const bag = bagWith({ [B.cobblestone]: 5, 100: 2 });
+  const progress = tasks.createProgress();
+  const locked = crafting.craft(bag, crafting.recipeById("stone_pickaxe"), progress);
+  assert.equal(locked.ok, false);
+  assert.equal(locked.reason, "locked");
+
+  progress.collected[B.cobblestone] = 1;
+  const unlocked = crafting.craft(bag, crafting.recipeById("stone_pickaxe"), progress);
+  assert.equal(unlocked.ok, true);
+  assert.equal(inventory.count(bag, 111), 1);
 });
 
-test("recipe costs report have and need values", () => {
-  const inventory = inventoryApi.createInventory({ stone: 1, stick: 2 });
-  const costs = crafting.craftCosts(inventory, crafting.recipeById("stone-pickaxe"));
-  assert.deepEqual(
-    costs.sort((a, b) => a.item.localeCompare(b.item)),
-    [
-      { item: "stick", need: 2, have: 2 },
-      { item: "stone", need: 3, have: 1 }
-    ]
-  );
+test("torches need coal and sticks", () => {
+  const bag = bagWith({ 100: 2, 101: 1 });
+  const progress = tasks.createProgress();
+  progress.collected[101] = 1;
+  const result = crafting.craft(bag, crafting.recipeById("torch"), progress);
+  assert.equal(result.ok, true);
+  assert.equal(inventory.count(bag, B.torch), 4);
+});
+
+test("the recipe list reports unlock and affordability state", () => {
+  const bag = bagWith({ [B.wood]: 1 });
+  const progress = tasks.createProgress();
+  const visible = crafting.visible(bag, progress);
+  const planks = visible.find(function (entry) { return entry.recipe.id === "planks"; });
+  const sticks = visible.find(function (entry) { return entry.recipe.id === "sticks"; });
+  const iron = visible.find(function (entry) { return entry.recipe.id === "iron_pickaxe"; });
+  assert.equal(planks.unlocked, true);
+  assert.equal(planks.canCraft, true);
+  assert.equal(sticks.unlocked, false);
+  assert.equal(iron.unlocked, false);
+  assert.ok(visible.length >= 10);
+});
+
+test("iron tools need collected iron", () => {
+  const bag = bagWith({ 102: 4, 100: 2 });
+  const progress = tasks.createProgress();
+  const result = crafting.craft(bag, crafting.recipeById("iron_pickaxe"), progress);
+  assert.equal(result.ok, false);
+  progress.collected[102] = 1;
+  const retry = crafting.craft(bag, crafting.recipeById("iron_pickaxe"), progress);
+  assert.equal(retry.ok, true);
+  assert.equal(inventory.count(bag, 112), 1);
+});
+
+test("crafted pickaxes satisfy the progression task", () => {
+  const progress = readyProgress();
+  progress.crafted.wooden_pickaxe = 1;
+  const completed = tasks.sync(progress);
+  const ids = completed.map(function (task) { return task.id; });
+  assert.ok(ids.indexOf("make_pickaxe") >= 0);
 });

@@ -1,131 +1,119 @@
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"), require("./world.js"));
+    module.exports = factory(require("./config.js"), require("./world.js"), require("./blocks.js"), require("./inventory.js"));
   } else {
-    root.SandboxMining = factory(root.SandboxConfig, root.SandboxWorld);
+    root.SandboxMining = factory(root.SandboxConfig, root.SandboxWorld, root.SandboxBlocks, root.SandboxInventory);
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, WORLD) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, WORLD, BLOCKS, INVENTORY) {
   "use strict";
 
-  if (!CONFIG || !WORLD) {
-    throw new Error("SandboxConfig and SandboxWorld are required before SandboxMining");
+  if (!CONFIG || !WORLD || !BLOCKS || !INVENTORY) {
+    throw new Error("SandboxConfig, SandboxWorld, SandboxBlocks and SandboxInventory are required before SandboxMining");
   }
 
-  function bestTool(tools) {
-    let best = null;
-    const list = Array.isArray(tools) ? tools : [];
-    for (let i = 0; i < list.length; i += 1) {
-      const def = CONFIG.tools[list[i]];
-      if (!def) {
-        continue;
-      }
-      if (!best || def.tier > best.tier) {
-        best = def;
-      }
+  function targetInfo(world, inventory, x, y) {
+    const id = WORLD.getBlock(world, x, y);
+    const definition = BLOCKS.block(id);
+    if (!definition || id === CONFIG.blocks.air) {
+      return { ok: false, reason: "empty", blockId: id || 0 };
     }
-    return best;
-  }
-
-  function blockRule(world, x, y, tools) {
-    const block = WORLD.getBlock(world, x, y);
-    if (block === null || block === CONFIG.blocks.air) {
-      return { allowed: false, reason: "empty", seconds: Infinity, drop: null };
+    if (definition.hardness === Infinity) {
+      return { ok: false, reason: "unbreakable", blockId: id, definition: definition };
     }
-    const def = WORLD.blockDef(block);
-    if (WORLD.isUnbreakable(world, x, y)) {
-      return { allowed: false, reason: "unbreakable", seconds: Infinity, drop: null };
-    }
-    const tool = bestTool(tools);
-    if (def.tool && (!tool || tool.tier < def.tier)) {
-      return {
-        allowed: false,
-        reason: "tool",
-        required: def.tier,
-        seconds: Infinity,
-        drop: def.drop
-      };
-    }
-    const speed = def.tool && tool ? tool.speed : 1;
+    const tool = definition.tool ? INVENTORY.bestTool(inventory, definition.tool) : null;
+    const tier = tool ? tool.tier : 0;
+    const speed = tool ? tool.speed : 1;
+    const canHarvest = tier >= definition.tier;
     return {
-      allowed: true,
-      reason: "ok",
-      seconds: Math.max(0.03, def.hardness / speed),
-      drop: def.drop
+      ok: true,
+      blockId: id,
+      definition: definition,
+      tool: tool,
+      tier: tier,
+      speed: speed,
+      time: definition.hardness / speed,
+      canHarvest: canHarvest,
+      drop: canHarvest ? definition.drop : null,
+      reason: canHarvest ? null : "tool-too-weak"
     };
   }
 
-  function canReach(player, tx, ty) {
-    const centreX = player.x;
-    const centreY = player.y - player.height / 2;
-    const dx = tx + 0.5 - centreX;
-    const dy = ty + 0.5 - centreY;
-    return Math.sqrt(dx * dx + dy * dy) <= CONFIG.reach;
-  }
-
-  function targetWithinReach(world, player, tx, ty) {
-    if (tx < 0 || ty < 0 || tx >= world.width || ty >= world.height) {
-      return false;
-    }
-    return canReach(player, tx, ty);
-  }
-
   function createMining() {
-    return { x: -1, y: -1, progress: 0, seconds: 0, active: false };
+    return { x: -1, y: -1, progress: 0, blockId: 0, elapsed: 0 };
   }
 
-  function resetMining(mining) {
+  function reset(mining) {
     mining.x = -1;
     mining.y = -1;
     mining.progress = 0;
-    mining.seconds = 0;
-    mining.active = false;
+    mining.blockId = 0;
+    mining.elapsed = 0;
     return mining;
   }
 
-  function updateMining(mining, world, player, tx, ty, tools, dt, holding) {
-    if (!holding) {
-      resetMining(mining);
-      return { active: false, progress: 0, complete: false, rule: null };
+  // Advances a held mining action. The caller owns block removal and drops so
+  // that mining stays a pure, testable progression rule.
+  function advance(mining, world, inventory, x, y, dt) {
+    const info = targetInfo(world, inventory, x, y);
+    if (!info.ok) {
+      reset(mining);
+      return { progress: 0, done: false, info: info, blocked: true };
     }
-    if (!targetWithinReach(world, player, tx, ty)) {
-      resetMining(mining);
-      return { active: false, progress: 0, complete: false, rule: null, reason: "reach" };
-    }
-    const rule = blockRule(world, tx, ty, tools);
-    if (!rule.allowed) {
-      resetMining(mining);
-      return { active: false, progress: 0, complete: false, rule: rule };
-    }
-    if (mining.x !== tx || mining.y !== ty) {
-      mining.x = tx;
-      mining.y = ty;
+    if (mining.x !== x || mining.y !== y || mining.blockId !== info.blockId) {
+      mining.x = x;
+      mining.y = y;
+      mining.blockId = info.blockId;
       mining.progress = 0;
-      mining.seconds = rule.seconds;
-      mining.active = true;
+      mining.elapsed = 0;
     }
-    mining.seconds = rule.seconds;
-    mining.progress += dt / rule.seconds;
-    if (mining.progress >= 1) {
-      mining.progress = 0;
-      mining.active = false;
-      return { active: false, progress: 0, complete: true, rule: rule, x: tx, y: ty };
+    mining.elapsed += dt;
+    if (info.time === Infinity) {
+      return { progress: 0, done: false, info: info, blocked: true };
     }
-    return { active: true, progress: Math.min(0.999, mining.progress), complete: false, rule: rule };
+    mining.progress = Math.min(1, mining.progress + dt / info.time);
+    const done = mining.progress >= 1;
+    if (done) {
+      reset(mining);
+    }
+    return { progress: done ? 1 : mining.progress, done: done, info: info, blocked: false };
   }
 
-  function tierFor(tools) {
-    const tool = bestTool(tools);
-    return tool ? tool.tier : 0;
+  // Instant break used by keyboard shortcuts and the browser self-test.
+  function breakBlock(world, inventory, x, y) {
+    const info = targetInfo(world, inventory, x, y);
+    if (!info.ok) {
+      return { ok: false, reason: info.reason, blockId: info.blockId };
+    }
+    WORLD.setBlock(world, x, y, CONFIG.blocks.air);
+    let dropId = 0;
+    if (info.drop !== null && info.drop !== undefined) {
+      INVENTORY.add(inventory, info.drop, 1);
+      dropId = info.drop;
+    }
+    return {
+      ok: true,
+      blockId: info.blockId,
+      drop: dropId,
+      canHarvest: info.canHarvest,
+      reason: info.canHarvest ? null : "tool-too-weak",
+      dropName: dropId ? BLOCKS.nameOf(dropId) : ""
+    };
+  }
+
+  function reachable(player, tileX, tileY, reach) {
+    const centerX = player.x;
+    const centerY = player.y - player.height / 2;
+    const dx = tileX + 0.5 - centerX;
+    const dy = tileY + 0.5 - centerY;
+    return Math.sqrt(dx * dx + dy * dy) <= (reach || CONFIG.reach);
   }
 
   return {
-    bestTool: bestTool,
-    tierFor: tierFor,
-    blockRule: blockRule,
-    canReach: canReach,
-    targetWithinReach: targetWithinReach,
+    targetInfo: targetInfo,
     createMining: createMining,
-    resetMining: resetMining,
-    updateMining: updateMining
+    advance: advance,
+    reset: reset,
+    breakBlock: breakBlock,
+    reachable: reachable
   };
 });

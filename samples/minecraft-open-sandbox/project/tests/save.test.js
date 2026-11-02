@@ -3,98 +3,120 @@ const assert = require("node:assert/strict");
 
 const config = require("../js/config.js");
 const worldApi = require("../js/world.js");
-const save = require("../js/save.js");
+const inventory = require("../js/inventory.js");
+const clockApi = require("../js/time.js");
+const tasks = require("../js/tasks.js");
+const saveApi = require("../js/save.js");
 
-function makeState() {
+const B = config.blocks;
+const GROUND = Math.floor(config.worldHeight * 0.65);
+
+function gameState() {
   const world = worldApi.createWorld(config.seed);
-  const spawn = worldApi.getSpawn(world);
-  worldApi.setBlock(world, spawn.x + 2, spawn.y - 1, config.blocks.planks);
+  worldApi.setBlock(world, 4, GROUND - 1, B.planks);
+  const bag = inventory.createInventory();
+  inventory.add(bag, B.wood, 3);
+  inventory.add(bag, 110, 1);
+  const progress = tasks.createProgress();
+  tasks.noteCollected(progress, B.wood, 3);
+  tasks.sync(progress);
   return {
+    seed: config.seed,
     world: world,
-    player: { x: spawn.x + 0.5, y: spawn.y, vx: 0, vy: 0, facing: 1 },
-    inventory: { items: { wood: 3, torch: 2 }, selected: 2 },
-    time: { tick: 42.5, day: 3 }
+    player: { x: 10.5, y: GROUND, health: 17, facing: -1 },
+    inventory: bag,
+    clock: clockApi.createClock({ start: 0.6, day: 3 }),
+    progress: progress,
+    settings: { muted: true, zoom: 1.5, backdropMode: true, volume: 0.3 }
   };
 }
 
-test("snapshot round-trips the world, player, inventory and time", () => {
-  const state = makeState();
-  const snapshot = save.createSnapshot(state);
-  const text = save.encodeSnapshot(snapshot);
-  const decoded = save.decodeSnapshot(text);
-  assert.equal(decoded.width, config.worldWidth);
-  assert.equal(decoded.height, config.worldHeight);
-  assert.equal(decoded.seed, config.seed);
-  assert.deepEqual(decoded.inventory.items, { wood: 3, torch: 2 });
-  assert.equal(decoded.inventory.selected, 2);
-  assert.equal(decoded.time.tick, 42.5);
-  assert.equal(decoded.time.day, 3);
-  const restored = save.worldFromSnapshot(decoded);
-  assert.deepEqual(Array.from(restored.data), Array.from(state.world.data));
-});
-
-test("corrupt or foreign save data is rejected with a clear error", () => {
-  assert.throws(() => save.decodeSnapshot("{not json"), /not valid JSON/);
-  const state = makeState();
-  const snapshot = save.createSnapshot(state);
-  snapshot.version = 99;
-  assert.throws(() => save.decodeSnapshot(JSON.stringify(snapshot)), /Unsupported save version/);
-  const badDimensions = JSON.parse(JSON.stringify(save.createSnapshot(state)));
-  badDimensions.width = 2;
-  assert.throws(() => save.decodeSnapshot(JSON.stringify(badDimensions)), /out of range|cover/);
-  const badRuns = JSON.parse(JSON.stringify(save.createSnapshot(state)));
-  badRuns.blocks = [[0, 1]];
-  assert.throws(() => save.decodeSnapshot(JSON.stringify(badRuns)), /cover/);
-  const badInventory = JSON.parse(JSON.stringify(save.createSnapshot(state)));
-  badInventory.inventory.items.wood = -1;
-  assert.throws(() => save.decodeSnapshot(JSON.stringify(badInventory)), /inventory count/);
-});
-
-test("memory storage saves, loads and reports missing data", () => {
-  const storage = save.createMemoryStorage();
-  const state = makeState();
-  const first = save.loadGame(storage);
-  assert.equal(first.ok, false);
-  assert.equal(first.missing, true);
-  const saved = save.saveGame(storage, state);
-  assert.equal(saved.ok, true);
-  assert.ok(saved.bytes > 1000);
-  const loaded = save.loadGame(storage);
-  assert.equal(loaded.ok, true);
-  assert.equal(loaded.snapshot.seed, config.seed);
-  assert.equal(save.clearGame(storage), true);
-  assert.equal(save.loadGame(storage).missing, true);
-});
-
-test("storage failures are reported instead of thrown", () => {
-  const broken = {
-    getItem: function () {
-      throw new Error("denied");
+function fakeStorage(options) {
+  const store = Object.create(null);
+  return {
+    getItem: function (key) {
+      if (options && options.throwOnRead) {
+        throw new Error("blocked");
+      }
+      return key in store ? store[key] : null;
     },
-    setItem: function () {
-      throw new Error("denied");
+    setItem: function (key, value) {
+      if (options && options.throwOnWrite) {
+        throw new Error("quota");
+      }
+      store[key] = String(value);
     },
-    removeItem: function () {
-      throw new Error("denied");
+    removeItem: function (key) {
+      delete store[key];
     }
   };
-  const state = makeState();
-  const result = save.saveGame(broken, state);
-  assert.equal(result.ok, false);
-  assert.match(result.error, /denied/);
-  const load = save.loadGame(broken);
-  assert.equal(load.ok, false);
-  assert.match(load.error, /denied/);
-  assert.equal(save.clearGame(broken), false);
+}
+
+test("a full save envelope round-trips world, player, inventory, clock and progress", () => {
+  const state = gameState();
+  const envelope = saveApi.createEnvelope(state);
+  const parsed = saveApi.parse(saveApi.serialize(envelope));
+  assert.equal(parsed.seed, config.seed);
+  const world = saveApi.loadWorld(parsed);
+  assert.equal(worldApi.getBlock(world, 4, GROUND - 1), B.planks);
+  assert.deepEqual(Array.from(world.data), Array.from(state.world.data));
+  assert.equal(parsed.player.x, 10.5);
+  assert.equal(parsed.player.health, 17);
+  assert.equal(parsed.player.facing, -1);
+  const bag = inventory.deserialize(parsed.inventory);
+  assert.equal(inventory.count(bag, B.wood), 3);
+  assert.equal(inventory.count(bag, 110), 1);
+  assert.ok(Math.abs(parsed.clock.t - 0.6) < 1e-9);
+  assert.equal(parsed.clock.day, 3);
+  const progress = tasks.deserialize(parsed.progress);
+  assert.equal(progress.tasks.first_wood, true);
+  assert.equal(parsed.settings.muted, true);
+  assert.equal(parsed.settings.zoom, 1.5);
 });
 
-test("snapshot validation rejects out-of-world player positions and bad time", () => {
-  const state = makeState();
-  const snapshot = save.createSnapshot(state);
-  const offWorld = JSON.parse(JSON.stringify(snapshot));
-  offWorld.player.x = 10000;
-  assert.throws(() => save.validateSnapshot(offWorld), /outside the world/);
-  const badTime = JSON.parse(JSON.stringify(snapshot));
-  badTime.time.tick = config.dayLengthSeconds + 1;
-  assert.throws(() => save.validateSnapshot(badTime), /out of range/);
+test("invalid or foreign saves are rejected with a reason", () => {
+  assert.throws(function () { saveApi.parse("not json"); }, /not valid JSON/);
+  assert.throws(function () { saveApi.parse("{}"); }, /Unsupported save version/);
+  const envelope = saveApi.createEnvelope(gameState());
+  envelope.version = 99;
+  assert.throws(function () { saveApi.parse(JSON.stringify(envelope)); }, /Unsupported save version/);
+  const withoutWorld = saveApi.createEnvelope(gameState());
+  delete withoutWorld.world;
+  assert.throws(function () { saveApi.parse(JSON.stringify(withoutWorld)); }, /no world/);
 });
+
+test("local storage is used when available", () => {
+  const storage = saveApi.createStorage({ localStorage: fakeStorage() });
+  assert.equal(storage.kind, "local");
+  assert.equal(storage.available, true);
+  const envelope = saveApi.createEnvelope(gameState());
+  const result = saveApi.saveGame(storage, envelope);
+  assert.equal(result.ok, true);
+  const loaded = saveApi.loadGame(storage);
+  assert.equal(loaded.seed, config.seed);
+  assert.equal(loaded.settings.zoom, 1.5);
+});
+
+test("blocked browser storage degrades to a working in-memory fallback", () => {
+  const storage = saveApi.createStorage({ localStorage: fakeStorage({ throwOnWrite: true }) });
+  assert.equal(storage.kind, "memory");
+  assert.equal(storage.available, false);
+  assert.ok(storage.error && storage.error.length > 0, "the failure is surfaced, not swallowed");
+  const envelope = saveApi.createEnvelope(gameState());
+  assert.equal(saveApi.saveGame(storage, envelope).ok, true);
+  assert.equal(saveApi.loadGame(storage).seed, config.seed);
+});
+
+test("a corrupt stored payload is reported instead of crashing", () => {
+  const storage = saveApi.createStorage({});
+  storage.save("{bad json");
+  const loaded = saveApi.loadGame(storage);
+  assert.ok(loaded.error);
+  assert.equal(saveApi.loadGame(storage).error, loaded.error);
+});
+
+test("empty storage loads nothing", () => {
+  const storage = saveApi.createStorage({});
+  assert.equal(saveApi.loadGame(storage), null);
+});
+

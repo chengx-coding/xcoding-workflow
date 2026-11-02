@@ -1,116 +1,146 @@
 ---
 schema_version: 1
 document_kind: work-order-analysis
-content_language: "en"
-work_order_id: "20261101-2045-open-sandbox-xc-2"
+content_language: en
+work_order_id: 20261102-1145-open-sandbox-xc-044
 feature_ids: []
 orchestration:
-  main_tree_ref: ".xcoding/work-orders/20261101-2045-open-sandbox-xc-2/runtime/orchestration.xml"
+  main_tree_ref: .xcoding/work-orders/20261102-1145-open-sandbox-xc-044/runtime/orchestration.xml
 ---
 
-# Analysis — from a rendering seed to a small Minecraft
+# Analysis — what this small Minecraft must be
 
-## Evidence and current state
+## Confirmed facts
 
-The project is a 715-line plain HTML/CSS/JavaScript seed. It renders a flat 128x64 tile strip with a
-static player rectangle, exposes `window.__sandbox`, and has no input, collision, interaction,
-inventory, crafting, saving or help. Its six `node:test` cases pass and `tools/page_check.py` reports
-`ok=true` with a green status pixel and 27 canvas colour buckets on the unchanged seed.
+- The seed renders an offline placeholder world and already owns a unit-test contract
+  (`tests/world.test.js`, 6 tests) and a browser contract (`tools/page_check.py`) that must not be
+  weakened. `page_check` fixes four element ids (`game`, `status`, `hud`, `hotbar`), a green
+  bottom-left status marker, a network-reference scan over page-served files, and a ≥12-colour-bucket
+  canvas check.
+- Four probes in headless Chrome from `file://` (`tmp/probe.html`, `--dump-dom
+  --virtual-time-budget=2000`) confirmed: `localStorage` is writable, Canvas 2D works exactly,
+  `AudioContext` exists, `devicePixelRatio=1`, default headless viewport `762×484`.
+- The bridge waives the change report (`user_waived`), forbids a project Git commit, requires
+  English/UTF-8/LF, keeps verification at `node --test "tests/**/*.test.js"` and
+  `python tools/page_check.py`, and confines process files to the workbench `tmp/`.
+- No prior accepted capability inventory exists for this product, so preservation disposition is
+  **not applicable**; no feature IDs are associated.
+- Detailed evidence, trade-off text and the browser probe record are in
+  `artifacts/analysis-evidence.md`.
 
-The seed's UMD module pattern lets Node tests require the same files the browser loads, and the page
-check already proves the shell, local assets, no network references, a non-blank canvas and the status
-indicator. The environment has Node v24.13.1 with a global `WebSocket`, Python 3.12.10, and Chrome for
-real browser runs.
+## Scope assessment
 
-The seed tests are a live compatibility contract, not just examples: they require column 10 at
-`floor(height * 0.65)` to be grass over dirt, require the bottom row to stay `stone`, require the JSON
-serialization round-trip, and require air at `(0,0)`. The new generator must satisfy all of them
-without editing the seed test file. The full evidence is in
-`artifacts/analysis-seed/seed-and-constraints.md`.
+Task type is `create`: there is no minimality presumption. The binding scope comes from the user
+prompt (2D, offline, `file://`, no build/libraries/CDN/network, small Minecraft, save progress,
+document controls) and from the applied experience requirements (first-run affordance, visual-state
+backdrop, discoverability/visual-review/progression lens). The seed is a shell, not an existing
+product, so this is a build, not a repair. The only narrowing is the deferral of reference systems
+the request is silent about; each is recorded below with impact and a reversal path and none is
+declared forbidden.
 
-`file://` persistence is the largest unproven assumption: the page check never writes storage. The
-implementation must prove `localStorage` behaviour in a real browser and degrade safely if it is
-unavailable.
+## Capability map (canonical)
 
-## Reconciliation
+Priorities: `must` / `should` / `non-goal`. Decisions: `implement`, `defer`, `not applicable`.
+Acceptance columns and per-row verification detail live in `artifacts/analysis-evidence.md`; this
+table is the decision record carried into the solution.
 
-`work_order.has_features=false` and `feature_ids=[]`; there are no feature baselines to reconcile and
-no prior accepted capability inventory to disposition. This section is recorded as not applicable, not
-silently skipped.
-
-## Impact and risks
-
-The change replaces the seed's placeholder world, player and renderer and adds new modules, tests,
-browser evidence and documentation. Nothing outside the project is affected; there is no server,
-network, data migration or public contract. The main risks are breadth (many interacting modules),
-browser-only behaviour (storage, pointer mapping, audio), seed-test compatibility (column anchor and
-bottom-row stone), performance of the light map, and scope creep from Minecraft's larger systems.
-
-## Alternatives considered
-
-| Decision | Chosen | Rejected alternatives | Reason |
+| Capability | Source | Priority | Decision |
 | --- | --- | --- | --- |
-| Rendering | Canvas 2D immediate mode | DOM tiles, WebGL | No library, simple pointer mapping, enough for ~40x23 tiles |
-| World model | Row-major `Uint8Array` | Object map, chunk streaming | Seed-compatible, compact, fast; bounded world is enough |
-| Terrain | Seeded noise heightmap + caves + ores + trees | Handcrafted map | Replayable new worlds, deterministic tests, exploration value |
-| Physics | Fixed-step AABB, per-axis resolution | Per-frame Euler | Frame-rate independent and unit-testable |
-| Lighting | Per-tile BFS from sky and torches | Global tint | Readable caves and meaningful torches at bounded cost |
-| Crafting UI | DOM overlay | Canvas menus | Accessible, testable, simpler |
-| Audio | Procedural WebAudio | Sample files, silence | No assets, small code, graceful fallback |
-| Save | Versioned `localStorage` + RLE world | Cookies, IndexedDB | Synchronous, simple, adequate size |
-| World size | 192x96 tiles at 24 px | Seed 128x64, larger | More exploration while one screenshot and one save stay manageable |
+| Walk, jump, gravity, collision | user "playable" | must | implement |
+| Seeded world: surface variety, caves, ores, trees | user, reference S5 | must | implement |
+| Mining: hardness, tool speed, cracks, particles, drops | reference S1 | must | implement |
+| Placement: reach, adjacency, no overlap | user, reference S1 | must | implement |
+| Hotbar + inventory with counts | reference S1 | must | implement |
+| Crafting: material → capability | reference S4 | must | implement |
+| Tool tiers changing mining speed | reference S4 | must | implement |
+| Day/night cycle and sky backdrop | reference S2 | must | implement |
+| Skylight + torch light propagation | reference S3 | must | implement |
+| Torch item craftable and placeable | reference S3 | must | implement |
+| Save/load world, player, inventory, time, tasks | user "save progress" | must | implement |
+| Storage-failure fallback: export/import | user, Q6 | must | implement |
+| First-run affordance: welcome, buttons, tasks | user Q4 | must | implement |
+| Visual-state backdrop before/after (edit/mode/time/view) | user Q5 | must | implement |
+| Experience lens applied | user Q8 | must | implement |
+| Controls documented in product and README | user | must | implement |
+| Task chain with rewards and progress | user Q8, reference | must | implement |
+| Minimap with viewport trail | user Q5 | should | implement |
+| Procedural audio feedback | reference S1 | should | implement |
+| Zoom controls | user Q5, comfort | should | implement |
+| Backdrop inspect mode | user Q5 | should | implement |
+| Custom seed / new world | reference S5 | should | implement |
+| Undo/redo of edits | reference, Q5 | should | implement |
+| Ambient critters | reference | should (proposed) | defer |
+| Mobs and combat | reference | should (proposed) | defer |
+| Hunger/food | reference | should (proposed) | defer |
+| Redstone/circuits | reference | should (proposed) | defer |
+| Dimensions (Nether) | reference | should (proposed) | defer |
+| Furnace/workbench stations, 3×3 grid | reference | should (proposed) | defer |
+| Water/lava fluid simulation | reference | should (proposed) | defer |
+| Multiplayer | reference | non-goal | not applicable (offline is user-sourced) |
+| 3D voxel rendering | reference | non-goal | not applicable (2D is user-sourced) |
+| Touch/mobile controls | accessibility | should (proposed) | defer |
 
-## Capability map (accepted)
+Deferral impact, recorded now so the solution can carry it: critters/mobs/combat/hunger leave the
+game without survival threat; redstone leaves no automation; dimensions leave one world layer;
+stations make crafting a recipe list rather than a ritual; fluids leave a static environment; touch
+input assumes a keyboard and mouse. Each is reversible without rework of the world, save format, or
+rendering architecture.
 
-| ID | Capability | Priority | User value | Verification |
+## Signature-experience table
+
+Reference: Minecraft, credible because the prompt names it and its loop is the target. Evidence is
+the reference's documented core loop; decisions are reference-derived, not measured here.
+
+| Signature | Evidence | Goal covers | Decision | User value |
 | --- | --- | --- | --- | --- |
-| C1 | `index.html` on `file://`, offline, no build step or external assets | must | The product is playable | Page check network/static scan; browser request log |
-| C2 | 2D block world with generated terrain, caves, ores, trees | must | Exploration and materials | Generation unit tests; screenshots |
-| C3 | Movement, gravity, collision, jump | must | Control of the character | Physics unit tests; real key events |
-| C4 | Mining with reach, hardness, tool rules, feedback | must | The core verb | Rule unit tests; browser mining |
-| C5 | Inventory, hotbar and selection | must | Carrying and choosing | Inventory unit tests; browser assertion |
-| C6 | Placement from the hotbar | must | Building | Placement unit tests; browser placement |
-| C7 | Save/restore world, inventory, player, time; safe recovery | must | Work survives | Save unit tests; real reload |
-| C8 | Controls in README and in-game help | must | Players can learn | Content assertions; browser overlay |
-| C9 | Crafting: planks, sticks, torches, wooden/stone pickaxe | should | Gathering has a goal | Crafting unit tests; browser craft |
-| C10 | Day/night, darkness, torch light | should | Atmosphere and a use for coal | Light/time tests; day and night screenshots |
-| C11 | Two-tier pickaxe gating | should | Progression and readable rules | Mining-rule unit tests |
-| C12 | Procedural audio feedback and mute | should | Responsiveness | Browser audio-state check |
-| C13 | Pause menu, new world, save status | should | Session control | Browser menu interactions |
-| C14 | Blocky art, avatar animation, particles, HUD | should | Deliberate, not debug | Screenshot review |
-| C15 | Responsive desktop layout | should | Playability at common sizes | Browser check at a second viewport |
+| S1 Tactile break/place | mining/building loop | Q2 | must, depth on mining/placement/tools/audio | the core verb feels good |
+| S2 Living cyclic world | day/night | Q2, A5 | must, depth on time/sky | pressure and atmosphere |
+| S3 Darkness needs light | lighting, torches | A5 | must, depth on light and torches | caves become goals |
+| S4 Gathering becomes capability | crafting, tools | A3 | must, depth on recipes/tools/tasks | visible progression |
+| S5 Seed world worth exploring | world generation | A4 | must, depth on generation/new seed | replayable exploration |
+| S6 Leaving and returning is safe | save/worlds | Q6, A6 | must, depth on save | trust in the world |
 
-The capability evidence and reference reasoning are in
-`artifacts/analysis-product/product-signature.md`.
+All six sharpen requested capabilities; none imports an unrequested system. The reduced set is used
+because the request is explicitly "small".
 
-## Minecraft-system decisions (recorded)
+## Design options
 
-The initiating instruction explicitly delegates crafting, survival, mobs, redstone and similar
-system choices to this analysis. The decision is a **peaceful creative-survival hybrid** focused on
-mining, building, exploring, crafting and light:
+- **Code shape**: UMD IIFE modules per concern, loaded in order — no build, `file://` safe, and
+  Node-testable like the seed. Chosen over a monolith (reviewability) and ES modules (blocked by
+  `file://` CORS rules).
+- **Rendering**: canvas immediate draw with procedural tile detail; DOM overlay HUD. Canvas gives
+  60 fps over ~1k tiles and pixel control for ghosts; DOM gives real clickable affordances required
+  by Q4 and testable focus/semantics.
+- **View**: full-viewport, DPR-aware canvas, zoom 0.6–2.5×. Creates a genuine viewport-change axis
+  for Q5 instead of a fixed 960×540 box.
+- **Persistence**: `localStorage` primary (probe-confirmed on `file://`), auto-save plus explicit
+  save, RLE-encoded world in a versioned JSON envelope, JSON export/import, in-memory fallback with
+  a visible warning. Chosen over IndexedDB (async complexity) and file-only (worse default).
+- **Lighting**: flood-fill skylight plus torch light, recomputed on edits and time transitions;
+  measure the cost in the browser and debounce only if the measurement requires it.
+- **Crafting**: recipe list with progressive unlocks and Craft buttons, chosen over a 3×3 grid and
+  stations for discoverability and click-testability.
+- **Day length**: 4-minute full cycle so night arrives inside a first session.
+- **Backdrop**: all three layers — world ghosts for edits, a kind-labelled HUD before/after pulse
+  for edit/mode/time/view, and a minimap viewport trail — because Q5 names removed/covered content
+  and mode/theme/time/viewport changes separately.
+- **Verification**: node logic tests, the untouched `page_check`, plus a new scripted headless-browser
+  check using `--dump-dom` self-tests, paired screenshots, and a two-run persistence test.
 
-- **In:** block world, generated terrain and caves, ores, trees and static lakes, mining with tools,
-  placeable blocks, inventory/hotbar, a small crafting tree (planks, sticks, torches, two pickaxes),
-  day/night and torch light, procedural audio, particles and avatar animation, saving, help and a
-  pause menu.
-- **Out (recorded, with re-entry trigger):** health/hunger/death (S12), hostile mobs/combat (S13),
-  redstone/mechanisms (S14), multiplayer (S15), 3D (S16), streaming/infinite worlds (S17), flowing
-  liquids, farming, animals, villages and dimensions (S18).
+## Risks and hypotheses
 
-These are decisions, not pre-declared requirements or prohibitions. Each non-goal names the user
-value it would have to justify later and can be reopened by a user request or a failing acceptance
-condition. The user-visible result is a Minecraft-like sandbox that is approachable in the first
-minute rather than a survival game with a fail state.
+- Flood-fill relighting must stay fast enough for synchronous edits; if not, relight on a trailing
+  timer without changing behaviour.
+- `localStorage` may be cleared between headless launches; the two-run persistence test will settle
+  it, with same-run reload evidence and export/import as fallback evidence.
+- The first-run overlay must not cover the `#status` marker or starve the canvas colour check; the
+  marker stays topmost and the world stays visible behind the overlay.
+- Rendering cost at the largest supported viewport with the lighting overlay is unmeasured until the
+  implementation exists.
 
-## Scope assessment and recommendation
+## Request-to-goal comparison and unresolved decisions
 
-This is `create`, so there is no minimality presumption; the target is a small complete game rather
-than a feature demo. The chosen scope is the accepted must matrix plus C9-C15, implemented as thin,
-unit-testable modules with a fixed-step loop and a DOM UI layer. No version policy exists in the
-project bridge, so no version change is proposed. The scope boundary is explicit: S12-S18 are out
-unless a user request reopens them.
-
-Recommendation: proceed to a solution that implements exactly this matrix and verifies it with the
-seed suite, new unit tests, the page check, and a real interactive browser harness (DevTools Protocol,
-real key/mouse events, reload persistence, screenshots). Deferred items: none from the must matrix;
-all accepted should items are in the implementation scope.
+The goal covers every user requirement and all three applied experience requirements; it adds no
+binding exclusion. No material human-owned decision remains open: the applied Q4/Q5/Q8 requirements
+are explicit, and the deferred reference systems are reversible should-items rather than exclusions.
+No clarification gate is required.

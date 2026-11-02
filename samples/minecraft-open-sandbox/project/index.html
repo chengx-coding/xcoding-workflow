@@ -3,74 +3,218 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Blockhaven — a small 2D Minecraft</title>
+  <title>Cubewood — a small Minecraft</title>
+  <meta name="description" content="Cubewood is a tiny offline 2D sandbox: dig, build, craft, light the dark and save your world.">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <main id="app">
-    <canvas id="game" width="960" height="540" aria-label="2D block world"></canvas>
+  <main id="app" class="app">
+    <canvas id="game" width="960" height="540" aria-label="Cubewood sandbox world"></canvas>
 
     <div id="hud" aria-live="polite">
-      <div id="hud-title">Blockhaven</div>
-      <div id="hud-hint">A/D move · Space jump · Left-click mine · Right-click place · E craft · H help</div>
-      <div id="hud-time">Day 1 · Morning</div>
+      <div class="hud-badge" id="hud-clock">
+        <span class="hud-label">Day</span>
+        <span id="hud-day">1</span>
+        <span class="hud-sep" aria-hidden="true">·</span>
+        <span id="hud-time">08:00</span>
+        <span class="hud-phase" id="hud-phase">Day</span>
+      </div>
+      <div class="hud-badge" id="hud-health">
+        <span class="hud-label">Health</span>
+        <span id="health-pips" class="health-pips" aria-label="Health"></span>
+      </div>
+      <div class="hud-badge" id="hud-view">
+        <span class="hud-label">View</span>
+        <span id="hud-zoom">1.0x</span>
+        <span class="hud-dim" id="hud-viewport">960x540</span>
+      </div>
     </div>
 
-    <div id="crosshair" aria-hidden="true"></div>
-    <div id="hotbar" role="toolbar" aria-label="Block hotbar"></div>
-    <div id="toast" role="status" aria-live="polite"></div>
-    <div id="save-indicator" aria-live="polite"></div>
+    <nav id="hud-actions" aria-label="Game actions">
+      <button type="button" id="btn-quests" class="hud-button" aria-controls="quest-tracker">Quests <kbd>Q</kbd></button>
+      <button type="button" id="btn-inventory" class="hud-button" aria-controls="panel-inventory">Inventory <kbd>E</kbd></button>
+      <button type="button" id="btn-craft" class="hud-button" aria-controls="panel-craft">Crafting <kbd>C</kbd></button>
+      <button type="button" id="btn-guide" class="hud-button" aria-controls="panel-guide">Guide <kbd>H</kbd></button>
+      <button type="button" id="btn-backdrop" class="hud-button" aria-pressed="false">Backdrop <kbd>B</kbd></button>
+      <button type="button" id="btn-save" class="hud-button">Save <kbd>F2</kbd></button>
+      <button type="button" id="btn-menu" class="hud-button" aria-controls="panel-menu">Menu <kbd>Esc</kbd></button>
+    </nav>
 
-    <div id="overlay" class="overlay hidden">
-      <section id="help-panel" class="panel hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
-        <h1 id="help-title">Controls</h1>
-        <div id="help-controls" class="controls-grid"></div>
-        <p class="panel-note">Mine a tree for wood, craft planks and sticks with <strong>E</strong>, then a
-          pickaxe. Coal makes torches; crystal needs a stone pickaxe and glows. Progress saves
-          automatically.</p>
-        <div class="panel-actions">
-          <button type="button" class="button" data-action="close-help">Back to the world</button>
+    <aside id="quest-tracker" class="quest-tracker" aria-live="polite">
+      <header class="quest-head">
+        <h2>Quests</h2>
+        <span id="quest-count" class="quest-count">0/8</span>
+        <button type="button" id="quest-collapse" class="ghost-button" aria-label="Collapse quest tracker">Hide</button>
+      </header>
+      <p id="quest-title" class="quest-title">Punch a tree</p>
+      <p id="quest-hint" class="quest-hint">Face a tree trunk and hold the mine button.</p>
+      <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0" id="quest-meter-wrap">
+        <span id="quest-meter" class="meter-fill"></span>
+      </div>
+      <p id="quest-progress" class="quest-progress">0/3</p>
+      <ol id="quest-list" class="quest-list"></ol>
+      <button type="button" id="quest-open" class="text-button">Open the full quest log</button>
+    </aside>
+
+    <div id="state-pulse" class="state-pulse" data-kind="edit" hidden>
+      <div class="pulse-head">
+        <span id="pulse-kind" class="pulse-kind">Edit</span>
+        <span id="pulse-pos" class="pulse-pos">before / after</span>
+      </div>
+      <div class="pulse-body">
+        <figure class="pulse-tile">
+          <canvas id="pulse-before" width="48" height="48" aria-label="Before"></canvas>
+          <figcaption>Before</figcaption>
+        </figure>
+        <span class="pulse-arrow" aria-hidden="true">→</span>
+        <figure class="pulse-tile">
+          <canvas id="pulse-after" width="48" height="48" aria-label="After"></canvas>
+          <figcaption>After</figcaption>
+        </figure>
+      </div>
+      <p id="pulse-labels" class="pulse-labels">Grass → Air</p>
+    </div>
+
+    <div id="minimap-panel" class="minimap-panel">
+      <canvas id="minimap" width="240" height="120" aria-label="World map with your viewport"></canvas>
+      <p id="minimap-caption" class="minimap-caption">View 1.0x · viewport 960x540</p>
+    </div>
+
+    <div id="action-hint" class="action-hint" hidden></div>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <div id="hotbar" role="toolbar" aria-label="Block palette"></div>
+    <p id="held-label" class="held-label" aria-live="polite">Empty hand</p>
+
+    <section id="welcome" class="overlay" aria-label="Welcome to Cubewood">
+      <div class="welcome-card">
+        <p class="eyebrow">Cubewood · a small Minecraft</p>
+        <h1>Dig. Build. Light the dark.</h1>
+        <p class="lede">A tiny offline sandbox that runs from this file. Every block, texture and sound is generated by code — no downloads, no network, no build step.</p>
+        <div class="welcome-actions">
+          <button type="button" id="welcome-play" class="primary-button">Play now</button>
+          <button type="button" id="welcome-guide" class="secondary-button">Open the guide</button>
+          <button type="button" id="welcome-new" class="secondary-button">New world</button>
         </div>
-      </section>
+        <ul class="welcome-points">
+          <li><strong>A / D</strong> walk · <strong>W</strong> jump · <strong>hold left click</strong> mine · <strong>right click</strong> place</li>
+          <li><strong>E</strong> inventory · <strong>C</strong> crafting · <strong>Q</strong> quests · <strong>B</strong> backdrop · <strong>H</strong> guide</li>
+        </ul>
+        <p class="welcome-note" id="welcome-save-note">Your world saves automatically in this browser.</p>
+      </div>
+    </section>
 
-      <section id="pause-panel" class="panel hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
-        <h1 id="pause-title">Paused</h1>
-        <p id="pause-status" class="panel-note">Your world is paused.</p>
-        <div class="panel-actions column">
-          <button type="button" class="button primary" data-action="resume">Resume</button>
-          <button type="button" class="button" data-action="save">Save now</button>
-          <button type="button" class="button" data-action="help">Controls</button>
-          <button type="button" class="button danger" data-action="new-world">New world</button>
+    <section id="panel-inventory" class="overlay panel" aria-label="Inventory" hidden>
+      <div class="panel-card">
+        <header class="panel-head">
+          <h2>Inventory</h2>
+          <button type="button" class="icon-button" data-close="panel-inventory" aria-label="Close inventory">✕</button>
+        </header>
+        <p class="panel-note">Click an item to put it in the selected hotbar slot.</p>
+        <div id="inventory-grid" class="inventory-grid"></div>
+        <div class="panel-foot">
+          <span id="inventory-count" class="panel-meta">0 items</span>
+          <button type="button" id="inventory-craft" class="text-button">Go to crafting</button>
         </div>
-        <p id="pause-seed" class="panel-meta"></p>
-      </section>
+      </div>
+    </section>
 
-      <section id="craft-panel" class="panel wide hidden" role="dialog" aria-modal="true" aria-labelledby="craft-title">
-        <h1 id="craft-title">Crafting</h1>
-        <p class="panel-note">Gather blocks, then turn them into better tools. <strong>1 wood</strong> is
-          the whole tree.</p>
+    <section id="panel-craft" class="overlay panel" aria-label="Crafting" hidden>
+      <div class="panel-card wide">
+        <header class="panel-head">
+          <h2>Crafting</h2>
+          <button type="button" class="icon-button" data-close="panel-craft" aria-label="Close crafting">✕</button>
+        </header>
+        <p class="panel-note">Recipes unlock as you gather new materials. Crafting consumes the listed ingredients.</p>
         <div id="craft-list" class="craft-list"></div>
-        <div class="panel-actions">
-          <button type="button" class="button" data-action="close-craft">Close (E)</button>
-        </div>
-      </section>
-    </div>
+      </div>
+    </section>
 
+    <section id="panel-guide" class="overlay panel" aria-label="Guide and controls" hidden>
+      <div class="panel-card wide">
+        <header class="panel-head">
+          <h2>Guide &amp; controls</h2>
+          <button type="button" class="icon-button" data-close="panel-guide" aria-label="Close guide">✕</button>
+        </header>
+        <div class="guide-grid">
+          <div>
+            <h3>Controls</h3>
+            <dl id="control-list" class="control-list"></dl>
+          </div>
+          <div>
+            <h3>How to play</h3>
+            <ol class="guide-steps">
+              <li>Hold <strong>left click</strong> on a tree to mine wood. Tool speed matters: stone needs a pickaxe.</li>
+              <li>Open <strong>Crafting (C)</strong> and turn wood into planks, sticks and a pickaxe.</li>
+              <li>Pick a block with <strong>1–9</strong>, then <strong>right click</strong> to place it. Blocks need a neighbour.</li>
+              <li>Press <strong>B</strong> to review the before/after ghosts of what you changed.</li>
+              <li>Torches push back the dark. Your world <strong>saves automatically</strong>; F2 saves now.</li>
+            </ol>
+            <h3>Saving</h3>
+            <p class="panel-note" id="guide-save-note">Progress saves to this browser. You can also export a save file from the menu.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-menu" class="overlay panel" aria-label="Game menu" hidden>
+      <div class="panel-card">
+        <header class="panel-head">
+          <h2>Menu</h2>
+          <button type="button" class="icon-button" data-close="panel-menu" aria-label="Close menu">✕</button>
+        </header>
+        <div class="menu-actions">
+          <button type="button" id="menu-resume" class="primary-button">Resume</button>
+          <button type="button" id="menu-save" class="secondary-button">Save now</button>
+          <button type="button" id="menu-guide" class="secondary-button">Controls</button>
+          <button type="button" id="menu-mute" class="secondary-button" aria-pressed="false">Sound: on</button>
+        </div>
+        <div class="menu-section">
+          <h3>New world</h3>
+          <label class="field">
+            <span>Seed</span>
+            <input id="seed-input" type="text" inputmode="numeric" autocomplete="off" spellcheck="false">
+          </label>
+          <button type="button" id="menu-new-world" class="secondary-button">Generate new world</button>
+        </div>
+        <div class="menu-section">
+          <h3>Save file</h3>
+          <div class="menu-row">
+            <button type="button" id="menu-export" class="secondary-button">Export save</button>
+            <label class="file-button">
+              <span>Import save</span>
+              <input id="save-import" type="file" accept="application/json,.json">
+            </label>
+          </div>
+          <p class="panel-note" id="menu-save-status">Storage: checking…</p>
+        </div>
+        <p class="panel-foot-note">Cubewood <span id="menu-version">1.0</span> · offline · no external assets</p>
+      </div>
+    </section>
+
+    <pre id="selftest-results" hidden></pre>
     <div id="status" data-state="booting" title="Page status"></div>
   </main>
-
   <script src="js/config.js"></script>
+  <script src="js/rng.js"></script>
+  <script src="js/noise.js"></script>
+  <script src="js/blocks.js"></script>
   <script src="js/world.js"></script>
-  <script src="js/player.js"></script>
-  <script src="js/mining.js"></script>
-  <script src="js/inventory.js"></script>
-  <script src="js/crafting.js"></script>
   <script src="js/lighting.js"></script>
+  <script src="js/time.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/mining.js"></script>
+  <script src="js/placement.js"></script>
+  <script src="js/crafting.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/backdrop.js"></script>
   <script src="js/save.js"></script>
   <script src="js/audio.js"></script>
-  <script src="js/input.js"></script>
   <script src="js/render.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/scenes.js"></script>
+  <script src="js/selftest.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

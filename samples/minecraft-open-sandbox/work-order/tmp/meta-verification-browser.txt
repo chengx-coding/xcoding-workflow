@@ -1,8 +1,0 @@
-﻿metadata.artifact.audience=internal
-metadata.control_packet.category.implementation-records.selectors=["bb:verification.sources.browser"]
-metadata.control_packet.category.implementation-records.min_sources=3
-metadata.control_packet.category.implementation-records.artifact_min=3
-metadata.completion.required_fields=["summary","validation"]
-metadata.completion.artifacts.min=1
-metadata.completion.artifacts.max=1
-metadata.completion.artifacts.path=literal:.xcoding/work-orders/20261101-2045-open-sandbox-xc-2/artifacts/verification-browser/browser-and-regression.md
