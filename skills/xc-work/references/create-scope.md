@@ -95,10 +95,7 @@ proposed should with its evidence and gap; a no-user analysis may choose a small
 silently non-goal it. For an experience product with a credible reference, record the reference's defining loop and
 defining-depth gap as a **proposed should** with evidence and lost value; a user may make it binding.
 Without a user, do not force the feature. For a navigable world, record orientation/map as a proposed
-should under the same rule. If the request sets a visual quality target or a credible visual reference exists, add a
-**visual-direction** capability: palette, depth/layering, character readability, lighting and UI
-hierarchy; verify executed states against it. This is a proposed quality check unless the request
-makes visual quality a must. For a rendered interactive product with primary controls, add an **interaction
+should under the same rule. For a rendered interactive product with primary controls, add an **interaction
 truth** check (proposed): real pointer at >=90 ms, same pointerdown/up target, 10/10, no
 `element.click()`, and a visible disabled/feedback path; a core-loop no-op is a high-severity defect.
 Do not apply the lens to a pure library/CLI/docs/data dashboard task; record
