@@ -74,3 +74,5 @@
 对具有可信 reference 的体验型产品，定义性 loop 及其深度记录为 proposed should，并写明证据与损失；用户可将其变为约束，无用户时允许缩小 scope。可导航世界应记录 orientation/map 或省略的损失。
 
 演进体验型产品时，必须保留已接受的 must capability 及其深度；视觉改进若删减或削弱它们就是回归，不是美术进步。
+
+视觉/质量工作前后必须执行既有 must capability 的 real-pointer regression；截图或模块测试不能替代；high interaction defect 直接拒绝视觉改动。

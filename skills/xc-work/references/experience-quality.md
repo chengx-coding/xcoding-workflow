@@ -39,6 +39,15 @@ progression, orientation or save capability is a regression, not an art improvem
 inventory and record a disposition for every removed or thinned capability; a deliberate removal
 requires a user-accepted exclusion. Do not trade functional depth for beauty.
 
+## 2d. Functional preservation for visual work
+
+Before and after any visual/quality pass, execute the prior must-capability interactions with a real
+pointer: placement, crafting output, world bounds/containment, save/reload, first-run controls and
+the core loop. Module tests or screenshots do not prove these still work. If any high interaction
+defect appears, reject the visual pass; do not close on "screenshots accepted" while a core control is
+a no-op. A visual change that thins or breaks functional capability is a regression, not an
+improvement.
+
 ## 3. Visual-state backdrop
 
 For an interactive visual experience product, the state-dependent backdrop is a **must owned by the visual
