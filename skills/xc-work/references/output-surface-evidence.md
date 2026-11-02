@@ -58,10 +58,11 @@ to a game/UI or CLI-only artifact with no documentation surface.
 
 ## Status
 
-All task-class profiles are `proposed`: visual informed by prior visual samples without a second
-independent profile application; CLI and docs by one contract probe each. A second independent
-instance is required before `validated-in-class`; universal promotion requires a different-class
-probe and a negative probe.
+The **2D sandbox visual-state backdrop** and **first-run affordance** are `validated-in-class` by two
+independent instances: the compact 0.3.6 Wildgrove run (only footer key hints for the primary loop)
+and the open 0.4.3 Blockhaven run (passive hint, hidden crafting, D9 62 capped). The general visual
+profile, CLI, docs and the experience lens remain `proposed`; universal promotion requires a
+different-class probe and a negative probe.
 
 **Force:** convention-only; no runtime check proves a profile is universal.
 
