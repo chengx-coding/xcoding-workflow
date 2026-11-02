@@ -76,3 +76,5 @@
 演进体验型产品时，必须保留已接受的 must capability 及其深度；视觉改进若删减或削弱它们就是回归，不是美术进步。
 
 视觉/质量工作前后必须执行既有 must capability 的 real-pointer regression；截图或模块测试不能替代；high interaction defect 直接拒绝视觉改动。
+
+`xc-visual-design` 负责视觉 brief、独立 critic 循环和功能 preservation gate，适用于验收包含视觉质量的任务；它不拥有某种风格或通用审美分数。

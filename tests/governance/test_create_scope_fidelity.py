@@ -105,3 +105,13 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         )
         section = protocol.split("## Subtree Archiving", 1)[1]
         self.assertIn("failed/blocked composite or loop", section)
+
+    def test_visual_design_skill_is_generic_and_dual_gated(self):
+        skill = read(SKILLS / "xc-visual-design" / "SKILL.md")
+        self.assertIn('name: "xc-visual-design"', skill)
+        self.assertIn("independent critic", skill)
+        self.assertIn("functional preservation", skill.lower())
+        self.assertIn("do not prescribe a specific style", skill.lower())
+        self.assertNotIn("D5 =", skill)
+        for term in ("Minecraft", "minimap", "2D sandbox", "Cubewood", "MOSSWILD"):
+            self.assertNotIn(term, skill)

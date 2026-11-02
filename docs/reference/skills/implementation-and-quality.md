@@ -77,3 +77,5 @@ For an experience product with a credible reference, record the defining loop an
 When evolving an experience product, preserve the prior accepted must capabilities and depth; a visual pass that drops or thins them is a regression, not an art improvement.
 
 For visual/quality work, run the prior must-capability real-pointer regression before and after; screenshots or module tests cannot substitute; a high interaction defect rejects the visual pass.
+
+`xc-visual-design` owns the visual brief, independent critic cycles and the functional preservation gate for tasks whose acceptance includes visual quality; it does not own a style or a universal beauty score.
