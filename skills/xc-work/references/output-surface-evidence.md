@@ -18,15 +18,17 @@ after assertion with a surface-specific screenshot or a state label.
 **Applies when** acceptance depends on a rendered/visual surface (UI/page/canvas/visual document).
 **Does not apply** to a pure library/CLI/source-only docs task.
 
-**First-run affordance (2D sandbox visual products, validated-in-class).** A 2D sandbox visual
+**First-run affordance (interactive visual experience products, validated-in-class).** An interactive visual experience
 product must expose its primary systems from the first-run UI: a visible button/tutorial/task/menu
 entry. A passive key hint, in-game help, or README alone is insufficient. Verify from a fresh state
 that a new user can find the primary system without prior knowledge; record the visible entry point.
-This is a must for the defined 2D sandbox visual-product subclass, not for all visual products or
-informational dashboards; other experience products use the proposed experience lens. A 2D sandbox
-visual product is a side-view/2D block-or-tile sandbox game where the player removes/places world
-content and sees a rendered state. Its primary systems are the core actions of the first-run loop
-(for example play, inventory/crafting, help/save); define the concrete set in analysis.
+This is a must for the defined **interactive visual experience product** class, not for all visual
+products or informational dashboards; other experience products use the proposed experience lens.
+The class is a rendered, interactive product whose primary loop changes content on a canvas/page
+and whose acceptance is experiential rather than informational. Its primary systems are the
+controls/tasks a new user needs to start that loop; define the concrete surface and primary systems
+in analysis. Static document sets, CLIs, data pipelines and informational dashboards are outside the
+class.
 
 - Visible before/after when content is removed/cleared/hidden/covered/changed, mode/theme/time or
   viewport changes, or a boundary/terminal state is reached.
@@ -61,7 +63,7 @@ to a game/UI or CLI-only artifact with no documentation surface.
 
 ## Status
 
-The **2D sandbox visual-state backdrop** and **first-run affordance** are `validated-in-class` by two
+The **visual-state backdrop** and **first-run affordance** are `validated-in-class` by two
 independent instances: the compact 0.3.6 Wildgrove run (only footer key hints for the primary loop)
 and the open 0.4.3 Blockhaven run (passive hint, hidden crafting, D9 62 capped). The general visual
 profile, CLI, docs and the experience lens remain `proposed`; universal promotion requires a
@@ -71,7 +73,7 @@ different-class probe and a negative probe.
 
 ## Visual-state backdrop
 
-For a 2D sandbox visual product where content can be removed, cleared, hidden or covered, or a
+For an interactive visual experience product where content can be removed, cleared, hidden or covered, or a
 mode/theme/time/viewport changes, the state must show a coherent backdrop/empty/fallback and be
 verified before/after. This is a task-class must; it does not apply to static docs/CLIs/data
 dashboards.

@@ -58,7 +58,9 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertNotIn("fresh first-run discoverability", verification)
         self.assertIn("validated-in-class", read(detail))
         self.assertIn("first-run affordance", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
-        self.assertIn("2D sandbox visual products", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
+        self.assertIn("interactive visual experience", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
+        self.assertNotIn("2D sandbox", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
+        self.assertNotIn("block-or-tile", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertIn("0.3.6", read(detail))
         self.assertIn("0.4.3", read(detail))
         self.assertIn("2D 沙盒视觉产品", read(ROOT / "docs" / "zh-CN" / "reference" / "skills" / "implementation-and-quality.md"))
@@ -101,7 +103,7 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
             SKILLS / "xc-analysis" / "SKILL.md",
             SKILLS / "xc-verification" / "SKILL.md",
         ]
-        forbidden = re.compile(r"\b(minecraft|minimap|crafting tree)\b", re.IGNORECASE)
+        forbidden = re.compile(r"\b(2D sandbox|2D-sandbox|block-or-tile|minecraft|minimap|crafting tree)\b", re.IGNORECASE)
         for path in paths:
             self.assertIsNone(forbidden.search(read(path)), path)
 

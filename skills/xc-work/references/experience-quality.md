@@ -2,7 +2,7 @@
 
 **Scope:** task-class. **Promotion status:** `proposed`. **Generality evidence:** the overall experience lens is proposed (one open-sample application);
 section 3's visual-state backdrop is owned by the visual output-surface contract and is
-validated-in-class only for **2D sandbox visual products** where content can be removed/covered or
+validated-in-class only for **interactive visual experience products** where content can be removed/covered or
 mode/theme/time/viewport changes. **Applies when** the primary deliverable is a visual/interactive experience
 product: a game, sandbox, simulation, or an interactive visual tool whose acceptance is experiential.
 **Does not apply** to a pure library, CLI, data pipeline, data dashboard, documentation set, or other
@@ -14,7 +14,7 @@ authorize adding a feature that the request does not support.
 
 ## 1. First-run discoverability
 
-For a 2D sandbox visual product, the first-run affordance is a **must owned by the visual output-surface
+For an interactive visual experience product, the first-run affordance is a **must owned by the visual output-surface
 contract**; this profile does not restate the rule. Other experience products use the proposed lens.
 Verify from a fresh state and link the executed entry-point evidence.
 ## 2. Visual composition and review
@@ -28,7 +28,7 @@ reviewer is available, record a self-review with that limitation; do not claim i
 
 ## 3. Visual-state backdrop
 
-For a 2D sandbox visual product, the state-dependent backdrop is a **must owned by the visual
+For an interactive visual experience product, the state-dependent backdrop is a **must owned by the visual
 output-surface contract**; this profile does not restate the rule. Record the linked before/after
 evidence; it does not apply to static docs, CLIs or informational dashboards.
 ## 4. Reference signature and progression
@@ -58,5 +58,5 @@ this profile to require a specific feature set.
 ## 6. Force
 
 Convention-only. No new runtime command, state, node type or configuration surface. The overall experience lens is
-proposed; its 2D-sandbox first-run affordance and visual-state backdrop are validated-in-class; other visual subclasses are not covered. A second
+proposed; its interactive-visual first-run affordance and visual-state backdrop are validated-in-class; other visual subclasses are not covered. A second
 independent experience-product instance is still needed for the overall lens.
