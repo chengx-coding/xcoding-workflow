@@ -15,6 +15,13 @@ after assertion with a surface-specific screenshot or a state label.
 
 ## visual
 
+**Interaction truth (visual products).** Exercise every visible primary control with a real
+pointer at its rendered position. The hit target must be stable across pointerdown/pointerup; do not
+rebuild interactive nodes during a click. A control that looks enabled but silently does nothing is a
+defect: it must be visibly disabled with a reason, or execute and show its effect. Test at a realistic
+dwell (for example 90 ms), not only an instant programmatic click; `element.click()`/DOM calls are not
+interaction evidence. A core-loop no-op is high severity; a secondary control is medium.
+
 **Applies when** acceptance depends on a rendered/visual surface (UI/page/canvas/visual document).
 **Does not apply** to a pure library/CLI/source-only docs task.
 

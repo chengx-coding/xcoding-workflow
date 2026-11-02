@@ -68,3 +68,5 @@ These supporting Skills execute approved changes, explain them to human reviewer
 
 `experience-quality` is a **proposed task-class overlay**; the visual-state backdrop is a separate visual-row must for interactive visual experience products for games, sandboxes, simulations and experiential visual tools. It is not a fifth output surface and not for pure libraries/CLIs/docs/data dashboards. It records visual review and reference-signature/progression as proposed quality checks; first-run affordance and state-dependent backdrop are visual-row musts for interactive visual experience products, not quality findings, and the overlay does not authorize adding a feature by fiat.
 For an interactive visual experience product, the first-run affordance and visual-state backdrop are visual-row musts: a fresh-state probe must find the primary system via a visible button/tutorial/task, and removed/covered content must show a coherent backdrop.
+
+For an interactive visual experience product, primary controls must pass a real-pointer test with a stable hit target; an enabled-looking no-op is a defect, and `element.click()` is not interaction evidence.

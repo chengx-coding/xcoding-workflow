@@ -17,6 +17,11 @@ authorize adding a feature that the request does not support.
 For an interactive visual experience product, the first-run affordance is a **must owned by the visual output-surface
 contract**; this profile does not restate the rule. Other experience products use the proposed lens.
 Verify from a fresh state and link the executed entry-point evidence.
+For a rendered product, also apply the visual owner's **interaction truth** rule: primary controls
+must pass a real-pointer test with a stable hit target; an enabled-looking no-op is a defect. Art
+quality is reviewed as a blind pairwise comparison (composition, character/animation, asset detail,
+UI/typography, atmosphere); a functional but plain UI is not polished art.
+
 ## 2. Visual composition and review
 
 For a primary visual surface, record the composition, character/world readability, UI hierarchy and
