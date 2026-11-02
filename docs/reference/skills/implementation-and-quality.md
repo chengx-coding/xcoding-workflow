@@ -67,3 +67,4 @@ These supporting Skills execute approved changes, explain them to human reviewer
 ## Experience-product overlay
 
 `experience-quality` is a **proposed task-class overlay**; the visual-state backdrop is a separate visual-row must for 2D sandbox visual products for games, sandboxes, simulations and experiential visual tools. It is not a fifth output surface and not for pure libraries/CLIs/docs/data dashboards. It records first-run discoverability, visual review, state-dependent backdrop and reference-signature/progression gaps as quality findings; it does not authorize adding a feature by fiat.
+ For a 2D sandbox visual product, the first-run affordance is a visual-row must: a fresh-state probe must find the primary system via a visible button/tutorial/task, not a passive key/README.

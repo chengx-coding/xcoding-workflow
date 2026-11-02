@@ -53,6 +53,8 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("validated-in-class", experience)
         self.assertIn("visual-class must", experience)
         self.assertIn("mode/theme/time/viewport", reference_flat)
+        self.assertIn("first-run affordance", work)
+        self.assertIn("first-run affordance must", verification)
         self.assertIn("state-dependent backdrop must", verification)
         self.assertIn("mode/theme/time/viewport", verification)
         for heading in ("## 1. First-run discoverability", "## 2. Visual composition and review", "## 3. Visual-state backdrop (visual-product must)", "## 4. Reference signature and progression", "## 5. Verification"):

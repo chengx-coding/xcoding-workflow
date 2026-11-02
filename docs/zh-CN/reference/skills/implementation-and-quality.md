@@ -67,3 +67,4 @@
 ## 体验型产品 overlay
 
 `experience-quality` 是面向游戏、沙盒、模拟和体验型视觉工具的 **proposed task-class overlay**；其中 2D 沙盒视觉产品的 visual-state backdrop 是 **validated-in-class must**。它不是第五种 output surface，也不适用于纯库/CLI/文档/数据 dashboard。它记录首次可发现性、视觉评审、状态相关背景和 reference signature/progression 的质量缺口；不会凭 fiat 增加功能。
+ 对 2D sandbox 视觉产品，first-run affordance 是 visual-row must：fresh-state probe 必须通过可见按钮/教程/任务找到主系统，而不是被动键位/README。

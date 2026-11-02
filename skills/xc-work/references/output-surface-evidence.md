@@ -18,6 +18,13 @@ after assertion with a surface-specific screenshot or a state label.
 **Applies when** acceptance depends on a rendered/visual surface (UI/page/canvas/visual document).
 **Does not apply** to a pure library/CLI/source-only docs task.
 
+**First-run affordance (2D sandbox visual products, validated-in-class).** A 2D sandbox visual
+product must expose its primary systems from the first-run UI: a visible button/tutorial/task/menu
+entry. A passive key hint, in-game help, or README alone is insufficient. Verify from a fresh state
+that a new user can find the primary system without prior knowledge; record the visible entry point.
+This is a must for the 2D sandbox subclass, not for all visual products; other visual subclasses use
+the proposed experience lens.
+
 - Visible before/after when content is removed/cleared/hidden/covered/changed, mode/theme/time or
   viewport changes, or a boundary/terminal state is reached.
 - At least two materially different visual states when present (theme, viewport, error/empty).

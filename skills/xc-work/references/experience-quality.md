@@ -14,11 +14,10 @@ authorize adding a feature that the request does not support.
 
 ## 1. First-run discoverability
 
-A user should be able to find the primary systems from the first-run UI: a visible affordance,
-tutorial, task entry, menu, or equivalent. Indirect documentation or a key-only path is weaker
-evidence; record how a fresh user finds the system and the visible entry point. A discoverability gap
-is a quality finding, not by itself a high-severity finding.
-
+For a 2D sandbox visual product, the first-run affordance is a **must** owned by the visual output-surface
+contract: a visible button/tutorial/task/menu entry, not a passive key hint or README. Other
+experience products use this as a proposed lens. Verify from a fresh state and record the visible
+entry point; a discoverability gap is a quality finding, not by itself a high-severity finding.
 ## 2. Visual composition and review
 
 For a primary visual surface, record the composition, character/world readability, UI hierarchy and
