@@ -3,120 +3,137 @@ const assert = require("node:assert/strict");
 
 const config = require("../js/config.js");
 const worldApi = require("../js/world.js");
-const inventory = require("../js/inventory.js");
-const clockApi = require("../js/time.js");
-const tasks = require("../js/tasks.js");
+const playerApi = require("../js/player.js");
+const inventoryApi = require("../js/inventory.js");
+const progression = require("../js/progression.js");
 const saveApi = require("../js/save.js");
 
-const B = config.blocks;
-const GROUND = Math.floor(config.worldHeight * 0.65);
+const GROUND = worldApi.GROUND_ROW;
 
-function gameState() {
-  const world = worldApi.createWorld(config.seed);
-  worldApi.setBlock(world, 4, GROUND - 1, B.planks);
-  const bag = inventory.createInventory();
-  inventory.add(bag, B.wood, 3);
-  inventory.add(bag, 110, 1);
-  const progress = tasks.createProgress();
-  tasks.noteCollected(progress, B.wood, 3);
-  tasks.sync(progress);
+function memoryStorage(initial) {
+  const map = new Map(Object.entries(initial || {}));
   return {
-    seed: config.seed,
-    world: world,
-    player: { x: 10.5, y: GROUND, health: 17, facing: -1 },
-    inventory: bag,
-    clock: clockApi.createClock({ start: 0.6, day: 3 }),
-    progress: progress,
-    settings: { muted: true, zoom: 1.5, backdropMode: true, volume: 0.3 }
-  };
-}
-
-function fakeStorage(options) {
-  const store = Object.create(null);
-  return {
-    getItem: function (key) {
-      if (options && options.throwOnRead) {
-        throw new Error("blocked");
-      }
-      return key in store ? store[key] : null;
+    getItem: function getItem(key) {
+      return map.has(key) ? map.get(key) : null;
     },
-    setItem: function (key, value) {
-      if (options && options.throwOnWrite) {
-        throw new Error("quota");
-      }
-      store[key] = String(value);
+    setItem: function setItem(key, value) {
+      map.set(key, String(value));
     },
-    removeItem: function (key) {
-      delete store[key];
+    removeItem: function removeItem(key) {
+      map.delete(key);
     }
   };
 }
 
-test("a full save envelope round-trips world, player, inventory, clock and progress", () => {
+function gameState() {
+  const world = worldApi.createWorld(config.seed);
+  const player = playerApi.createPlayer(24.5, GROUND);
+  const inventory = inventoryApi.createInventory();
+  const progress = progression.createProgress();
+  const clock = { day: 2, time: 0.35 };
+  return { world, player, inventory, progress, clock };
+}
+
+test("a captured save has the versioned envelope", () => {
   const state = gameState();
-  const envelope = saveApi.createEnvelope(state);
-  const parsed = saveApi.parse(saveApi.serialize(envelope));
-  assert.equal(parsed.seed, config.seed);
-  const world = saveApi.loadWorld(parsed);
-  assert.equal(worldApi.getBlock(world, 4, GROUND - 1), B.planks);
-  assert.deepEqual(Array.from(world.data), Array.from(state.world.data));
-  assert.equal(parsed.player.x, 10.5);
-  assert.equal(parsed.player.health, 17);
-  assert.equal(parsed.player.facing, -1);
-  const bag = inventory.deserialize(parsed.inventory);
-  assert.equal(inventory.count(bag, B.wood), 3);
-  assert.equal(inventory.count(bag, 110), 1);
-  assert.ok(Math.abs(parsed.clock.t - 0.6) < 1e-9);
-  assert.equal(parsed.clock.day, 3);
-  const progress = tasks.deserialize(parsed.progress);
-  assert.equal(progress.tasks.first_wood, true);
-  assert.equal(parsed.settings.muted, true);
-  assert.equal(parsed.settings.zoom, 1.5);
+  const payload = saveApi.capture(state);
+  assert.equal(payload.schema, 1);
+  assert.equal(payload.version, config.version);
+  assert.equal(payload.seed, state.world.seed);
+  assert.equal(typeof payload.savedAt, "number");
+  assert.equal(payload.clock.day, 2);
+  assert.ok(Array.isArray(payload.world.rle));
+  assert.equal(saveApi.validate(payload), "");
 });
 
-test("invalid or foreign saves are rejected with a reason", () => {
-  assert.throws(function () { saveApi.parse("not json"); }, /not valid JSON/);
-  assert.throws(function () { saveApi.parse("{}"); }, /Unsupported save version/);
-  const envelope = saveApi.createEnvelope(gameState());
-  envelope.version = 99;
-  assert.throws(function () { saveApi.parse(JSON.stringify(envelope)); }, /Unsupported save version/);
-  const withoutWorld = saveApi.createEnvelope(gameState());
-  delete withoutWorld.world;
-  assert.throws(function () { saveApi.parse(JSON.stringify(withoutWorld)); }, /no world/);
+test("save and load round-trip world, inventory, progress and clock", () => {
+  const state = gameState();
+  worldApi.setBlock(state.world, 12, GROUND, config.blocks.air);
+  worldApi.setBlock(state.world, 13, GROUND - 1, config.blocks.planks);
+  inventoryApi.add(state.inventory, config.blocks.planks, 12);
+  inventoryApi.add(state.inventory, config.items.pick_stone, 1);
+  inventoryApi.select(state.inventory, 2);
+  state.progress.stage = 4;
+  state.progress.stats.blocksMined = 31;
+  state.progress.stats.playtime = 95;
+
+  const storage = memoryStorage();
+  const saved = saveApi.save(storage, state);
+  assert.equal(saved.ok, true);
+  assert.ok(saved.bytes > 100);
+  assert.ok(saved.bytes < 120000, `save should stay small, got ${saved.bytes}`);
+
+  const loaded = saveApi.load(storage);
+  assert.equal(loaded.ok, true);
+  assert.equal(worldApi.getBlock(loaded.state.world, 12, GROUND), config.blocks.air);
+  assert.equal(worldApi.getBlock(loaded.state.world, 13, GROUND - 1), config.blocks.planks);
+  assert.equal(inventoryApi.countOf(loaded.state.inventory, config.blocks.planks), 12);
+  assert.equal(inventoryApi.countOf(loaded.state.inventory, config.items.pick_stone), 1);
+  assert.equal(loaded.state.inventory.selected, 2);
+  assert.equal(loaded.state.progress.stage, 4);
+  assert.equal(loaded.state.progress.stats.blocksMined, 31);
+  assert.equal(loaded.state.clock.day, 2);
+  assert.ok(Math.abs(loaded.state.clock.time - 0.35) < 1e-9);
 });
 
-test("local storage is used when available", () => {
-  const storage = saveApi.createStorage({ localStorage: fakeStorage() });
-  assert.equal(storage.kind, "local");
-  assert.equal(storage.available, true);
-  const envelope = saveApi.createEnvelope(gameState());
-  const result = saveApi.saveGame(storage, envelope);
-  assert.equal(result.ok, true);
-  const loaded = saveApi.loadGame(storage);
-  assert.equal(loaded.seed, config.seed);
-  assert.equal(loaded.settings.zoom, 1.5);
+test("summaries expose the saved state for the title screen", () => {
+  const storage = memoryStorage();
+  const state = gameState();
+  state.progress.stats.blocksMined = 42;
+  state.progress.stats.playtime = 305;
+  saveApi.save(storage, state);
+  const result = saveApi.read(storage);
+  const summary = saveApi.summarize(result.data);
+  assert.equal(summary.day, 2);
+  assert.equal(summary.blocksMined, 42);
+  assert.equal(summary.playtime, 305);
+  assert.ok(summary.savedAt > 0);
+  assert.equal(saveApi.formatDuration(305), "5m 05s");
+  assert.equal(saveApi.formatDuration(3661), "1h 1m");
 });
 
-test("blocked browser storage degrades to a working in-memory fallback", () => {
-  const storage = saveApi.createStorage({ localStorage: fakeStorage({ throwOnWrite: true }) });
-  assert.equal(storage.kind, "memory");
-  assert.equal(storage.available, false);
-  assert.ok(storage.error && storage.error.length > 0, "the failure is surfaced, not swallowed");
-  const envelope = saveApi.createEnvelope(gameState());
-  assert.equal(saveApi.saveGame(storage, envelope).ok, true);
-  assert.equal(saveApi.loadGame(storage).seed, config.seed);
+test("clearing the save removes the continue offer", () => {
+  const storage = memoryStorage();
+  const state = gameState();
+  saveApi.save(storage, state);
+  assert.equal(saveApi.hasSave(storage), true);
+  assert.equal(saveApi.clear(storage), true);
+  assert.equal(saveApi.hasSave(storage), false);
+  assert.equal(saveApi.load(storage).error, "empty");
 });
 
-test("a corrupt stored payload is reported instead of crashing", () => {
-  const storage = saveApi.createStorage({});
-  storage.save("{bad json");
-  const loaded = saveApi.loadGame(storage);
-  assert.ok(loaded.error);
-  assert.equal(saveApi.loadGame(storage).error, loaded.error);
+test("corrupt saves are rejected rather than crashing", () => {
+  const storage = memoryStorage({ [config.saveKey]: "{not json" });
+  assert.equal(saveApi.read(storage).error, "corrupt");
+  const noSchema = memoryStorage({ [config.saveKey]: JSON.stringify({ world: {} }) });
+  assert.equal(saveApi.read(noSchema).error, "corrupt");
+  const badPlayer = memoryStorage({
+    [config.saveKey]: JSON.stringify({
+      schema: 1,
+      world: JSON.parse(worldApi.serializeWorld(worldApi.createWorld(1))),
+      player: { x: "nope" }
+    })
+  });
+  const result = saveApi.load(badPlayer);
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "corrupt");
 });
 
-test("empty storage loads nothing", () => {
-  const storage = saveApi.createStorage({});
-  assert.equal(saveApi.loadGame(storage), null);
+test("storage failures are surfaced, not thrown", () => {
+  const storage = {
+    getItem: function getItem() {
+      return null;
+    },
+    setItem: function setItem() {
+      const error = new Error("no space");
+      error.name = "QuotaExceededError";
+      throw error;
+    },
+    removeItem: function removeItem() {}
+  };
+  const result = saveApi.save(storage, gameState());
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "quota-exceeded");
+  assert.equal(saveApi.load({}).ok, false);
+  assert.equal(saveApi.save(null, gameState()).error, "storage-unavailable");
 });
-

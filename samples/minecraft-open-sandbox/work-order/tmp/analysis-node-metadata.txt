@@ -1,3 +1,0 @@
-metadata.artifact.audience=internal
-metadata.artifact.content_language=en
-metadata.completion.required_fields=["summary"]

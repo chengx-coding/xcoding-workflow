@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static and headless-browser checks for the sandbox sample page.
+"""Static and headless-browser checks for the Emberdeep page.
 
 The check has two halves:
 

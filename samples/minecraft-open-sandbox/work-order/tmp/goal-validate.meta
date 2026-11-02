@@ -1,0 +1,8 @@
+metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=0
+metadata.completion.artifacts.max=0
+metadata.completion.checks=["xc-document"]
+metadata.completion.check.xc-document.subject=literal:.xcoding/work-orders/20261102-1550-open-sandbox-xc-047/goal.md
+metadata.completion.check.xc-document.facts.document_kind=literal:work-order-goal
+metadata.completion.check.xc-document.facts.content_language=literal:en
+metadata.artifact.audience=internal

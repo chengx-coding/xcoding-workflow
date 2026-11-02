@@ -1,164 +1,294 @@
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"), require("./blocks.js"), require("./inventory.js"));
+    module.exports = factory(require("./config.js"), require("./blocks.js"));
   } else {
-    root.SandboxCrafting = factory(root.SandboxConfig, root.SandboxBlocks, root.SandboxInventory);
+    root.SandboxCrafting = factory(root.SandboxConfig, root.SandboxBlocks);
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, BLOCKS, INVENTORY) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, BLOCKS) {
   "use strict";
 
-  if (!CONFIG || !BLOCKS || !INVENTORY) {
-    throw new Error("SandboxConfig, SandboxBlocks and SandboxInventory are required before SandboxCrafting");
+  if (!CONFIG || !BLOCKS) {
+    throw new Error("SandboxConfig and SandboxBlocks are required before SandboxCrafting");
   }
 
   const B = CONFIG.blocks;
+  const I = CONFIG.items;
 
-  // `unlockCollected` names an item that must have been picked up at least once
-  // before the recipe appears as available. Recipes stay visible while locked so
-  // the player can see what to gather next.
-  const RECIPES = [
+  const RECIPES = Object.freeze([
     {
-      id: "planks", name: "Planks", category: "Basics",
-      out: { id: B.planks, count: 4 },
-      cost: [{ id: B.wood, count: 1 }],
-      unlockCollected: [], hint: "Chop a tree for wood."
+      id: "planks",
+      name: "Oak Planks",
+      output: { id: B.planks, count: 4 },
+      inputs: [{ id: B.wood, count: 1 }],
+      station: ""
     },
     {
-      id: "sticks", name: "Sticks", category: "Basics",
-      out: { id: 100, count: 4 },
-      cost: [{ id: B.planks, count: 2 }],
-      unlockCollected: [B.planks], hint: "Craft planks first."
+      id: "sticks",
+      name: "Sticks",
+      output: { id: I.stick, count: 4 },
+      inputs: [{ id: B.planks, count: 2 }],
+      station: ""
     },
     {
-      id: "wooden_pickaxe", name: "Wooden pickaxe", category: "Tools",
-      out: { id: 110, count: 1 },
-      cost: [{ id: B.planks, count: 3 }, { id: 100, count: 2 }],
-      unlockCollected: [B.planks], hint: "Planks and sticks make your first pickaxe."
+      id: "workbench",
+      name: "Workbench",
+      output: { id: B.workbench, count: 1 },
+      inputs: [{ id: B.planks, count: 4 }],
+      station: ""
     },
     {
-      id: "wooden_axe", name: "Wooden axe", category: "Tools",
-      out: { id: 120, count: 1 },
-      cost: [{ id: B.planks, count: 3 }, { id: 100, count: 2 }],
-      unlockCollected: [B.planks], hint: "Cuts wood faster."
+      id: "torches",
+      name: "Torches",
+      output: { id: B.torch, count: 4 },
+      inputs: [
+        { id: I.stick, count: 1 },
+        { id: I.coal, count: 1 }
+      ],
+      station: ""
     },
     {
-      id: "wooden_shovel", name: "Wooden shovel", category: "Tools",
-      out: { id: 130, count: 1 },
-      cost: [{ id: B.planks, count: 1 }, { id: 100, count: 2 }],
-      unlockCollected: [B.planks], hint: "Digs soil and sand faster."
+      id: "wooden_pickaxe",
+      name: "Wooden Pickaxe",
+      output: { id: I.pick_wood, count: 1 },
+      inputs: [
+        { id: B.planks, count: 3 },
+        { id: I.stick, count: 2 }
+      ],
+      station: "workbench"
     },
     {
-      id: "torch", name: "Torch", category: "Light",
-      out: { id: B.torch, count: 4 },
-      cost: [{ id: 101, count: 1 }, { id: 100, count: 1 }],
-      unlockCollected: [101], hint: "Mine coal ore to unlock torches."
+      id: "wooden_sword",
+      name: "Wooden Sword",
+      output: { id: I.sword_wood, count: 1 },
+      inputs: [
+        { id: B.planks, count: 2 },
+        { id: I.stick, count: 1 }
+      ],
+      station: "workbench"
     },
     {
-      id: "glass", name: "Glass", category: "Building",
-      out: { id: B.glass, count: 2 },
-      cost: [{ id: B.sand, count: 1 }, { id: 101, count: 1 }],
-      unlockCollected: [101], hint: "Sand plus coal makes glass."
+      id: "stone_pickaxe",
+      name: "Stone Pickaxe",
+      output: { id: I.pick_stone, count: 1 },
+      inputs: [
+        { id: B.cobble, count: 3 },
+        { id: I.stick, count: 2 }
+      ],
+      station: "workbench"
     },
     {
-      id: "stone_pickaxe", name: "Stone pickaxe", category: "Tools",
-      out: { id: 111, count: 1 },
-      cost: [{ id: B.cobblestone, count: 3 }, { id: 100, count: 2 }],
-      unlockCollected: [B.cobblestone], hint: "Mine stone with a wooden pickaxe."
+      id: "stone_sword",
+      name: "Stone Sword",
+      output: { id: I.sword_stone, count: 1 },
+      inputs: [
+        { id: B.cobble, count: 2 },
+        { id: I.stick, count: 1 }
+      ],
+      station: "workbench"
     },
     {
-      id: "stone_axe", name: "Stone axe", category: "Tools",
-      out: { id: 121, count: 1 },
-      cost: [{ id: B.cobblestone, count: 3 }, { id: 100, count: 2 }],
-      unlockCollected: [B.cobblestone], hint: "Mine stone with a wooden pickaxe."
+      id: "furnace",
+      name: "Furnace",
+      output: { id: B.furnace, count: 1 },
+      inputs: [{ id: B.cobble, count: 8 }],
+      station: "workbench"
     },
     {
-      id: "stone_shovel", name: "Stone shovel", category: "Tools",
-      out: { id: 131, count: 1 },
-      cost: [{ id: B.cobblestone, count: 1 }, { id: 100, count: 2 }],
-      unlockCollected: [B.cobblestone], hint: "Mine stone with a wooden pickaxe."
+      id: "stone_bricks",
+      name: "Stone Bricks",
+      output: { id: B.stone_bricks, count: 4 },
+      inputs: [{ id: B.cobble, count: 4 }],
+      station: "workbench"
     },
     {
-      id: "iron_pickaxe", name: "Iron pickaxe", category: "Tools",
-      out: { id: 112, count: 1 },
-      cost: [{ id: 102, count: 3 }, { id: 100, count: 2 }],
-      unlockCollected: [102], hint: "Iron needs a stone pickaxe to harvest."
+      id: "iron_pickaxe",
+      name: "Iron Pickaxe",
+      output: { id: I.pick_iron, count: 1 },
+      inputs: [
+        { id: I.iron_ingot, count: 3 },
+        { id: I.stick, count: 2 }
+      ],
+      station: "workbench"
+    },
+    {
+      id: "iron_sword",
+      name: "Iron Sword",
+      output: { id: I.sword_iron, count: 1 },
+      inputs: [
+        { id: I.iron_ingot, count: 2 },
+        { id: I.stick, count: 1 }
+      ],
+      station: "workbench"
+    },
+    {
+      id: "iron_ingot",
+      name: "Smelt Iron Ingot",
+      output: { id: I.iron_ingot, count: 1 },
+      inputs: [
+        { id: B.iron_ore, count: 1 },
+        { id: I.coal, count: 1 }
+      ],
+      station: "furnace"
+    },
+    {
+      id: "ember_shard",
+      name: "Refine Ember Shard",
+      output: { id: I.ember_shard, count: 1 },
+      inputs: [
+        { id: B.ember_ore, count: 1 },
+        { id: I.coal, count: 1 }
+      ],
+      station: "furnace"
+    },
+    {
+      id: "ember_beacon",
+      name: "Ember Beacon",
+      output: { id: B.beacon, count: 1 },
+      inputs: [
+        { id: I.ember_shard, count: 3 },
+        { id: I.iron_ingot, count: 2 },
+        { id: B.stone_bricks, count: 4 }
+      ],
+      station: "workbench"
     }
-  ];
+  ]);
 
-  const RECIPE_BY_ID = Object.create(null);
-  RECIPES.forEach(function (recipe) {
-    RECIPE_BY_ID[recipe.id] = recipe;
-  });
+  const BY_ID = Object.freeze(
+    RECIPES.reduce(function build(map, recipe) {
+      map[recipe.id] = recipe;
+      return map;
+    }, {})
+  );
 
-  function unlockState(recipe, progress) {
-    const collected = (progress && progress.collected) || {};
-    for (let index = 0; index < recipe.unlockCollected.length; index += 1) {
-      if (!collected[recipe.unlockCollected[index]]) {
-        return false;
+  function stationsNear(world, player, radius) {
+    const stations = new Set();
+    const r = radius || 4;
+    const left = Math.floor(player.x - r);
+    const right = Math.floor(player.x + r);
+    const top = Math.floor(player.y - player.height - r);
+    const bottom = Math.floor(player.y + r);
+    for (let y = top; y <= bottom; y += 1) {
+      for (let x = left; x <= right; x += 1) {
+        if (x < 0 || y < 0 || x >= world.width || y >= world.height) {
+          continue;
+        }
+        const station = BLOCKS.stationOf(world.data[y * world.width + x]);
+        if (station) {
+          stations.add(station);
+        }
       }
     }
-    return true;
+    return stations;
   }
 
-  function missingFor(inventory, recipe) {
+  function availability(recipe, inventory, stations) {
+    const station = recipe.station || "";
+    const stationOk = !station || (stations && stations.has(station));
     const missing = [];
-    recipe.cost.forEach(function (part) {
-      const have = INVENTORY.count(inventory, part.id);
-      if (have < part.count) {
-        missing.push({ id: part.id, need: part.count, have: have });
+    for (let i = 0; i < recipe.inputs.length; i += 1) {
+      const input = recipe.inputs[i];
+      const available = inventoryApiCount(inventory, input.id);
+      if (available < input.count) {
+        missing.push({ id: input.id, need: input.count, have: available });
       }
-    });
-    return missing;
-  }
-
-  function canCraft(inventory, recipe, progress) {
-    if (!unlockState(recipe, progress)) {
-      return { ok: false, reason: "locked", missing: recipe.cost.slice() };
     }
-    const missing = missingFor(inventory, recipe);
-    return { ok: missing.length === 0, reason: missing.length === 0 ? null : "missing", missing: missing };
-  }
-
-  function craft(inventory, recipe, progress) {
-    const check = canCraft(inventory, recipe, progress);
-    if (!check.ok) {
-      return { ok: false, reason: check.reason, missing: check.missing };
+    let reason = "";
+    if (!stationOk) {
+      reason = "station";
+    } else if (missing.length > 0) {
+      reason = "materials";
     }
-    recipe.cost.forEach(function (part) {
-      INVENTORY.remove(inventory, part.id, part.count);
-    });
-    INVENTORY.add(inventory, recipe.out.id, recipe.out.count);
     return {
-      ok: true,
-      recipe: recipe,
-      out: { id: recipe.out.id, count: recipe.out.count },
-      name: BLOCKS.nameOf(recipe.out.id)
+      ok: stationOk && missing.length === 0,
+      reason: reason,
+      station: station,
+      missing: missing
     };
   }
 
-  function visible(inventory, progress) {
-    return RECIPES.map(function (recipe) {
-      const check = canCraft(inventory, recipe, progress);
-      return {
-        recipe: recipe,
-        unlocked: check.reason !== "locked",
-        canCraft: check.ok,
-        missing: check.missing || []
-      };
-    });
+  function inventoryApiCount(inventory, id) {
+    let total = 0;
+    for (let i = 0; i < inventory.slots.length; i += 1) {
+      const stack = inventory.slots[i];
+      if (stack && stack.id === id) {
+        total += stack.count;
+      }
+    }
+    return total;
   }
 
-  function recipeById(id) {
-    return RECIPE_BY_ID[id] || null;
+  function take(inventory, id, count) {
+    let remaining = count;
+    for (let i = inventory.slots.length - 1; i >= 0 && remaining > 0; i -= 1) {
+      const stack = inventory.slots[i];
+      if (!stack || stack.id !== id) {
+        continue;
+      }
+      const taken = Math.min(stack.count, remaining);
+      stack.count -= taken;
+      remaining -= taken;
+      if (stack.count <= 0) {
+        inventory.slots[i] = null;
+      }
+    }
+    return remaining === 0;
+  }
+
+  function store(inventory, id, count) {
+    let remaining = Math.max(0, Math.floor(count));
+    const limit = BLOCKS.isTool(id) ? 1 : CONFIG.stackLimit;
+    for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
+      const stack = inventory.slots[i];
+      if (stack && stack.id === id && stack.count < limit) {
+        const moved = Math.min(limit - stack.count, remaining);
+        stack.count += moved;
+        remaining -= moved;
+      }
+    }
+    for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
+      if (!inventory.slots[i]) {
+        const moved = Math.min(limit, remaining);
+        inventory.slots[i] = { id: id, count: moved };
+        remaining -= moved;
+      }
+    }
+    return remaining;
+  }
+
+  function craft(recipe, inventory, stations) {
+    const state = availability(recipe, inventory, stations);
+    if (!state.ok) {
+      return { ok: false, reason: state.reason, missing: state.missing, station: state.station };
+    }
+    for (let i = 0; i < recipe.inputs.length; i += 1) {
+      const input = recipe.inputs[i];
+      if (!take(inventory, input.id, input.count)) {
+        return { ok: false, reason: "materials", missing: [], station: state.station };
+      }
+    }
+    const leftover = store(inventory, recipe.output.id, recipe.output.count);
+    return {
+      ok: true,
+      leftover: leftover,
+      output: recipe.output,
+      station: state.station
+    };
+  }
+
+  function list() {
+    return RECIPES;
+  }
+
+  function byId(id) {
+    return BY_ID[id] || null;
   }
 
   return {
     RECIPES: RECIPES,
-    recipeById: recipeById,
-    unlockState: unlockState,
-    canCraft: canCraft,
+    stationsNear: stationsNear,
+    availability: availability,
     craft: craft,
-    visible: visible,
-    missingFor: missingFor
+    list: list,
+    byId: byId
   };
 });

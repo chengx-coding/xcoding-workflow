@@ -12,156 +12,168 @@
   }
 
   function createInventory() {
-    return {
-      items: Object.create(null),
-      hotbar: new Array(CONFIG.hotbarSize).fill(0),
-      selected: 0
-    };
+    const slots = new Array(CONFIG.inventorySize).fill(null);
+    return { slots: slots, selected: 0 };
   }
 
-  function count(inventory, id) {
-    return inventory.items[id] || 0;
+  function stackLimit(id) {
+    return BLOCKS.isTool(id) ? 1 : CONFIG.stackLimit;
   }
 
-  function has(inventory, id, amount) {
-    return count(inventory, id) >= (amount || 1);
-  }
-
-  function add(inventory, id, amount) {
-    const quantity = Math.max(0, Math.floor(amount || 1));
-    if (!BLOCKS.item(id) || quantity <= 0) {
-      return 0;
+  function add(inventory, id, count) {
+    let remaining = Math.max(0, Math.floor(count || 0));
+    const limit = stackLimit(id);
+    for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
+      const stack = inventory.slots[i];
+      if (stack && stack.id === id && stack.count < limit) {
+        const room = limit - stack.count;
+        const moved = Math.min(room, remaining);
+        stack.count += moved;
+        remaining -= moved;
+      }
     }
-    inventory.items[id] = count(inventory, id) + quantity;
-    ensureHotbar(inventory, id);
-    return quantity;
+    for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
+      if (inventory.slots[i] === null) {
+        const moved = Math.min(limit, remaining);
+        inventory.slots[i] = { id: id, count: moved };
+        remaining -= moved;
+      }
+    }
+    return remaining;
   }
 
-  function remove(inventory, id, amount) {
-    const quantity = Math.max(0, Math.floor(amount || 1));
-    if (count(inventory, id) < quantity) {
+  function remove(inventory, id, count) {
+    let remaining = Math.max(0, Math.floor(count || 0));
+    let removed = 0;
+    for (let i = inventory.slots.length - 1; i >= 0 && remaining > 0; i -= 1) {
+      const stack = inventory.slots[i];
+      if (!stack || stack.id !== id) {
+        continue;
+      }
+      const taken = Math.min(stack.count, remaining);
+      stack.count -= taken;
+      remaining -= taken;
+      removed += taken;
+      if (stack.count <= 0) {
+        inventory.slots[i] = null;
+      }
+    }
+    return removed;
+  }
+
+  function countOf(inventory, id) {
+    let total = 0;
+    for (let i = 0; i < inventory.slots.length; i += 1) {
+      const stack = inventory.slots[i];
+      if (stack && stack.id === id) {
+        total += stack.count;
+      }
+    }
+    return total;
+  }
+
+  function has(inventory, id, count) {
+    const need = count === undefined ? 1 : count;
+    return countOf(inventory, id) >= need;
+  }
+
+  function swap(inventory, from, to) {
+    const size = inventory.slots.length;
+    if (from < 0 || to < 0 || from >= size || to >= size || from === to) {
       return false;
     }
-    const left = count(inventory, id) - quantity;
-    if (left === 0) {
-      delete inventory.items[id];
-      // Keep hotbar assignments honest: clear slots that no longer hold items.
-      for (let index = 0; index < inventory.hotbar.length; index += 1) {
-        if (inventory.hotbar[index] === id) {
-          inventory.hotbar[index] = 0;
+    const a = inventory.slots[from];
+    const b = inventory.slots[to];
+    if (a && b && a.id === b.id && stackLimit(a.id) > 1) {
+      const limit = stackLimit(a.id);
+      const room = limit - b.count;
+      if (room > 0) {
+        const moved = Math.min(room, a.count);
+        b.count += moved;
+        a.count -= moved;
+        if (a.count <= 0) {
+          inventory.slots[from] = null;
         }
-      }
-    } else {
-      inventory.items[id] = left;
-    }
-    return true;
-  }
-
-  function ensureHotbar(inventory, id) {
-    if (inventory.hotbar.indexOf(id) >= 0) {
-      return true;
-    }
-    for (let index = 0; index < inventory.hotbar.length; index += 1) {
-      if (!inventory.hotbar[index]) {
-        inventory.hotbar[index] = id;
         return true;
       }
     }
-    return false;
-  }
-
-  function select(inventory, index) {
-    if (index < 0 || index >= inventory.hotbar.length) {
-      return false;
-    }
-    inventory.selected = index;
+    inventory.slots[from] = b;
+    inventory.slots[to] = a;
     return true;
   }
 
-  function selectedId(inventory) {
-    return inventory.hotbar[inventory.selected] || 0;
+  function select(inventory, index) {
+    if (!Number.isInteger(index)) {
+      return false;
+    }
+    const size = CONFIG.hotbarSize;
+    const wrapped = ((index % size) + size) % size;
+    inventory.selected = wrapped;
+    return true;
   }
 
-  function selectedDefinition(inventory) {
-    return BLOCKS.item(selectedId(inventory));
+  function selectedStack(inventory) {
+    return inventory.slots[inventory.selected] || null;
   }
 
-  function entries(inventory) {
-    return Object.keys(inventory.items)
-      .map(function (key) {
-        return { id: Number(key), count: inventory.items[key] };
-      })
-      .filter(function (entry) {
-        return entry.count > 0;
-      })
-      .sort(function (a, b) {
-        return a.id - b.id;
-      });
-  }
-
-  function totalItems(inventory) {
-    return entries(inventory).reduce(function (sum, entry) {
-      return sum + entry.count;
-    }, 0);
-  }
-
-  function bestTool(inventory, toolKind) {
-    let best = null;
-    Object.keys(inventory.items).forEach(function (key) {
-      const definition = BLOCKS.item(Number(key));
-      if (!definition || definition.kind !== "tool" || definition.tool !== toolKind) {
-        return;
+  function firstEmpty(inventory) {
+    for (let i = 0; i < inventory.slots.length; i += 1) {
+      if (inventory.slots[i] === null) {
+        return i;
       }
-      if (!best || definition.tier > best.tier || (definition.tier === best.tier && definition.speed > best.speed)) {
-        best = definition;
+    }
+    return -1;
+  }
+
+  function usedSlots(inventory) {
+    let used = 0;
+    for (let i = 0; i < inventory.slots.length; i += 1) {
+      if (inventory.slots[i]) {
+        used += 1;
       }
-    });
-    return best;
+    }
+    return used;
   }
 
   function serialize(inventory) {
     return {
-      items: entries(inventory),
-      hotbar: inventory.hotbar.slice(),
-      selected: inventory.selected
+      selected: inventory.selected,
+      slots: inventory.slots.map(function mapStack(stack) {
+        return stack ? { id: stack.id, count: stack.count } : null;
+      })
     };
   }
 
-  function deserialize(payload) {
+  function deserialize(saved) {
     const inventory = createInventory();
-    if (!payload || !Array.isArray(payload.items)) {
+    if (!saved || !Array.isArray(saved.slots)) {
       return inventory;
     }
-    payload.items.forEach(function (entry) {
-      if (entry && BLOCKS.item(entry.id) && entry.count > 0) {
-        inventory.items[entry.id] = Math.floor(entry.count);
+    for (let i = 0; i < inventory.slots.length && i < saved.slots.length; i += 1) {
+      const stack = saved.slots[i];
+      if (!stack || !BLOCKS.itemDef(stack.id) || !Number.isInteger(stack.count) || stack.count <= 0) {
+        continue;
       }
-    });
-    if (Array.isArray(payload.hotbar)) {
-      for (let index = 0; index < inventory.hotbar.length; index += 1) {
-        const value = payload.hotbar[index];
-        inventory.hotbar[index] = BLOCKS.item(value) && inventory.items[value] ? value : 0;
-      }
+      inventory.slots[i] = { id: stack.id, count: Math.min(stack.count, stackLimit(stack.id)) };
     }
-    if (Number.isInteger(payload.selected)) {
-      select(inventory, payload.selected);
+    if (Number.isInteger(saved.selected)) {
+      select(inventory, saved.selected);
     }
     return inventory;
   }
 
   return {
     createInventory: createInventory,
-    count: count,
-    has: has,
+    stackLimit: stackLimit,
     add: add,
     remove: remove,
-    ensureHotbar: ensureHotbar,
+    countOf: countOf,
+    has: has,
+    swap: swap,
     select: select,
-    selectedId: selectedId,
-    selectedDefinition: selectedDefinition,
-    entries: entries,
-    totalItems: totalItems,
-    bestTool: bestTool,
+    selectedStack: selectedStack,
+    firstEmpty: firstEmpty,
+    usedSlots: usedSlots,
     serialize: serialize,
     deserialize: deserialize
   };

@@ -1,9 +1,0 @@
-metadata.control_packet.category.approved-work.selectors=["bb:implementation.sources.i1-world-engine"]
-metadata.control_packet.category.approved-work.min_sources=2
-metadata.control_packet.category.approved-work.artifact_min=1
-metadata.completion.required_fields=["summary","validation"]
-metadata.completion.artifacts.min=1
-metadata.completion.artifacts.max=1
-metadata.completion.artifacts.path=literal:.xcoding/work-orders/20261102-1145-open-sandbox-xc-044/artifacts/implementation/i1-world-engine.md
-metadata.artifact.audience=internal
-metadata.artifact.content_language=en

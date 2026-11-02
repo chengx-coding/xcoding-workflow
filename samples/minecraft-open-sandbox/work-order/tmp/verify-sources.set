@@ -1,0 +1,2 @@
+verification.sources.verify-automated=["rt_work-order-20261102-1550-open-sandbox-xc-047__dyn-1__impl-foundation","rt_work-order-20261102-1550-open-sandbox-xc-047__dyn-1__impl-gameplay","rt_work-order-20261102-1550-open-sandbox-xc-047__dyn-1__impl-experience"]
+verification.sources.verify-browser=["rt_work-order-20261102-1550-open-sandbox-xc-047__dyn-1__impl-foundation","rt_work-order-20261102-1550-open-sandbox-xc-047__dyn-1__impl-gameplay","rt_work-order-20261102-1550-open-sandbox-xc-047__dyn-1__impl-experience"]

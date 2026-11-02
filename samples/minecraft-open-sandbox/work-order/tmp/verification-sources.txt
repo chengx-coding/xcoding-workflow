@@ -1,2 +1,0 @@
-verification.sources.verify-automated=["rt_work-order-20261102-1145-open-sandbox-xc-044__dyn-1__i1-world-engine","rt_work-order-20261102-1145-open-sandbox-xc-044__dyn-1__i2-simulation","rt_work-order-20261102-1145-open-sandbox-xc-044__dyn-1__i3-experience","rt_work-order-20261102-1145-open-sandbox-xc-044__dyn-1__i4-docs-evidence"]
-verification.sources.verify-experience=["rt_work-order-20261102-1145-open-sandbox-xc-044__dyn-1__i3-experience","rt_work-order-20261102-1145-open-sandbox-xc-044__dyn-1__i4-docs-evidence"]

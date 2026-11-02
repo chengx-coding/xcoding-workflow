@@ -1,177 +1,219 @@
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"), require("./world.js"), require("./inventory.js"), require("./tasks.js"));
+    module.exports = factory(
+      require("./config.js"),
+      require("./world.js"),
+      require("./inventory.js"),
+      require("./progression.js")
+    );
   } else {
-    root.SandboxSave = factory(root.SandboxConfig, root.SandboxWorld, root.SandboxInventory, root.SandboxTasks);
+    root.SandboxSave = factory(
+      root.SandboxConfig,
+      root.SandboxWorld,
+      root.SandboxInventory,
+      root.SandboxProgression
+    );
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, WORLD, INVENTORY, TASKS) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, WORLD, INVENTORY, PROGRESSION) {
   "use strict";
 
-  if (!CONFIG || !WORLD || !INVENTORY || !TASKS) {
-    throw new Error("SandboxConfig, SandboxWorld, SandboxInventory and SandboxTasks are required before SandboxSave");
+  if (!CONFIG || !WORLD || !INVENTORY || !PROGRESSION) {
+    throw new Error("SandboxConfig, SandboxWorld, SandboxInventory and SandboxProgression are required");
   }
 
-  function createEnvelope(state) {
-    const player = state.player || {};
-    const settings = state.settings || {};
+  function capture(state) {
     return {
-      version: CONFIG.saveVersion,
-      savedAt: new Date().toISOString(),
-      seed: state.seed >>> 0,
+      schema: 1,
+      version: CONFIG.version,
+      savedAt: Date.now(),
+      seed: state.world.seed,
       world: JSON.parse(WORLD.serializeWorld(state.world)),
       player: {
-        x: Number(player.x) || 0,
-        y: Number(player.y) || 0,
-        health: Number.isFinite(player.health) ? player.health : 20,
-        facing: player.facing === -1 ? -1 : 1
+        x: state.player.x,
+        y: state.player.y,
+        health: state.player.health
       },
       inventory: INVENTORY.serialize(state.inventory),
+      progress: PROGRESSION.serialize(state.progress),
       clock: {
-        t: state.clock ? state.clock.t : 0.3,
-        day: state.clock ? state.clock.day : 1
-      },
-      progress: TASKS.serialize(state.progress),
-      settings: {
-        muted: Boolean(settings.muted),
-        zoom: Number.isFinite(settings.zoom) ? settings.zoom : CONFIG.zoom.default,
-        backdropMode: Boolean(settings.backdropMode),
-        volume: Number.isFinite(settings.volume) ? settings.volume : 0.6
-      },
-      backdrop: state.backdrop && state.backdrop.pulses ? {
-        pulses: state.backdrop.pulses.map(function (entry) {
-          return { kind: entry.kind, before: entry.before, after: entry.after, at: entry.at };
-        })
-      } : { pulses: [] }
+        day: Math.max(1, Math.floor(state.clock.day)),
+        time: ((Number(state.clock.time) % 1) + 1) % 1
+      }
     };
   }
 
-  function serialize(envelope) {
-    return JSON.stringify(envelope);
-  }
-
-  function parse(text) {
-    if (typeof text !== "string" || text.length === 0) {
-      throw new Error("Save payload is empty");
+  function validate(payload) {
+    if (!payload || typeof payload !== "object") {
+      return "empty save";
     }
-    let parsed;
+    if (payload.schema !== 1) {
+      return "unsupported save schema";
+    }
+    if (!payload.world || typeof payload.world !== "object") {
+      return "missing world";
+    }
     try {
-      parsed = JSON.parse(text);
+      WORLD.deserializeWorld(payload.world);
     } catch (error) {
-      throw new Error("Save payload is not valid JSON");
+      return "invalid world: " + (error && error.message ? error.message : "unknown");
     }
-    if (!parsed || typeof parsed !== "object") {
-      throw new Error("Save payload is not an object");
+    if (!payload.player || !Number.isFinite(payload.player.x) || !Number.isFinite(payload.player.y)) {
+      return "invalid player";
     }
-    if (parsed.version !== CONFIG.saveVersion) {
-      throw new Error("Unsupported save version: " + parsed.version);
+    if (payload.inventory && !Array.isArray(payload.inventory.slots)) {
+      return "invalid inventory";
     }
-    if (!Number.isFinite(parsed.seed)) {
-      throw new Error("Save payload has no seed");
+    if (payload.progress && typeof payload.progress !== "object") {
+      return "invalid progress";
     }
-    if (!parsed.world || !Number.isInteger(parsed.world.width) || !Number.isInteger(parsed.world.height)) {
-      throw new Error("Save payload has no world");
-    }
-    if (!parsed.inventory || !Array.isArray(parsed.inventory.items)) {
-      throw new Error("Save payload has no inventory");
-    }
-    if (!parsed.clock || !Number.isFinite(parsed.clock.t)) {
-      throw new Error("Save payload has no clock");
-    }
-    return parsed;
+    return "";
   }
 
-  function loadWorld(envelope) {
-    return WORLD.deserializeWorld(JSON.stringify(envelope.world));
-  }
-
-  function createStorage(scope) {
-    let backend = null;
-    let kind = "memory";
-    let error = null;
+  function save(storage, state) {
+    if (!storage || typeof storage.setItem !== "function") {
+      return { ok: false, error: "storage-unavailable", bytes: 0 };
+    }
+    const payload = capture(state);
+    let text;
     try {
-      const storage = scope && scope.localStorage;
-      if (storage) {
-        const probe = "__cubewood_storage_probe__";
-        storage.setItem(probe, "1");
-        if (storage.getItem(probe) !== "1") {
-          throw new Error("storage read-back failed");
-        }
-        storage.removeItem(probe);
-        backend = storage;
-        kind = "local";
-      }
-    } catch (caught) {
-      error = caught && caught.message ? caught.message : String(caught);
-      backend = null;
-      kind = "memory";
+      text = JSON.stringify(payload);
+    } catch (error) {
+      return { ok: false, error: "encode-failed", bytes: 0 };
     }
-    const memory = { value: null };
-    return {
-      kind: kind,
-      available: kind === "local",
-      error: error,
-      save: function (text) {
-        try {
-          if (backend) {
-            backend.setItem(CONFIG.saveKey, text);
-          } else {
-            memory.value = text;
-          }
-          return true;
-        } catch (caught) {
-          error = caught && caught.message ? caught.message : String(caught);
-          kind = "memory";
-          backend = null;
-          memory.value = text;
-          return false;
-        }
-      },
-      load: function () {
-        try {
-          return backend ? backend.getItem(CONFIG.saveKey) : memory.value;
-        } catch (caught) {
-          error = caught && caught.message ? caught.message : String(caught);
-          return memory.value;
-        }
-      },
-      clear: function () {
-        memory.value = null;
-        try {
-          if (backend) {
-            backend.removeItem(CONFIG.saveKey);
-          }
-        } catch (caught) {
-          error = caught && caught.message ? caught.message : String(caught);
-        }
-      }
-    };
+    try {
+      storage.setItem(CONFIG.saveKey, text);
+      return { ok: true, bytes: text.length, savedAt: payload.savedAt, error: "" };
+    } catch (error) {
+      const code = error && error.name === "QuotaExceededError" ? "quota-exceeded" : "write-failed";
+      return { ok: false, error: code, bytes: text.length };
+    }
   }
 
-  function saveGame(storage, envelope) {
-    const text = serialize(envelope);
-    const ok = storage.save(text);
-    return { ok: ok, kind: storage.kind, bytes: text.length, error: storage.error };
-  }
-
-  function loadGame(storage) {
-    const text = storage.load();
+  function read(storage) {
+    if (!storage || typeof storage.getItem !== "function") {
+      return { ok: false, error: "storage-unavailable", data: null };
+    }
+    let text;
+    try {
+      text = storage.getItem(CONFIG.saveKey);
+    } catch (error) {
+      return { ok: false, error: "read-failed", data: null };
+    }
     if (!text) {
-      return null;
+      return { ok: false, error: "empty", data: null };
+    }
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch (error) {
+      return { ok: false, error: "corrupt", data: null };
+    }
+    const problem = validate(payload);
+    if (problem) {
+      return { ok: false, error: "corrupt", detail: problem, data: null };
+    }
+    return { ok: true, error: "", data: payload, bytes: text.length };
+  }
+
+  function load(storage) {
+    const result = read(storage);
+    if (!result.ok) {
+      return result;
+    }
+    const data = result.data;
+    let world;
+    try {
+      world = WORLD.deserializeWorld(data.world);
+    } catch (error) {
+      return { ok: false, error: "corrupt", data: null };
+    }
+    return {
+      ok: true,
+      error: "",
+      data: data,
+      bytes: result.bytes,
+      state: {
+        world: world,
+        seed: world.seed,
+        player: data.player,
+        inventory: INVENTORY.deserialize(data.inventory),
+        progress: PROGRESSION.deserialize(data.progress),
+        clock: {
+          day: data.clock && Number.isFinite(data.clock.day) ? Math.max(1, Math.floor(data.clock.day)) : 1,
+          time:
+            data.clock && Number.isFinite(data.clock.time)
+              ? ((data.clock.time % 1) + 1) % 1
+              : CONFIG.startTime
+        },
+        savedAt: data.savedAt || 0
+      }
+    };
+  }
+
+  function clear(storage) {
+    if (!storage || typeof storage.removeItem !== "function") {
+      return false;
     }
     try {
-      return parse(text);
+      storage.removeItem(CONFIG.saveKey);
+      return true;
     } catch (error) {
-      return { error: error.message };
+      return false;
     }
+  }
+
+  function hasSave(storage) {
+    return read(storage).ok;
+  }
+
+  function summarize(data) {
+    const stats = (data && data.progress && data.progress.stats) || {};
+    return {
+      day: data && data.clock ? data.clock.day : 1,
+      blocksMined: Math.max(0, Math.floor(stats.blocksMined || 0)),
+      playtime: Math.max(0, Math.floor(stats.playtime || 0)),
+      savedAt: data && data.savedAt ? data.savedAt : 0
+    };
+  }
+
+  function formatDuration(seconds) {
+    const total = Math.max(0, Math.floor(seconds || 0));
+    const minutes = Math.floor(total / 60);
+    const remainder = total % 60;
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      return hours + "h " + (minutes % 60) + "m";
+    }
+    return minutes + "m " + (remainder < 10 ? "0" : "") + remainder + "s";
+  }
+
+  function formatAgo(timestamp) {
+    if (!timestamp) {
+      return "not yet";
+    }
+    const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+    if (seconds < 5) {
+      return "just now";
+    }
+    if (seconds < 60) {
+      return seconds + "s ago";
+    }
+    if (seconds < 3600) {
+      return Math.floor(seconds / 60) + "m ago";
+    }
+    return Math.floor(seconds / 3600) + "h ago";
   }
 
   return {
-    createEnvelope: createEnvelope,
-    serialize: serialize,
-    parse: parse,
-    loadWorld: loadWorld,
-    createStorage: createStorage,
-    saveGame: saveGame,
-    loadGame: loadGame
+    capture: capture,
+    validate: validate,
+    save: save,
+    read: read,
+    load: load,
+    clear: clear,
+    hasSave: hasSave,
+    summarize: summarize,
+    formatDuration: formatDuration,
+    formatAgo: formatAgo
   };
 });

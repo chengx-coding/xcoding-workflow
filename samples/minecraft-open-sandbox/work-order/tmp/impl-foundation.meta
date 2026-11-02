@@ -1,0 +1,10 @@
+metadata.control_packet.category.approved-work.selectors=["bb:implementation.sources.impl-foundation"]
+metadata.control_packet.category.approved-work.min_sources=1
+metadata.control_packet.category.approved-work.artifact_min=1
+metadata.control_packet.blackboard_keys=["work_order.document_language","work_order.convention_discovery_path"]
+metadata.completion.required_fields=["summary","validation"]
+metadata.completion.artifacts.min=1
+metadata.completion.artifacts.max=1
+metadata.completion.artifacts.path=literal:.xcoding/work-orders/20261102-1550-open-sandbox-xc-047/artifacts/impl-foundation/record.md
+metadata.artifact.audience=internal
+metadata.artifact.content_language=en

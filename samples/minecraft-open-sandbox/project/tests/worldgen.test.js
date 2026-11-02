@@ -3,132 +3,151 @@ const assert = require("node:assert/strict");
 
 const config = require("../js/config.js");
 const worldApi = require("../js/world.js");
-const blocks = require("../js/blocks.js");
 
-const SEED_A = 20261102;
-const SEED_B = 424242;
+const GROUND = Math.floor(config.worldHeight * 0.65);
 
-function countOf(world, id) {
-  let total = 0;
-  for (let index = 0; index < world.data.length; index += 1) {
-    if (world.data[index] === id) {
-      total += 1;
+function countBlocks(world, block, yMin, yMax) {
+  let count = 0;
+  for (let y = yMin; y <= yMax; y += 1) {
+    for (let x = 0; x < world.width; x += 1) {
+      if (world.data[y * world.width + x] === block) {
+        count += 1;
+      }
     }
   }
-  return total;
+  return count;
 }
 
-test("generated world has configured dimensions and spawn", () => {
-  const world = worldApi.generateWorld(SEED_A);
-  assert.equal(world.width, config.worldWidth);
-  assert.equal(world.height, config.worldHeight);
-  assert.equal(world.data.length, world.width * world.height);
-  assert.equal(world.seed, SEED_A >>> 0);
-  assert.ok(world.spawn.x > 0 && world.spawn.x < world.width);
-  assert.ok(world.spawn.y > 0 && world.spawn.y < world.height);
-  assert.equal(worldApi.isGroundTile(world, Math.floor(world.spawn.x), world.spawn.y), true);
-  assert.equal(worldApi.isSolid(world, Math.floor(world.spawn.x), world.spawn.y - 1), false);
+test("world generation is deterministic for one seed", () => {
+  const a = worldApi.createWorld(12345);
+  const b = worldApi.createWorld(12345);
+  assert.equal(a.data.length, b.data.length);
+  assert.deepEqual(Array.from(a.data), Array.from(b.data));
+  assert.equal(a.seed, 12345);
 });
 
-test("generation is deterministic for one seed and differs across seeds", () => {
-  const first = worldApi.generateWorld(SEED_A);
-  const second = worldApi.generateWorld(SEED_A);
-  const other = worldApi.generateWorld(SEED_B);
-  assert.deepEqual(Array.from(first.data), Array.from(second.data));
-  assert.deepEqual(Array.from(first.data), Array.from(worldApi.generateWorld(SEED_A).data));
+test("different seeds generate different terrain", () => {
+  const a = worldApi.createWorld(1);
+  const b = worldApi.createWorld(2);
   let differences = 0;
-  for (let index = 0; index < first.data.length; index += 1) {
-    if (first.data[index] !== other.data[index]) {
+  for (let i = 0; i < a.data.length; i += 1) {
+    if (a.data[i] !== b.data[i]) {
       differences += 1;
     }
   }
-  assert.ok(differences > 500, "different seeds should produce different worlds");
+  assert.ok(differences > 500, `expected meaningful terrain differences, got ${differences}`);
 });
 
-test("the surface varies and stays inside the configured band", () => {
-  const world = worldApi.generateWorld(SEED_A);
-  const heights = [];
-  for (let x = 0; x < world.width; x += 1) {
-    const top = worldApi.terrainHeightAt(world, x);
-    assert.ok(top >= 20 && top < world.height - 3, "surface height out of band at x=" + x);
-    heights.push(top);
+test("spawn plateau is flat at the configured ground row", () => {
+  const world = worldApi.createWorld(config.seed);
+  assert.equal(worldApi.GROUND_ROW, GROUND);
+  for (let x = 0; x <= worldApi.PLATEAU_END; x += 1) {
+    assert.equal(worldApi.terrainHeightAt(x, world.seed), GROUND, `x=${x}`);
   }
-  const mean = heights.reduce(function (sum, value) { return sum + value; }, 0) / heights.length;
-  const variance = heights.reduce(function (sum, value) {
-    return sum + (value - mean) * (value - mean);
-  }, 0) / heights.length;
-  assert.ok(Math.sqrt(variance) > 1.5, "surface should roll instead of being flat");
-  assert.ok(Math.max.apply(null, heights) - Math.min.apply(null, heights) > 8);
+  assert.equal(worldApi.getBlock(world, 10, GROUND), config.blocks.grass);
+  assert.equal(worldApi.getBlock(world, config.spawnX, GROUND), config.blocks.grass);
 });
 
-test("the world contains caves, ores, trees and bedrock", () => {
-  const world = worldApi.generateWorld(SEED_A);
-  const air = countOf(world, config.blocks.air);
-  const skyArea = world.width * 40;
-  assert.ok(air > skyArea + 300, "underground caves should remove a meaningful number of tiles");
-  assert.ok(countOf(world, config.blocks.coalOre) > 20, "coal ore should generate");
-  assert.ok(countOf(world, config.blocks.ironOre) > 8, "iron ore should generate");
-  assert.ok(countOf(world, config.blocks.wood) > 20, "trees should generate");
-  assert.ok(countOf(world, config.blocks.leaves) > 60, "tree canopies should generate");
-  assert.ok(countOf(world, config.blocks.bedrock) >= world.width, "bedrock floor should exist");
-  for (let x = 0; x < world.width; x += 7) {
-    assert.equal(worldApi.getBlock(world, x, world.height - 1), config.blocks.bedrock);
+test("hills rise away from the spawn plateau", () => {
+  const world = worldApi.createWorld(config.seed);
+  let varied = 0;
+  for (let x = 120; x < world.width; x += 1) {
+    if (worldApi.surfaceHeight(world, x) !== GROUND) {
+      varied += 1;
+    }
   }
+  assert.ok(varied > 20, `expected hilly terrain, got ${varied} varied columns`);
 });
 
-test("ores stay below the surface and biome surfaces use valid blocks", () => {
-  const world = worldApi.generateWorld(SEED_A);
-  for (let x = 0; x < world.width; x += 1) {
-    const top = worldApi.terrainHeightAt(world, x);
-    const surfaceId = worldApi.getBlock(world, x, top);
-    assert.ok(
-      surfaceId === config.blocks.grass || surfaceId === config.blocks.sand || surfaceId === config.blocks.stone,
-      "unexpected surface block " + surfaceId + " at x=" + x
-    );
-    for (let y = top; y < world.height; y += 1) {
-      const id = worldApi.getBlock(world, x, y);
-      if (id === config.blocks.coalOre) {
-        assert.ok(y > top, "coal ore must not sit on the surface");
-        assert.ok(y < world.height - 2, "coal ore must not replace bedrock");
-      }
-      if (id === config.blocks.ironOre) {
-        assert.ok(y > Math.round(world.height * 0.6), "iron should be deep");
+test("the world contains a forest of trees", () => {
+  const world = worldApi.createWorld(config.seed);
+  assert.ok(world.meta.trees >= 10, `expected at least 10 trees, got ${world.meta.trees}`);
+  assert.ok(countBlocks(world, config.blocks.wood, 0, GROUND - 1) > 30);
+  assert.ok(countBlocks(world, config.blocks.leaves, 0, GROUND - 1) > 60);
+});
+
+test("caves exist below the surface", () => {
+  const world = worldApi.createWorld(config.seed);
+  let air = 0;
+  for (let y = GROUND + 8; y < world.height - 2; y += 1) {
+    for (let x = 0; x < world.width; x += 1) {
+      if (worldApi.getBlock(world, x, y) === config.blocks.air) {
+        air += 1;
       }
     }
   }
+  assert.ok(air > 400, `expected caves below the surface, got ${air} air tiles`);
 });
 
-test("block definitions cover every generated block id", () => {
-  const world = worldApi.generateWorld(SEED_A);
-  const seen = new Set(Array.from(world.data));
-  seen.forEach(function (id) {
-    const definition = blocks.block(id);
-    assert.ok(definition, "missing block definition for id " + id);
-    assert.ok(typeof definition.name === "string" && definition.name.length > 0);
-  });
+test("ore bands are present and depth-banded", () => {
+  const world = worldApi.createWorld(config.seed);
+  const coal = countBlocks(world, config.blocks.coal_ore, GROUND, GROUND + 26);
+  const iron = countBlocks(world, config.blocks.iron_ore, GROUND + 15, GROUND + 38);
+  const ember = countBlocks(world, config.blocks.ember_ore, world.height - 26, world.height - 4);
+  assert.ok(coal > 30, `coal=${coal}`);
+  assert.ok(iron > 25, `iron=${iron}`);
+  assert.ok(ember > 15, `ember=${ember}`);
+  assert.equal(countBlocks(world, config.blocks.ember_ore, 0, GROUND), 0, "ember must stay deep");
 });
 
-test("run-length serialization round-trips and stays compact", () => {
-  const world = worldApi.generateWorld(SEED_A);
-  worldApi.setBlock(world, 12, 40, config.blocks.stone);
-  worldApi.setBlock(world, 13, 40, config.blocks.planks);
-  const serialized = worldApi.serializeWorld(world);
-  const restored = worldApi.deserializeWorld(serialized);
+test("the bottom row stays solid stone", () => {
+  const world = worldApi.createWorld(config.seed);
+  for (let x = 0; x < world.width; x += 1) {
+    assert.equal(worldApi.getBlock(world, x, world.height - 1), config.blocks.stone);
+  }
+});
+
+test("RLE serialization round-trips the whole world", () => {
+  const world = worldApi.createWorld(config.seed);
+  worldApi.setBlock(world, 3, 40, config.blocks.beacon);
+  const payload = worldApi.serializeWorld(world);
+  assert.ok(payload.length < world.data.length, "RLE payload should be smaller than raw bytes");
+  const restored = worldApi.deserializeWorld(payload);
   assert.equal(restored.width, world.width);
   assert.equal(restored.height, world.height);
   assert.equal(restored.seed, world.seed);
+  assert.equal(restored.data.length, world.data.length);
+  assert.equal(worldApi.getBlock(restored, 3, 40), config.blocks.beacon);
   assert.deepEqual(Array.from(restored.data), Array.from(world.data));
-  assert.ok(serialized.length < world.width * world.height * 2, "RLE should beat a raw JSON array");
 });
 
-test("serialization rejects corrupt payloads", () => {
-  assert.throws(function () {
-    worldApi.deserializeWorld(JSON.stringify({ width: 4, height: 4, rle: [1, 3] }));
+test("legacy block-array payloads still load", () => {
+  const world = worldApi.createWorld(7);
+  const legacy = JSON.stringify({
+    width: world.width,
+    height: world.height,
+    seed: world.seed,
+    data: Array.from(world.data)
   });
-  assert.throws(function () {
-    worldApi.deserializeWorld(JSON.stringify({ width: 4, height: 4, data: [1, 1, 1] }));
-  });
-  assert.throws(function () {
-    worldApi.deserializeWorld(JSON.stringify({ width: 4 }));
-  });
+  const restored = worldApi.deserializeWorld(legacy);
+  assert.equal(worldApi.getBlock(restored, 10, GROUND), config.blocks.grass);
+});
+
+test("invalid world payloads are rejected", () => {
+  assert.throws(() => worldApi.deserializeWorld("{}"));
+  assert.throws(() => worldApi.deserializeWorld('{"width":2,"height":2,"rle":[[1,3]]}'));
+  assert.throws(() => worldApi.deserializeWorld('{"width":2,"height":2,"rle":[[1,99]]}'));
+});
+
+test("exposure is required to mine into a wall", () => {
+  const world = worldApi.createWorld(config.seed);
+  assert.equal(worldApi.isExposed(world, 10, GROUND), true);
+  assert.equal(worldApi.isExposed(world, 10, GROUND + 3), false);
+});
+
+test("placement needs an empty tile with a solid neighbour", () => {
+  const world = worldApi.createWorld(config.seed);
+  assert.equal(worldApi.canPlaceAt(world, 10, GROUND - 1, config.blocks.planks), true);
+  assert.equal(worldApi.canPlaceAt(world, 10, GROUND, config.blocks.planks), false);
+  assert.equal(worldApi.canPlaceAt(world, 10, 2, config.blocks.planks), false);
+  assert.equal(worldApi.canPlaceAt(world, 10, GROUND - 1, config.blocks.torch), true);
+});
+
+test("minimap sampling returns one column per request", () => {
+  const world = worldApi.createWorld(config.seed);
+  const columns = worldApi.sampleColumns(world, 0, 200, 40);
+  assert.equal(columns.length, 40);
+  assert.equal(columns[0].x, 0);
+  assert.equal(columns[39].x, 199);
+  assert.equal(columns[0].surface, GROUND);
 });

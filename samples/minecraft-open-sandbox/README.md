@@ -40,29 +40,27 @@ and the new standard score what the agent actually chooses.
 
 ## Result
 
-The two runs are complete and blind-scored. Identity reveal: **A = one-shot (MOSSWILD)**, **B = XC
-0.4.4 (Cubewood)**. Standard: **v1.3** (real-pointer interaction truth, blind pairwise art).
+Best XC artifact: **Emberdeep (0.4.7)**. One-shot **MOSSWILD** compared blind under **v1.3**.
 
-| | One-shot A | XC 0.4.4 B |
+| | One-shot A | XC 0.4.7 B |
 | --- | ---: | ---: |
-| PES | 78.9 | 55.0 (raw 70.1; high cap) |
-| ECS | 81.7 | 83.1 |
-| Composite | 79.6 | 55.0 (raw 73.3; cap) |
-| Experience tier | solid | prototype |
-| High / medium / low | 0 / 1 / 1 | **1** / 2 / 2 |
+| PES | **82.4** | 78.8 |
+| ECS | 82.2 | **88.2** |
+| Composite | **82.4** | **81.1** |
+| Experience tier | polished | prototype (D5 <55) |
+| Art D5 | **89 polished** | **51 prototype** |
+| High / medium / low | 0 / 1 / 1 | 0 / 1 / 2 |
 | Higher | **A** | — |
 
-**v1.2's 85.8 is invalid.** Its craft check used `element.click()`; a normal real click on Craft
-no-ops because the craft list is rebuilt ~15×/s between mousedown and mouseup. The v1.3 evaluator
-reproduced 0/10 normal clicks and applied the high-defect cap at 55. The art comparison is also
-decisive: D5 83 vs 53, a 30-point gap.
+A wins by 1.3; the only decisive gap is art. Emberdeep has real-pointer interaction truth, crafting,
+map, 8-stage progression and save/reload, but its D5 is below 55, so it is not a stop.
 
-The earlier v1.2 numbers (A 84.6 / B 85.8) are retained only as history. Do not use them as a stop
-or promotion claim.
+The 0.4.9 cap sample scored **A 81.8 / B 79.2**, lower than 0.4.7; it stops at the cap as **not-best**.
+The 0.4.8 visual-direction attempt was rolled back after dropping crafting/survival/progression.
+
+![Emberdeep](media/xc-emberdeep-day.png)
 
 ![One-shot MOSSWILD](media/one-shot-mosswild.png)
-
-![XC 0.4.4 Cubewood](media/xc-cubewood-day.png)
 
 ## Status
 

@@ -12,199 +12,336 @@
   }
 
   const B = CONFIG.blocks;
+  const I = CONFIG.items;
 
-  // Block definitions. `tier` is the minimum pickaxe tier needed to harvest a
-  // drop; a tier of 0 means the block can always be collected. `drop` is the
-  // item id granted when harvested, or null for "breaks but drops nothing".
-  const BLOCK_LIST = [
-    {
-      id: B.air, key: "air", name: "Air", solid: false, hardness: 0, tool: null,
-      tier: 0, drop: null, light: 0, replaceable: true,
-      colors: { base: "#000000", accent: "#000000", detail: "#000000" }
+  // hardness is seconds with a matching tier-0 tool; tier is the minimum
+  // pickaxe tier required to break the block at all.
+  const DEFS = Object.freeze({
+    [B.grass]: {
+      key: "grass",
+      name: "Grass",
+      solid: true,
+      hardness: 0.24,
+      tier: 0,
+      drop: B.grass,
+      palette: { base: "#57a05a", light: "#7fc47a", dark: "#3d7a41", accent: "#8d6e63" }
     },
-    {
-      id: B.grass, key: "grass", name: "Grass", solid: true, hardness: 0.55, tool: "shovel",
-      tier: 0, drop: B.dirt, light: 0, replaceable: false,
-      colors: { base: "#67ad45", accent: "#82c95b", detail: "#477f30", side: "#8a6a4a" }
+    [B.dirt]: {
+      key: "dirt",
+      name: "Dirt",
+      solid: true,
+      hardness: 0.24,
+      tier: 0,
+      drop: B.dirt,
+      palette: { base: "#8d6e63", light: "#a98474", dark: "#6a5148", accent: "#5b4339" }
     },
-    {
-      id: B.dirt, key: "dirt", name: "Dirt", solid: true, hardness: 0.45, tool: "shovel",
-      tier: 0, drop: B.dirt, light: 0, replaceable: false,
-      colors: { base: "#8a6a4a", accent: "#9c7a56", detail: "#6e533a" }
+    [B.stone]: {
+      key: "stone",
+      name: "Stone",
+      solid: true,
+      hardness: 1.05,
+      tier: 1,
+      drop: B.cobble,
+      palette: { base: "#7c8894", light: "#9aa6b1", dark: "#5c6771", accent: "#4c565f" }
     },
-    {
-      id: B.stone, key: "stone", name: "Stone", solid: true, hardness: 1.6, tool: "pickaxe",
-      tier: 1, drop: B.cobblestone, light: 0, replaceable: false,
-      colors: { base: "#8b9097", accent: "#9ba0a6", detail: "#747a82" }
+    [B.wood]: {
+      key: "wood",
+      name: "Oak Log",
+      solid: true,
+      hardness: 0.55,
+      tier: 0,
+      drop: B.wood,
+      palette: { base: "#8a6239", light: "#a87c4b", dark: "#6a4a2a", accent: "#5a3d22" }
     },
-    {
-      id: B.wood, key: "wood", name: "Wood", solid: true, hardness: 1.05, tool: "axe",
-      tier: 0, drop: B.wood, light: 0, replaceable: false,
-      colors: { base: "#6b4a2b", accent: "#7d5835", detail: "#523720" }
+    [B.leaves]: {
+      key: "leaves",
+      name: "Leaves",
+      solid: true,
+      hardness: 0.18,
+      tier: 0,
+      drop: B.leaves,
+      palette: { base: "#3f8a46", light: "#61ad5f", dark: "#2e6a35", accent: "#7ec46b" }
     },
-    {
-      id: B.leaves, key: "leaves", name: "Leaves", solid: true, hardness: 0.18, tool: null,
-      tier: 0, drop: null, light: 0, replaceable: false,
-      colors: { base: "#59a244", accent: "#70bb58", detail: "#41792f" }
+    [B.sand]: {
+      key: "sand",
+      name: "Sand",
+      solid: true,
+      hardness: 0.2,
+      tier: 0,
+      drop: B.sand,
+      palette: { base: "#d8c68f", light: "#e8d9a9", dark: "#b9a470", accent: "#c9b47a" }
     },
-    {
-      id: B.planks, key: "planks", name: "Planks", solid: true, hardness: 0.65, tool: "axe",
-      tier: 0, drop: B.planks, light: 0, replaceable: false,
-      colors: { base: "#b78b52", accent: "#c79a5e", detail: "#9a7243" }
+    [B.planks]: {
+      key: "planks",
+      name: "Oak Planks",
+      solid: true,
+      hardness: 0.4,
+      tier: 0,
+      drop: B.planks,
+      palette: { base: "#b98a52", light: "#d0a166", dark: "#94693b", accent: "#7d5730" }
     },
-    {
-      id: B.cobblestone, key: "cobblestone", name: "Cobblestone", solid: true, hardness: 1.8, tool: "pickaxe",
-      tier: 1, drop: B.cobblestone, light: 0, replaceable: false,
-      colors: { base: "#7f848b", accent: "#94999f", detail: "#666b72" }
+    [B.cobble]: {
+      key: "cobble",
+      name: "Cobblestone",
+      solid: true,
+      hardness: 1.0,
+      tier: 1,
+      drop: B.cobble,
+      palette: { base: "#79838d", light: "#97a1aa", dark: "#5b646d", accent: "#4a535b" }
     },
-    {
-      id: B.coalOre, key: "coal_ore", name: "Coal ore", solid: true, hardness: 2.1, tool: "pickaxe",
-      tier: 1, drop: 101, light: 0, replaceable: false,
-      colors: { base: "#83888f", accent: "#2f2f2f", detail: "#5f656c" }
+    [B.coal_ore]: {
+      key: "coal_ore",
+      name: "Coal Ore",
+      solid: true,
+      hardness: 1.3,
+      tier: 1,
+      drop: I.coal,
+      palette: { base: "#7c8894", light: "#2c3138", dark: "#5c6771", accent: "#1d2125" }
     },
-    {
-      id: B.ironOre, key: "iron_ore", name: "Iron ore", solid: true, hardness: 2.9, tool: "pickaxe",
-      tier: 2, drop: 102, light: 0, replaceable: false,
-      colors: { base: "#878c93", accent: "#c9a27a", detail: "#63696f" }
+    [B.iron_ore]: {
+      key: "iron_ore",
+      name: "Iron Ore",
+      solid: true,
+      hardness: 1.7,
+      tier: 2,
+      drop: B.iron_ore,
+      palette: { base: "#7c8894", light: "#d6a887", dark: "#5c6771", accent: "#b07a55" }
     },
-    {
-      id: B.sand, key: "sand", name: "Sand", solid: true, hardness: 0.4, tool: "shovel",
-      tier: 0, drop: B.sand, light: 0, replaceable: false,
-      colors: { base: "#d8c489", accent: "#e6d39a", detail: "#bca76c" }
+    [B.ember_ore]: {
+      key: "ember_ore",
+      name: "Ember Ore",
+      solid: true,
+      hardness: 2.4,
+      tier: 3,
+      drop: B.ember_ore,
+      palette: { base: "#5b6170", light: "#ff8a4c", dark: "#3f4450", accent: "#ffcf6b" }
     },
-    {
-      id: B.sandstone, key: "sandstone", name: "Sandstone", solid: true, hardness: 1.1, tool: "pickaxe",
-      tier: 0, drop: B.sandstone, light: 0, replaceable: false,
-      colors: { base: "#ccb77c", accent: "#dbc78b", detail: "#b09a63" }
+    [B.torch]: {
+      key: "torch",
+      name: "Torch",
+      solid: false,
+      hardness: 0.1,
+      tier: 0,
+      drop: B.torch,
+      light: 14,
+      needsSupport: true,
+      palette: { base: "#7a4a22", light: "#ffd27a", dark: "#4d3016", accent: "#ffe9a8" }
     },
-    {
-      id: B.torch, key: "torch", name: "Torch", solid: false, hardness: 0.05, tool: null,
-      tier: 0, drop: B.torch, light: 14, replaceable: false, support: true,
-      colors: { base: "#6b4a2b", accent: "#ffb347", detail: "#ffe08a" }
+    [B.workbench]: {
+      key: "workbench",
+      name: "Workbench",
+      solid: true,
+      hardness: 0.7,
+      tier: 0,
+      station: "workbench",
+      drop: B.workbench,
+      palette: { base: "#a97a45", light: "#c99a5f", dark: "#815c33", accent: "#5e4224" }
     },
-    {
-      id: B.glass, key: "glass", name: "Glass", solid: true, hardness: 0.35, tool: null,
-      tier: 0, drop: null, light: 0, replaceable: false, transparent: true,
-      colors: { base: "#bfe8f2", accent: "#e2f7fb", detail: "#8fc9d8" }
+    [B.furnace]: {
+      key: "furnace",
+      name: "Furnace",
+      solid: true,
+      hardness: 1.4,
+      tier: 1,
+      station: "furnace",
+      drop: B.furnace,
+      palette: { base: "#6e767f", light: "#8f99a3", dark: "#4d545b", accent: "#ff9c4a" }
     },
-    {
-      id: B.bedrock, key: "bedrock", name: "Bedrock", solid: true, hardness: Infinity, tool: null,
-      tier: 0, drop: null, light: 0, replaceable: false,
-      colors: { base: "#3c4148", accent: "#4b5158", detail: "#2d3238" }
+    [B.stone_bricks]: {
+      key: "stone_bricks",
+      name: "Stone Bricks",
+      solid: true,
+      hardness: 1.2,
+      tier: 1,
+      drop: B.stone_bricks,
+      palette: { base: "#8a949e", light: "#a9b3bc", dark: "#6a747d", accent: "#59626b" }
     },
-    {
-      id: B.flower, key: "flower", name: "Flower", solid: false, hardness: 0.06, tool: null,
-      tier: 0, drop: B.flower, light: 0, replaceable: true, support: true,
-      colors: { base: "#3f7a2c", accent: "#e85d75", detail: "#f2c14e" }
+    [B.beacon]: {
+      key: "beacon",
+      name: "Ember Beacon",
+      solid: true,
+      hardness: 1.0,
+      tier: 0,
+      light: 15,
+      drop: B.beacon,
+      palette: { base: "#4a3f5c", light: "#ff9b45", dark: "#2f283c", accent: "#ffe08a" }
     }
-  ];
-
-  const BLOCK_BY_ID = Object.create(null);
-  BLOCK_LIST.forEach(function (definition) {
-    BLOCK_BY_ID[definition.id] = definition;
   });
 
-  const ITEM_LIST = [
-    { id: 100, key: "stick", name: "Stick", kind: "material", color: "#a5763f" },
-    { id: 101, key: "coal", name: "Coal", kind: "material", color: "#2f2f2f" },
-    { id: 102, key: "iron", name: "Iron", kind: "material", color: "#d8dde3" },
-    { id: 110, key: "wooden_pickaxe", name: "Wooden pickaxe", kind: "tool", tool: "pickaxe", tier: 1, speed: 2.2, color: "#a5763f" },
-    { id: 111, key: "stone_pickaxe", name: "Stone pickaxe", kind: "tool", tool: "pickaxe", tier: 2, speed: 3.6, color: "#8b9097" },
-    { id: 112, key: "iron_pickaxe", name: "Iron pickaxe", kind: "tool", tool: "pickaxe", tier: 3, speed: 5.4, color: "#d8dde3" },
-    { id: 120, key: "wooden_axe", name: "Wooden axe", kind: "tool", tool: "axe", tier: 1, speed: 1.9, color: "#a5763f" },
-    { id: 121, key: "stone_axe", name: "Stone axe", kind: "tool", tool: "axe", tier: 2, speed: 2.9, color: "#8b9097" },
-    { id: 130, key: "wooden_shovel", name: "Wooden shovel", kind: "tool", tool: "shovel", tier: 1, speed: 1.9, color: "#a5763f" },
-    { id: 131, key: "stone_shovel", name: "Stone shovel", kind: "tool", tool: "shovel", tier: 2, speed: 2.9, color: "#8b9097" },
-    { id: 140, key: "compass", name: "Compass", kind: "material", color: "#d7b45a" }
-  ];
-
-  const ITEM_BY_ID = Object.create(null);
-  ITEM_LIST.forEach(function (definition) {
-    ITEM_BY_ID[definition.id] = definition;
+  const ITEM_DEFS = Object.freeze({
+    [I.stick]: { key: "stick", name: "Stick", kind: "item" },
+    [I.coal]: { key: "coal", name: "Coal", kind: "item", fuel: true },
+    [I.iron_ingot]: { key: "iron_ingot", name: "Iron Ingot", kind: "item" },
+    [I.ember_shard]: { key: "ember_shard", name: "Ember Shard", kind: "item", glow: true },
+    [I.pick_wood]: { key: "pick_wood", name: "Wooden Pickaxe", kind: "tool", tool: { type: "pickaxe", tier: 1 } },
+    [I.pick_stone]: { key: "pick_stone", name: "Stone Pickaxe", kind: "tool", tool: { type: "pickaxe", tier: 2 } },
+    [I.pick_iron]: { key: "pick_iron", name: "Iron Pickaxe", kind: "tool", tool: { type: "pickaxe", tier: 3 } },
+    [I.sword_wood]: { key: "sword_wood", name: "Wooden Sword", kind: "tool", tool: { type: "sword", tier: 1, damage: 2 } },
+    [I.sword_stone]: { key: "sword_stone", name: "Stone Sword", kind: "tool", tool: { type: "sword", tier: 2, damage: 3 } },
+    [I.sword_iron]: { key: "sword_iron", name: "Iron Sword", kind: "tool", tool: { type: "sword", tier: 3, damage: 4 } }
   });
 
-  function blockDefinition(id) {
-    return BLOCK_BY_ID[id] || null;
+  const TIER_NAMES = Object.freeze({ 0: "hand", 1: "wooden pickaxe", 2: "stone pickaxe", 3: "iron pickaxe" });
+  const TIER_SPEED = Object.freeze({ 0: 1, 1: 2.4, 2: 3.6 });
+
+  function isBlockId(id) {
+    return Object.prototype.hasOwnProperty.call(DEFS, id);
   }
 
-  function itemDefinition(id) {
-    if (BLOCK_BY_ID[id]) {
-      const block = BLOCK_BY_ID[id];
-      return {
-        id: block.id,
-        key: block.key,
-        name: block.name,
-        kind: block.id === 0 ? "air" : "block",
-        color: block.colors.base,
-        block: block
-      };
+  function get(id) {
+    return isBlockId(id) ? DEFS[id] : null;
+  }
+
+  function isAir(id) {
+    return id === B.air;
+  }
+
+  function isSolid(id) {
+    const def = get(id);
+    return !!(def && def.solid);
+  }
+
+  function isPlaceable(id) {
+    return isBlockId(id) && id !== B.air;
+  }
+
+  function requiredTier(id) {
+    const def = get(id);
+    return def ? def.tier : 0;
+  }
+
+  function hardnessOf(id) {
+    const def = get(id);
+    return def ? def.hardness : 0;
+  }
+
+  function dropOf(id) {
+    const def = get(id);
+    if (!def) {
+      return null;
     }
-    return ITEM_BY_ID[id] || null;
-  }
-
-  function nameOf(id) {
-    const item = itemDefinition(id);
-    return item ? item.name : "Unknown";
-  }
-
-  function isBlockItem(id) {
-    return Boolean(BLOCK_BY_ID[id]) && id !== B.air;
-  }
-
-  function isSolidId(id) {
-    const block = BLOCK_BY_ID[id];
-    return Boolean(block) && block.solid;
-  }
-
-  function isReplaceable(id) {
-    const block = BLOCK_BY_ID[id];
-    return Boolean(block) && (block.replaceable || id === B.air);
+    return Object.prototype.hasOwnProperty.call(def, "drop") ? def.drop : id;
   }
 
   function lightOf(id) {
-    const block = BLOCK_BY_ID[id];
-    return block ? block.light : 0;
+    const def = get(id);
+    return def && def.light ? def.light : 0;
   }
 
-  function colorOf(id, tone) {
-    const block = BLOCK_BY_ID[id];
-    if (!block) {
-      return "#ff00ff";
+  function stationOf(id) {
+    const def = get(id);
+    return def && def.station ? def.station : "";
+  }
+
+  function needsSupport(id) {
+    const def = get(id);
+    return !!(def && def.needsSupport);
+  }
+
+  function breakTime(id, pickTier) {
+    const def = get(id);
+    if (!def) {
+      return null;
     }
-    const colors = block.colors;
-    if (tone && colors[tone]) {
-      return colors[tone];
+    const tier = Math.max(0, Math.min(3, Number(pickTier) || 0));
+    if (tier < def.tier) {
+      return null;
     }
-    return colors.base;
+    const factor = TIER_SPEED[Math.min(3, tier - def.tier)] || 1;
+    return def.hardness / factor;
   }
 
-  function allBlocks() {
-    return BLOCK_LIST.slice();
+  function itemName(id) {
+    const block = get(id);
+    if (block) {
+      return block.name;
+    }
+    const item = ITEM_DEFS[id];
+    return item ? item.name : "Unknown";
   }
 
-  function allItems() {
-    return ITEM_LIST.slice();
+  function itemDef(id) {
+    const block = get(id);
+    if (block) {
+      return { key: block.key, name: block.name, kind: "block", blockId: id };
+    }
+    return ITEM_DEFS[id] || null;
   }
 
-  function toolItems() {
-    return ITEM_LIST.filter(function (item) {
-      return item.kind === "tool";
-    });
+  function toolOf(id) {
+    const item = ITEM_DEFS[id];
+    return item && item.tool ? item.tool : null;
+  }
+
+  function isTool(id) {
+    return !!toolOf(id);
+  }
+
+  function toolTier(id) {
+    const tool = toolOf(id);
+    return tool ? tool.tier : 0;
+  }
+
+  function swordDamage(id) {
+    const tool = toolOf(id);
+    return tool && tool.type === "sword" ? tool.damage || 1 : 0;
+  }
+
+  function bestPickTier(slots) {
+    let best = 0;
+    for (let index = 0; index < slots.length; index += 1) {
+      const stack = slots[index];
+      if (!stack || !stack.count) {
+        continue;
+      }
+      const tool = toolOf(stack.id);
+      if (tool && tool.type === "pickaxe") {
+        best = Math.max(best, tool.tier);
+      }
+    }
+    return best;
+  }
+
+  function bestSwordDamage(slots) {
+    let best = 0;
+    for (let index = 0; index < slots.length; index += 1) {
+      const stack = slots[index];
+      if (!stack || !stack.count) {
+        continue;
+      }
+      best = Math.max(best, swordDamage(stack.id));
+    }
+    return best;
+  }
+
+  function tierName(tier) {
+    return TIER_NAMES[Math.max(0, Math.min(3, Number(tier) || 0))];
   }
 
   return {
-    BLOCK_LIST: BLOCK_LIST,
-    ITEM_LIST: ITEM_LIST,
-    block: blockDefinition,
-    item: itemDefinition,
-    nameOf: nameOf,
-    isBlockItem: isBlockItem,
-    isSolid: isSolidId,
-    isReplaceable: isReplaceable,
+    DEFS: DEFS,
+    ITEM_DEFS: ITEM_DEFS,
+    TIER_NAMES: TIER_NAMES,
+    get: get,
+    isBlockId: isBlockId,
+    isAir: isAir,
+    isSolid: isSolid,
+    isPlaceable: isPlaceable,
+    requiredTier: requiredTier,
+    hardnessOf: hardnessOf,
+    dropOf: dropOf,
     lightOf: lightOf,
-    colorOf: colorOf,
-    allBlocks: allBlocks,
-    allItems: allItems,
-    toolItems: toolItems
+    stationOf: stationOf,
+    needsSupport: needsSupport,
+    breakTime: breakTime,
+    itemName: itemName,
+    itemDef: itemDef,
+    toolOf: toolOf,
+    isTool: isTool,
+    toolTier: toolTier,
+    swordDamage: swordDamage,
+    bestPickTier: bestPickTier,
+    bestSwordDamage: bestSwordDamage,
+    tierName: tierName
   };
 });

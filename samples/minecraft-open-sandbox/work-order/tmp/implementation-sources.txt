@@ -1,4 +1,0 @@
-implementation.sources.i1-world-engine=["rt_work-order-20261102-1145-open-sandbox-xc-044__solution-evolution__write-document","rt_work-order-20261102-1145-open-sandbox-xc-044__root__approve-work-order-solution"]
-implementation.sources.i2-simulation=["rt_work-order-20261102-1145-open-sandbox-xc-044__solution-evolution__write-document","rt_work-order-20261102-1145-open-sandbox-xc-044__root__approve-work-order-solution"]
-implementation.sources.i3-experience=["rt_work-order-20261102-1145-open-sandbox-xc-044__solution-evolution__write-document","rt_work-order-20261102-1145-open-sandbox-xc-044__root__approve-work-order-solution"]
-implementation.sources.i4-docs-evidence=["rt_work-order-20261102-1145-open-sandbox-xc-044__solution-evolution__write-document","rt_work-order-20261102-1145-open-sandbox-xc-044__root__approve-work-order-solution"]

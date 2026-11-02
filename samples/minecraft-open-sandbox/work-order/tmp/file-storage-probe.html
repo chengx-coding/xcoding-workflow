@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>file storage probe</title></head>
+<body>
+<pre id="out">pending</pre>
+<script>
+(function () {
+  var out = document.getElementById("out");
+  var lines = [];
+  try {
+    localStorage.setItem("emberdeep.probe", "value-1");
+    lines.push("write: ok");
+    lines.push("read: " + localStorage.getItem("emberdeep.probe"));
+    localStorage.removeItem("emberdeep.probe");
+  } catch (error) {
+    lines.push("localStorage error: " + (error && error.message ? error.message : String(error)));
+  }
+  try {
+    var key = "emberdeep.probe.bytes";
+    var data = new Uint8Array(40000);
+    for (var i = 0; i < data.length; i += 1) { data[i] = i % 251; }
+    localStorage.setItem(key, JSON.stringify(Array.from(data)));
+    var back = JSON.parse(localStorage.getItem(key));
+    lines.push("40k write/read: " + (back.length === data.length && back[39999] === data[39999]));
+    localStorage.removeItem(key);
+  } catch (error) {
+    lines.push("large storage error: " + (error && error.message ? error.message : String(error)));
+  }
+  lines.push("origin: " + location.origin);
+  lines.push("protocol: " + location.protocol);
+  out.textContent = lines.join(" | ");
+})();
+</script>
+</body>
+</html>
