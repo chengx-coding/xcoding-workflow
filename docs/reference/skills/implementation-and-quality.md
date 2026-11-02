@@ -66,4 +66,4 @@ These supporting Skills execute approved changes, explain them to human reviewer
 
 ## Experience-product overlay
 
-`experience-quality` is a **proposed task-class overlay** for games, sandboxes, simulations and experiential visual tools. It is not a fifth output surface and not for pure libraries/CLIs/docs/data dashboards. It records first-run discoverability, visual review, state-dependent backdrop and reference-signature/progression gaps as quality findings; it does not authorize adding a feature by fiat.
+`experience-quality` is a **proposed task-class overlay** with a **validated-in-class visual-state backdrop** for 2D sandbox visual products for games, sandboxes, simulations and experiential visual tools. It is not a fifth output surface and not for pure libraries/CLIs/docs/data dashboards. It records first-run discoverability, visual review, state-dependent backdrop and reference-signature/progression gaps as quality findings; it does not authorize adding a feature by fiat.

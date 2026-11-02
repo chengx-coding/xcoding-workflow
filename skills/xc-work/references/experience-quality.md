@@ -1,8 +1,8 @@
 # Experience-product quality
 
-**Scope:** task-class. **Promotion status:** `proposed`. **Generality evidence:** one open-sample
-application; a second independent experience-product instance is required before this becomes a
-binding class contract. **Applies when** the primary deliverable is a visual/interactive experience
+**Scope:** task-class. **Promotion status:** `proposed`. **Generality evidence:** the overall experience lens is proposed (one open-sample application);
+section 3's visual-state backdrop is a separate, narrowly scoped validated-in-class rule for 2D
+sandbox visual products. **Applies when** the primary deliverable is a visual/interactive experience
 product: a game, sandbox, simulation, or an interactive visual tool whose acceptance is experiential.
 **Does not apply** to a pure library, CLI, data pipeline, data dashboard, documentation set, or other
 primarily informational deliverable. Record the selection or a not-applicable reason; do not force
@@ -29,16 +29,17 @@ reviewer is available, record a self-review with that limitation; do not claim i
 
 ## 3. Visual-state backdrop (task-class must)
 
-**Scope:** visual products where content can be removed, cleared, hidden or covered, or a mode/theme/
-time/viewport changes. **Promotion status:** `validated-in-class` (two independent visual products
-showed the same failure: removed/underground content exposed an unrelated default background).
+**Scope:** visually rendered products where content can be removed, cleared, hidden or covered, or a
+mode/theme/time/viewport changes. **Does not apply** to a static document set, CLI output, data
+pipeline, or a data dashboard whose acceptance is informational rather than experiential. **Promotion
+status:** `validated-in-class` for 2D sandbox visual products only (two independent instances); a
+broader visual-product claim is not made.
 
-This is a **must** capability for that class, not the proposed lens: the state must show a coherent
-backdrop/empty/fallback, not an unrelated sky/void/default layer. Record before/after on the declared
-surface and execute the state transition; a code reading or a single default frame is not evidence.
-A missing backdrop is a must gap: fail/block verification or record a user-accepted risk. This is an
-application of universal observable-state integrity, not a new mechanism.
-
+This is a **must** for that class: the state must show a coherent backdrop/empty/fallback, not an
+unrelated default background or layer. Record before/after on the declared surface and execute the
+state transition; a code reading or a single default frame is not evidence. A missing backdrop is a
+must gap: fail/block verification or record a user-accepted risk. This is an application of universal
+observable-state integrity, not a new mechanism.
 ## 4. Reference signature and progression
 
 When a credible reference exists, identify a small set of signature capabilities and the genre's
