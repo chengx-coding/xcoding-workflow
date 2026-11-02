@@ -1,6 +1,6 @@
 ﻿# Implementation and Quality
 
-**Language:** **English** | [绠€浣撲腑鏂嘳(../../zh-CN/reference/skills/implementation-and-quality.md)
+**Language:** **English** | [简体中文](../../zh-CN/reference/skills/implementation-and-quality.md)
 
 These supporting Skills execute approved changes, explain them to human reviewers, guide technical writing, and assess evidence.
 
@@ -73,3 +73,5 @@ For an interactive visual experience product, primary controls must pass a real-
 
 For an experience product with a credible reference, record the defining loop and its depth as a proposed should with evidence and lost value; a user may make it binding, and without a user a smaller scope is allowed. A navigable world should record an orientation/map or the lost value of omitting it.
 
+
+When evolving an experience product, preserve the prior accepted must capabilities and depth; a visual pass that drops or thins them is a regression, not an art improvement.

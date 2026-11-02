@@ -92,7 +92,9 @@ sandbox, simulation, or interactive visual tool whose acceptance is experiential
 state-dependent backdrop/occlusion, and a small reference-signature/progression decision. The lens does
 not add a universal must or a hidden feature: a signature loop the request is silent about is a
 proposed should with its evidence and gap; a no-user analysis may choose a smaller scope but must not
-silently non-goal it. For an experience product with a credible reference, record the reference's defining loop and
+silently non-goal it. When evolving an experience product, preserve the prior accepted must capabilities and their
+depth; a visual/quality pass that drops or thins them is a regression. Record a disposition for every
+removal or thinning; a deliberate removal requires a user-accepted exclusion. For an experience product with a credible reference, record the reference's defining loop and
 defining-depth gap as a **proposed should** with evidence and lost value; a user may make it binding.
 Without a user, do not force the feature. For a navigable world, record orientation/map as a proposed
 should under the same rule. For a rendered interactive product with primary controls, add an **interaction

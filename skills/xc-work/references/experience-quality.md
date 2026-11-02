@@ -31,6 +31,14 @@ Before result, obtain an **independent visual review** when an independent revie
 Record the reviewed before/after states and required findings, and re-check fixes. If no independent
 reviewer is available, record a self-review with that limitation; do not claim independent review.
 
+## 2c. Preservation of prior capability depth
+
+When evolving an experience product, a visual/quality pass must preserve the prior accepted must
+capabilities and their depth. A product that becomes prettier but drops a working crafting, survival,
+progression, orientation or save capability is a regression, not an art improvement. Verify the prior
+inventory and record a disposition for every removed or thinned capability; a deliberate removal
+requires a user-accepted exclusion. Do not trade functional depth for beauty.
+
 ## 3. Visual-state backdrop
 
 For an interactive visual experience product, the state-dependent backdrop is a **must owned by the visual
