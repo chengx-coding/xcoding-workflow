@@ -31,21 +31,6 @@ reviewer is available, record a self-review with that limitation; do not claim i
 For a 2D sandbox visual product, the state-dependent backdrop is a **must owned by the visual
 output-surface contract**; this profile does not restate the rule. Record the linked before/after
 evidence; it does not apply to static docs, CLIs or informational dashboards.
-## 3b. Persistence completeness and display consistency
-
-When a stateful experience product claims save/restore, the saved state must round-trip **all
-user-visible layers**: world/terrain/derived backing data, placed or removed content, player position
-and health, inventory/tools, clock/day phase, progression/quest state and mode. Verify with a state
-manifest before/after a reload; losing a rendered layer is a must persistence gap (fail/block or
-recorded user-accepted risk), not a cosmetic issue.
-
-Displayed values (clock/day, health, selected slot, counts, mode/status) must agree with the model
-they present. Verify at least one transition where the display changes; a clock that prints a
-different phase than the rendered world is a display-state finding.
-
-These requirements apply only when the product makes the corresponding claim; do not impose a save
-system on a stateless tool.
-
 ## 4. Reference signature and progression
 
 When a credible reference exists, identify a small set of signature capabilities and the genre's
