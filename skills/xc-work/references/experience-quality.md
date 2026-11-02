@@ -1,8 +1,9 @@
 # Experience-product quality
 
 **Scope:** task-class. **Promotion status:** `proposed`. **Generality evidence:** the overall experience lens is proposed (one open-sample application);
-section 3's visual-state backdrop is a separate visual-class must, validated-in-class for visual
-products where content can be removed/covered or mode/theme/time/viewport changes. **Applies when** the primary deliverable is a visual/interactive experience
+section 3's visual-state backdrop is owned by the visual output-surface contract and is
+validated-in-class only for **2D sandbox visual products** where content can be removed/covered or
+mode/theme/time/viewport changes. **Applies when** the primary deliverable is a visual/interactive experience
 product: a game, sandbox, simulation, or an interactive visual tool whose acceptance is experiential.
 **Does not apply** to a pure library, CLI, data pipeline, data dashboard, documentation set, or other
 primarily informational deliverable. Record the selection or a not-applicable reason; do not force
@@ -53,7 +54,6 @@ When the product is an experience product and the profile is used, record:
 
 - a fresh first-run discoverability probe and the visible entry point;
 - a visual review (independent when available) with findings and re-check;
-- state-dependent backdrop before/after;
 - a progression/signature journey when one is included;
 - the executed evidence and any gap/limit.
 

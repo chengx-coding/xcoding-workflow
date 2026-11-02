@@ -17,8 +17,8 @@ requirements below.
 | Profile / baseline | Applies when | Required evidence |
 | --- | --- | --- |
 | `universal` (baseline, not a selectable profile) | any observable state transition | before/action/after on the declared surface; executed evidence; unrun probe is a gap |
-| `visual` | UI/page/canvas/rendered document | visible before/after; state-dependent backdrop must when content can be removed/cleared/hidden/covered or mode/theme/time/viewport changes; at least two materially different visual states when present; background/occlusion/layer/spatial anchor; responsive/accessibility; executed assertion, not a single screenshot |
-| `experience` (task-class overlay, `proposed`) | game/sandbox/simulation or experiential visual tool | first-run discoverability, visual review, state-dependent backdrop, reference-signature/progression; use as a proposed lens, not a feature mandate |
+| `visual` | UI/page/canvas/rendered document | visible before/after; state-dependent backdrop must for 2D sandbox visual products when content can be removed/cleared/hidden/covered or mode/theme/time/viewport changes; at least two materially different visual states when present; background/occlusion/layer/spatial anchor; responsive/accessibility; executed assertion, not a single screenshot |
+| `experience` (task-class overlay, `proposed`) | game/sandbox/simulation or experiential visual tool | first-run discoverability, visual review, reference-signature/progression; use as a proposed lens, not a feature mandate. The 2D-sandbox visual-state backdrop is owned by the visual row. |
 | `cli-library-api` | command/library/API/file surface | exact command or call; exit code/stdout/stderr/status/body/diff; success/error/empty/limit/recovery; side effects/idempotence/cleanup where state changes; no screenshot as substitute |
 | `docs` | source or rendered documentation | affected content + rendered/link/anchor/navigation/search evidence; source diff alone is not enough; no game/UI checks; visual profile only if the docs task has a rendered visual design surface |
 
