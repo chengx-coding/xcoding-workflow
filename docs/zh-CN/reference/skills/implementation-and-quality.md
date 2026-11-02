@@ -71,4 +71,4 @@
 
 对交互式视觉体验产品，主控件必须通过真实指针测试且命中目标稳定；enabled-looking no-op 是缺陷，`element.click()` 不算交互证据。
 
-对具有可信 reference 的体验型产品，定义性 loop 和最小 progression 深度必须实现或获得用户明确接受；可导航世界需要 orientation/map 或用户接受的 exclusion。
+对具有可信 reference 的体验型产品，定义性 loop 及其深度记录为 proposed should，并写明证据与损失；用户可将其变为约束，无用户时允许缩小 scope。可导航世界应记录 orientation/map 或省略的损失。
