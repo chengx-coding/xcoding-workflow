@@ -60,7 +60,7 @@ probe and a negative probe.
 
 ## Visual-state backdrop
 
-For a 2D sandbox visual product where content can be removed, cleared, hidden or covered, or a
+For a visual product where content can be removed, cleared, hidden or covered, or a
 mode/theme/time/viewport changes, the state must show a coherent backdrop/empty/fallback and be
 verified before/after. This is a task-class must; it does not apply to static docs/CLIs/data
 dashboards.

@@ -51,10 +51,11 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("data dashboard", experience)
         self.assertIn("**must** capability", reference_flat)
         self.assertIn("validated-in-class", experience)
+        self.assertIn("visual-class must", experience)
         self.assertIn("mode/theme/time/viewport", reference_flat)
         self.assertIn("state-dependent backdrop is a **must**", verification)
         self.assertIn("mode/theme/time/viewport", verification)
-        for heading in ("## 1. First-run discoverability", "## 2. Visual composition and review", "## 3. Visual-state backdrop (task-class must)", "## 4. Reference signature and progression", "## 5. Verification"):
+        for heading in ("## 1. First-run discoverability", "## 2. Visual composition and review", "## 3. Visual-state backdrop (visual-product must)", "## 4. Reference signature and progression", "## 5. Verification"):
             self.assertIn(heading, experience)
         self.assertIn("pass its checks into the analysis node inputs", work)
         self.assertIn("self-review limitation", verification)

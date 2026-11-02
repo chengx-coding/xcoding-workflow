@@ -1,8 +1,8 @@
 # Experience-product quality
 
 **Scope:** task-class. **Promotion status:** `proposed`. **Generality evidence:** the overall experience lens is proposed (one open-sample application);
-section 3's visual-state backdrop is a separate, narrowly scoped validated-in-class rule for 2D
-sandbox visual products. **Applies when** the primary deliverable is a visual/interactive experience
+section 3's visual-state backdrop is a separate visual-class must, validated-in-class for visual
+products where content can be removed/covered or mode/theme/time/viewport changes. **Applies when** the primary deliverable is a visual/interactive experience
 product: a game, sandbox, simulation, or an interactive visual tool whose acceptance is experiential.
 **Does not apply** to a pure library, CLI, data pipeline, data dashboard, documentation set, or other
 primarily informational deliverable. Record the selection or a not-applicable reason; do not force
@@ -27,19 +27,14 @@ Before result, obtain an **independent visual review** when an independent revie
 Record the reviewed before/after states and required findings, and re-check fixes. If no independent
 reviewer is available, record a self-review with that limitation; do not claim independent review.
 
-## 3. Visual-state backdrop (task-class must)
+## 3. Visual-state backdrop (visual-product must)
 
-**Scope:** visually rendered products where content can be removed, cleared, hidden or covered, or a
-mode/theme/time/viewport changes. **Does not apply** to a static document set, CLI output, data
-pipeline, or a data dashboard whose acceptance is informational rather than experiential. **Promotion
-status:** `validated-in-class` for 2D sandbox visual products only (two independent instances); a
-broader visual-product claim is not made.
-
-This is a **must** for that class: the state must show a coherent backdrop/empty/fallback, not an
-unrelated default background or layer. Record before/after on the declared surface and execute the
-state transition; a code reading or a single default frame is not evidence. A missing backdrop is a
-must gap: fail/block verification or record a user-accepted risk. This is an application of universal
-observable-state integrity, not a new mechanism.
+This is owned by the visual output-surface contract, not duplicated here. For a visual product where
+content can be removed, cleared, hidden or covered, or a mode/theme/time/viewport changes, the
+state-dependent backdrop is a **visual-class must**; record before/after and execute the
+transition. The visual class is `validated-in-class` by two independent visual products; the overall
+experience lens remains `proposed`. Do not apply the must to a static document set, CLI output, data
+pipeline or informational dashboard. See `references/output-surface-evidence.md`.
 ## 4. Reference signature and progression
 
 When a credible reference exists, identify a small set of signature capabilities and the genre's
@@ -68,6 +63,6 @@ this profile to require a specific feature set.
 
 ## 6. Force
 
-Convention-only. No new runtime command, state, node type or configuration surface. The profile is
-proposed; a second independent experience-product instance is needed before it is treated as a
-validated class contract.
+Convention-only. No new runtime command, state, node type or configuration surface. The overall experience lens is
+proposed; its visual-state backdrop is validated-in-class for the visual class, not universal. A second
+independent experience-product instance is still needed for the overall lens.
