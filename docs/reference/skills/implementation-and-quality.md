@@ -70,3 +70,5 @@ These supporting Skills execute approved changes, explain them to human reviewer
 For an interactive visual experience product, the first-run affordance and visual-state backdrop are visual-row musts: a fresh-state probe must find the primary system via a visible button/tutorial/task, and removed/covered content must show a coherent backdrop.
 
 For an interactive visual experience product, primary controls must pass a real-pointer test with a stable hit target; an enabled-looking no-op is a defect, and `element.click()` is not interaction evidence.
+
+For an experience product with a credible reference, the defining loop and minimum progression depth must be implemented or explicitly user-accepted; a navigable world needs an orientation/map or an accepted exclusion.

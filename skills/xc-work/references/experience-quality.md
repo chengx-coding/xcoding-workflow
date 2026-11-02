@@ -48,6 +48,17 @@ smaller scope, record the reason and the lost experience value.
 Avoid feature-count thinking. A simple, task-appropriate progression is valid; it must be discoverable
 and produce a real state change, not a decorative menu.
 
+## 4b. Reference loop depth and orientation
+
+When a credible reference exists, the reference's defining loop and its **minimum playable
+progression depth** must be implemented, or the omission must be an explicit user-accepted exclusion.
+A demo subset is not a silent substitute for the defining loop: if the reference's core loop is
+gather -> process -> build/upgrade, a product with only the first gather step is a progression gap.
+
+When the product has a navigable world, provide an orientation/map affordance (map, coordinates,
+compass, or equivalent) or record a user-accepted exclusion. A user who cannot tell where they are
+has a navigation gap, not a polish issue.
+
 ## 5. Verification
 
 When the product is an experience product and the profile is used, record:
