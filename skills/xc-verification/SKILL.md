@@ -36,9 +36,9 @@ If a focused check exposes scope expansion or an unexpected non-local failure, t
 
 When a create task has an accepted capability matrix, map evidence to every must and should capability. When the acceptance depends on a user-observable state that can change, persist, fail, empty or recover, this includes each journey/integrity capability: execute the probe or manual scenario and record the before-state and post-state observable on the declared output surface, not only a first frame, a code reading, a narrative claim, or a unit test that never enters the state. Select the public profile id from `xc-work`'s Output-Surface Evidence table and apply that row's evidence; do not restate a lossy subset. A visual surface uses the visual row; CLI/API/file and docs use their own rows. Do not require a screenshot or visual assertion for a non-visual task. For an experience product, execute the experience-quality checks: visual review (independent when
 available; otherwise record a self-review limitation) and progression journey; a required finding is
-fixed and rechecked. For an experience product with a credible reference, verify the defining loop and
-minimum progression depth, or a user-accepted exclusion; verify an orientation/map for a navigable
-world, or a user-accepted exclusion; a thin demo subset is a progression gap, not a pass. For a
+fixed and rechecked. For an experience product with a credible reference, check the recorded defining-loop depth and
+orientation/map decisions; a proposed should may remain recorded with its reason and lost value, and
+is not a pass/fail requirement. A thin demo subset is a proposed-should gap, not a must failure. For a
 rendered interactive product with primary controls, apply the visual row's **interaction truth**
 procedure exactly: 10 real pointer clicks at >=90 ms, the same pointerdown/up hit target,
 `element.click()` invalid, disabled/no-op feedback visible; 10/10 required, and a core-loop no-op is a

@@ -50,14 +50,14 @@ and produce a real state change, not a decorative menu.
 
 ## 4b. Reference loop depth and orientation
 
-When a credible reference exists, the reference's defining loop and its **minimum playable
-progression depth** must be implemented, or the omission must be an explicit user-accepted exclusion.
-A demo subset is not a silent substitute for the defining loop: if the reference's core loop is
-gather -> process -> build/upgrade, a product with only the first gather step is a progression gap.
+When a credible reference exists, identify its defining loop and the minimum playable depth that makes
+that loop real. Treat the gap as a **proposed should**, not an automatic must: record the evidence,
+the user value and the lost experience if the scope is smaller. A user may make it binding; without a
+user, record the proposed should and the reason for the smaller scope; do not force a feature.
 
-When the product has a navigable world, provide an orientation/map affordance (map, coordinates,
-compass, or equivalent) or record a user-accepted exclusion. A user who cannot tell where they are
-has a navigation gap, not a polish issue.
+When the product has a navigable world, consider an orientation/map affordance (map, coordinates,
+compass, or equivalent). Treat it as a proposed should with the same user/no-user rule; do not force it
+on a non-spatial product.
 
 ## 5. Verification
 
