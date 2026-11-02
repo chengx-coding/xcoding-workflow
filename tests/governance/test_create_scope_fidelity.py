@@ -25,9 +25,12 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
             SKILLS / "xc-workflow-evolution" / "references" / "generality-and-applicability.md"
         )
         detail = SKILLS / "xc-work" / "references" / "output-surface-evidence.md"
+        experience = read(SKILLS / "xc-work" / "references" / "experience-quality.md")
 
         self.assertTrue(detail.is_file())
         self.assertIn("Output-Surface Evidence", work)
+        self.assertIn("experience-quality.md", work)
+        self.assertIn("experience", work)
         for profile in ("visual", "cli-library-api", "docs"):
             self.assertIn(profile, work)
             self.assertIn(profile, read(detail))
@@ -35,6 +38,7 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         for text in (reference, analysis, verification, generality):
             self.assertNotIn("profiles/", text)
         self.assertIn("Observable-state", reference_flat)
+        self.assertIn("experience-quality.md", reference_flat)
         self.assertIn("before/action/after", reference_flat)
         self.assertIn("capability map", reference_flat)
         self.assertIn("signature", reference_flat)
@@ -42,6 +46,8 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("solution matrix", reference_flat)
         self.assertIn("Verification and review", reference_flat)
         self.assertIn("Output-Surface Evidence", verification)
+        for phrase in ("Scope:** task-class", "First-run discoverability", "independent visual", "State-dependent backdrop", "Reference signature"):
+            self.assertIn(phrase, experience)
         self.assertIn("capability matrix", implementation)
         self.assertIn("scope fidelity", review)
 
@@ -63,6 +69,7 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
             SKILLS / "xc-work" / "SKILL.md",
             SKILLS / "xc-work" / "references" / "create-scope.md",
             SKILLS / "xc-work" / "references" / "output-surface-evidence.md",
+            SKILLS / "xc-work" / "references" / "experience-quality.md",
             SKILLS / "xc-workflow-evolution" / "SKILL.md",
             SKILLS / "xc-workflow-evolution" / "references" / "generality-and-applicability.md",
             SKILLS / "xc-workflow-evolution" / "references" / "self-evolution-discipline.md",

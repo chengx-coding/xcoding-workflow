@@ -80,6 +80,14 @@ A task with no visual surface must not be required to produce screenshots/backgr
 evidence; a task with a visual surface uses the visual profile. Record a surface as not applicable only
 with a reason.
 
+**Experience products.** If the deliverable is a visual/interactive experience product (game,
+sandbox, simulation, visual UI tool), load `references/experience-quality.md` and add its must
+capabilities: first-run discoverability (a visible affordance/tutorial/task, not only a key or README),
+an independent visual review before result, coherent state-dependent backdrop/occlusion, and a small
+reference-signature/progression loop. A no-user analysis may propose a minimal loop but must not
+silently non-goal a genre-defining one. Do not apply this profile to a pure library/CLI/docs/data task;
+record not-applicable with the reason.
+
 When it applies, add a small set of **user journeys** and **integrity invariants** covering boundary/
 edge states, removed/cleared/exhausted content, terminal/failure/cancelled states, reload/recovery/
 persistence, and accepted/refused feedback. A journey is a user-observable sequence with a
