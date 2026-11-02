@@ -1,4 +1,4 @@
-# Open 2D sandbox profile — v1.2
+# Open 2D sandbox profile — v1.3
 
 **Prompt:** the exact `prompt.md`; no feature list and no non-goal list. The agent decides which
 Minecraft systems belong in a small sandbox and records the reasoning.
@@ -42,6 +42,21 @@ D2/D4/D1, not high defects.
 Do not say "the compact prompt does not require X" and stop. This profile has no compact-scope
 escape. If a reference signature is absent, record it as a domain gap and score it; if the agent
 chose a smaller scope, record the reason and the lost experience value.
+
+## Interaction truth
+
+Exercise every visible primary control with a real pointer at its rendered position. A control that
+looks enabled but silently does nothing is a defect; it must be visibly disabled with a reason or
+execute with feedback. Crafting must be tested with insufficient materials (clear missing list) and
+with sufficient materials (output + count update). Code/README presence is not interaction evidence.
+
+## Art quality
+
+D5 is a blind pairwise visual score at matched states: composition 5, character readability/animation
+5, asset detail 3, UI/typography coherence 3, atmosphere/lighting 2. Record an art tier
+(`rough`/`prototype`/`coherent`/`polished`). If one artifact is clearly more polished, D5 differs by
+at least 15 and the weaker is not `polished`. A functional but plain UI is `prototype`/`coherent`, not
+a polished art result.
 
 ## Integrity
 

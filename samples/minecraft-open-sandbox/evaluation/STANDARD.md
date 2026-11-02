@@ -1,4 +1,4 @@
-# M2D-SES-OSS v1.2 — Open Sandbox Standard
+# M2D-SES-OSS v1.3 — Open Sandbox Standard
 
 A fixed, reproducible rubric for a **simple, open Minecraft-style 2D sandbox prompt**. It evaluates
 what an agent actually produced, not whether it followed a pre-written feature list.
@@ -58,6 +58,23 @@ Report the **experience tier** separately from the composite:
 
 A high-defect artifact can be `prototype` even when its ECS is strong; engineering does not promote
 the experience tier.
+
+## 1c. v1.3 correction — interaction truth and art quality
+
+**Interaction truth.** A visible primary control must be exercised with a **real pointer event at its
+rendered position**, not a programmatic `element.click()`, DOM call or code reading. A control that
+looks enabled but silently does nothing is a defect: it must be visibly disabled with a reason, or
+execute and show its effect. For crafting specifically: click Craft with insufficient materials
+(must explain what is missing) and with sufficient materials (must produce the output and update
+counts). A core-loop control that cannot open/execute and gives no feedback is a high-severity
+interaction defect; a secondary control is medium. Presence in code/README does not count.
+
+**Art quality.** D5 is not a functionality score. Score it from a blind **pairwise visual comparison**
+at matched states (same viewport/state), with these sub-scores: composition 5, character
+readability/animation 5, asset detail 3, UI/typography coherence 3, atmosphere/lighting 2 (total 18).
+Record an art tier: `rough` <50, `prototype` 50–64, `coherent` 65–79, `polished` 80+. If one artifact
+is clearly more polished, the D5 difference must be at least 15 points and the weaker artifact cannot
+be called `polished`. "It has a UI" or "the screenshot is non-blank" is not art evidence.
 
 ## 2. Gates and defect caps
 
