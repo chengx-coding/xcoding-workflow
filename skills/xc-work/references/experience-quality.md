@@ -31,6 +31,15 @@ Before result, obtain an **independent visual review** when an independent revie
 Record the reviewed before/after states and required findings, and re-check fixes. If no independent
 reviewer is available, record a self-review with that limitation; do not claim independent review.
 
+## 2b. Visual direction
+
+When the task sets a visual quality target or a credible visual reference exists, record a small
+visual-direction plan before implementation: palette, depth/horizon or spatial layering, silhouette
+and character readability, lighting/atmosphere, and UI typography/hierarchy. Compare executed states
+against that plan; a plain functional UI does not meet a polished visual target. Record the gap and
+the fix, not a preferred style. This is a **proposed quality check** unless the request explicitly
+makes visual quality a must.
+
 ## 3. Visual-state backdrop
 
 For an interactive visual experience product, the state-dependent backdrop is a **must owned by the visual
