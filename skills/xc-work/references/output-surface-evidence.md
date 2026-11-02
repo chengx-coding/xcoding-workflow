@@ -20,8 +20,11 @@ controls, exercise each with a real pointer at its rendered position for a reali
 90 ms**), not only an instant programmatic click; `element.click()`/DOM calls are not interaction
 evidence. Record the hit-test target at pointerdown and pointerup: the same control must receive the
 completed click. A control that looks enabled but silently does nothing is a defect: it must be
-visibly disabled with a reason, or execute and show its effect. A core-loop no-op is high severity;
-a secondary control is medium. This rule is `proposed` (one sampled instance); it is not
+visibly disabled with a reason, or execute and show its effect. A **primary control** is a control needed to start or complete the product's primary loop; a
+**core-loop no-op** is a primary control that fails to execute its advertised action and shows no
+feedback. Run 10 real clicks at >=90 ms; require 10/10. A core-loop no-op is high severity; a
+secondary control is medium. For a canvas-rendered control, hit-test the canvas and record the
+logical control mapping. This rule is `proposed` (one sampled instance); it is not
 `validated-in-class` and must not be promoted without a second independent product and a negative
 probe.
 

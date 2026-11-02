@@ -92,7 +92,10 @@ sandbox, simulation, or interactive visual tool whose acceptance is experiential
 state-dependent backdrop/occlusion, and a small reference-signature/progression decision. The lens does
 not add a universal must or a hidden feature: a signature loop the request is silent about is a
 proposed should with its evidence and gap; a no-user analysis may choose a smaller scope but must not
-silently non-goal it. Do not apply the lens to a pure library/CLI/docs/data dashboard task; record
+silently non-goal it. For a rendered interactive product with primary controls, add an **interaction
+truth** check (proposed): real pointer at >=90 ms, same pointerdown/up target, 10/10, no
+`element.click()`, and a visible disabled/feedback path; a core-loop no-op is a high-severity defect.
+Do not apply the lens to a pure library/CLI/docs/data dashboard task; record
 not-applicable with the reason.
 
 When it applies, add a small set of **user journeys** and **integrity invariants** covering boundary/
