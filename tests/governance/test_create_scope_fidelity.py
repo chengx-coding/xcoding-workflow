@@ -61,9 +61,8 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("interactive visual experience", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertNotIn("2D sandbox", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertNotIn("block-or-tile", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
-        self.assertIn("0.3.6", read(detail))
-        self.assertIn("0.4.3", read(detail))
-        self.assertIn("2D 沙盒视觉产品", read(ROOT / "docs" / "zh-CN" / "reference" / "skills" / "implementation-and-quality.md"))
+        self.assertIn("交互式视觉体验产品", read(ROOT / "docs" / "zh-CN" / "reference" / "skills" / "implementation-and-quality.md"))
+        self.assertNotIn("2D 沙盒", read(ROOT / "docs" / "zh-CN" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertIn("visual-state backdrop", verification)
         self.assertIn("mode/theme/time/viewport", verification)
         for heading in ("## 1. First-run discoverability", "## 2. Visual composition and review", "## 3. Visual-state backdrop", "## 4. Reference signature and progression", "## 5. Verification"):
@@ -92,18 +91,11 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertNotIn("internal-profile", work)
 
     def test_generic_assets_do_not_name_the_sample_domain(self):
-        paths = [
-            SKILLS / "xc-work" / "SKILL.md",
-            SKILLS / "xc-work" / "references" / "create-scope.md",
-            SKILLS / "xc-work" / "references" / "output-surface-evidence.md",
-            SKILLS / "xc-work" / "references" / "experience-quality.md",
-            SKILLS / "xc-workflow-evolution" / "SKILL.md",
-            SKILLS / "xc-workflow-evolution" / "references" / "generality-and-applicability.md",
-            SKILLS / "xc-workflow-evolution" / "references" / "self-evolution-discipline.md",
-            SKILLS / "xc-analysis" / "SKILL.md",
-            SKILLS / "xc-verification" / "SKILL.md",
-        ]
-        forbidden = re.compile(r"\b(2D sandbox|2D-sandbox|block-or-tile|minecraft|minimap|crafting tree)\b", re.IGNORECASE)
+        paths = sorted(SKILLS.rglob("*.md")) + sorted((ROOT / "docs").rglob("*.md"))
+        forbidden = re.compile(
+            r"(2D sandbox|2D-sandbox|block-or-tile|2D 沙盒|minecraft|minimap|crafting tree|Wildgrove|Blockhaven|Cubewood|MOSSWILD)",
+            re.IGNORECASE,
+        )
         for path in paths:
             self.assertIsNone(forbidden.search(read(path)), path)
 

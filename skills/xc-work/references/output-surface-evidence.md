@@ -15,12 +15,15 @@ after assertion with a surface-specific screenshot or a state label.
 
 ## visual
 
-**Interaction truth (visual products).** Exercise every visible primary control with a real
-pointer at its rendered position. The hit target must be stable across pointerdown/pointerup; do not
-rebuild interactive nodes during a click. A control that looks enabled but silently does nothing is a
-defect: it must be visibly disabled with a reason, or execute and show its effect. Test at a realistic
-dwell (for example 90 ms), not only an instant programmatic click; `element.click()`/DOM calls are not
-interaction evidence. A core-loop no-op is high severity; a secondary control is medium.
+**Interaction truth (rendered interactive products; proposed).** When the product exposes primary
+controls, exercise each with a real pointer at its rendered position for a realistic dwell (**at least
+90 ms**), not only an instant programmatic click; `element.click()`/DOM calls are not interaction
+evidence. Record the hit-test target at pointerdown and pointerup: the same control must receive the
+completed click. A control that looks enabled but silently does nothing is a defect: it must be
+visibly disabled with a reason, or execute and show its effect. A core-loop no-op is high severity;
+a secondary control is medium. This rule is `proposed` (one sampled instance); it is not
+`validated-in-class` and must not be promoted without a second independent product and a negative
+probe.
 
 **Applies when** acceptance depends on a rendered/visual surface (UI/page/canvas/visual document).
 **Does not apply** to a pure library/CLI/source-only docs task.
@@ -71,10 +74,9 @@ to a game/UI or CLI-only artifact with no documentation surface.
 ## Status
 
 The **visual-state backdrop** and **first-run affordance** are `validated-in-class` by two
-independent instances: the compact 0.3.6 Wildgrove run (only footer key hints for the primary loop)
-and the open 0.4.3 Blockhaven run (passive hint, hidden crafting, D9 62 capped). The general visual
-profile, CLI, docs and the experience lens remain `proposed`; universal promotion requires a
-different-class probe and a negative probe.
+independent sampled artifacts (recorded in the sample evaluation, not named here). The general visual
+profile, CLI, docs, interaction truth and the experience lens remain `proposed`; universal promotion
+requires a different-class probe and a negative probe.
 
 **Force:** convention-only; no runtime check proves a profile is universal.
 
