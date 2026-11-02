@@ -81,12 +81,13 @@ evidence; a task with a visual surface uses the visual profile. Record a surface
 with a reason.
 
 **Experience products.** If the deliverable is a visual/interactive experience product (game,
-sandbox, simulation, visual UI tool), load `references/experience-quality.md` and add its must
-capabilities: first-run discoverability (a visible affordance/tutorial/task, not only a key or README),
-an independent visual review before result, coherent state-dependent backdrop/occlusion, and a small
-reference-signature/progression loop. A no-user analysis may propose a minimal loop but must not
-silently non-goal a genre-defining one. Do not apply this profile to a pure library/CLI/docs/data task;
-record not-applicable with the reason.
+sandbox, simulation, or interactive visual tool whose acceptance is experiential), use the proposed
+`references/experience-quality.md` lens: record first-run discoverability, visual review, coherent
+state-dependent backdrop/occlusion, and a small reference-signature/progression decision. The lens does
+not add a universal must or a hidden feature: a signature loop the request is silent about is a
+proposed should with its evidence and gap; a no-user analysis may choose a smaller scope but must not
+silently non-goal it. Do not apply the lens to a pure library/CLI/docs/data dashboard task; record
+not-applicable with the reason.
 
 When it applies, add a small set of **user journeys** and **integrity invariants** covering boundary/
 edge states, removed/cleared/exhausted content, terminal/failure/cancelled states, reload/recovery/

@@ -1,6 +1,6 @@
 # Output-surface evidence contract
 
-**Scope:** task-class. This is the single detail contract for the four surfaces. The public table in
+**Scope:** task-class. This is the single detail contract for the output surfaces; `experience` is a proposed task-class overlay, not a fifth surface. The public table in
 `xc-work/SKILL.md` is the index and applicability contract; this file is the evidence detail. It is
 private to `xc-work`; analysis and verification use the public table and their own concise rules.
 

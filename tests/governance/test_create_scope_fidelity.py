@@ -30,7 +30,8 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertTrue(detail.is_file())
         self.assertIn("Output-Surface Evidence", work)
         self.assertIn("experience-quality.md", work)
-        self.assertIn("experience", work)
+        self.assertIn("| `experience` (task-class overlay, `proposed`)", work)
+        self.assertNotIn("experience-quality.md", analysis)
         for profile in ("visual", "cli-library-api", "docs"):
             self.assertIn(profile, work)
             self.assertIn(profile, read(detail))
@@ -46,6 +47,8 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("solution matrix", reference_flat)
         self.assertIn("Verification and review", reference_flat)
         self.assertIn("Output-Surface Evidence", verification)
+        self.assertIn("Do not infer this profile", review)
+        self.assertIn("Promotion status:** `proposed`", experience)
         for phrase in ("Scope:** task-class", "First-run discoverability", "independent visual", "State-dependent backdrop", "Reference signature"):
             self.assertIn(phrase, experience)
         self.assertIn("capability matrix", implementation)
