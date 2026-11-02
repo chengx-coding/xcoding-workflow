@@ -16,7 +16,7 @@ authorize adding a feature that the request does not support.
 A user should be able to find the primary systems from the first-run UI: a visible affordance,
 tutorial, task entry, menu, or equivalent. Indirect documentation or a key-only path is weaker
 evidence; record how a fresh user finds the system and the visible entry point. A discoverability gap
-is a quality finding, not by itself a high integrity defect.
+is a quality finding, not by itself a high-severity finding.
 
 ## 2. Visual composition and review
 
