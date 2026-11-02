@@ -48,6 +48,9 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("Verification and review", reference_flat)
         self.assertIn("Output-Surface Evidence", verification)
         self.assertIn("Do not infer this profile", review)
+        self.assertIn("pass its checks into the analysis node inputs", work)
+        self.assertIn("self-review limitation", verification)
+        self.assertIn("Experience-product overlay", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertIn("Promotion status:** `proposed`", experience)
         for phrase in ("Scope:** task-class", "First-run discoverability", "independent visual", "State-dependent backdrop", "Reference signature"):
             self.assertIn(phrase, experience)

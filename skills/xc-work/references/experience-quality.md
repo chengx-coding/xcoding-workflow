@@ -21,7 +21,7 @@ is a quality finding, not by itself a high integrity defect.
 ## 2. Visual composition and review
 
 For a primary visual surface, record the composition, character/world readability, UI hierarchy and
-action feedback. A plain prototype is a lower experience band; it is not a correctness failure.
+action feedback. A plain implementation is simpler; it is not a correctness failure.
 
 Before result, obtain an **independent visual review** when an independent reviewer is available.
 Record the reviewed before/after states and required findings, and re-check fixes. If no independent
@@ -57,9 +57,9 @@ When the product is an experience product and the profile is used, record:
 - a progression/signature journey when one is included;
 - the executed evidence and any gap/limit.
 
-A quality gap is scored/recorded; a broken core or unplayable state remains a high integrity defect
-under the universal rules. Do not convert an experience gap into a high defect, and do not use this
-profile to require a specific feature set.
+A quality gap is recorded; a broken core or unplayable state remains a high-severity finding under
+the universal rules. Do not convert an experience gap into a high-severity finding, and do not use
+this profile to require a specific feature set.
 
 ## 6. Force
 
