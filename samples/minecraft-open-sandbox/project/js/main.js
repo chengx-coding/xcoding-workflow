@@ -33,6 +33,7 @@
     mobs: null,
     particles: [],
     camera: { x: 0, y: 0 },
+    view: { width: CONFIG.viewWidth, height: CONFIG.viewHeight },
     light: null,
     worldVersion: 0,
     mode: "booting",
@@ -62,6 +63,35 @@
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
+  }
+
+  function resizeView() {
+    const width = Math.max(320, Math.floor(window.innerWidth));
+    const height = Math.max(240, Math.floor(window.innerHeight));
+    if (canvas.width !== width) {
+      canvas.width = width;
+    }
+    if (canvas.height !== height) {
+      canvas.height = height;
+    }
+    game.view.width = width;
+    game.view.height = height;
+    if (game.world) {
+      game.camera.x = clamp(
+        game.camera.x,
+        0,
+        Math.max(0, game.world.width * CONFIG.tileSize - width)
+      );
+      game.camera.y = clamp(
+        game.camera.y,
+        0,
+        Math.max(0, game.world.height * CONFIG.tileSize - height)
+      );
+      updateLight(true);
+    }
+    if (ui) {
+      hudRefresh(true);
+    }
   }
 
   function setStatus(stateName, title) {
@@ -109,14 +139,14 @@
     game.firstRun = true;
     game.worldVersion += 1;
     game.camera.x = clamp(
-      game.player.x * CONFIG.tileSize - CONFIG.viewWidth / 2,
+      game.player.x * CONFIG.tileSize - game.view.width / 2,
       0,
-      Math.max(0, game.world.width * CONFIG.tileSize - CONFIG.viewWidth)
+      Math.max(0, game.world.width * CONFIG.tileSize - game.view.width)
     );
     game.camera.y = clamp(
-      game.player.y * CONFIG.tileSize - CONFIG.viewHeight / 2,
+      game.player.y * CONFIG.tileSize - game.view.height / 2,
       0,
-      Math.max(0, game.world.height * CONFIG.tileSize - CONFIG.viewHeight)
+      Math.max(0, game.world.height * CONFIG.tileSize - game.view.height)
     );
     updateLight(true);
   }
@@ -145,14 +175,14 @@
     game.beacon = findBeacon(game.world);
     game.worldVersion += 1;
     game.camera.x = clamp(
-      game.player.x * CONFIG.tileSize - CONFIG.viewWidth / 2,
+      game.player.x * CONFIG.tileSize - game.view.width / 2,
       0,
-      Math.max(0, game.world.width * CONFIG.tileSize - CONFIG.viewWidth)
+      Math.max(0, game.world.width * CONFIG.tileSize - game.view.width)
     );
     game.camera.y = clamp(
-      game.player.y * CONFIG.tileSize - CONFIG.viewHeight / 2,
+      game.player.y * CONFIG.tileSize - game.view.height / 2,
       0,
-      Math.max(0, game.world.height * CONFIG.tileSize - CONFIG.viewHeight)
+      Math.max(0, game.world.height * CONFIG.tileSize - game.view.height)
     );
     updateLight(true);
   }
@@ -323,11 +353,11 @@
 
   function cameraTarget() {
     const ts = CONFIG.tileSize;
-    const desiredX = game.player.x * ts - CONFIG.viewWidth / 2;
-    const desiredY = game.player.y * ts - CONFIG.viewHeight / 2 - 24;
+    const desiredX = game.player.x * ts - game.view.width / 2;
+    const desiredY = game.player.y * ts - game.view.height / 2 - 24;
     return {
-      x: clamp(desiredX, 0, Math.max(0, game.world.width * ts - CONFIG.viewWidth)),
-      y: clamp(desiredY, 0, Math.max(0, game.world.height * ts - CONFIG.viewHeight))
+      x: clamp(desiredX, 0, Math.max(0, game.world.width * ts - game.view.width)),
+      y: clamp(desiredY, 0, Math.max(0, game.world.height * ts - game.view.height))
     };
   }
 
@@ -343,8 +373,8 @@
     return {
       x0: Math.floor(game.camera.x / ts) - 20,
       y0: Math.floor(game.camera.y / ts) - 10,
-      x1: Math.ceil((game.camera.x + CONFIG.viewWidth) / ts) + 20,
-      y1: Math.ceil((game.camera.y + CONFIG.viewHeight) / ts) + 20
+      x1: Math.ceil((game.camera.x + game.view.width) / ts) + 20,
+      y1: Math.ceil((game.camera.y + game.view.height) / ts) + 20
     };
   }
 
@@ -625,6 +655,7 @@
       world: game.world,
       player: game.player,
       camera: game.camera,
+      view: { width: game.view.width, height: game.view.height },
       time: game.clock.time,
       day: game.clock.day,
       light: game.light,
@@ -919,8 +950,8 @@
       const px = (tx + 0.5) * CONFIG.tileSize - game.camera.x;
       const py = (ty + 0.5) * CONFIG.tileSize - game.camera.y;
       return {
-        x: rect.left + (px / CONFIG.viewWidth) * rect.width,
-        y: rect.top + (py / CONFIG.viewHeight) * rect.height
+        x: rect.left + (px / canvas.width) * rect.width,
+        y: rect.top + (py / canvas.height) * rect.height
       };
     }
 
@@ -978,6 +1009,7 @@
           mode: game.mode,
           player: { x: game.player.x, y: game.player.y, health: game.player.health },
           camera: { x: game.camera.x, y: game.camera.y },
+          view: { width: game.view.width, height: game.view.height },
           clock: { day: game.clock.day, time: game.clock.time },
           worldVersion: game.worldVersion,
           tier: BLOCKS.bestPickTier(game.inventory.slots),
@@ -1050,6 +1082,7 @@
   }
 
   function boot() {
+    resizeView();
     RENDER.initTextures();
     game.muted = AUDIO.isMuted();
 
@@ -1122,6 +1155,7 @@
     window.addEventListener("error", function onError(event) {
       setStatus("error", event.message || "runtime error");
     });
+    window.addEventListener("resize", resizeView);
     window.addEventListener("unhandledrejection", function onRejection(event) {
       setStatus("error", String(event.reason));
     });
