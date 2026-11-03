@@ -40,26 +40,25 @@ and the new standard score what the agent actually chooses.
 
 ## Result
 
-Best XC artifact: **Emberdeep 0.4.15** (full-bleed + readable ores). One-shot **MOSSWILD**, blind v1.3.
+Best XC artifact: **Emberdeep (0.4.7)**. One-shot **MOSSWILD** compared blind under **v1.3**.
 
-| | One-shot A | XC 0.4.15 B |
+| | One-shot A | XC 0.4.7 B |
 | --- | ---: | ---: |
-| PES | **82.4** | 82.3 |
-| ECS | 80.3 | **88.6** |
-| Composite | 81.9 | **83.9** |
-| Experience tier | **polished** | solid |
-| Art D5 | **86** | 67 |
-| D6 map | 50 | **90** |
-| High / medium | 0 / 2 | **0 / 0** |
+| PES | **82.4** | 78.8 |
+| ECS | 82.2 | **88.2** |
+| Composite | **82.4** | **81.1** |
+| Experience tier | polished | prototype (D5 <55) |
+| Art D5 | **89 polished** | **51 prototype** |
+| High / medium / low | 0 / 1 / 1 | 0 / 1 / 2 |
+| Higher | **A** | — |
 
-B wins composite by 2.0 and is within 0.1 PES, but **D5 art is 67 vs 86**; this is the **0.4.15 cap
-stop**, not a strict no-aspect-worse stop. The visual process (0.4.11 `xc-visual-design`) was also
-validated cross-class on a non-game dashboard (0.4.13: 254/254 functional checks, two independent
-critic cycles, no high/medium).
+A wins by 1.3; the only decisive gap is art. Emberdeep has real-pointer interaction truth, crafting,
+map, 8-stage progression and save/reload, but its D5 is below 55, so it is not a stop.
 
-![Emberdeep 0.4.15 day](media/xc-emberdeep-0415-day.png)
+The 0.4.9 cap sample scored **A 81.8 / B 79.2**, lower than 0.4.7; it stops at the cap as **not-best**.
+The 0.4.8 visual-direction attempt was rolled back after dropping crafting/survival/progression.
 
-![Emberdeep 0.4.15 underground](media/xc-emberdeep-0415-underground.png)
+![Emberdeep](media/xc-emberdeep-day.png)
 
 ![One-shot MOSSWILD](media/one-shot-mosswild.png)
 

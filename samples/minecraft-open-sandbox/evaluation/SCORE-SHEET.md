@@ -3,26 +3,29 @@
 Standard: **M2D-SES-OSS v1.2**. Blind evaluator; identity revealed after scoring:
 **A = one-shot (MOSSWILD), B = XC 0.4.4 (Cubewood)**.
 
-## Current result — 0.4.15 final (cap)
+## Current result 鈥?best XC (0.4.7 Emberdeep)
 
-Standard: **M2D-SES-OSS v1.3**. Blind: **A = one-shot MOSSWILD; B = XC 0.4.15 Emberdeep**.
+Standard: **M2D-SES-OSS v1.3** (real-pointer interaction truth, blind pairwise art). Blind:
+**A = one-shot MOSSWILD; B = XC 0.4.7 Emberdeep.**
 
-| Field | One-shot A | XC 0.4.15 B |
+| Field | One-shot A | XC 0.4.7 B |
 | --- | ---: | ---: |
-| PES | **82.4** | 82.3 |
-| ECS | 80.3 | **88.6** |
-| Composite | 81.9 | **83.9** |
-| Experience tier | **polished** | solid (D5 67 <75) |
-| Art D5 | **86 polished** | 67 coherent |
-| D6 map | 50 | **90** |
-| High / medium defects | 0 / 2 | 0 / 0 |
+| PES | 82.4 | 78.8 |
+| ECS | 82.2 | **88.2** |
+| Composite | **82.4** | **81.1** |
+| Experience tier | polished | prototype (D5 <55) |
+| Art D5 | **89 polished** | **51 prototype** |
+| High / medium / low | 0 / 1 / 1 | 0 / 1 / 2 |
 
-**B wins composite by 2.0 and PES is within 0.1, but D5 art is 67 vs 86.** The stop is the
-**0.4.15 cap**, not a strict "no aspect worse" stop; B is not the art winner.
+A wins by 1.3. The only decisive gap is D5 art (89 vs 51); B has real interaction
+truth, craft, map, 8-stage progression, save/reload, and no high defect. B is not a valid stop under
+the "highest overall and no aspect worse" rule.
 
-Visual path: 0.4.14 full-feature Emberdeep visual refinement (D5 51 -> 67; full-bleed + ore in
-0.4.15; 80/80 tests, 13/13 browser checks, 10/10 real-pointer preserved). Cross-class dashboard
-(0.4.13) independently accepted: 254/254 functional checks, two critic cycles, no high/medium.
+### 0.4.9 cap
+
+The 0.4.9 final sample was **A 81.8 / B 79.2** (PES 77.6, ECS 84.1; D5 62, two medium defects). It is
+lower than 0.4.7, so the 0.4.9 cap stops as **not-best**, not as a pass. The 0.4.8 visual-direction
+attempt was rolled back because it dropped crafting/survival/progression (35 tests, no station chain).
 
 ## Evidence
 

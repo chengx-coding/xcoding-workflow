@@ -81,24 +81,17 @@
     }
 
     function buildHud() {
-      const pips = [];
-      for (let i = 0; i < PROGRESSION.STAGES.length; i += 1) {
-        pips.push("<i" + (i === PROGRESSION.STAGES.length - 1 ? ' class="is-last"' : "") + "></i>");
-      }
       refs.hud.innerHTML = [
         '<div class="hud-top">',
         '  <section class="panel quest-panel" aria-label="Journey progress">',
-        '    <div class="quest-head"><span class="quest-eyebrow"><i class="quest-gem"></i>Journey</span><span id="quest-stage">1 / 8</span></div>',
+        '    <div class="quest-head"><span>Journey</span><span id="quest-stage">1 / 8</span></div>',
         '    <div class="quest-title" id="quest-title">Gather wood</div>',
         '    <div class="quest-hint" id="quest-hint"></div>',
-        '    <div class="quest-pips" id="quest-pips" aria-hidden="true">' + pips.join("") + "</div>",
+        '    <div class="quest-bar"><span id="quest-bar"></span></div>',
         "  </section>",
-        '  <div class="panel clock-panel" id="clock-panel" aria-label="Day and time">',
-        '    <span class="clock-orb" aria-hidden="true"></span>',
-        "    <div>",
-        '      <div class="clock-day" id="clock-day">Day 1</div>',
-        '      <div class="clock-phase" id="clock-phase">Morning</div>',
-        "    </div>",
+        '  <div class="panel clock-panel" aria-label="Day and time">',
+        '    <div class="clock-day" id="clock-day">Day 1</div>',
+        '    <div class="clock-phase" id="clock-phase">Morning</div>',
         "  </div>",
         '  <section class="panel map-panel" aria-label="World map">',
         '    <canvas id="minimap" width="228" height="136"></canvas>',
@@ -112,11 +105,7 @@
       refs.questStage = document.getElementById("quest-stage");
       refs.questTitle = document.getElementById("quest-title");
       refs.questHint = document.getElementById("quest-hint");
-      refs.questPips = document.getElementById("quest-pips");
-      refs.questPipItems = refs.questPips
-        ? Array.prototype.slice.call(refs.questPips.children)
-        : [];
-      refs.clockPanel = document.getElementById("clock-panel");
+      refs.questBar = document.getElementById("quest-bar");
       refs.clockDay = document.getElementById("clock-day");
       refs.clockPhase = document.getElementById("clock-phase");
       refs.minimap = document.getElementById("minimap");
@@ -267,18 +256,11 @@
         : progress.index + 1 + " / " + progress.total;
       refs.questTitle.textContent = progress.title;
       refs.questHint.textContent = progress.hint;
-      for (let i = 0; i < refs.questPipItems.length; i += 1) {
-        const pip = refs.questPipItems[i];
-        pip.classList.toggle("is-done", i < progress.index);
-        pip.classList.toggle("is-now", i === progress.index && !progress.done);
-      }
+      refs.questBar.style.width =
+        Math.round((progress.index / progress.total) * 100) + "%";
 
-      const phase = phaseName(snapshot.clock.time);
       refs.clockDay.textContent = "Day " + snapshot.clock.day;
-      refs.clockPhase.textContent = phase;
-      if (refs.clockPanel) {
-        refs.clockPanel.dataset.phase = phase;
-      }
+      refs.clockPhase.textContent = phaseName(snapshot.clock.time);
 
       refs.coords.textContent =
         "X " + Math.round(snapshot.player.x) + " · Y " + Math.round(snapshot.player.y);
@@ -288,11 +270,11 @@
       for (let i = 0; i < 10; i += 1) {
         const value = snapshot.player.health - i * 2;
         if (value >= 2) {
-          hearts.push('<span class="heart"></span>');
+          hearts.push('<span class="heart">♥</span>');
         } else if (value === 1) {
-          hearts.push('<span class="heart half"></span>');
+          hearts.push('<span class="heart half" style="opacity:0.55">♥</span>');
         } else {
-          hearts.push('<span class="heart empty"></span>');
+          hearts.push('<span class="heart empty">♥</span>');
         }
       }
       const heartsHtml = hearts.join("");
@@ -300,10 +282,6 @@
         state.heartsSignature = heartsHtml;
         refs.hearts.innerHTML = heartsHtml;
       }
-      refs.hearts.setAttribute(
-        "aria-label",
-        "Health " + Math.max(0, Math.round(snapshot.player.health)) + " of " + CONFIG.maxHealth
-      );
 
       updateHotbar(snapshot);
       updateSaveState(snapshot);
@@ -367,90 +345,35 @@
       const world = snapshot.world;
       const columns = WORLD.sampleColumns(world, 0, world.width, width);
       const sky = ctx.createLinearGradient(0, 0, 0, height);
-      sky.addColorStop(0, "#08111c");
-      sky.addColorStop(0.45, "#0d1826");
-      sky.addColorStop(0.72, "#142334");
-      sky.addColorStop(1, "#1b2c3f");
+      sky.addColorStop(0, "#101a2b");
+      sky.addColorStop(0.55, "#1c3049");
+      sky.addColorStop(1, "#2a435f");
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, width, height);
-
-      // A thin grid makes the overview read as a surveyed map instead of a
-      // strip of colour.
-      ctx.fillStyle = "rgba(180, 205, 230, 0.055)";
-      for (let gx = 0; gx < width; gx += Math.round(width / 8)) {
-        ctx.fillRect(gx, 0, 1, height);
-      }
-      for (let gy = 0; gy < height; gy += Math.round(height / 5)) {
-        ctx.fillRect(0, gy, width, 1);
-      }
-
-      // Stars in the map's sky band, deterministic from the seed.
-      ctx.fillStyle = "rgba(226, 238, 250, 0.4)";
-      for (let s = 0; s < 26; s += 1) {
-        const sx = (s * 37 + 11) % width;
-        const sy = (s * 13 + 5) % Math.round(height * 0.32);
-        ctx.fillRect(sx, sy, 1, 1);
-      }
 
       for (let i = 0; i < columns.length; i += 1) {
         const column = columns[i];
         const y = Math.round((column.surface / world.height) * height);
         const def = BLOCKS.get(column.top);
         const color = def ? def.palette.base : "#555";
-        const dark = def ? def.palette.dark : "#333";
-
-        // Subsoil is stone-dark, not the top block's colour, so the map reads
-        // as a depth section rather than a coloured bar chart.
-        ctx.fillStyle = i % 3 === 0 ? "#111923" : "#0d151e";
-        ctx.fillRect(i, y + 2, 1, height - y - 2);
-        ctx.fillStyle = dark;
-        ctx.globalAlpha = 0.34;
-        ctx.fillRect(i, y + 2, 1, 4);
-        ctx.globalAlpha = 1;
-
-        // Surface cap: a bright pixel row with a darker lip below it.
+        ctx.fillStyle = "#0c1016";
+        ctx.fillRect(i, y + 1, 1, height - y);
         ctx.fillStyle = color;
-        ctx.fillRect(i, y, 1, 2);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.17)";
+        ctx.fillRect(i, y, 1, Math.max(1, height - y - 1));
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
         ctx.fillRect(i, y, 1, 1);
       }
 
-      // Ember band warmth and a thin survey line.
       const emberY = Math.round(((world.height - 26) / world.height) * height);
-      const ember = ctx.createLinearGradient(0, emberY - 10, 0, height);
-      ember.addColorStop(0, "rgba(255, 138, 76, 0)");
-      ember.addColorStop(0.55, "rgba(255, 138, 76, 0.16)");
-      ember.addColorStop(1, "rgba(255, 106, 46, 0.34)");
-      ctx.fillStyle = ember;
-      ctx.fillRect(0, emberY - 10, width, height - emberY + 10);
-      ctx.fillStyle = "rgba(255, 178, 110, 0.55)";
+      ctx.fillStyle = "rgba(255,138,76,0.16)";
+      ctx.fillRect(0, emberY, width, height - emberY);
+      ctx.fillStyle = "rgba(255,138,76,0.5)";
       ctx.fillRect(0, emberY, width, 1);
-
-      // A soft bottom shadow keeps the map inside its frame.
-      const bottom = ctx.createLinearGradient(0, height - 14, 0, height);
-      bottom.addColorStop(0, "rgba(0, 0, 0, 0)");
-      bottom.addColorStop(1, "rgba(0, 0, 0, 0.45)");
-      ctx.fillStyle = bottom;
-      ctx.fillRect(0, height - 14, width, 14);
-
-      // The chart is an instrument, but it should still agree with the clock.
-      const time = snapshot.clock ? ((snapshot.clock.time % 1) + 1) % 1 : 0.3;
-      if (time >= 0.62 && time < 0.94) {
-        ctx.fillStyle = "rgba(8, 14, 30, 0.34)";
-        ctx.fillRect(0, 0, width, height);
-      }
 
       const playerX = Math.round((snapshot.player.x / world.width) * width);
       const playerY = Math.round((snapshot.player.y / world.height) * height);
-      ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-      ctx.beginPath();
-      ctx.arc(playerX, playerY, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255, 210, 122, 0.7)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(playerX, playerY, 5, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(playerX - 4, playerY - 4, 9, 9);
       ctx.fillStyle = "#ffd27a";
       ctx.beginPath();
       ctx.moveTo(playerX, playerY - 4);
@@ -464,19 +387,12 @@
           const point = snapshot.stationPoints[s];
           const sx = Math.round((point.x / world.width) * width);
           const sy = Math.round((point.y / world.height) * height);
-          const isBeacon = point.kind === "beacon";
-          ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-          ctx.fillRect(sx - 3, sy - 3, 7, 7);
-          ctx.fillStyle = isBeacon ? "#ffb066" : "#8fe3b0";
-          ctx.fillRect(sx - 2, sy - 2, 4, 4);
-          if (isBeacon) {
-            ctx.fillStyle = "rgba(255, 176, 102, 0.35)";
-            ctx.fillRect(sx - 4, sy - 4, 8, 8);
-          }
+          ctx.fillStyle = point.kind === "beacon" ? "#ffb066" : "#7ee0a4";
+          ctx.fillRect(sx - 1, sy - 1, 3, 3);
         }
       }
 
-      ctx.fillStyle = "rgba(244, 234, 216, 0.55)";
+      ctx.fillStyle = "rgba(244,234,216,0.6)";
       ctx.font = "9px Consolas, monospace";
       ctx.fillText("W", 4, height - 5);
       ctx.textAlign = "right";
@@ -572,19 +488,17 @@
         : "No station nearby — place a workbench to unlock tools.";
       return [
         '<div class="screen" data-screen="inventory">',
-        '  <div class="sheet inventory-sheet">',
+        '  <div class="sheet">',
         "    <header>",
         "      <h2>Inventory &amp; Crafting</h2>",
         '      <button class="btn btn-ghost" type="button" data-action="close">Close (E)</button>',
         "    </header>",
         '    <div class="inv-body">',
         '      <section class="inv-column">',
-        '        <h3 class="section-title">Pack</h3>',
         '        <div class="inv-grid">' +
           slots.join("") +
           "</div>",
         '        <p class="inv-note">The first row is your hotbar. Click one slot, then another, to move or merge items. Number keys and the mouse wheel select the active slot.</p>',
-        '        <div class="inv-legend"><span><i></i>Hotbar row</span><span><i class="cool"></i>Backpack</span></div>',
         "      </section>",
         '      <section class="recipes">',
         "        <h3>Crafting</h3>",
@@ -730,7 +644,7 @@
     function helpScreen() {
       return [
         '<div class="screen" data-screen="help">',
-        '  <div class="sheet help-sheet">',
+        '  <div class="sheet">',
         "    <header>",
         "      <h2>Controls</h2>",
         '      <button class="btn btn-ghost" type="button" data-action="helpClose">Back</button>',

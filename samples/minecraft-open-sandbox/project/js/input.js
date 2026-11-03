@@ -46,10 +46,8 @@
       if (!rect.width || !rect.height) {
         return { tx: 0, ty: 0, valid: false };
       }
-      const viewWidth = canvas.width || CONFIG.viewWidth;
-      const viewHeight = canvas.height || CONFIG.viewHeight;
-      const scaleX = viewWidth / rect.width;
-      const scaleY = viewHeight / rect.height;
+      const scaleX = CONFIG.viewWidth / rect.width;
+      const scaleY = CONFIG.viewHeight / rect.height;
       const viewX = (clientX - rect.left) * scaleX;
       const viewY = (clientY - rect.top) * scaleY;
       const cam = camera();
@@ -58,7 +56,7 @@
       const world = api.getWorld ? api.getWorld() : null;
       const valid = world
         ? tx >= 0 && ty >= 0 && tx < world.width && ty < world.height
-        : viewX >= 0 && viewY >= 0 && viewX < viewWidth && viewY < viewHeight;
+        : viewX >= 0 && viewY >= 0 && viewX < CONFIG.viewWidth && viewY < CONFIG.viewHeight;
       return { tx: tx, ty: ty, valid: valid };
     }
 
