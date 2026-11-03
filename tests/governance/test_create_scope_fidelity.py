@@ -68,7 +68,7 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         for heading in ("## 1. First-run discoverability", "## 2. Visual composition and review", "## 3. Visual-state backdrop", "## 4. Reference signature and progression", "## 5. Verification"):
             self.assertIn(heading, experience)
         self.assertIn("pass its checks into the analysis node inputs", work)
-        self.assertIn("self-review limitation", verification)
+        self.assertIn("independent critic is required", verification)
         self.assertIn("Experience-product overlay", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertIn("体验型产品 overlay", read(ROOT / "docs" / "zh-CN" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertIn("Promotion status:** `proposed`", experience)
@@ -93,7 +93,7 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
     def test_generic_assets_do_not_name_the_sample_domain(self):
         paths = sorted(SKILLS.rglob("*.md")) + sorted((ROOT / "docs").rglob("*.md"))
         forbidden = re.compile(
-            r"(2D sandbox|2D-sandbox|block-or-tile|2D 沙盒|minecraft|minimap|crafting tree|Wildgrove|Blockhaven|Cubewood|MOSSWILD)",
+            r"(2D sandbox|2D-sandbox|block-or-tile|2D 沙盒|game/sandbox/simulation|minecraft|minimap|crafting tree|Wildgrove|Blockhaven|Cubewood|MOSSWILD)",
             re.IGNORECASE,
         )
         for path in paths:

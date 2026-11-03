@@ -86,8 +86,7 @@ backdrop/empty/fallback when content is removed/covered or a mode/theme/time/vie
 before/after and a fresh-state probe. This is a task-class must, not a universal
 requirement; a pure code/docs task records not-applicable.
 
-**Experience products.** If the deliverable is a visual/interactive experience product (game,
-sandbox, simulation, or interactive visual tool whose acceptance is experiential), use the proposed
+**Experience products.** If the deliverable is a visual/interactive experience product (an interactive visual product whose acceptance is experiential), use the proposed
 `references/experience-quality.md` lens: record first-run discoverability, visual review, coherent
 state-dependent backdrop/occlusion, and a small reference-signature/progression decision. The lens does
 not add a universal must or a hidden feature: a signature loop the request is silent about is a

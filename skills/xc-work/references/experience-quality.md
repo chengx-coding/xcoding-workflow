@@ -41,9 +41,9 @@ requires a user-accepted exclusion. Do not trade functional depth for beauty.
 
 ## 2d. Functional preservation for visual work
 
-When a visual/quality pass changes an interactive product, apply the functional-preservation gate owned
-by `xc-verification`; use `xc-visual-design` for the visual method. This profile does not restate the
-capability list or the gate.
+When a visual/quality pass changes an interactive product, apply the functional-preservation evidence
+owned by `xc-verification`; use `xc-visual-design` for the visual method. This profile does not
+restate the capability list or the gate.
 
 ## 3. Visual-state backdrop
 

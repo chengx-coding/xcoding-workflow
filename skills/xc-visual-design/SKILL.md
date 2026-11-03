@@ -28,7 +28,7 @@ fix, and prove prior functionality still works.
 
 1. **Select conditionally.** Apply when visual quality is part of acceptance: an explicit visual
    request or a project bridge visual target. Do not apply to a pure CLI, library, data pipeline,
-   source-only docs or an informational surface with no rendered experiential deliverable. Record the
+   source-only docs or a surface whose acceptance does not include visual quality. Record the
    selection or a not-applicable reason.
 2. **Record the visual target.** Use `references/visual-brief.md`. Capture the target and constraints
    from the request/bridge, the states and viewports to compare, and the visual direction the author

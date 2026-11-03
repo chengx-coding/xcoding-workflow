@@ -7,10 +7,9 @@ or the evaluation standard.
 ## Method
 
 1. Review every captured state at each viewport at 1:1 and thumbnail size.
-2. Judge against the target: composition/focal hierarchy, depth/space, palette/contrast, object and
-   character readability, UI/typography and states, consistency across states, and generic/under-
-   composed results. Do not require a preferred style; do require that the result be intentional
-   for this target rather than a default template.
+2. Judge against the target. Use the target's own qualities; if it does not define criteria, consider
+   composition, space/depth, palette/contrast, readability, UI/typography, consistency and generic
+   under-composition as prompts rather than a universal checklist. Do not require a preferred style.
 3. Return a state x criterion table, severity-ranked findings (`high`/`medium`/`low`) with the
    concrete screenshot/area, a concrete change direction for every high/medium (not "make it
    prettier"), and a one-line verdict.
@@ -22,6 +21,6 @@ or the evaluation standard.
 
 ## Functional gate
 
-The critic does not test interaction, placement, crafting/output, bounds, save/reload or first-run
-controls. Those are covered by the prior accepted capability inventory's real-pointer verification.
-A visual pass cannot close while a core control is a no-op, even if every screenshot is accepted.
+The critic does not test functional behavior. Functional preservation is covered by the prior
+accepted capability inventory's own verification; a visual pass cannot close while that gate fails,
+even if every screenshot is accepted.
