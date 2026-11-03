@@ -30,7 +30,7 @@ After a Skill change, run the tracked [Skill sync script](../../build_agents.py)
 
 ### Agents
 
-Edit persistent portable definitions under `agents-src/agents/`. Express tool, model, permission, sandbox, and frontmatter differences as target metadata rather than forking the shared body.
+Edit persistent portable definitions under `agents-src/agents/`. Express tool, model, permission, execution isolation, and frontmatter differences as target metadata rather than forking the shared body.
 
 Run the tracked [agent exporter](../../agents-src/export_agents.py) to regenerate Claude Code, OpenCode, Codex, and Trae definitions. Generated target files are reviewable outputs, not editing surfaces.
 

@@ -54,7 +54,7 @@ Host identifiers and project-relative targets are fixed:
 | `claude-code` | `.claude/agents` | `.claude/skills` |
 | `trae` | `.trae/agents` | `.agents/skills` |
 
-Each selected host also receives its versioned `xc-delegation` capability statement as package-owned setup state. Setup validates that statement against the Bundle and reports its adapter version and security mode. The current Claude Code, Codex, OpenCode, and Trae statements are `adapter_version=unverified` and `mode=validated-only`; network and secret grants are unsupported. These statements prove deterministic preparation compatibility, not host sandbox enforcement.
+Each selected host also receives its versioned `xc-delegation` capability statement as package-owned setup state. Setup validates that statement against the Bundle and reports its adapter version and security mode. The current Claude Code, Codex, OpenCode, and Trae statements are `adapter_version=unverified` and `mode=validated-only`; network and secret grants are unsupported. These statements prove deterministic preparation compatibility, not host execution isolation.
 
 The host set is complete desired state, not an incremental add list. Repeating a host is harmless. On a later successful setup, adding a host installs its mapping; omitting a previously selected host removes only unchanged paths owned solely by that host. Shared Skills remain while any selected host owns them.
 

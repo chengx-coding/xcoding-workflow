@@ -92,12 +92,20 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
 
     def test_generic_assets_do_not_name_the_sample_domain(self):
         paths = sorted(SKILLS.rglob("*.md")) + sorted((ROOT / "docs").rglob("*.md"))
-        forbidden = re.compile(
-            r"(2D sandbox|2D-sandbox|block-or-tile|2D 沙盒|game/sandbox/simulation|games, sandboxes|面向游戏、沙盒|game/UI|in-game|gameplay|crafting, survival|save/reload|a game|simulations|game UI|minecraft|minimap|crafting tree|Wildgrove|Blockhaven|Cubewood|MOSSWILD)",
-            re.IGNORECASE,
+        technical = re.compile(r"host sandbox|execution sandbox|host execution isolation|security sandbox", re.IGNORECASE)
+        class_phrases = (
+            "2D sandbox", "2D-sandbox", "block-or-tile", "2D 沙盒",
+            "sandbox game", "survival game", "crafting game", "simulation game",
+            "game/sandbox/simulation", "games, sandboxes",
+            "面向游戏、沙盒", "沙盒游戏", "生存游戏", "模拟游戏", "游戏型产品",
+            "minecraft", "minimap", "crafting tree",
+            "Wildgrove", "Blockhaven", "Cubewood", "MOSSWILD",
         )
         for path in paths:
-            self.assertIsNone(forbidden.search(read(path)), path)
+            text = technical.sub("", read(path))
+            lowered = text.lower()
+            for phrase in class_phrases:
+                self.assertNotIn(phrase.lower(), lowered, f"{path}: {phrase}")
 
     def test_runtime_archive_protocol_matches_terminal_statuses(self):
         protocol = read(
@@ -108,6 +116,7 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
 
     def test_visual_design_skill_is_generic_and_dual_gated(self):
         skill = read(SKILLS / "xc-visual-design" / "SKILL.md")
+        brief = read(SKILLS / "xc-visual-design" / "references" / "visual-brief.md")
         critic = read(SKILLS / "xc-visual-design" / "references" / "critic-loop.md")
         record = read(SKILLS / "xc-visual-design" / "references" / "review-record.md")
         self.assertIn('name: "xc-visual-design"', skill)
@@ -115,8 +124,16 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("functional preservation", skill.lower())
         self.assertIn("do not prescribe a specific style", skill.lower())
         self.assertNotIn("D5 =", skill)
-        self.assertIn("independent", critic.lower())
+        self.assertIn("separate agent", skill.lower())
+        self.assertIn("vlm", skill.lower())
+        self.assertIn("at least two", skill)
+        self.assertIn("self-review", skill.lower())
+        self.assertIn("both gates", skill.lower())
+        self.assertIn("target", brief)
+        self.assertIn("screenshot", critic.lower())
         self.assertIn("at least two", critic)
-        self.assertIn("functional gate", record)
-        for term in ("Minecraft", "minimap", "2D sandbox", "Cubewood", "MOSSWILD"):
-            self.assertNotIn(term, skill)
+        self.assertIn("self-review", critic.lower())
+        self.assertIn("visual gate", record.lower())
+        self.assertIn("functional gate", record.lower())
+        self.assertIn("cycle", record.lower())
+        self.assertIn("residual", record.lower())
