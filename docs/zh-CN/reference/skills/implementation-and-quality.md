@@ -75,7 +75,7 @@
 
 ## 体验型产品 overlay
 
-`experience-quality` 是面向游戏、沙盒、模拟和体验型视觉工具的 **proposed task-class overlay**；交互式视觉体验产品的 first-run affordance 和 visual-state backdrop 是 visual row 的 **validated-in-class must**。它不是第五种 output surface，也不适用于纯库/CLI/文档/数据 dashboard。它记录视觉评审和 reference signature/progression 作为 proposed 质量检查；first-run affordance 和 state-dependent backdrop 是 交互式视觉体验产品的 visual-row must，不是普通质量缺口；overlay 不会凭 fiat 增加功能。
+`experience-quality` 是面向交互式视觉体验产品的 **proposed task-class overlay**；交互式视觉体验产品的 first-run affordance 和 visual-state backdrop 是 visual row 的 **validated-in-class must**。它不是第五种 output surface，也不适用于纯库/CLI/文档/数据 dashboard。它记录视觉评审和 reference signature/progression 作为 proposed 质量检查；first-run affordance 和 state-dependent backdrop 是 交互式视觉体验产品的 visual-row must，不是普通质量缺口；overlay 不会凭 fiat 增加功能。
 对 交互式视觉体验产品，first-run affordance 和 visual-state backdrop 是 visual-row must：fresh-state probe 必须通过可见按钮/教程/任务找到主系统，removed/covered 内容必须显示一致背景。
 
 对交互式视觉体验产品，主控件必须通过真实指针测试且命中目标稳定；enabled-looking no-op 是缺陷，`element.click()` 不算交互证据。
@@ -86,4 +86,4 @@
 
 视觉/质量工作前后必须执行既有 must capability 的 real-pointer regression；截图或模块测试不能替代；high interaction defect 直接拒绝视觉改动。
 
-`xc-visual-design` 负责视觉 brief、独立 critic 循环和功能 preservation gate，适用于验收包含视觉质量的任务；它不拥有某种风格或通用审美分数。
+`xc-visual-design` 负责视觉 brief 和独立 critic 循环；`xc-verification` 负责功能 preservation evidence，适用于验收包含视觉质量的任务；它不拥有某种风格或通用审美分数。

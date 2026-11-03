@@ -65,7 +65,7 @@ files, side effects or persisted state. **Does not apply** to a pure rendered-vi
 ## docs
 
 **Applies when** the reader observes source text or a rendered documentation page. **Does not apply**
-to a game/UI or CLI-only artifact with no documentation surface.
+to a rendered UI or CLI-only artifact with no documentation surface.
 
 - Affected source/rendered page and reader-observable before/after: content, table/list, navigation,
   link/anchor, search, cross-reference.

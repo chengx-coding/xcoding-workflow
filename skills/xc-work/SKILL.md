@@ -20,7 +20,7 @@ requirements below.
 | `visual` | UI/page/canvas/rendered document | visible before/after; interaction truth, state-dependent backdrop must for interactive visual experience products when content can be removed/cleared/hidden/covered or mode/theme/time/viewport changes; first-run affordance must for interactive visual experience products; at least two materially different visual states when present; background/occlusion/layer/spatial anchor; responsive/accessibility; executed assertion, not a single screenshot |
 | `experience` (task-class overlay, `proposed`) | rendered experiential product | visual review and reference-signature/progression; use as a proposed lens, not a feature mandate. The interactive-visual first-run affordance and visual-state backdrop are owned by the visual row. |
 | `cli-library-api` | command/library/API/file surface | exact command or call; exit code/stdout/stderr/status/body/diff; success/error/empty/limit/recovery; side effects/idempotence/cleanup where state changes; no screenshot as substitute |
-| `docs` | source or rendered documentation | affected content + rendered/link/anchor/navigation/search evidence; source diff alone is not enough; no game/UI checks; visual profile only if the docs task has a rendered visual design surface |
+| `docs` | source or rendered documentation | affected content + rendered/link/anchor/navigation/search evidence; source diff alone is not enough; no rendered UI checks; visual profile only if the docs task has a rendered visual design surface |
 
 A task without a visual surface must not be required to produce visual evidence. A task-class profile
 is `proposed` until a second independent instance of that class; universal promotion requires a

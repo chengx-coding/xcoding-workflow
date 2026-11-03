@@ -57,7 +57,7 @@ fix, and prove prior functionality still works.
 - Do not prescribe a specific style, palette, font, genre, composition or score rubric. That is project-specific.
 - Do not hardcode functional capabilities; use the prior accepted inventory's own verification.
 - Do not add features, assets, libraries or network access that the request/bridge does not allow.
-- Do not replace interaction truth, save/reload, accessibility or tests with a visual critic.
+- Do not replace interaction truth, persistence, accessibility or tests with a visual critic.
 - Do not introduce a new runtime mechanism or read another Skill's private references. Communicate
   through Skill names and documented artifacts.
 - A plain result may be correct when the target says so; a generic/under-composed result cannot pass
