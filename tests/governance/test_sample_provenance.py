@@ -63,6 +63,17 @@ class SampleProvenanceTest(unittest.TestCase):
             self.assertEqual(code, 1, report)
             self.assertTrue(report["derived"])
 
+            # Two priors must aggregate; order must not change the verdict.
+            other = root / "other"
+            write(other / "app.js", "different")
+            write(other / "only-here.js", "x")
+            code_a, report_a = self.run_gate(seed, project, [artifact, other], root / "two-a.json")
+            code_b, report_b = self.run_gate(seed, project, [other, artifact], root / "two-b.json")
+            self.assertEqual(code_a, 1)
+            self.assertEqual(code_b, 1)
+            self.assertEqual(report_a["overlap"], report_b["overlap"])
+            self.assertEqual(len(report_a["prior_files"]), 2)
+
     def test_missing_or_empty_inputs_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -72,7 +83,26 @@ class SampleProvenanceTest(unittest.TestCase):
             code, report = self.run_gate(seed, project, [prior], root / "ok.json")
             self.assertEqual(code, 0)
             code, report = self.run_gate(seed / "missing", project, [prior], root / "missing.json")
-            self.assertNotEqual(code, 0)
+            self.assertEqual(code, 2)
+
+            # Missing prior evidence must fail closed, even with valid paths.
+            cmd = [sys.executable, str(SCRIPT), "--seed", str(seed), "--project", str(project),
+                   "--out", str(root / "no-prior.json")]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(json.loads((root / "no-prior.json").read_text())["status"], "error")
+
+            # First sample requires an explicit --no-prior.
+            result = subprocess.run(cmd + ["--no-prior"], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0)
+            self.assertTrue(json.loads((root / "no-prior.json").read_text())["no_prior"])
+
+            # Metadata-only archive root must not be treated as a project.
+            bad = root / "bad-archive"
+            write(bad / "metadata.json", "{}")
+            code, report = self.run_gate(seed, project, [bad], root / "bad.json")
+            self.assertEqual(code, 2)
+            self.assertEqual(report["status"], "error")
 
 
 if __name__ == "__main__":

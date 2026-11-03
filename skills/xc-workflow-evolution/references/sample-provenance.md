@@ -1,9 +1,10 @@
 # Sample provenance gate (generic)
 
-**Scope:** universal sample regression. **Owner:** `xc-workflow-evolution/references/sample-provenance.md`.
-**Promotion status:** `validated-in-class` (derived 0.4.15 fails; clean Mosslight passes).
-**Force:** convention + checker. **Evidence:** 0.4.16 audit, derived 0.4.15 overlap 25, clean
-Mosslight overlap 0.
+**Scope:** universal sample regression. **Applies when:** any sample result is scored or promoted.
+**Does not apply:** no prior artifact exists; record `--no-prior` explicitly. **Evidence surface:**
+provenance report JSON plus the seed/project/prior manifests. **Generality evidence:** a derived
+artifact is rejected; a clean seed run is accepted (recorded in private evaluation, not in this
+reference). **Force:** convention + checker (exit 0 clean, 1 derived, 2 input error).
 
 A sample result is valid only when its provenance is clean. The gate applies to every sample, not a
 particular product or prompt.
@@ -28,4 +29,5 @@ The provenance record is written before scoring and promotion. A missing record 
 ## Check
 
 Use `scripts/check_sample_provenance.py --seed <seed> --project <project> --prior <prior-artifact>
---out <report.json>`. Exit 1 means overlap; exit 0 means no overlap.
+--out <report.json>`, or `--no-prior` for the first sample. Exit 0 clean, 1 derived overlap,
+2 input error. A missing or error record is a gap, not a pass.

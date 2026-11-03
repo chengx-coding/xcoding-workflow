@@ -91,16 +91,14 @@ Non-delegable: expanding the grant, security/permissions/secrets/compliance, des
 artifact deletion, release/tag/publication, core values/explicit user constraints, host restrictions,
 out-of-grant or irreversible decisions.
 
-## 9. Force
+## 9. Sample provenance gate
+
+Every sample run passes `references/sample-provenance.md` before scoring or promotion. A non-seed
+file byte-identical to a prior artifact makes the run derived; a derived run cannot be scored as
+clean-seed, promoted, or used as a clean-seed best. Use `scripts/check_sample_provenance.py`.
+
+## 10. Force
 
 Convention-only unless an existing mechanical check says otherwise. No new runtime command, state, node
 type or configuration surface. This method applies to self-evolution lines; ordinary work orders are
 unchanged.
-
-## 8. Sample provenance gate
-
-Every sample run must pass `references/sample-provenance.md` before scoring or promotion. A project
-file byte-identical to a prior artifact (and not identical to the seed) makes the run derived; a
-derived run cannot be scored as clean-seed, promoted, or used as a clean-seed best. Use
-`scripts/check_sample_provenance.py`.
-
