@@ -96,6 +96,8 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         class_phrases = (
             "2D sandbox", "2D-sandbox", "block-or-tile", "2D 沙盒",
             "sandbox game", "survival game", "crafting game", "simulation game",
+            "gameplay", "in-game", "game UI", "game/UI", "a game", "simulations",
+            "save/reload", "crafting, survival",
             "game/sandbox/simulation", "games, sandboxes",
             "面向游戏、沙盒", "沙盒游戏", "生存游戏", "模拟游戏", "游戏型产品",
             "minecraft", "minimap", "crafting tree",
@@ -133,6 +135,10 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("screenshot", critic.lower())
         self.assertIn("at least two", critic)
         self.assertIn("self-review", critic.lower())
+        self.assertIn("must not read", critic.lower())
+        self.assertIn("not a substitute", critic.lower())
+        self.assertIn("cannot self-accept", skill.lower())
+        self.assertIn("only the screenshots and the brief", skill.lower())
         self.assertIn("visual gate", record.lower())
         self.assertIn("functional gate", record.lower())
         self.assertIn("cycle", record.lower())
