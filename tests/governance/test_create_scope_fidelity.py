@@ -65,14 +65,14 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertNotIn("2D 沙盒", read(ROOT / "docs" / "zh-CN" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertIn("visual-state backdrop", verification)
         self.assertIn("mode/theme/time/viewport", verification)
-        for heading in ("## 1. First-run discoverability", "## 2. Visual composition and review", "## 3. Visual-state backdrop", "## 4. Reference signature and progression", "## 5. Verification"):
+        for heading in ("## 1. First-run discoverability", "## 2. Visual quality", "## 3. Visual-state backdrop", "## 4. Reference signature and progression", "## 5. Verification"):
             self.assertIn(heading, experience)
         self.assertIn("pass its checks into the analysis node inputs", work)
         self.assertIn("independent critic is required", verification)
         self.assertIn("Experience-product overlay", read(ROOT / "docs" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertIn("体验型产品 overlay", read(ROOT / "docs" / "zh-CN" / "reference" / "skills" / "implementation-and-quality.md"))
         self.assertIn("Promotion status:** `proposed`", experience)
-        for phrase in ("Scope:** task-class", "First-run discoverability", "independent visual", "state-dependent backdrop", "Reference signature"):
+        for phrase in ("Scope:** task-class", "First-run discoverability", "independent critic", "state-dependent backdrop", "Reference signature"):
             self.assertIn(phrase, experience)
         self.assertIn("capability matrix", implementation)
         self.assertIn("scope fidelity", review)

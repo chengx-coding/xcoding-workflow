@@ -38,10 +38,10 @@
 
 [规范契约](../../../../skills/xc-visual-design/SKILL.md)
 
-- **何时调用：** 视觉质量属于渲染产物验收的一部分时——用户要求视觉质量/polish/identity，或 project bridge 声明 visual target。
-- **用途：** 负责 visual brief、独立 critic 循环和 dual gate；不拥有风格、palette、评分或功能 capability 清单。
-- **公开入口：** 必填 `workbench_path`、`brief_path`、`review_path`、`screenshots`；可选 `functional_evidence`；functional gate 由 `xc-verification` 拥有。
-- **方法边界：** 不固定视觉维度或风格；critic 只看截图和项目目标；未解决 high 或 functional gate 失败都阻止接受。
+- **何时调用：** 视觉质量属于渲染产物验收的一部分，或 project bridge 声明 visual target。
+- **用途：** 负责 visual brief 和独立 critic 循环；不拥有风格、palette、评分或功能 capability 清单。
+- **公开入口：** `workbench_path`、`brief_path`、`review_path`、`screenshots`；可选 `functional_evidence`。功能 preservation evidence 由 `xc-verification` 拥有。
+- **方法边界：** target 来自 request/bridge；不固定视觉维度；必须有独立 critic；未解决 high 或 functional gate 失败阻止接受。
 
 ## `xc-writing`
 
@@ -75,15 +75,4 @@
 
 ## 体验型产品 overlay
 
-`experience-quality` 是面向交互式视觉体验产品的 **proposed task-class overlay**；交互式视觉体验产品的 first-run affordance 和 visual-state backdrop 是 visual row 的 **validated-in-class must**。它不是第五种 output surface，也不适用于纯库/CLI/文档/数据 dashboard。它记录视觉评审和 reference signature/progression 作为 proposed 质量检查；first-run affordance 和 state-dependent backdrop 是 交互式视觉体验产品的 visual-row must，不是普通质量缺口；overlay 不会凭 fiat 增加功能。
-对 交互式视觉体验产品，first-run affordance 和 visual-state backdrop 是 visual-row must：fresh-state probe 必须通过可见按钮/教程/任务找到主系统，removed/covered 内容必须显示一致背景。
-
-对交互式视觉体验产品，主控件必须通过真实指针测试且命中目标稳定；enabled-looking no-op 是缺陷，`element.click()` 不算交互证据。
-
-对具有可信 reference 的体验型产品，定义性 loop 及其深度记录为 proposed should，并写明证据与损失；用户可将其变为约束，无用户时允许缩小 scope。可导航世界应记录 orientation/map 或省略的损失。
-
-演进体验型产品时，必须保留已接受的 must capability 及其深度；视觉改进若删减或削弱它们就是回归，不是美术进步。
-
-对视觉/质量工作，应用 `xc-verification` 的 functional preservation evidence；不要在此重复 gate。
-
-`xc-visual-design` 负责视觉 brief 和独立 critic 循环；`xc-verification` 负责功能 preservation evidence；它不拥有某种风格或通用审美分数。
+`experience-quality` 是 proposed task-class overlay；视觉质量委托给 `xc-visual-design`，功能证据委托给 `xc-verification`；overlay 不拥有风格或通用评分。

@@ -22,28 +22,12 @@ exist: a real-pointer test must show the same hit target at pointerdown/up and t
 an enabled-looking no-op is a defect. Record the visual review against the task's quality target;
 do not prescribe a specific art style or add an unrequested visual feature.
 
-## 2. Visual composition and review
+## 2. Visual quality
 
-For a primary visual surface, record the composition, character/world readability, UI hierarchy and
-action feedback. A plain implementation is simpler; it is not a correctness failure.
-
-Before result, obtain an **independent visual review**. Record the reviewed before/after states and
-required findings, and re-check fixes. Visual quality requires an independent critic; a self-review
-cannot close that gate. For non-visual experience checks, record a limitation when no independent
-reviewer is available.
-
-## 2c. Preservation of prior capability depth
-
-When evolving an experience product, a visual/quality pass must preserve the prior accepted must
-capabilities and their depth. A product that becomes prettier but drops a prior accepted must capability is a regression, not an art improvement. Verify the prior
-inventory and record a disposition for every removed or thinned capability; a deliberate removal
-requires a user-accepted exclusion. Do not trade functional depth for beauty.
-
-## 2d. Functional preservation for visual work
-
-When a visual/quality pass changes an interactive product, apply the functional-preservation evidence
-owned by `xc-verification`; use `xc-visual-design` for the visual method. This profile does not
-restate the capability list or the gate.
+Visual composition, independent critique and the visual gate are owned by `xc-visual-design`.
+Functional-preservation evidence is owned by `xc-verification`. This profile does not restate either
+method. Visual quality requires an independent critic; this profile does not authorize a self-review
+substitute.
 
 ## 3. Visual-state backdrop
 
@@ -77,7 +61,7 @@ on a non-spatial product.
 
 When the product is an experience product and the profile is used, record:
 
-- a visual review (independent critic required for visual quality) with findings and re-check;
+- the `xc-visual-design` review record when visual quality is in acceptance;
 - a progression/signature journey when one is included;
 - the executed evidence and any gap/limit.
 
