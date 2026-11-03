@@ -48,14 +48,10 @@ and produce a real state change, not a decorative menu.
 
 ## 4b. Reference loop depth and orientation
 
-When the request explicitly names an inspiration/reference and asks the product to feel like it, the
-reference's **defining loop is a must at the smallest playable depth**: identify the loop from
-evidence and implement it (gather -> process -> build/upgrade is one example, not the rule). Optional
-signature features remain proposed shoulds. Do not silently shrink the defining loop; without a user,
-a smaller loop requires a recorded exclusion with source, impact and re-entry trigger.
-
-When no explicit reference is named, treat the reference loop as a proposed should: record the
-evidence, user value and lost experience; a user may make it binding.
+When a credible reference exists, identify its defining loop and the minimum playable depth that makes
+that loop real. Treat the gap as a **proposed should**, not an automatic must: record the evidence,
+the user value and the lost experience if the scope is smaller. A user may make it binding; without a
+user, record the proposed should and the reason for the smaller scope; do not force a feature.
 
 When the product has a navigable world, consider an orientation/map affordance (map, coordinates,
 compass, or equivalent). Treat it as a proposed should with the same user/no-user rule; do not force it
