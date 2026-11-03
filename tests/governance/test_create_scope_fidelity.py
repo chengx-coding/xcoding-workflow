@@ -93,7 +93,7 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
     def test_generic_assets_do_not_name_the_sample_domain(self):
         paths = sorted(SKILLS.rglob("*.md")) + sorted((ROOT / "docs").rglob("*.md"))
         forbidden = re.compile(
-            r"(2D sandbox|2D-sandbox|block-or-tile|2D 沙盒|game/sandbox/simulation|minecraft|minimap|crafting tree|Wildgrove|Blockhaven|Cubewood|MOSSWILD)",
+            r"(2D sandbox|2D-sandbox|block-or-tile|2D 沙盒|game/sandbox/simulation|games, sandboxes|面向游戏、沙盒|game/UI|in-game|gameplay|crafting, survival|save/reload|minecraft|minimap|crafting tree|Wildgrove|Blockhaven|Cubewood|MOSSWILD)",
             re.IGNORECASE,
         )
         for path in paths:

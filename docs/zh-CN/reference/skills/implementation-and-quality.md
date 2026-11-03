@@ -60,7 +60,7 @@
 - **何时调用：** 工作流需要独立评估受管文档、方案、代码变更、诊断或验证证据时。
 - **用途：** 评估不可变输入，产出可追踪、按严重度排序的 findings 和结论。
 - **公开入口：** 必填 `review_kind`、`inputs`、`artifact_path`；可选 `review_context`。
-- **典型用法：** 检查请求的质量维度，让每个必修 finding 都有证据，并写入已验证 node artifact。 当体验型产品提供 proposed overlay 检查时，包含首次可发现性、视觉评审（有独立评审者时）、状态背景和 progression；不要从单纯的视觉表面推断该 overlay。对 code/solution review 还检查 under-scope（需求或质量 bar 未满足）、over-scope（无谓改动或超出批准范围）和 scope drift（实现与记录的 scope decision 不一致）。对 `create`，对照原始请求加 accepted capability matrix 检查保真，而不只是 approved solution；没有用户/项目来源的 material exclusion 属于无来源缩窄。存在 reference signature 时，缺失或明显削弱的 signature must capability 是 under-scope；signature should capability 也是 under-scope，除非 accepted matrix 记录了带原因和影响的 deferral；导入无关参考 feature 是 over-scope。存在 prior capability inventory 时，无解释的缺失是 finding；replace/retire 需要记录原因、影响和来源，prior should 可带原因、影响、来源和重新进入触发条件而接受为 defer。 对 交互式视觉体验产品，first-run affordance 和 visual-state backdrop 是 visual-row must。
+- **典型用法：** 检查请求的质量维度，让每个必修 finding 都有证据，并写入已验证 node artifact。 当体验型产品提供 proposed overlay 检查时，包含首次可发现性、视觉评审（视觉质量必须有独立 critic）、状态背景和 progression；不要从单纯的视觉表面推断该 overlay。对 code/solution review 还检查 under-scope（需求或质量 bar 未满足）、over-scope（无谓改动或超出批准范围）和 scope drift（实现与记录的 scope decision 不一致）。对 `create`，对照原始请求加 accepted capability matrix 检查保真，而不只是 approved solution；没有用户/项目来源的 material exclusion 属于无来源缩窄。存在 reference signature 时，缺失或明显削弱的 signature must capability 是 under-scope；signature should capability 也是 under-scope，除非 accepted matrix 记录了带原因和影响的 deferral；导入无关参考 feature 是 over-scope。存在 prior capability inventory 时，无解释的缺失是 finding；replace/retire 需要记录原因、影响和来源，prior should 可带原因、影响、来源和重新进入触发条件而接受为 defer。 对 交互式视觉体验产品，first-run affordance 和 visual-state backdrop 是 visual-row must。
 - **主要边界：** 审查对被审对象只读；调用方负责整改和风险决策，原始命令记录不是默认 artifact。范围 finding 是有证据的评审判断，不是机械 scope checker。
 
 ## `xc-verification`
@@ -70,7 +70,7 @@
 - **何时调用：** 实现、诊断、采用或功能基线需要项目定义的验证证据时。
 - **用途：** 运行最小充分命令集，把证据映射到验收条件，并记录结果和覆盖缺口。
 - **公开入口：** 必填 `workbench_path`、`verification_scope`、`artifact_path`；可选 `inputs`。
-- **典型用法：** 读取项目验证政策，先运行局部检查，再按风险扩展回归检查，并记录每条命令及未执行前置条件。对体验型产品，执行首次可发现性、视觉评审（有独立评审者时；否则记录限制）、状态背景和 progression 检查。对 `create`，使用 analysis 选择的 output-surface profile，把证据映射到 accepted matrix 中的每个 must/should capability；测试全过不等于未验证 capability 已证明。对视觉表面，使用 visual profile 的 visible-state/multi-state 检查；对 CLI/API/file 或 docs 表面，使用各自证据，不要求截图。Adaptive regression 或 multi-environment scope 使用独立验证节点；fast pace 不能删除 required scope。 对 交互式视觉体验产品，first-run affordance 和 visual-state backdrop 是 visual-row must。
+- **典型用法：** 读取项目验证政策，先运行局部检查，再按风险扩展回归检查，并记录每条命令及未执行前置条件。对体验型产品，执行首次可发现性、视觉评审（视觉质量必须有独立 critic；self-review 限制不被 visual gate 接受）、状态背景和 progression 检查。对 `create`，使用 analysis 选择的 output-surface profile，把证据映射到 accepted matrix 中的每个 must/should capability；测试全过不等于未验证 capability 已证明。对视觉表面，使用 visual profile 的 visible-state/multi-state 检查；对 CLI/API/file 或 docs 表面，使用各自证据，不要求截图。Adaptive regression 或 multi-environment scope 使用独立验证节点；fast pace 不能删除 required scope。 对 交互式视觉体验产品，first-run affordance 和 visual-state backdrop 是 visual-row must。
 - **主要边界：** 不编造命令或通过标准，不静默弱化验收条件，也不为强行通过而修改产品行为。
 
 ## 体验型产品 overlay
@@ -86,4 +86,4 @@
 
 视觉/质量工作前后必须执行既有 must capability 的 real-pointer regression；截图或模块测试不能替代；high interaction defect 直接拒绝视觉改动。
 
-`xc-visual-design` 负责视觉 brief 和独立 critic 循环；`xc-verification` 负责功能 preservation evidence，适用于验收包含视觉质量的任务；它不拥有某种风格或通用审美分数。
+`xc-visual-design` 负责视觉 brief 和独立 critic 循环；`xc-verification` 负责功能 preservation evidence；它不拥有某种风格或通用审美分数。

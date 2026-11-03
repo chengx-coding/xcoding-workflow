@@ -27,9 +27,10 @@ do not prescribe a specific art style or add an unrequested visual feature.
 For a primary visual surface, record the composition, character/world readability, UI hierarchy and
 action feedback. A plain implementation is simpler; it is not a correctness failure.
 
-Before result, obtain an **independent visual review** when an independent reviewer is available.
-Record the reviewed before/after states and required findings, and re-check fixes. If no independent
-reviewer is available, record a self-review with that limitation; do not claim independent review. For visual quality, an independent critic is required; a self-review cannot close that gate.
+Before result, obtain an **independent visual review**. Record the reviewed before/after states and
+required findings, and re-check fixes. Visual quality requires an independent critic; a self-review
+cannot close that gate. For non-visual experience checks, record a limitation when no independent
+reviewer is available.
 
 ## 2c. Preservation of prior capability depth
 
@@ -76,7 +77,7 @@ on a non-spatial product.
 
 When the product is an experience product and the profile is used, record:
 
-- a visual review (independent when available) with findings and re-check;
+- a visual review (independent critic required for visual quality) with findings and re-check;
 - a progression/signature journey when one is included;
 - the executed evidence and any gap/limit.
 
