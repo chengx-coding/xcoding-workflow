@@ -143,3 +143,10 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("functional gate", record.lower())
         self.assertIn("cycle", record.lower())
         self.assertIn("residual", record.lower())
+
+    def test_sample_provenance_gate_exists(self):
+        ref = read(SKILLS / "xc-workflow-evolution" / "references" / "sample-provenance.md")
+        script = read(SKILLS / "xc-workflow-evolution" / "scripts" / "check_sample_provenance.py")
+        self.assertIn("derived", ref.lower())
+        self.assertIn("clean-seed", ref.lower())
+        self.assertIn("overlap", script.lower())

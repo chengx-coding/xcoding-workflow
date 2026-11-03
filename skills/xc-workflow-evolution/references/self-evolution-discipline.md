@@ -1,3 +1,7 @@
+## Sample provenance gate
+
+Every sample run must pass `references/sample-provenance.md` before scoring or promotion. A project file byte-identical to a prior artifact (and not identical to the seed) makes the run derived; a derived run cannot be scored as clean-seed, promoted, or used as a clean-seed best. Use `scripts/check_sample_provenance.py`.
+
 # Self-Evolution Discipline
 
 Method for a self-evolution/optimization line. The owning Skill carries routing and the canonical
