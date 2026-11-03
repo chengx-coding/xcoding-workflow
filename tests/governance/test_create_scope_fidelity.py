@@ -93,7 +93,7 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
     def test_generic_assets_do_not_name_the_sample_domain(self):
         paths = sorted(SKILLS.rglob("*.md")) + sorted((ROOT / "docs").rglob("*.md"))
         forbidden = re.compile(
-            r"(2D sandbox|2D-sandbox|block-or-tile|2D 沙盒|game/sandbox/simulation|games, sandboxes|面向游戏、沙盒|game/UI|in-game|gameplay|crafting, survival|save/reload|minecraft|minimap|crafting tree|Wildgrove|Blockhaven|Cubewood|MOSSWILD)",
+            r"(2D sandbox|2D-sandbox|block-or-tile|2D 沙盒|game/sandbox/simulation|games, sandboxes|面向游戏、沙盒|game/UI|in-game|gameplay|crafting, survival|save/reload|a game|simulations|game UI|minecraft|minimap|crafting tree|Wildgrove|Blockhaven|Cubewood|MOSSWILD)",
             re.IGNORECASE,
         )
         for path in paths:
@@ -108,10 +108,15 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
 
     def test_visual_design_skill_is_generic_and_dual_gated(self):
         skill = read(SKILLS / "xc-visual-design" / "SKILL.md")
+        critic = read(SKILLS / "xc-visual-design" / "references" / "critic-loop.md")
+        record = read(SKILLS / "xc-visual-design" / "references" / "review-record.md")
         self.assertIn('name: "xc-visual-design"', skill)
         self.assertIn("independent critic", skill)
         self.assertIn("functional preservation", skill.lower())
         self.assertIn("do not prescribe a specific style", skill.lower())
         self.assertNotIn("D5 =", skill)
+        self.assertIn("independent", critic.lower())
+        self.assertIn("at least two", critic)
+        self.assertIn("functional gate", record)
         for term in ("Minecraft", "minimap", "2D sandbox", "Cubewood", "MOSSWILD"):
             self.assertNotIn(term, skill)
