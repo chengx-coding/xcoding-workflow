@@ -33,7 +33,7 @@ probe.
 
 **First-run affordance (interactive visual experience products, validated-in-class).** An interactive visual experience
 product must expose its primary systems from the first-run UI: a visible button/tutorial/task/menu
-entry. A passive key hint, in-game help, or README alone is insufficient. Verify from a fresh state
+entry. A passive key hint, in-product help, or README alone is insufficient. Verify from a fresh state
 that a new user can find the primary system without prior knowledge; record the visible entry point.
 This is a must for the defined **interactive visual experience product** class, not for all visual
 products or informational dashboards; other experience products use the proposed experience lens.
@@ -72,7 +72,7 @@ to a game/UI or CLI-only artifact with no documentation surface.
 - Execute the render/link/anchor/navigation check or a recorded manual reading; a source diff alone
   does not prove a rendered claim.
 - Visual profile only if the docs task explicitly includes a rendered visual design surface.
-- No gameplay/CLI-only checks.
+- No experience/CLI-only checks.
 
 ## Status
 

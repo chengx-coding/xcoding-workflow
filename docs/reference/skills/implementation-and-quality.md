@@ -87,4 +87,4 @@ When evolving an experience product, preserve the prior accepted must capabiliti
 
 For visual/quality work, run the prior must-capability real-pointer regression before and after; screenshots or module tests cannot substitute; a high interaction defect rejects the visual pass.
 
-`xc-visual-design` owns the visual brief, independent critic cycles and the functional preservation gate for tasks whose acceptance includes visual quality; it does not own a style or a universal beauty score.
+`xc-visual-design` owns the visual brief and independent critic cycles; `xc-verification` owns the functional preservation evidence for tasks whose acceptance includes visual quality; it does not own a style or a universal beauty score.
