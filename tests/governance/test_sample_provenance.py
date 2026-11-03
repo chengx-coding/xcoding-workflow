@@ -92,6 +92,25 @@ class SampleProvenanceTest(unittest.TestCase):
             self.assertEqual(report["status"], "error")
             code, report = self.run_gate(seed, empty, [prior], root / "empty-project.json")
             self.assertEqual(code, 2)
+            self.assertEqual(report["status"], "error")
+            self.assertFalse(report["clean"] or report["derived"])
+
+            # Missing project path, missing prior path, empty prior, both flags.
+            code, report = self.run_gate(seed, root / "no-project", [prior], root / "no-project.json")
+            self.assertEqual(code, 2)
+            self.assertEqual(report["status"], "error")
+            code, report = self.run_gate(seed, project, [root / "no-prior-dir"], root / "no-prior-dir.json")
+            self.assertEqual(code, 2)
+            self.assertEqual(report["status"], "error")
+            empty_prior = root / "empty-prior"; empty_prior.mkdir()
+            code, report = self.run_gate(seed, project, [empty_prior], root / "empty-prior.json")
+            self.assertEqual(code, 2)
+            both = [sys.executable, str(SCRIPT), "--seed", str(seed), "--project", str(project),
+                    "--prior", str(prior), "--no-prior", "--out", str(root / "both.json")]
+            result = subprocess.run(both, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(json.loads((root / "both.json").read_text())["status"], "error")
+            self.assertFalse(json.loads((root / "both.json").read_text())["clean"])
 
             # A stale clean report must not survive an argparse error.
             stale = root / "stale.json"
@@ -100,7 +119,7 @@ class SampleProvenanceTest(unittest.TestCase):
                                      "--prior", str(prior), "--out", str(stale)],
                                     capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
-            self.assertFalse(stale.exists() and json.loads(stale.read_text())["status"] == "clean")
+            self.assertTrue(not stale.exists() or json.loads(stale.read_text())["status"] == "error")
 
             # Missing prior evidence must fail closed, even with valid paths.
             cmd = [sys.executable, str(SCRIPT), "--seed", str(seed), "--project", str(project),
