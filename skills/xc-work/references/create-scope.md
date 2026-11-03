@@ -93,7 +93,10 @@ not add a universal must or a hidden feature: a signature loop the request is si
 proposed should with its evidence and gap; a no-user analysis may choose a smaller scope but must not
 silently non-goal it. When evolving an experience product, preserve the prior accepted must capabilities and their
 depth; a visual/quality pass that drops or thins them is a regression. Record a disposition for every
-removal or thinning; a deliberate removal requires a user-accepted exclusion. For an experience product with a credible reference, record the reference's defining loop and
+removal or thinning; a deliberate removal requires a user-accepted exclusion. For an experience product whose request explicitly names an inspiration/reference and asks to feel
+like it, add a **must** capability for the reference's defining loop at the smallest playable depth;
+optional signature features remain proposed shoulds. A smaller loop requires a recorded sourced
+exclusion. For an experience product with a credible reference, record the reference's defining loop and
 defining-depth gap as a **proposed should** with evidence and lost value; a user may make it binding.
 Without a user, do not force the feature. For a navigable world, record orientation/map as a proposed
 should under the same rule. For a rendered interactive product with primary controls, add an **interaction
