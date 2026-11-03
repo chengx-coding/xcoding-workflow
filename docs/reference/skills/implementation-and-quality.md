@@ -34,6 +34,15 @@ These supporting Skills execute approved changes, explain them to human reviewer
 - **Typical usage:** read the supplied node contract and approved inputs, implement the accepted scope with the minimum sufficient magnitude for the task (`create` maximizes within its quality contract; `change` uses the minimum sufficient change; `repair` keeps the strong minimality presumption), run focused checks, and write the declared artifact. For `create`, the accepted capability matrix is part of the accepted scope: implement every accepted must capability and do not silently drop or weaken a must/should capability. If the accepted scope or a must capability proves insufficient, stop and return to the caller instead of expanding or shrinking it. An adaptive minimal node may combine one coherent implementation with focused verification after its immutable plan receipt is validated.
 - **Boundaries:** it does not own decomposition or retries, cannot opportunistically overwrite feature baselines, and reports only through the runtime public command. Scope expansion or shrink is a caller or gate decision, not a worker decision.
 
+## `xc-visual-design`
+
+[Canonical contract](../../../skills/xc-visual-design/SKILL.md)
+
+- **Invoke when:** visual quality is part of a rendered deliverable's acceptance — the user asks for visual quality/polish/identity, or the project bridge declares a visual target.
+- **Purpose:** own the visual brief, independent critic loop and dual gate; it does not own a style, palette, score or functional capability list.
+- **Public entry:** required `workbench_path`, `brief_path`, `review_path`, `screenshots`; optional `functional_evidence`; the functional gate is owned by `xc-verification`.
+- **Method boundary:** no fixed visual dimensions or style; screenshots and the project target are the critic input; unresolved high findings or a failed functional gate block acceptance.
+
 ## `xc-writing`
 
 [Canonical contract](../../../skills/xc-writing/SKILL.md)

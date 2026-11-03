@@ -34,6 +34,15 @@
 - **典型用法：** 阅读节点契约和获批输入，按任务采用最小充分幅度实现已批准范围（`create` 在质量契约内最大化，`change` 用最小充分改动，`repair` 保持强最小性预设），运行局部检查并写入声明的 artifact。对 `create`，accepted capability matrix 是已批准范围的一部分：实现每个 accepted must capability，不得静默丢弃或削弱 must/should capability；范围或 must capability 不足时停下返回调用方，而不是自行扩缩。自适应 minimal 节点可以在验证不可变 plan receipt 后，把一个 coherent implementation 与 focused verification 合并执行。
 - **主要边界：** 不负责分解或重试，不得顺手覆盖功能基线，只能通过运行时公开命令报告。范围的扩大或缩小是调用方或 gate 的决定，不是 worker 的决定。
 
+## `xc-visual-design`
+
+[规范契约](../../../../skills/xc-visual-design/SKILL.md)
+
+- **何时调用：** 视觉质量属于渲染产物验收的一部分时——用户要求视觉质量/polish/identity，或 project bridge 声明 visual target。
+- **用途：** 负责 visual brief、独立 critic 循环和 dual gate；不拥有风格、palette、评分或功能 capability 清单。
+- **公开入口：** 必填 `workbench_path`、`brief_path`、`review_path`、`screenshots`；可选 `functional_evidence`；functional gate 由 `xc-verification` 拥有。
+- **方法边界：** 不固定视觉维度或风格；critic 只看截图和项目目标；未解决 high 或 functional gate 失败都阻止接受。
+
 ## `xc-writing`
 
 [规范契约](../../../../skills/xc-writing/SKILL.md)

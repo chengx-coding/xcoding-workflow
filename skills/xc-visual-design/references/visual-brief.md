@@ -1,37 +1,32 @@
 # Visual brief
 
-Use this before rendering code. Keep it short; the project bridge supplies the concrete style.
+Record the target from the request or project bridge. Do not import a universal rubric.
 
-## Brief
+## Target
 
-- Audience:
-- Intended feeling (one sentence):
-- Visual thesis (one sentence):
-- Three candidate directions (2-3 lines each):
-- Chosen direction and why:
-- What this must not look like (anti-slop):
+- Source of the visual target (request/bridge/reference):
+- Intended audience and feeling:
+- What "good" means for this product, in the target's terms:
+- Constraints (assets, network, build, accessibility, platform):
+- What must not change functionally:
+- Prior capability inventory / verification artifact:
 
-## Tokens
+## Direction
 
-- Palette (8-12 named hex values; include sky/far/mid/near/surface/accent/UI text/danger/light):
-- Type scale (3-4 sizes/weights; local/system fonts only):
-- Spacing scale (4-6 steps):
-- Radii/elevation/borders:
-- Motion/feedback:
+- Visual direction chosen by the author (not a fixed style):
+- Why it fits the target:
+- What would make it generic or under-composed:
+- Open visual decisions:
 
-## Composition and states
+## States and evidence
 
-- Focal point and eye path:
-- Foreground/midground/background or parallax layers:
-- Horizon/spatial treatment:
-- Character silhouette/readability and animation:
-- Lighting/atmosphere for each required state:
-- UI hierarchy, focus/disabled/empty states:
-- Required states and viewports:
+- Required states:
+- Required viewports:
 - Matched-state screenshot plan:
-
-## Constraints
-
-- External assets/network/build constraints from the bridge:
-- Functional capabilities that must be preserved:
 - Independent critic path:
+- Functional verification path:
+
+## System
+
+Use the project's existing design system/tokens if it has one. If not, record only what the project
+actually needs; do not require a token system, palette size or font choice.
