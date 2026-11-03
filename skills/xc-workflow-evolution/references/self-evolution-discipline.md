@@ -93,9 +93,7 @@ out-of-grant or irreversible decisions.
 
 ## 9. Sample provenance gate
 
-Every sample run passes `references/sample-provenance.md` before scoring or promotion. A non-seed
-file byte-identical to a prior artifact makes the run derived; a derived run cannot be scored as
-clean-seed, promoted, or used as a clean-seed best. Use `scripts/check_sample_provenance.py`.
+Apply `references/sample-provenance.md` before scoring or promotion; this section is a pointer, not a second contract.
 
 ## 10. Force
 

@@ -85,6 +85,23 @@ class SampleProvenanceTest(unittest.TestCase):
             code, report = self.run_gate(seed / "missing", project, [prior], root / "missing.json")
             self.assertEqual(code, 2)
 
+            # Empty dirs fail closed with an error record.
+            empty = root / "empty"; empty.mkdir()
+            code, report = self.run_gate(empty, project, [prior], root / "empty-seed.json")
+            self.assertEqual(code, 2)
+            self.assertEqual(report["status"], "error")
+            code, report = self.run_gate(seed, empty, [prior], root / "empty-project.json")
+            self.assertEqual(code, 2)
+
+            # A stale clean report must not survive an argparse error.
+            stale = root / "stale.json"
+            stale.write_text('{"status":"clean","clean":true}', encoding="utf-8")
+            result = subprocess.run([sys.executable, str(SCRIPT), "--project", str(project),
+                                     "--prior", str(prior), "--out", str(stale)],
+                                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(stale.exists() and json.loads(stale.read_text())["status"] == "clean")
+
             # Missing prior evidence must fail closed, even with valid paths.
             cmd = [sys.executable, str(SCRIPT), "--seed", str(seed), "--project", str(project),
                    "--out", str(root / "no-prior.json")]

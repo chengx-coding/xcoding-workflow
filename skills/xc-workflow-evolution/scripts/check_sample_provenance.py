@@ -42,6 +42,13 @@ def write_report(out: Path, report: dict) -> None:
 
 
 def main() -> int:
+    # Clear a stale report before argparse can fail; a missing/error record must not leave clean.
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--out", type=Path)
+    pre_args, _ = pre.parse_known_args()
+    if pre_args.out and pre_args.out.exists():
+        pre_args.out.unlink()
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", required=True, type=Path)
     parser.add_argument("--project", required=True, type=Path)
