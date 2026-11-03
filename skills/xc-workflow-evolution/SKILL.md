@@ -47,7 +47,8 @@ python "$SKILL_DIR/scripts/install_xc_skills.py" --source-root <source> --target
 ## Self-evolution method
 
 For a self-evolution line, read
-[`references/self-evolution-discipline.md`](references/self-evolution-discipline.md) and
+[`references/self-evolution-discipline.md`](references/self-evolution-discipline.md),
+[`references/sample-provenance.md`](references/sample-provenance.md), and
 [`references/generality-and-applicability.md`](references/generality-and-applicability.md). The
 discipline owns the method (startup, divergence/convergence, meta-review, architecture health, line
 closure and delegated gates); this Skill owns routing, placement, status and force.

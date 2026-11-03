@@ -1,5 +1,10 @@
 # Sample provenance gate (generic)
 
+**Scope:** universal sample regression. **Owner:** `xc-workflow-evolution/references/sample-provenance.md`.
+**Promotion status:** `validated-in-class` (derived 0.4.15 fails; clean Mosslight passes).
+**Force:** convention + checker. **Evidence:** 0.4.16 audit, derived 0.4.15 overlap 25, clean
+Mosslight overlap 0.
+
 A sample result is valid only when its provenance is clean. The gate applies to every sample, not a
 particular product or prompt.
 
