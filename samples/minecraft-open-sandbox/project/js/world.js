@@ -1,3 +1,4 @@
+/* World generation, block access and world-level serialization. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
     module.exports = factory(require("./config.js"), require("./rng.js"));
@@ -7,14 +8,15 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, RNG) {
   "use strict";
 
-  if (!CONFIG || !RNG) {
-    throw new Error("SandboxConfig and SandboxRng are required before SandboxWorld");
+  if (!CONFIG) {
+    throw new Error("SandboxConfig is required before SandboxWorld");
+  }
+  if (!RNG) {
+    throw new Error("SandboxRng is required before SandboxWorld");
   }
 
   const B = CONFIG.blocks;
-  const GROUND_ROW = Math.floor(CONFIG.worldHeight * 0.65);
-  const PLATEAU_END = 48;
-  const AIR = B.air;
+  const D = CONFIG.blockDefs;
 
   function indexOf(world, x, y) {
     if (!Number.isInteger(x) || !Number.isInteger(y)) {
@@ -24,10 +26,6 @@
       return -1;
     }
     return y * world.width + x;
-  }
-
-  function inBounds(world, x, y) {
-    return x >= 0 && y >= 0 && x < world.width && y < world.height;
   }
 
   function getBlock(world, x, y) {
@@ -44,342 +42,297 @@
     return true;
   }
 
-  function isSolidId(block) {
-    return block !== AIR && block !== B.torch;
-  }
-
   function isSolid(world, x, y) {
     const block = getBlock(world, x, y);
-    return block !== null && isSolidId(block);
+    const def = block === null ? null : D[block];
+    return Boolean(def && def.solid);
   }
 
-  function isSolidAt(world, x, y) {
-    if (!inBounds(world, x, y)) {
-      return false;
-    }
-    return isSolid(world, x, y);
+  function isOpaque(world, x, y) {
+    const block = getBlock(world, x, y);
+    const def = block === null ? null : D[block];
+    return Boolean(def && def.opaque);
   }
 
-  function isAirAt(world, x, y) {
-    return getBlock(world, x, y) === AIR;
+  function isLiquid(world, x, y) {
+    const block = getBlock(world, x, y);
+    const def = block === null ? null : D[block];
+    return Boolean(def && def.liquid);
   }
 
-  function isExposed(world, x, y) {
-    return (
-      isAirAt(world, x - 1, y) ||
-      isAirAt(world, x + 1, y) ||
-      isAirAt(world, x, y - 1) ||
-      isAirAt(world, x, y + 1)
-    );
+  function isReplaceable(world, x, y) {
+    const block = getBlock(world, x, y);
+    const def = block === null ? null : D[block];
+    return Boolean(def && def.replaceable);
   }
 
-  function canPlaceAt(world, x, y, block) {
-    if (!inBounds(world, x, y) || getBlock(world, x, y) !== AIR) {
-      return false;
+  function put(world, x, y, block) {
+    setBlock(world, x, y, block);
+    if (block !== B.air) {
+      world.edits += 1;
     }
-    const supported =
-      isSolidAt(world, x - 1, y) ||
-      isSolidAt(world, x + 1, y) ||
-      isSolidAt(world, x, y - 1) ||
-      isSolidAt(world, x, y + 1);
-    if (!supported) {
-      return false;
-    }
-    if (block === B.torch) {
-      return isSolidAt(world, x, y + 1) || isSolidAt(world, x - 1, y) || isSolidAt(world, x + 1, y);
-    }
-    return true;
   }
 
-  function surfaceHeight(world, x) {
-    if (x < 0 || x >= world.width) {
-      return -1;
-    }
-    for (let y = 0; y < world.height; y += 1) {
-      if (getBlock(world, x, y) !== AIR) {
-        return y;
+  function fillColumn(world, x, top, seed) {
+    const height = world.height;
+    const sandLine = x >= CONFIG.spawnPlateau && top >= CONFIG.seaLevel - 1;
+    const dirtDepth = 3 + (RNG.hash2(x, 3, seed) % 3);
+    for (let y = top; y < height; y += 1) {
+      if (y === top) {
+        put(world, x, y, sandLine ? B.sand : B.grass);
+      } else if (y < top + dirtDepth) {
+        put(world, x, y, sandLine ? B.sand : B.dirt);
+      } else {
+        put(world, x, y, B.stone);
       }
     }
-    return world.height;
+    world.surface[x] = top;
   }
 
-  function sampleColumns(world, x0, x1, count) {
-    const columns = [];
-    const start = Math.max(0, Math.min(world.width - 1, Math.floor(x0)));
-    const end = Math.max(start + 1, Math.min(world.width, Math.ceil(x1)));
-    const total = Math.max(1, Math.floor(count));
-    for (let i = 0; i < total; i += 1) {
-      const x = total === 1 ? start : Math.round(start + ((end - 1 - start) * i) / (total - 1));
-      const surface = surfaceHeight(world, x);
-      columns.push({ x: x, surface: surface, top: getBlock(world, x, surface) || AIR });
+  function surfaceHeight(x, seed) {
+    if (x < CONFIG.spawnPlateau) {
+      return 62;
     }
-    return columns;
-  }
-
-  function terrainHeightAt(x, seed) {
-    if (x <= PLATEAU_END) {
-      return GROUND_ROW;
+    const broad = RNG.fbm1(x * 0.011, seed + 101, 3);
+    const detail = RNG.fbm1(x * 0.052, seed + 202, 3);
+    let height = 62 + broad * 11 + detail * 4;
+    // A guaranteed pond basin keeps water and shoreline visible on every seed.
+    if (x >= 30 && x <= 47) {
+      const pond = Math.sin(((x - 30) / 17) * Math.PI);
+      height += pond * 7;
     }
-    const grow = Math.min(1, (x - PLATEAU_END) / 75);
-    const ridge = (RNG.valueNoise1D(x / 30, seed + 7101) - 0.5) * 2;
-    const detail = (RNG.valueNoise1D(x / 9, seed + 7102) - 0.5) * 2;
-    const height = GROUND_ROW + Math.round(grow * (ridge * 8 + detail * 1.6));
-    return Math.max(GROUND_ROW - 9, Math.min(GROUND_ROW + 9, height));
+    return RNG.clamp(Math.round(height), 40, 80);
   }
 
   function carveCaves(world, seed) {
-    const width = world.width;
-    const height = world.height;
-    const random = RNG.mulberry32(seed ^ 0x9e3779b9);
-    let carved = 0;
-    for (let x = 0; x < width; x += 1) {
-      const top = terrainHeightAt(x, seed);
-      for (let y = top + 6; y < height - 2; y += 1) {
-        const depth = (y - top) / Math.max(1, height - top);
-        const shape = RNG.fbm2D(x * 0.085, y * 0.11, seed + 4401, 3);
-        const tunnel = RNG.valueNoise2D(x * 0.045, y * 0.07, seed + 4402);
-        const threshold = 0.625 - depth * 0.035;
-        const shaft =
-          RNG.valueNoise2D(x * 0.19, y * 0.02, seed + 4403) > 0.855 && depth > 0.18;
-        if ((shape > threshold && tunnel > 0.34) || shaft) {
-          world.data[y * width + x] = AIR;
-          carved += 1;
-        }
-      }
-    }
-    if (carved < 120) {
-      const tunnelTop = Math.min(height - 6, GROUND_ROW + 12);
-      for (let x = 60; x < Math.min(width - 2, 170); x += 1) {
-        const wobble = Math.round(Math.sin(x * 0.4 + random()) * 1.2);
-        for (let t = 0; t < 2; t += 1) {
-          const y = tunnelTop + wobble + t;
-          if (y > 0 && y < height - 2) {
-            world.data[y * width + x] = AIR;
-            carved += 1;
+    const B0 = B.air;
+    for (let x = CONFIG.spawnPlateau + 2; x < world.width - 2; x += 1) {
+      const top = world.surface[x];
+      for (let y = top + 4; y < world.height - 3; y += 1) {
+        const chambers = RNG.fbm2(x * 0.083, y * 0.115, seed + 7, 3);
+        const tunnels = Math.abs(RNG.fbm2(x * 0.045, y * 0.07, seed + 19, 2));
+        if (chambers > 0.42 || tunnels < 0.045) {
+          const current = getBlock(world, x, y);
+          if (current === B.stone || current === B.dirt || current === B.grass) {
+            setBlock(world, x, y, B0);
           }
         }
       }
     }
-    return carved;
   }
 
-  function placeVein(world, block, x, y, size) {
-    const width = world.width;
-    const height = world.height;
-    let cx = x;
-    let cy = y;
-    const random = RNG.mulberry32((x * 73856093) ^ (y * 19349663) ^ block);
-    for (let step = 0; step < size; step += 1) {
-      if (cx > 1 && cx < width - 1 && cy > 2 && cy < height - 2) {
-        const index = cy * width + cx;
-        if (world.data[index] === B.stone) {
-          world.data[index] = block;
+  function carveOre(world, seed, block, veins, minY, maxY) {
+    const random = RNG.mulberry32(seed);
+    for (let vein = 0; vein < veins; vein += 1) {
+      let x = 2 + Math.floor(random() * (world.width - 4));
+      let y = minY + Math.floor(random() * Math.max(1, maxY - minY));
+      const size = 3 + Math.floor(random() * 6);
+      for (let step = 0; step < size; step += 1) {
+        if (getBlock(world, x, y) === B.stone) {
+          setBlock(world, x, y, block);
+        }
+        x += Math.floor(random() * 3) - 1;
+        y += Math.floor(random() * 3) - 1;
+        if (x < 1 || x >= world.width - 1 || y < 3 || y >= world.height - 1) {
+          break;
         }
       }
-      const roll = random();
-      if (roll < 0.36) {
-        cx += random() < 0.5 ? -1 : 1;
-      } else if (roll < 0.72) {
-        cy += random() < 0.5 ? -1 : 1;
-      } else {
-        cx += random() < 0.5 ? -1 : 1;
-        cy += random() < 0.5 ? -1 : 1;
-      }
     }
   }
 
-  function populateOres(world, seed) {
-    const width = world.width;
-    const height = world.height;
-    const random = RNG.mulberry32(seed + 991);
-    const bands = [
-      { block: B.coal_ore, minY: GROUND_ROW + 4, maxY: GROUND_ROW + 26, veins: 170, size: 5 },
-      { block: B.iron_ore, minY: GROUND_ROW + 15, maxY: GROUND_ROW + 38, veins: 110, size: 4 },
-      { block: B.ember_ore, minY: height - 26, maxY: height - 4, veins: 72, size: 3 }
-    ];
-    const counts = {};
-    for (let b = 0; b < bands.length; b += 1) {
-      const band = bands[b];
-      let placed = 0;
-      for (let i = 0; i < band.veins; i += 1) {
-        const x = 2 + Math.floor(random() * (width - 4));
-        const y = band.minY + Math.floor(random() * Math.max(1, band.maxY - band.minY));
-        placeVein(world, band.block, x, y, band.size);
-        placed += 1;
-      }
-      // Deterministically guarantee the band exists even on unlucky seeds.
-      let found = 0;
-      for (let y = band.minY; y < band.maxY; y += 1) {
-        for (let x = 2; x < width - 2; x += 1) {
-          if (getBlock(world, x, y) === band.block) {
-            found += 1;
-          }
+  function addWater(world) {
+    for (let x = 0; x < world.width; x += 1) {
+      const top = world.surface[x];
+      for (let y = CONFIG.seaLevel; y < top; y += 1) {
+        if (getBlock(world, x, y) === B.air) {
+          setBlock(world, x, y, B.water);
         }
       }
-      let attempt = 0;
-      while (found < 24 && attempt < 40) {
-        const x = 8 + ((attempt * 71 + seed) % (width - 20));
-        const y = band.minY + ((attempt * 13) % Math.max(1, band.maxY - band.minY));
-        placeVein(world, band.block, x, y, Math.max(3, band.size));
-        found += 3;
-        attempt += 1;
-      }
-      counts[band.block] = found;
     }
-    return counts;
   }
 
-  function plantTree(world, x, height) {
-    const base = surfaceHeight(world, x);
-    for (let y = 0; y < height; y += 1) {
-      const ty = base - 1 - y;
-      if (ty > 0) {
-        setBlock(world, x, ty, B.wood);
+  function plantTree(world, x, groundY, seed) {
+    const random = RNG.mulberry32(seed);
+    const height = 4 + Math.floor(random() * 3);
+    if (groundY - height - 2 < 2) {
+      return false;
+    }
+    for (let y = 1; y <= height; y += 1) {
+      if (getBlock(world, x, groundY - y) !== B.air) {
+        return false;
       }
     }
-    const top = base - height;
+    for (let y = 1; y <= height; y += 1) {
+      setBlock(world, x, groundY - y, B.wood);
+    }
+    const crown = groundY - height;
     for (let dy = -2; dy <= 1; dy += 1) {
       const radius = dy === 1 ? 1 : 2;
       for (let dx = -radius; dx <= radius; dx += 1) {
         if (dx === 0 && dy <= 0) {
           continue;
         }
-        const tx = x + dx;
-        const ty = top + dy;
-        if (inBounds(world, tx, ty) && getBlock(world, tx, ty) === AIR) {
-          setBlock(world, tx, ty, B.leaves);
+        if (Math.abs(dx) === radius && Math.abs(dy) === 2) {
+          continue;
         }
+        if (getBlock(world, x + dx, crown + dy) === B.air) {
+          setBlock(world, x + dx, crown + dy, B.leaves);
+        }
+      }
+    }
+    return true;
+  }
+
+  function plantTrees(world, seed) {
+    const random = RNG.mulberry32(seed ^ 0xa53c9e1);
+    let x = CONFIG.spawnPlateau + 5;
+    while (x < world.width - 4) {
+      const top = world.surface[x];
+      const ground = getBlock(world, x, top);
+      if (ground === B.grass && x !== Math.floor(world.width / 2)) {
+        if (random() < 0.72) {
+          plantTree(world, x, top, (seed + x * 7919) >>> 0);
+        }
+        x += 5 + Math.floor(random() * 6);
+      } else {
+        x += 2;
       }
     }
   }
 
-  function populateTrees(world, seed) {
-    const width = world.width;
-    const random = RNG.mulberry32(seed + 3313);
-    let trees = 0;
-    let lastX = -10;
-    const fixed = [34, 41, 66, 73];
-    for (let i = 0; i < fixed.length; i += 1) {
-      const x = fixed[i];
-      if (x < width - 3 && surfaceHeight(world, x) === GROUND_ROW) {
-        plantTree(world, x, 4 + (i % 3));
-        lastX = x;
-        trees += 1;
+  function decorate(world, seed) {
+    const random = RNG.mulberry32(seed ^ 0x51ed270b);
+    for (let x = CONFIG.spawnPlateau; x < world.width; x += 1) {
+      const top = world.surface[x];
+      if (getBlock(world, x, top) !== B.grass || getBlock(world, x, top - 1) !== B.air) {
+        continue;
+      }
+      const roll = random();
+      if (roll < 0.07) {
+        setBlock(world, x, top - 1, B.flower);
+      } else if (roll < 0.22) {
+        setBlock(world, x, top - 1, B.tallGrass);
       }
     }
-    for (let x = PLATEAU_END + 2; x < width - 4; x += 1) {
-      if (x - lastX < 5) {
-        continue;
-      }
-      if (random() > 0.085) {
-        continue;
-      }
-      const top = surfaceHeight(world, x);
-      if (getBlock(world, x, top) !== B.grass) {
-        continue;
-      }
-      plantTree(world, x, 4 + Math.floor(random() * 3));
-      lastX = x;
-      trees += 1;
-    }
-    return trees;
   }
 
-  function generate(world) {
-    const width = world.width;
-    const height = world.height;
-    const seed = world.seed;
-    const heights = new Int16Array(width);
-
-    for (let x = 0; x < width; x += 1) {
-      const h = terrainHeightAt(x, seed);
-      heights[x] = h;
-      const desert = x > 70 && RNG.valueNoise1D(x / 46, seed + 505) > 0.7;
-      const soil = desert ? B.sand : B.dirt;
-      const top = desert ? B.sand : B.grass;
-      for (let y = h; y < height; y += 1) {
-        let block = B.stone;
-        if (y === h) {
-          block = top;
-        } else if (y <= h + 4) {
-          block = soil;
+  function findSpawn(world) {
+    const center = Math.floor(world.width / 2);
+    for (let radius = 0; radius < Math.floor(world.width / 2) - 2; radius += 1) {
+      for (const side of [0, -1, 1]) {
+        const x = center + side * radius;
+        if (x < 2 || x >= world.width - 2) {
+          continue;
         }
-        world.data[y * width + x] = block;
+        const top = world.surface[x];
+        if (getBlock(world, x, top) === B.grass && top < CONFIG.seaLevel - 1) {
+          return { x: x + 0.5, y: top };
+        }
       }
     }
-
-    carveCaves(world, seed);
-    const oreCounts = populateOres(world, seed);
-    const trees = populateTrees(world, seed);
-
-    // The world floor is unbreakable in practice: keep the bottom row stone.
-    for (let x = 0; x < width; x += 1) {
-      world.data[(height - 1) * width + x] = B.stone;
+    for (let radius = 0; radius < Math.floor(world.width / 2) - 2; radius += 1) {
+      for (const side of [0, -1, 1]) {
+        const x = center + side * radius;
+        if (x < 2 || x >= world.width - 2) {
+          continue;
+        }
+        const top = world.surface[x];
+        if (getBlock(world, x, top) === B.grass || getBlock(world, x, top) === B.sand) {
+          return { x: x + 0.5, y: top };
+        }
+      }
     }
-
-    world.meta = {
-      ground: GROUND_ROW,
-      trees: trees,
-      ores: oreCounts,
-      spawn: { x: CONFIG.spawnX, y: GROUND_ROW }
-    };
-    return world;
+    return { x: center + 0.5, y: 62 };
   }
 
   function createWorld(seed) {
     const width = CONFIG.worldWidth;
     const height = CONFIG.worldHeight;
-    const numericSeed = seed === undefined || seed === null ? CONFIG.seed : Number(seed) >>> 0;
+    const normalizedSeed = Number(seed) >>> 0;
     const world = {
       width: width,
       height: height,
-      seed: numericSeed,
+      seed: normalizedSeed,
       data: new Uint8Array(width * height),
-      meta: null
+      surface: new Int16Array(width),
+      edits: 0,
+      version: 1
     };
-    return generate(world);
+
+    for (let x = 0; x < width; x += 1) {
+      fillColumn(world, x, surfaceHeight(x, normalizedSeed), normalizedSeed);
+    }
+
+    carveCaves(world, normalizedSeed);
+    carveOre(world, normalizedSeed ^ 0x1b873593, B.coalOre, 150, 24, height - 6);
+    carveOre(world, normalizedSeed ^ 0x9e3779b9, B.ironOre, 80, 38, height - 4);
+    addWater(world);
+    plantTrees(world, normalizedSeed);
+    decorate(world, normalizedSeed);
+
+    // Keep the spawn column clear and the seed's first-column contract exact.
+    const spawn = findSpawn(world);
+    const spawnX = Math.floor(spawn.x);
+    for (let dx = -2; dx <= 2; dx += 1) {
+      const x = spawnX + dx;
+      if (x < 0 || x >= width) {
+        continue;
+      }
+      const top = world.surface[x];
+      for (let y = top - 5; y < top; y += 1) {
+        if (y >= 0 && (getBlock(world, x, y) === B.wood || getBlock(world, x, y) === B.leaves)) {
+          setBlock(world, x, y, B.air);
+        }
+      }
+      if (getBlock(world, x, top) === B.air) {
+        setBlock(world, x, top, B.grass);
+      }
+      for (let y = top + 1; y < top + 4; y += 1) {
+        if (getBlock(world, x, y) === B.air) {
+          setBlock(world, x, y, B.dirt);
+        }
+      }
+    }
+
+    world.spawn = findSpawn(world);
+    world.edits = 0;
+    return world;
   }
 
-  function encodeRLE(data) {
-    const pairs = [];
-    let current = data[0];
-    let count = 1;
-    for (let i = 1; i < data.length; i += 1) {
-      if (data[i] === current) {
-        count += 1;
-      } else {
-        pairs.push([current, count]);
-        current = data[i];
-        count = 1;
+  function rebuildWorld(seed, width, height, data, surface, spawn) {
+    if (!Number.isInteger(width) || !Number.isInteger(height) || !data || data.length !== width * height) {
+      throw new Error("Invalid world data");
+    }
+    const world = {
+      width: width,
+      height: height,
+      seed: Number(seed) >>> 0,
+      data: data instanceof Uint8Array ? data : Uint8Array.from(data),
+      surface: new Int16Array(width),
+      edits: 0,
+      version: 1
+    };
+    if (Array.isArray(surface) || surface instanceof Int16Array) {
+      for (let x = 0; x < width; x += 1) {
+        world.surface[x] = Number(surface[x]) || 0;
+      }
+    } else {
+      for (let x = 0; x < width; x += 1) {
+        let top = height - 1;
+        for (let y = 0; y < height; y += 1) {
+          const block = getBlock(world, x, y);
+          if (block !== B.air && block !== B.water) {
+            top = y;
+            break;
+          }
+        }
+        world.surface[x] = top;
       }
     }
-    pairs.push([current, count]);
-    return pairs;
-  }
-
-  function decodeRLE(pairs, length) {
-    const data = new Uint8Array(length);
-    let offset = 0;
-    for (let i = 0; i < pairs.length; i += 1) {
-      const pair = pairs[i];
-      if (!Array.isArray(pair) || pair.length !== 2) {
-        throw new Error("Invalid world run");
-      }
-      const block = pair[0];
-      const count = pair[1];
-      if (!Number.isInteger(block) || !Number.isInteger(count) || count <= 0) {
-        throw new Error("Invalid world run");
-      }
-      if (offset + count > length) {
-        throw new Error("World runs exceed block data");
-      }
-      data.fill(block, offset, offset + count);
-      offset += count;
-    }
-    if (offset !== length) {
-      throw new Error("World runs do not fill block data");
-    }
-    return data;
+    world.spawn = spawn && Number.isFinite(spawn.x) && Number.isFinite(spawn.y)
+      ? { x: Number(spawn.x), y: Number(spawn.y) }
+      : findSpawn(world);
+    return world;
   }
 
   function serializeWorld(world) {
@@ -387,59 +340,65 @@
       width: world.width,
       height: world.height,
       seed: world.seed,
-      rle: encodeRLE(world.data)
+      data: Array.from(world.data)
     });
   }
 
   function deserializeWorld(text) {
-    const parsed = typeof text === "string" ? JSON.parse(text) : text;
+    const parsed = JSON.parse(text);
     if (!parsed || !Number.isInteger(parsed.width) || !Number.isInteger(parsed.height)) {
       throw new Error("Invalid world payload");
     }
-    if (parsed.width <= 0 || parsed.height <= 0) {
-      throw new Error("Invalid world size");
-    }
-    const length = parsed.width * parsed.height;
-    let data;
-    if (Array.isArray(parsed.rle)) {
-      data = decodeRLE(parsed.rle, length);
-    } else if (Array.isArray(parsed.data)) {
-      if (parsed.data.length !== length) {
-        throw new Error("Invalid world block data");
-      }
-      data = Uint8Array.from(parsed.data);
-    } else {
+    if (!Array.isArray(parsed.data) || parsed.data.length !== parsed.width * parsed.height) {
       throw new Error("Invalid world block data");
     }
-    return {
+    const world = {
       width: parsed.width,
       height: parsed.height,
       seed: Number(parsed.seed) >>> 0,
-      data: data,
-      meta: null
+      data: Uint8Array.from(parsed.data),
+      surface: new Int16Array(parsed.width),
+      edits: 0,
+      version: 1
     };
+    for (let x = 0; x < world.width; x += 1) {
+      let top = 0;
+      for (let y = 0; y < world.height; y += 1) {
+        const block = getBlock(world, x, y);
+        if (block !== B.air && block !== B.water) {
+          top = y;
+          break;
+        }
+      }
+      world.surface[x] = top;
+    }
+    world.spawn = findSpawn(world);
+    return world;
+  }
+
+  function countBlock(world, block) {
+    let total = 0;
+    for (let i = 0; i < world.data.length; i += 1) {
+      if (world.data[i] === block) {
+        total += 1;
+      }
+    }
+    return total;
   }
 
   return {
-    GROUND_ROW: GROUND_ROW,
-    PLATEAU_END: PLATEAU_END,
-    indexOf: indexOf,
-    inBounds: inBounds,
+    createWorld: createWorld,
     getBlock: getBlock,
     setBlock: setBlock,
-    isSolidId: isSolidId,
     isSolid: isSolid,
-    isSolidAt: isSolidAt,
-    isAirAt: isAirAt,
-    isExposed: isExposed,
-    canPlaceAt: canPlaceAt,
-    surfaceHeight: surfaceHeight,
-    sampleColumns: sampleColumns,
-    createWorld: createWorld,
-    terrainHeightAt: terrainHeightAt,
+    isOpaque: isOpaque,
+    isLiquid: isLiquid,
+    isReplaceable: isReplaceable,
     serializeWorld: serializeWorld,
     deserializeWorld: deserializeWorld,
-    encodeRLE: encodeRLE,
-    decodeRLE: decodeRLE
+    rebuildWorld: rebuildWorld,
+    surfaceHeight: surfaceHeight,
+    findSpawn: findSpawn,
+    countBlock: countBlock
   };
 });

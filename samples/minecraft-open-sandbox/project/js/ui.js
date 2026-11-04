@@ -1,840 +1,510 @@
+/* DOM panels for inventory, crafting and furnace interaction. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(
-      require("./config.js"),
-      require("./blocks.js"),
-      require("./world.js"),
-      require("./crafting.js"),
-      require("./progression.js"),
-      require("./save.js"),
-      require("./render.js")
-    );
+    module.exports = factory(require("./config.js"), require("./inventory.js"), require("./crafting.js"), require("./furnace.js"), require("./textures.js"));
   } else {
-    root.SandboxUI = factory(
-      root.SandboxConfig,
-      root.SandboxBlocks,
-      root.SandboxWorld,
-      root.SandboxCrafting,
-      root.SandboxProgression,
-      root.SandboxSave,
-      root.SandboxRender
-    );
+    root.SandboxUI = factory(root.SandboxConfig, root.SandboxInventory, root.SandboxCrafting, root.SandboxFurnace, root.SandboxTextures);
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (
-  CONFIG,
-  BLOCKS,
-  WORLD,
-  CRAFTING,
-  PROGRESSION,
-  SAVE,
-  RENDER
-) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, INV, CRAFT, FURNACE, TEX) {
   "use strict";
 
-  if (!CONFIG || !BLOCKS || !WORLD || !CRAFTING || !PROGRESSION || !SAVE || !RENDER) {
-    throw new Error("SandboxUI dependencies are missing");
-  }
+  function createUI(options) {
+    const game = options.game;
+    const toast = options.toast;
+    const hasNearbyTable = options.hasNearbyTable;
+    const updateHotbar = options.updateHotbar;
+    const onChange = options.onChange || function () {};
+    const onCraft = options.onCraft || function () {};
 
-  const B = CONFIG.blocks;
-  const I = CONFIG.items;
-
-  const CONTROLS = [
-    ["A / D  or  ← / →", "Walk left and right."],
-    ["Space", "Jump. Hold briefly for a higher hop; the game forgives a late jump by a few frames."],
-    ["Hold left mouse", "Mine the block under the pointer. The block must be in reach and touching air."],
-    ["Left mouse on a hollow", "Attack the night hollow under the pointer."],
-    ["Right mouse", "Place the selected block into an empty tile next to solid ground."],
-    ["1 – 9  or  mouse wheel", "Choose a hotbar slot."],
-    ["E", "Open or close the inventory and crafting."],
-    ["Esc", "Pause the game."],
-    ["H", "Open or close this controls panel."],
-    ["M", "Mute or unmute the procedural sound."]
-  ];
-
-  function createUI(callbacks) {
-    const api = callbacks || {};
-    const refs = {};
-    const state = {
-      screen: null,
-      helpReturn: "pause",
-      pickedSlot: -1,
-      snapshot: null,
-      hotbarSignature: [],
-      heartsSignature: "",
-      hintTimer: 0,
-      mapTimer: 0,
-      saveSignature: "",
-      newWorldArmed: false,
-      muted: false
+    const screens = {
+      inventory: document.getElementById("inventory-screen"),
+      furnace: document.getElementById("furnace-screen")
+    };
+    const gridEl = document.getElementById("inventory-grid");
+    const hotbarGridEl = document.getElementById("inventory-hotbar");
+    const recipeListEl = document.getElementById("recipe-list");
+    const craftStatusEl = document.getElementById("craft-status");
+    const furnaceStatusEl = document.getElementById("furnace-status");
+    const furnaceFlameEl = document.getElementById("furnace-flame");
+    const furnaceHotbarEl = document.getElementById("furnace-hotbar-grid");
+    const furnaceSlots = {
+      input: document.getElementById("furnace-input"),
+      fuel: document.getElementById("furnace-fuel"),
+      output: document.getElementById("furnace-output")
     };
 
-    function init() {
-      refs.hud = document.getElementById("hud");
-      refs.hotbar = document.getElementById("hotbar");
-      refs.overlay = document.getElementById("overlay");
-      refs.toasts = document.getElementById("toasts");
-      refs.hint = document.getElementById("hint");
-      refs.game = document.getElementById("game");
-      buildHud();
-      buildHotbar();
-      bindEvents();
-    }
+    let active = null;
+    let furnacePos = null;
+    let cursor = null;
+    let pendingRefresh = 0;
 
-    function buildHud() {
-      refs.hud.innerHTML = [
-        '<div class="hud-top">',
-        '  <section class="panel quest-panel" aria-label="Journey progress">',
-        '    <div class="quest-head"><span>Journey</span><span id="quest-stage">1 / 8</span></div>',
-        '    <div class="quest-title" id="quest-title">Gather wood</div>',
-        '    <div class="quest-hint" id="quest-hint"></div>',
-        '    <div class="quest-bar"><span id="quest-bar"></span></div>',
-        "  </section>",
-        '  <div class="panel clock-panel" aria-label="Day and time">',
-        '    <div class="clock-day" id="clock-day">Day 1</div>',
-        '    <div class="clock-phase" id="clock-phase">Morning</div>',
-        "  </div>",
-        '  <section class="panel map-panel" aria-label="World map">',
-        '    <canvas id="minimap" width="228" height="136"></canvas>',
-        '    <div class="map-meta"><span id="coords">X 24 · Y 91</span><span id="depth">Surface</span></div>',
-        "  </section>",
-        "</div>",
-        '<button class="help-button" id="help-button" type="button" title="Controls (H)" aria-label="Controls">?</button>',
-        '<div class="hearts" id="hearts" aria-label="Health"></div>',
-        '<div class="save-state" id="save-state" data-kind="dirty"><span class="dot"></span><span id="save-text">Not saved yet</span></div>'
-      ].join("");
-      refs.questStage = document.getElementById("quest-stage");
-      refs.questTitle = document.getElementById("quest-title");
-      refs.questHint = document.getElementById("quest-hint");
-      refs.questBar = document.getElementById("quest-bar");
-      refs.clockDay = document.getElementById("clock-day");
-      refs.clockPhase = document.getElementById("clock-phase");
-      refs.minimap = document.getElementById("minimap");
-      refs.minimapCtx = refs.minimap.getContext("2d");
-      refs.coords = document.getElementById("coords");
-      refs.depth = document.getElementById("depth");
-      refs.hearts = document.getElementById("hearts");
-      refs.saveState = document.getElementById("save-state");
-      refs.saveText = document.getElementById("save-text");
-      refs.helpButton = document.getElementById("help-button");
-    }
+    const cursorEl = document.createElement("div");
+    cursorEl.className = "cursor-stack";
+    cursorEl.hidden = true;
+    cursorEl.setAttribute("aria-hidden", "true");
+    document.getElementById("stage").appendChild(cursorEl);
 
-    function buildHotbar() {
-      const slots = [];
-      for (let i = 0; i < CONFIG.hotbarSize; i += 1) {
-        slots.push(
-          '<button class="slot is-empty" type="button" data-select="' +
-            i +
-            '" aria-label="Hotbar slot ' +
-            (i + 1) +
-            '">' +
-            '<canvas width="76" height="76"></canvas>' +
-            '<span class="count"></span>' +
-            '<span class="key">' +
-            (i + 1) +
-            "</span>" +
-            "</button>"
-        );
+    function iconCanvas(id, size) {
+      const icon = TEX.itemIcon(id);
+      const canvas = document.createElement("canvas");
+      canvas.width = 16;
+      canvas.height = 16;
+      canvas.style.width = (size || 32) + "px";
+      canvas.style.height = (size || 32) + "px";
+      if (icon) {
+        canvas.getContext("2d").drawImage(icon, 0, 0);
       }
-      refs.hotbar.innerHTML = slots.join("");
-      refs.hotbarSlots = Array.prototype.slice.call(refs.hotbar.querySelectorAll(".slot"));
-      refs.hotbarIcons = refs.hotbarSlots.map(function icon(slot) {
-        return slot.querySelector("canvas");
-      });
-      refs.hotbarCounts = refs.hotbarSlots.map(function count(slot) {
-        return slot.querySelector(".count");
-      });
+      return canvas;
     }
 
-    function bindEvents() {
-      refs.helpButton.addEventListener("click", function helpClick() {
-        if (api.action) {
-          api.action("help");
-        }
-      });
-      refs.hotbar.addEventListener("click", function hotbarClick(event) {
-        const button = event.target.closest("[data-select]");
-        if (button && api.selectSlot) {
-          api.selectSlot(Number(button.dataset.select));
-        }
-      });
-      refs.overlay.addEventListener("click", function overlayClick(event) {
-        const actionButton = event.target.closest("[data-action]");
-        if (actionButton) {
-          const name = actionButton.dataset.action;
-          if (api.action) {
-            api.action(name, actionButton.dataset.value || "");
-          }
+    function itemName(id) {
+      const def = CONFIG.itemDefs[id];
+      return def ? def.name : "Unknown";
+    }
+
+    function renderStackInto(element, stack) {
+      element.innerHTML = "";
+      if (!stack) {
+        return;
+      }
+      element.appendChild(iconCanvas(stack.id, 32));
+      if (stack.count > 1) {
+        const count = document.createElement("span");
+        count.className = "slot-count";
+        count.textContent = String(stack.count);
+        element.appendChild(count);
+      }
+      element.title = itemName(stack.id) + " ×" + stack.count;
+    }
+
+    function makeSlot(index, stack, context) {
+      const element = document.createElement("div");
+      element.className = "inventory-slot";
+      element.dataset.index = String(index);
+      element.dataset.context = context;
+      element.setAttribute("role", "button");
+      element.setAttribute("tabindex", "0");
+      element.setAttribute("aria-label", stack ? itemName(stack.id) + ", " + stack.count : "Empty slot " + (index + 1));
+      if (context === "hotbar" && index === game.inventory.selected) {
+        element.classList.add("is-selected");
+      }
+      renderStackInto(element, stack);
+      element.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (context === "hotbar" && !cursor && event.button === 0) {
+          INV.setSelected(game.inventory, index);
+          updateHotbar();
+          refreshInventory();
           return;
         }
-        const craftButton = event.target.closest("[data-craft]");
-        if (craftButton && api.craft) {
-          api.craft(craftButton.dataset.craft);
-          return;
-        }
-        const slotButton = event.target.closest("[data-slot]");
-        if (slotButton) {
-          handleInventorySlot(Number(slotButton.dataset.slot));
+        clickPlayerSlot(index, event.button, event.shiftKey);
+      });
+      element.addEventListener("contextmenu", function (event) {
+        event.preventDefault();
+        if (context !== "hotbar" || cursor) {
+          clickPlayerSlot(index, 2, event.shiftKey);
         }
       });
+      return element;
     }
 
-    function handleInventorySlot(index) {
-      if (state.pickedSlot === -1) {
-        state.pickedSlot = index;
-        paintInventorySelection();
+    function buildGrids() {
+      gridEl.innerHTML = "";
+      hotbarGridEl.innerHTML = "";
+      for (let i = 9; i < INV.slotCount; i += 1) {
+        gridEl.appendChild(makeSlot(i, game.inventory.slots[i], "storage"));
+      }
+      for (let i = 0; i < INV.hotbarCount; i += 1) {
+        hotbarGridEl.appendChild(makeSlot(i, game.inventory.slots[i], "hotbar"));
+      }
+    }
+
+    function buildFurnaceGrids() {
+      if (!furnaceHotbarEl) {
         return;
       }
-      if (state.pickedSlot === index) {
-        state.pickedSlot = -1;
-        paintInventorySelection();
-        return;
-      }
-      if (api.moveSlot) {
-        api.moveSlot(state.pickedSlot, index);
-      }
-      state.pickedSlot = -1;
-      refreshInventory();
-    }
-
-    function paintInventorySelection() {
-      if (!state.screen || state.screen !== "inventory") {
-        return;
-      }
-      const nodes = refs.overlay.querySelectorAll("[data-slot]");
-      for (let i = 0; i < nodes.length; i += 1) {
-        const node = nodes[i];
-        if (node.classList.contains("is-picked")) {
-          node.classList.remove("is-picked");
-        }
-        if (Number(node.dataset.slot) === state.pickedSlot) {
-          node.classList.add("is-picked");
-        }
+      furnaceHotbarEl.innerHTML = "";
+      for (let i = 0; i < INV.hotbarCount; i += 1) {
+        furnaceHotbarEl.appendChild(makeSlot(i, game.inventory.slots[i], "furnace-hotbar"));
       }
     }
 
-    function phaseName(time) {
-      const value = ((time % 1) + 1) % 1;
-      if (value < 0.045) {
-        return "Dawn";
-      }
-      if (value < 0.3) {
-        return "Morning";
-      }
-      if (value < 0.5) {
-        return "Afternoon";
-      }
-      if (value < 0.62) {
-        return "Dusk";
-      }
-      if (value < 0.94) {
-        return "Night";
-      }
-      return "Dawn";
-    }
-
-    function depthLabel(y) {
-      const ground = WORLD.GROUND_ROW;
-      if (y < ground - 3) {
-        return "Sky";
-      }
-      if (y <= ground + 5) {
-        return "Surface";
-      }
-      if (y <= ground + 18) {
-        return "Shallow caves";
-      }
-      if (y <= CONFIG.worldHeight - 26) {
-        return "Deep caves";
-      }
-      return "Ember band";
-    }
-
-    function updateHud(snapshot) {
-      const progress = PROGRESSION.summary(snapshot.progress);
-      refs.questStage.textContent = progress.done
-        ? "COMPLETE"
-        : progress.index + 1 + " / " + progress.total;
-      refs.questTitle.textContent = progress.title;
-      refs.questHint.textContent = progress.hint;
-      refs.questBar.style.width =
-        Math.round((progress.index / progress.total) * 100) + "%";
-
-      refs.clockDay.textContent = "Day " + snapshot.clock.day;
-      refs.clockPhase.textContent = phaseName(snapshot.clock.time);
-
-      refs.coords.textContent =
-        "X " + Math.round(snapshot.player.x) + " · Y " + Math.round(snapshot.player.y);
-      refs.depth.textContent = depthLabel(snapshot.player.y);
-
-      const hearts = [];
-      for (let i = 0; i < 10; i += 1) {
-        const value = snapshot.player.health - i * 2;
-        if (value >= 2) {
-          hearts.push('<span class="heart">♥</span>');
-        } else if (value === 1) {
-          hearts.push('<span class="heart half" style="opacity:0.55">♥</span>');
-        } else {
-          hearts.push('<span class="heart empty">♥</span>');
-        }
-      }
-      const heartsHtml = hearts.join("");
-      if (heartsHtml !== state.heartsSignature) {
-        state.heartsSignature = heartsHtml;
-        refs.hearts.innerHTML = heartsHtml;
-      }
-
-      updateHotbar(snapshot);
-      updateSaveState(snapshot);
-
-      if (Date.now() - state.mapTimer > 260 && snapshot.world) {
-        state.mapTimer = Date.now();
-        drawMinimap(snapshot);
-      }
-    }
-
-    function updateSaveState(snapshot) {
-      const status = snapshot.saveStatus || { kind: "dirty", text: "Not saved yet" };
-      const signature = status.kind + "|" + status.text;
-      if (signature !== state.saveSignature) {
-        state.saveSignature = signature;
-        refs.saveState.dataset.kind = status.kind;
-        refs.saveText.textContent = status.text;
-      }
-    }
-
-    function updateHotbar(snapshot) {
-      const inventory = snapshot.inventory;
-      for (let i = 0; i < CONFIG.hotbarSize; i += 1) {
-        const stack = inventory.slots[i] || null;
-        const id = stack ? stack.id : 0;
-        const signature = id + ":" + (stack ? stack.count : 0);
-        const slot = refs.hotbarSlots[i];
-        if (stack) {
-          slot.classList.remove("is-empty");
-        } else {
-          slot.classList.add("is-empty");
-        }
-        if (inventory.selected === i) {
-          slot.classList.add("is-selected");
-          slot.setAttribute("aria-pressed", "true");
-        } else {
-          slot.classList.remove("is-selected");
-          slot.setAttribute("aria-pressed", "false");
-        }
-        refs.hotbarCounts[i].textContent = stack && stack.count > 1 ? String(stack.count) : "";
-        if (state.hotbarSignature[i] !== signature) {
-          state.hotbarSignature[i] = signature;
-          const canvas = refs.hotbarIcons[i];
-          const ctx = canvas.getContext("2d");
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          if (stack) {
-            RENDER.drawItemIcon(ctx, stack.id, canvas.width);
-          }
-        }
-        slot.setAttribute(
-          "aria-label",
-          stack ? BLOCKS.itemName(stack.id) + " x" + stack.count : "Empty hotbar slot " + (i + 1)
-        );
-      }
-    }
-
-    function drawMinimap(snapshot) {
-      const ctx = refs.minimapCtx;
-      const width = refs.minimap.width;
-      const height = refs.minimap.height;
-      const world = snapshot.world;
-      const columns = WORLD.sampleColumns(world, 0, world.width, width);
-      const sky = ctx.createLinearGradient(0, 0, 0, height);
-      sky.addColorStop(0, "#101a2b");
-      sky.addColorStop(0.55, "#1c3049");
-      sky.addColorStop(1, "#2a435f");
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, width, height);
-
-      for (let i = 0; i < columns.length; i += 1) {
-        const column = columns[i];
-        const y = Math.round((column.surface / world.height) * height);
-        const def = BLOCKS.get(column.top);
-        const color = def ? def.palette.base : "#555";
-        ctx.fillStyle = "#0c1016";
-        ctx.fillRect(i, y + 1, 1, height - y);
-        ctx.fillStyle = color;
-        ctx.fillRect(i, y, 1, Math.max(1, height - y - 1));
-        ctx.fillStyle = "rgba(255,255,255,0.12)";
-        ctx.fillRect(i, y, 1, 1);
-      }
-
-      const emberY = Math.round(((world.height - 26) / world.height) * height);
-      ctx.fillStyle = "rgba(255,138,76,0.16)";
-      ctx.fillRect(0, emberY, width, height - emberY);
-      ctx.fillStyle = "rgba(255,138,76,0.5)";
-      ctx.fillRect(0, emberY, width, 1);
-
-      const playerX = Math.round((snapshot.player.x / world.width) * width);
-      const playerY = Math.round((snapshot.player.y / world.height) * height);
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(playerX - 4, playerY - 4, 9, 9);
-      ctx.fillStyle = "#ffd27a";
-      ctx.beginPath();
-      ctx.moveTo(playerX, playerY - 4);
-      ctx.lineTo(playerX + 4, playerY + 3);
-      ctx.lineTo(playerX - 4, playerY + 3);
-      ctx.closePath();
-      ctx.fill();
-
-      if (snapshot.stationPoints) {
-        for (let s = 0; s < snapshot.stationPoints.length; s += 1) {
-          const point = snapshot.stationPoints[s];
-          const sx = Math.round((point.x / world.width) * width);
-          const sy = Math.round((point.y / world.height) * height);
-          ctx.fillStyle = point.kind === "beacon" ? "#ffb066" : "#7ee0a4";
-          ctx.fillRect(sx - 1, sy - 1, 3, 3);
-        }
-      }
-
-      ctx.fillStyle = "rgba(244,234,216,0.6)";
-      ctx.font = "9px Consolas, monospace";
-      ctx.fillText("W", 4, height - 5);
-      ctx.textAlign = "right";
-      ctx.fillText("E", width - 4, height - 5);
-      ctx.textAlign = "left";
-    }
-
-    function saveSummaryMarkup(snapshot) {
-      const summary = snapshot.saveSummary;
-      if (!summary) {
-        return '<p class="save-summary is-empty">No saved meadow yet — this world starts fresh and saves as you play.</p>';
-      }
-      return (
-        '<p class="save-summary">Saved meadow · Day ' +
-        summary.day +
-        " · " +
-        summary.blocksMined +
-        " blocks mined · " +
-        SAVE.formatDuration(summary.playtime) +
-        " played · " +
-        SAVE.formatAgo(summary.savedAt) +
-        "</p>"
-      );
-    }
-
-    function controlsMarkup() {
-      const rows = CONTROLS.map(function row(pair) {
-        return "<tr><td>" + pair[0] + "</td><td>" + pair[1] + "</td></tr>";
-      }).join("");
-      return (
-        '<table class="help-table"><thead><tr><th>Input</th><th>Action</th></tr></thead><tbody>' +
-        rows +
-        "</tbody></table>" +
-        '<ul class="help-tips">' +
-        "<li>Blocks break faster with a better pickaxe. Stone needs a wooden pickaxe, iron ore needs stone, and ember ore needs iron.</li>" +
-        "<li>Craft a workbench and place it near you to unlock tools and a furnace. A furnace smelts ore with coal.</li>" +
-        "<li>Hollows appear in darkness at night. Torches light the caves and stop them spawning nearby.</li>" +
-        "<li>Your world, inventory and journey save automatically every 20 seconds and when you pause.</li>" +
-        "</ul>"
-      );
-    }
-
-    function titleScreen(snapshot) {
-      const hasSave = !!snapshot.saveSummary;
-      const primaryLabel = hasSave ? "Continue" : "Enter world";
-      return [
-        '<div class="screen" data-screen="title">',
-        '  <div class="title-screen">',
-        '    <p class="title-kicker">A small 2D sandbox</p>',
-        "    <h1>EMBERDEEP</h1>",
-        '    <p class="title-tagline">Mine, craft, build — and light the deep.</p>',
-        '    <div class="title-actions">',
-        '      <button class="btn btn-primary" type="button" id="btn-primary" data-action="primary">' +
-          primaryLabel +
-          "</button>",
-        hasSave
-          ? '      <button class="btn" type="button" data-action="newWorld">New world</button>'
-          : '      <button class="btn btn-ghost" type="button" data-action="help">Controls</button>',
-        "    </div>",
-        saveSummaryMarkup(snapshot),
-        '    <div class="control-cards">',
-        '      <div class="control-card"><strong>Move</strong><span>A / D or arrow keys, Space to jump. Walk to the trees.</span></div>',
-        '      <div class="control-card"><strong>Mine &amp; build</strong><span>Hold left mouse to mine, right mouse to place. 1–9 selects a hotbar slot.</span></div>',
-        '      <div class="control-card"><strong>Craft &amp; survive</strong><span>Press E to craft. Place a torch before night falls.</span></div>',
-        "    </div>",
-        '    <p class="title-offline">Runs offline from file:// · no build step · progress saves locally</p>',
-        "  </div>",
-        "</div>"
-      ].join("");
-    }
-
-    function inventoryScreen(snapshot) {
-      const slots = [];
-      for (let i = 0; i < snapshot.inventory.slots.length; i += 1) {
-        const stack = snapshot.inventory.slots[i];
-        slots.push(
-          '<button class="slot' +
-            (stack ? "" : " is-empty") +
-            (i < CONFIG.hotbarSize ? " in-hotbar" : "") +
-            '" type="button" data-slot="' +
-            i +
-            '" aria-label="' +
-            (i < CONFIG.hotbarSize ? "Hotbar slot " : "Inventory slot ") +
-            (i + 1) +
-            '"><canvas width="64" height="64"></canvas><span class="count">' +
-            (stack && stack.count > 1 ? stack.count : "") +
-            "</span></button>"
-        );
-      }
-      const stations = snapshot.stationNames || [];
-      const nearby = stations.length
-        ? "Nearby station" + (stations.length > 1 ? "s" : "") + ": <b>" + stations.join(", ") + "</b>"
-        : "No station nearby — place a workbench to unlock tools.";
-      return [
-        '<div class="screen" data-screen="inventory">',
-        '  <div class="sheet">',
-        "    <header>",
-        "      <h2>Inventory &amp; Crafting</h2>",
-        '      <button class="btn btn-ghost" type="button" data-action="close">Close (E)</button>',
-        "    </header>",
-        '    <div class="inv-body">',
-        '      <section class="inv-column">',
-        '        <div class="inv-grid">' +
-          slots.join("") +
-          "</div>",
-        '        <p class="inv-note">The first row is your hotbar. Click one slot, then another, to move or merge items. Number keys and the mouse wheel select the active slot.</p>',
-        "      </section>",
-        '      <section class="recipes">',
-        "        <h3>Crafting</h3>",
-        '        <div class="nearby">' + nearby + "</div>",
-        '        <div class="recipe-list">' + recipeRows(snapshot) + "</div>",
-        "      </section>",
-        "    </div>",
-        "  </div>",
-        "</div>"
-      ].join("");
-    }
-
-    function recipeRows(snapshot) {
-      const stations = snapshot.stations || new Set();
-      return CRAFTING.list()
-        .map(function row(recipe) {
-          const availability = CRAFTING.availability(recipe, snapshot.inventory, stations);
-          const inputs = recipe.inputs
-            .map(function input(item) {
-              const have = countItem(snapshot.inventory, item.id);
-              const ok = have >= item.count;
-              return (
-                '<span class="' +
-                (ok ? "ok" : "missing") +
-                '">' +
-                item.count +
-                "× " +
-                BLOCKS.itemName(item.id) +
-                " (" +
-                have +
-                ")</span>"
-              );
-            })
-            .join(" · ");
-          const stationLabel = recipe.station ? recipe.station : "hand";
-          const reason =
-            availability.reason === "station"
-              ? "Needs a nearby " + recipe.station
-              : availability.reason === "materials"
-                ? "Missing materials"
-                : "Craft";
-          return [
-            '<div class="recipe' + (availability.ok ? "" : " is-locked") + '">',
-            '  <div class="recipe-icon"><canvas width="60" height="60" data-icon="' +
-              recipe.output.id +
-              '"></canvas></div>',
-            "  <div>",
-            '    <div class="recipe-name">' + recipe.name + " × " + recipe.output.count + "</div>",
-            '    <div class="recipe-meta">' + inputs + ' · <span class="station">' + stationLabel + "</span></div>",
-            "  </div>",
-            '  <button class="btn" type="button" data-craft="' +
-              recipe.id +
-              '"' +
-              (availability.ok ? "" : " disabled") +
-              ' title="' +
-              reason +
-              '">' +
-              (availability.ok ? "Craft" : "Locked") +
-              "</button>",
-            "</div>"
-          ].join("");
-        })
-        .join("");
-    }
-
-    function countItem(inventory, id) {
-      let total = 0;
-      for (let i = 0; i < inventory.slots.length; i += 1) {
-        const stack = inventory.slots[i];
-        if (stack && stack.id === id) {
-          total += stack.count;
-        }
-      }
-      return total;
-    }
-
-    function paintInventory() {
-      const icons = refs.overlay.querySelectorAll("[data-slot] canvas");
-      for (let i = 0; i < icons.length; i += 1) {
-        const button = icons[i].closest("[data-slot]");
-        const index = Number(button.dataset.slot);
-        const stack = state.snapshot.inventory.slots[index];
-        const ctx = icons[i].getContext("2d");
-        ctx.clearRect(0, 0, icons[i].width, icons[i].height);
-        if (stack) {
-          RENDER.drawItemIcon(ctx, stack.id, icons[i].width);
-        }
-      }
-      const recipeIcons = refs.overlay.querySelectorAll("[data-icon]");
-      for (let i = 0; i < recipeIcons.length; i += 1) {
-        const canvas = recipeIcons[i];
-        const ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        RENDER.drawItemIcon(ctx, Number(canvas.dataset.icon), canvas.width);
-      }
-      paintInventorySelection();
+    function refreshRecipes() {
+      const table = Boolean(hasNearbyTable());
+      craftStatusEl.textContent = table
+        ? "Crafting table in range — all recipes are available."
+        : "No table nearby — hand recipes only. Place a table to unlock tools.";
+      recipeListEl.innerHTML = "";
+      CRAFT.recipes.forEach(function (entry) {
+        const craftable = CRAFT.canCraft(game.inventory, entry, table);
+        const locked = entry.station === "table" && !table;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "recipe" + (craftable ? " is-craftable" : "") + (locked ? " is-locked" : "");
+        button.dataset.recipe = entry.id;
+        button.title = CRAFT.ingredientLabel(entry);
+        button.appendChild(iconCanvas(entry.output.id, 26));
+        const text = document.createElement("span");
+        const name = document.createElement("span");
+        name.className = "recipe-name";
+        name.textContent = itemName(entry.output.id) + (entry.output.count > 1 ? " ×" + entry.output.count : "");
+        const ingredients = document.createElement("span");
+        ingredients.className = "recipe-ingredients";
+        ingredients.textContent = CRAFT.ingredientLabel(entry) + " · " + CRAFT.stationLabel(entry);
+        text.appendChild(name);
+        text.appendChild(document.createElement("br"));
+        text.appendChild(ingredients);
+        button.appendChild(text);
+        button.addEventListener("click", function () {
+          craftRecipe(entry);
+        });
+        recipeListEl.appendChild(button);
+      });
     }
 
     function refreshInventory() {
-      if (state.screen !== "inventory" || !state.snapshot) {
+      buildGrids();
+      refreshRecipes();
+      refreshCursor();
+    }
+
+    function refreshFurnace() {
+      if (!furnacePos) {
         return;
       }
-      refs.overlay.innerHTML = inventoryScreen(state.snapshot);
-      paintInventory();
-    }
-
-    function pauseScreen(snapshot) {
-      const summary = PROGRESSION.summary(snapshot.progress);
-      return [
-        '<div class="screen" data-screen="pause">',
-        '  <div class="menu-card">',
-        "    <h2>Paused</h2>",
-        "    <p>Day " + snapshot.clock.day + " · " + phaseName(snapshot.clock.time) + "</p>",
-        '    <p class="stat-line"><span>Journey</span><b>' +
-          (summary.done ? "Complete" : summary.title) +
-          "</b></p>",
-        '    <p class="stat-line"><span>Blocks mined</span><b>' +
-          snapshot.progress.stats.blocksMined +
-          "</b></p>",
-        '    <p class="stat-line"><span>Play time</span><b>' +
-          SAVE.formatDuration(snapshot.progress.stats.playtime) +
-          "</b></p>",
-        '    <div class="menu-actions">',
-        '      <button class="btn btn-primary" type="button" data-action="resume">Resume</button>',
-        '      <button class="btn" type="button" data-action="save">Save now</button>',
-        '      <button class="btn" type="button" data-action="help">Controls</button>',
-        '      <button class="btn" type="button" data-action="mute">' +
-          (state.muted ? "Unmute sound (M)" : "Mute sound (M)") +
-          "</button>",
-        state.newWorldArmed
-          ? '      <button class="btn" type="button" data-action="newWorldConfirm" style="border-color:#e05c5c;color:#ffb3b3">Erase save and restart</button>'
-          : '      <button class="btn btn-ghost" type="button" data-action="newWorld">New world…</button>',
-        '      <button class="btn btn-ghost" type="button" data-action="quit">Quit to title</button>',
-        "    </div>",
-        '    <p class="menu-note">' +
-          (snapshot.saveStatus ? snapshot.saveStatus.text : "Not saved yet") +
-          "</p>",
-        "  </div>",
-        "</div>"
-      ].join("");
-    }
-
-    function helpScreen() {
-      return [
-        '<div class="screen" data-screen="help">',
-        '  <div class="sheet">',
-        "    <header>",
-        "      <h2>Controls</h2>",
-        '      <button class="btn btn-ghost" type="button" data-action="helpClose">Back</button>',
-        "    </header>",
-        controlsMarkup(),
-        "  </div>",
-        "</div>"
-      ].join("");
-    }
-
-    function deathScreen(snapshot) {
-      return [
-        '<div class="screen" data-screen="death">',
-        '  <div class="menu-card death-card">',
-        "    <h2>You collapsed</h2>",
-        "    <p>The hollows found you in the dark.</p>",
-        '    <p class="stat-line"><span>Day</span><b>' + snapshot.clock.day + "</b></p>",
-        '    <p class="stat-line"><span>Blocks mined</span><b>' +
-          snapshot.progress.stats.blocksMined +
-          "</b></p>",
-        '    <div class="menu-actions">',
-        '      <button class="btn btn-primary" type="button" data-action="respawn">Wake at the meadow</button>',
-        "    </div>",
-        '    <p class="menu-note">Your inventory is kept. Place more torches before the next night.</p>',
-        "  </div>",
-        "</div>"
-      ].join("");
-    }
-
-    function victoryScreen(snapshot) {
-      const summary = PROGRESSION.summary(snapshot.progress);
-      return [
-        '<div class="screen" data-screen="victory">',
-        '  <div class="menu-card victory-card">',
-        "    <h2>The Ember Beacon burns</h2>",
-        "    <p>" + (summary.done ? "The deep is lit and the journey is complete." : "") + "</p>",
-        '    <p class="stat-line"><span>Day</span><b>' + snapshot.clock.day + "</b></p>",
-        '    <p class="stat-line"><span>Blocks mined</span><b>' +
-          snapshot.progress.stats.blocksMined +
-          "</b></p>",
-        '    <p class="stat-line"><span>Play time</span><b>' +
-          SAVE.formatDuration(snapshot.progress.stats.playtime) +
-          "</b></p>",
-        '    <div class="menu-actions">',
-        '      <button class="btn btn-primary" type="button" data-action="victoryContinue">Keep building</button>',
-        "    </div>",
-        '    <p class="menu-note">Your world stays saved. The sandbox is yours.</p>',
-        "  </div>",
-        "</div>"
-      ].join("");
-    }
-
-    function open(name, snapshot) {
-      state.snapshot = snapshot || state.snapshot;
-      state.screen = name;
-      state.newWorldArmed = false;
-      refs.overlay.classList.add("is-open");
-      refs.overlay.dataset.screen = name;
-      document.getElementById("app").dataset.screen = name;
-      render();
-    }
-
-    function render() {
-      if (!state.screen || !state.snapshot) {
+      const state = FURNACE.get(game.furnaces, furnacePos.x, furnacePos.y, false);
+      if (!state) {
         return;
       }
-      switch (state.screen) {
-        case "title":
-          refs.overlay.innerHTML = titleScreen(state.snapshot);
-          break;
-        case "inventory":
-          refs.overlay.innerHTML = inventoryScreen(state.snapshot);
-          paintInventory();
-          break;
-        case "pause":
-          refs.overlay.innerHTML = pauseScreen(state.snapshot);
-          break;
-        case "help":
-          refs.overlay.innerHTML = helpScreen();
-          break;
-        case "death":
-          refs.overlay.innerHTML = deathScreen(state.snapshot);
-          break;
-        case "victory":
-          refs.overlay.innerHTML = victoryScreen(state.snapshot);
-          break;
-        default:
-          refs.overlay.innerHTML = "";
+      renderStackInto(furnaceSlots.input, state.input);
+      renderStackInto(furnaceSlots.fuel, state.fuel);
+      renderStackInto(furnaceSlots.output, state.output);
+      const burning = state.burnTime > 0 && state.burnMax > 0;
+      furnaceFlameEl.style.height = burning ? Math.max(8, Math.round((state.burnTime / state.burnMax) * 100)) + "%" : "0%";
+      if (!state.input) {
+        furnaceStatusEl.textContent = "Put ore in Smelt and coal or wood in Fuel.";
+      } else if (!FURNACE.smeltFor(state.input.id)) {
+        furnaceStatusEl.textContent = itemName(state.input.id) + " cannot be smelted.";
+      } else if (!state.fuel) {
+        furnaceStatusEl.textContent = "Add coal, planks, logs, sticks or ladders to Fuel.";
+      } else if (burning) {
+        furnaceStatusEl.textContent = "Smelting… " + Math.max(0, Math.ceil(state.cookMax - state.cookTime)) + "s";
+      } else {
+        furnaceStatusEl.textContent = "Ready to smelt.";
       }
+    }
+
+    function refreshCursor() {
+      if (!cursor) {
+        cursorEl.hidden = true;
+        cursorEl.innerHTML = "";
+        return;
+      }
+      cursorEl.hidden = false;
+      cursorEl.innerHTML = "";
+      cursorEl.appendChild(iconCanvas(cursor.id, 30));
+      if (cursor.count > 1) {
+        const badge = document.createElement("span");
+        badge.textContent = String(cursor.count);
+        cursorEl.appendChild(badge);
+      }
+    }
+
+    function setCursor(stack) {
+      cursor = stack && stack.count > 0 ? stack : null;
+      refreshCursor();
+    }
+
+    function returnCursor() {
+      if (!cursor) {
+        return;
+      }
+      const leftover = INV.addItem(game.inventory, cursor.id, cursor.count);
+      if (leftover > 0) {
+        toast("Inventory full — " + leftover + "× " + itemName(cursor.id) + " could not be returned", "warn");
+      }
+      cursor = null;
+      refreshCursor();
+      updateHotbar();
+    }
+
+    function clickPlayerSlot(index, button, shift) {
+      if (shift && !cursor) {
+        const slot = game.inventory.slots[index];
+        if (!slot) {
+          return;
+        }
+        const targetStart = index < 9 ? 9 : 0;
+        const targetEnd = index < 9 ? INV.slotCount : 9;
+        let moved = false;
+        for (let i = targetStart; i < targetEnd; i += 1) {
+          if (!game.inventory.slots[i] || game.inventory.slots[i].id === slot.id) {
+            INV.moveStack(game.inventory, index, i);
+            moved = true;
+            break;
+          }
+        }
+        if (!moved) {
+          toast("No room to move that stack", "warn");
+        }
+        afterChange();
+        return;
+      }
+
+      if (button === 2) {
+        if (!cursor) {
+          const slot = game.inventory.slots[index];
+          if (slot) {
+            setCursor(INV.takeFromSlot(game.inventory, index, Math.ceil(slot.count / 2)));
+          }
+        } else {
+          placeOne(index);
+        }
+        afterChange();
+        return;
+      }
+
+      if (!cursor) {
+        setCursor(INV.takeFromSlot(game.inventory, index));
+      } else {
+        const slot = game.inventory.slots[index];
+        if (!slot) {
+          game.inventory.slots[index] = cursor;
+          setCursor(null);
+        } else if (slot.id === cursor.id) {
+          const limit = INV.maxStack(slot.id);
+          const moved = Math.min(limit - slot.count, cursor.count);
+          slot.count += moved;
+          cursor.count -= moved;
+          setCursor(cursor.count > 0 ? cursor : null);
+        } else {
+          const old = slot;
+          game.inventory.slots[index] = cursor;
+          setCursor(old);
+        }
+      }
+      afterChange();
+    }
+
+    function placeOne(index) {
+      const slot = game.inventory.slots[index];
+      if (!cursor) {
+        return;
+      }
+      if (!slot) {
+        game.inventory.slots[index] = { id: cursor.id, count: 1 };
+        cursor.count -= 1;
+        setCursor(cursor.count > 0 ? cursor : null);
+      } else if (slot.id === cursor.id && slot.count < INV.maxStack(slot.id)) {
+        slot.count += 1;
+        cursor.count -= 1;
+        setCursor(cursor.count > 0 ? cursor : null);
+      } else if (slot.id !== cursor.id) {
+        toast("Right-click only stacks with the same item, or uses an empty slot", "warn");
+      }
+    }
+
+    function afterChange() {
+      INV.normalize(game.inventory);
+      updateHotbar();
+      if (active === "inventory") {
+        refreshInventory();
+      } else if (active === "furnace") {
+        refreshFurnace();
+        buildGrids();
+        buildFurnaceGrids();
+      }
+      onChange();
+    }
+
+    function craftRecipe(entry) {
+      const table = Boolean(hasNearbyTable());
+      const result = CRAFT.craft(game.inventory, entry, table);
+      if (!result.ok) {
+        toast(result.reason || "Cannot craft that", "warn");
+        return;
+      }
+      toast("Crafted " + itemName(entry.output.id) + " ×" + entry.output.count);
+      onCraft();
+      updateHotbar();
+      refreshInventory();
+      onChange();
+    }
+
+    function clickFurnaceSlot(kind, button, shift) {
+      if (!furnacePos) {
+        return;
+      }
+      const state = FURNACE.get(game.furnaces, furnacePos.x, furnacePos.y, true);
+      if (shift && !cursor) {
+        const stack = state[kind];
+        if (!stack) {
+          return;
+        }
+        if (kind === "output") {
+          setCursor({ id: stack.id, count: stack.count });
+          state.output = null;
+        } else {
+          const leftover = INV.addItem(game.inventory, stack.id, stack.count);
+          const moved = stack.count - leftover;
+          stack.count -= moved;
+          if (stack.count <= 0) {
+            state[kind] = null;
+          } else {
+            toast("Inventory full — some items stayed in the furnace", "warn");
+          }
+        }
+        afterChange();
+        return;
+      }
+      if (button === 2) {
+        if (!cursor) {
+          if (state[kind]) {
+            setCursor({ id: state[kind].id, count: 1 });
+            state[kind].count -= 1;
+            if (state[kind].count <= 0) {
+              state[kind] = null;
+            }
+          }
+        } else if (kind !== "output") {
+          if (!state[kind]) {
+            state[kind] = { id: cursor.id, count: 1 };
+            cursor.count -= 1;
+            setCursor(cursor.count > 0 ? cursor : null);
+          } else if (state[kind].id === cursor.id) {
+            state[kind].count += 1;
+            cursor.count -= 1;
+            setCursor(cursor.count > 0 ? cursor : null);
+          }
+        }
+        afterChange();
+        return;
+      }
+
+      if (kind === "output") {
+        if (!cursor) {
+          if (state.output) {
+            setCursor({ id: state.output.id, count: state.output.count });
+            state.output = null;
+          }
+        } else if (state.output && state.output.id === cursor.id) {
+          const limit = INV.maxStack(cursor.id);
+          const moved = Math.min(limit - cursor.count, state.output.count);
+          cursor.count += moved;
+          state.output.count -= moved;
+          if (state.output.count <= 0) {
+            state.output = null;
+          }
+          setCursor(cursor);
+        }
+        afterChange();
+        return;
+      }
+
+      if (!cursor) {
+        if (state[kind]) {
+          setCursor({ id: state[kind].id, count: state[kind].count });
+          state[kind] = null;
+        }
+      } else if (!state[kind]) {
+        state[kind] = cursor;
+        setCursor(null);
+      } else if (state[kind].id === cursor.id) {
+        const limit = INV.maxStack(cursor.id);
+        const moved = Math.min(limit - state[kind].count, cursor.count);
+        state[kind].count += moved;
+        cursor.count -= moved;
+        setCursor(cursor.count > 0 ? cursor : null);
+      } else {
+        const old = state[kind];
+        state[kind] = cursor;
+        setCursor(old);
+      }
+      afterChange();
+    }
+
+    function bindFurnaceSlots() {
+      Object.keys(furnaceSlots).forEach(function (kind) {
+        const element = furnaceSlots[kind];
+        element.addEventListener("mousedown", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          clickFurnaceSlot(kind, event.button, event.shiftKey);
+        });
+        element.addEventListener("contextmenu", function (event) {
+          event.preventDefault();
+          clickFurnaceSlot(kind, 2, event.shiftKey);
+        });
+      });
+    }
+    bindFurnaceSlots();
+
+    function openInventory() {
+      active = "inventory";
+      furnacePos = null;
+      refreshInventory();
+      screens.inventory.classList.add("is-open");
+    }
+
+    function openFurnace(x, y) {
+      active = "furnace";
+      furnacePos = { x: x, y: y };
+      FURNACE.get(game.furnaces, x, y, true);
+      buildGrids();
+      buildFurnaceGrids();
+      refreshFurnace();
+      screens.furnace.classList.add("is-open");
     }
 
     function close() {
-      state.screen = null;
-      state.pickedSlot = -1;
-      state.newWorldArmed = false;
-      refs.overlay.classList.remove("is-open");
-      refs.overlay.removeAttribute("data-screen");
-      refs.overlay.innerHTML = "";
-      document.getElementById("app").dataset.screen = "playing";
+      returnCursor();
+      active = null;
+      furnacePos = null;
+      screens.inventory.classList.remove("is-open");
+      screens.furnace.classList.remove("is-open");
     }
 
-    function isBlocking() {
-      return state.screen !== null;
+    function hide() {
+      screens.inventory.classList.remove("is-open");
+      screens.furnace.classList.remove("is-open");
     }
 
-    function currentScreen() {
-      return state.screen;
-    }
-
-    function handleHelp() {
-      if (state.screen === "help") {
-        open(state.helpReturn || "pause", state.snapshot);
+    function tick() {
+      if (active !== "furnace" || !furnacePos) {
         return;
       }
-      state.helpReturn = state.screen || "pause";
-      open("help", state.snapshot);
-    }
-
-    function setMuted(muted) {
-      state.muted = !!muted;
-    }
-
-    function armNewWorld() {
-      state.newWorldArmed = true;
-      render();
-    }
-
-    function setSnapshot(snapshot) {
-      state.snapshot = snapshot;
-    }
-
-    function refresh() {
-      if (!state.snapshot) {
+      pendingRefresh += 1;
+      if (pendingRefresh < 8) {
         return;
       }
-      updateHud(state.snapshot);
-      if (state.screen === "title") {
-        render();
+      pendingRefresh = 0;
+      refreshFurnace();
+    }
+
+    function onPointerMove(event) {
+      if (cursorEl.hidden) {
+        return;
       }
+      const stage = document.getElementById("stage").getBoundingClientRect();
+      cursorEl.style.left = event.clientX - stage.left + "px";
+      cursorEl.style.top = event.clientY - stage.top + "px";
     }
-
-    function toast(text, kind) {
-      const node = document.createElement("div");
-      node.className = "toast" + (kind ? " kind-" + kind : "");
-      node.textContent = text;
-      refs.toasts.appendChild(node);
-      while (refs.toasts.children.length > 4) {
-        refs.toasts.removeChild(refs.toasts.firstChild);
-      }
-      window.setTimeout(function remove() {
-        if (node.parentNode) {
-          node.parentNode.removeChild(node);
-        }
-      }, 3600);
-    }
-
-    function showHint(text, duration) {
-      refs.hint.textContent = text;
-      refs.hint.classList.add("is-visible");
-      window.clearTimeout(state.hintTimer);
-      state.hintTimer = window.setTimeout(function hide() {
-        refs.hint.classList.remove("is-visible");
-      }, duration || 5200);
-    }
-
-    function clearHint() {
-      window.clearTimeout(state.hintTimer);
-      refs.hint.classList.remove("is-visible");
-    }
+    document.getElementById("stage").addEventListener("mousemove", onPointerMove);
 
     return {
-      init: init,
-      open: open,
+      openInventory: openInventory,
+      openFurnace: openFurnace,
       close: close,
-      render: render,
-      refresh: refresh,
-      refreshInventory: refreshInventory,
-      isBlocking: isBlocking,
-      currentScreen: currentScreen,
-      updateHud: updateHud,
-      setSnapshot: setSnapshot,
-      toast: toast,
-      showHint: showHint,
-      clearHint: clearHint,
-      handleHelp: handleHelp,
-      setMuted: setMuted,
-      armNewWorld: armNewWorld,
-      drawMinimap: drawMinimap
+      hide: hide,
+      refresh: refreshInventory,
+      refreshFurnace: refreshFurnace,
+      tick: tick,
+      isOpen: function () { return active !== null; },
+      activeKind: function () { return active; },
+      debug: function () { return { active: active, cursor: cursor ? { id: cursor.id, count: cursor.count } : null, furnacePos: furnacePos }; }
     };
   }
 
-  return { createUI: createUI, CONTROLS: CONTROLS };
+  return { createUI: createUI };
 });

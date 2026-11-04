@@ -3,7 +3,28 @@
 Standard: **M2D-SES-OSS v1.2**. Blind evaluator; identity revealed after scoring:
 **A = one-shot (MOSSWILD), B = XC 0.4.4 (Cubewood)**.
 
-## Current result 鈥?best XC (0.4.7 Emberdeep)
+## Current Docker-verified artifact 鈥?0.4.16 Blockfall
+
+Standard: **M2D-SES-OSS v1.3**. One controlled Docker run each; X = XC, Y = one-shot, revealed after
+scoring. Same prompt/model/provider/budget, separate containers.
+
+| Field | One-shot A | XC 0.4.16 B |
+| --- | ---: | ---: |
+| PES | **85.2** | 74.2 |
+| ECS | 46.2 | **87.9** |
+| Composite | 75.4 | **77.6** |
+| Experience tier | **polished** | solid |
+| Art D5 | **86** | 69 |
+| Tests | 0/1 (stale test fails) | **58/58** |
+| page_check | fail | **pass** |
+| High / medium / low | 0 / 0 / 3 | 0 / 2 / 2 |
+
+XC wins composite by 2.2 but loses PES by 11.0 and art by 17; not a significant experience win.
+XC's D4 is capped by first-run discoverability; its mediums are 800x600 minimap clipping and vague
+insufficient-craft feedback. The one-shot's seed tests/page check fail.
+
+## Historical best 鈥?0.4.7 Emberdeep
+
 
 Standard: **M2D-SES-OSS v1.3** (real-pointer interaction truth, blind pairwise art). Blind:
 **A = one-shot MOSSWILD; B = XC 0.4.7 Emberdeep.**

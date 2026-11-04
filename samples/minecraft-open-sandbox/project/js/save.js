@@ -1,219 +1,255 @@
+/* Versioned save payloads, compact world encoding and storage adapters. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(
-      require("./config.js"),
-      require("./world.js"),
-      require("./inventory.js"),
-      require("./progression.js")
-    );
+    module.exports = factory(require("./config.js"), require("./inventory.js"), require("./furnace.js"));
   } else {
-    root.SandboxSave = factory(
-      root.SandboxConfig,
-      root.SandboxWorld,
-      root.SandboxInventory,
-      root.SandboxProgression
-    );
+    root.SandboxSave = factory(root.SandboxConfig, root.SandboxInventory, root.SandboxFurnace);
   }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, WORLD, INVENTORY, PROGRESSION) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, INV, FURNACE) {
   "use strict";
 
-  if (!CONFIG || !WORLD || !INVENTORY || !PROGRESSION) {
-    throw new Error("SandboxConfig, SandboxWorld, SandboxInventory and SandboxProgression are required");
+  function bytesToBase64(bytes) {
+    if (typeof btoa === "function") {
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    }
+    return Buffer.from(bytes).toString("base64");
   }
 
-  function capture(state) {
+  function base64ToBytes(text) {
+    if (typeof atob === "function") {
+      const binary = atob(text);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    }
+    return Uint8Array.from(Buffer.from(text, "base64"));
+  }
+
+  function encodeWorld(data) {
+    const bytes = [];
+    let index = 0;
+    while (index < data.length) {
+      const value = data[index];
+      let run = 1;
+      while (index + run < data.length && data[index + run] === value && run < 255) {
+        run += 1;
+      }
+      bytes.push(value, run);
+      index += run;
+    }
+    return bytesToBase64(Uint8Array.from(bytes));
+  }
+
+  function decodeWorld(text, length) {
+    if (typeof text !== "string" || !text) {
+      throw new Error("Missing world data");
+    }
+    const bytes = base64ToBytes(text);
+    if (bytes.length % 2 !== 0) {
+      throw new Error("Corrupt world data");
+    }
+    const data = new Uint8Array(length);
+    let output = 0;
+    for (let i = 0; i < bytes.length; i += 2) {
+      const value = bytes[i];
+      const run = bytes[i + 1];
+      if (run <= 0 || output + run > length) {
+        throw new Error("Corrupt world run length");
+      }
+      data.fill(value, output, output + run);
+      output += run;
+    }
+    if (output !== length) {
+      throw new Error("World data has the wrong length");
+    }
+    return data;
+  }
+
+  function buildPayload(state) {
+    const player = state.player;
     return {
-      schema: 1,
-      version: CONFIG.version,
+      v: CONFIG.saveVersion,
       savedAt: Date.now(),
       seed: state.world.seed,
-      world: JSON.parse(WORLD.serializeWorld(state.world)),
+      width: state.world.width,
+      height: state.world.height,
+      blocks: encodeWorld(state.world.data),
+      surface: Array.from(state.world.surface),
+      spawn: { x: state.world.spawn.x, y: state.world.spawn.y },
+      time: state.time,
       player: {
-        x: state.player.x,
-        y: state.player.y,
-        health: state.player.health
+        x: player.x,
+        y: player.y,
+        health: player.health,
+        hunger: player.hunger,
+        saturation: player.saturation,
+        facing: player.facing,
+        spawnX: player.spawnX,
+        spawnY: player.spawnY
       },
-      inventory: INVENTORY.serialize(state.inventory),
-      progress: PROGRESSION.serialize(state.progress),
-      clock: {
-        day: Math.max(1, Math.floor(state.clock.day)),
-        time: ((Number(state.clock.time) % 1) + 1) % 1
-      }
+      inventory: INV.serializeInventory(state.inventory),
+      selected: state.inventory.selected,
+      furnaces: FURNACE.serialize(state.furnaces || {}),
+      settings: state.settings || {}
     };
   }
 
-  function validate(payload) {
-    if (!payload || typeof payload !== "object") {
-      return "empty save";
-    }
-    if (payload.schema !== 1) {
-      return "unsupported save schema";
-    }
-    if (!payload.world || typeof payload.world !== "object") {
-      return "missing world";
-    }
-    try {
-      WORLD.deserializeWorld(payload.world);
-    } catch (error) {
-      return "invalid world: " + (error && error.message ? error.message : "unknown");
-    }
-    if (!payload.player || !Number.isFinite(payload.player.x) || !Number.isFinite(payload.player.y)) {
-      return "invalid player";
-    }
-    if (payload.inventory && !Array.isArray(payload.inventory.slots)) {
-      return "invalid inventory";
-    }
-    if (payload.progress && typeof payload.progress !== "object") {
-      return "invalid progress";
-    }
-    return "";
+  function finiteNumber(value) {
+    return typeof value === "number" && Number.isFinite(value);
   }
 
-  function save(storage, state) {
-    if (!storage || typeof storage.setItem !== "function") {
-      return { ok: false, error: "storage-unavailable", bytes: 0 };
+  function parsePayload(input) {
+    let raw = input;
+    if (typeof input === "string") {
+      try {
+        raw = JSON.parse(input);
+      } catch (error) {
+        throw new Error("Save file is not valid JSON");
+      }
     }
-    const payload = capture(state);
-    let text;
-    try {
-      text = JSON.stringify(payload);
-    } catch (error) {
-      return { ok: false, error: "encode-failed", bytes: 0 };
+    if (!raw || typeof raw !== "object") {
+      throw new Error("Save payload is not an object");
     }
-    try {
-      storage.setItem(CONFIG.saveKey, text);
-      return { ok: true, bytes: text.length, savedAt: payload.savedAt, error: "" };
-    } catch (error) {
-      const code = error && error.name === "QuotaExceededError" ? "quota-exceeded" : "write-failed";
-      return { ok: false, error: code, bytes: text.length };
+    if (raw.v !== CONFIG.saveVersion) {
+      throw new Error("Unsupported save version");
     }
-  }
-
-  function read(storage) {
-    if (!storage || typeof storage.getItem !== "function") {
-      return { ok: false, error: "storage-unavailable", data: null };
+    if (!Number.isInteger(raw.width) || !Number.isInteger(raw.height) || raw.width <= 0 || raw.height <= 0) {
+      throw new Error("Save has invalid world dimensions");
     }
-    let text;
-    try {
-      text = storage.getItem(CONFIG.saveKey);
-    } catch (error) {
-      return { ok: false, error: "read-failed", data: null };
+    const length = raw.width * raw.height;
+    const data = decodeWorld(raw.blocks, length);
+    if (!raw.player || !finiteNumber(raw.player.x) || !finiteNumber(raw.player.y)) {
+      throw new Error("Save has an invalid player position");
     }
-    if (!text) {
-      return { ok: false, error: "empty", data: null };
+    if (!Array.isArray(raw.inventory)) {
+      throw new Error("Save has an invalid inventory");
     }
-    let payload;
-    try {
-      payload = JSON.parse(text);
-    } catch (error) {
-      return { ok: false, error: "corrupt", data: null };
-    }
-    const problem = validate(payload);
-    if (problem) {
-      return { ok: false, error: "corrupt", detail: problem, data: null };
-    }
-    return { ok: true, error: "", data: payload, bytes: text.length };
-  }
-
-  function load(storage) {
-    const result = read(storage);
-    if (!result.ok) {
-      return result;
-    }
-    const data = result.data;
-    let world;
-    try {
-      world = WORLD.deserializeWorld(data.world);
-    } catch (error) {
-      return { ok: false, error: "corrupt", data: null };
+    if (!Array.isArray(raw.surface) || raw.surface.length !== raw.width) {
+      throw new Error("Save has invalid surface data");
     }
     return {
-      ok: true,
-      error: "",
+      v: raw.v,
+      savedAt: Number(raw.savedAt) || 0,
+      seed: Number(raw.seed) >>> 0,
+      width: raw.width,
+      height: raw.height,
       data: data,
-      bytes: result.bytes,
-      state: {
-        world: world,
-        seed: world.seed,
-        player: data.player,
-        inventory: INVENTORY.deserialize(data.inventory),
-        progress: PROGRESSION.deserialize(data.progress),
-        clock: {
-          day: data.clock && Number.isFinite(data.clock.day) ? Math.max(1, Math.floor(data.clock.day)) : 1,
-          time:
-            data.clock && Number.isFinite(data.clock.time)
-              ? ((data.clock.time % 1) + 1) % 1
-              : CONFIG.startTime
-        },
-        savedAt: data.savedAt || 0
-      }
+      surface: raw.surface.map(function (value) { return Number(value) || 0; }),
+      spawn: raw.spawn && finiteNumber(raw.spawn.x) && finiteNumber(raw.spawn.y)
+        ? { x: raw.spawn.x, y: raw.spawn.y }
+        : { x: raw.player.x, y: raw.player.y },
+      time: finiteNumber(raw.time) ? raw.time : 0.28,
+      player: raw.player,
+      inventory: raw.inventory,
+      selected: Number.isInteger(raw.selected) ? raw.selected : 0,
+      furnaces: Array.isArray(raw.furnaces) ? raw.furnaces : [],
+      settings: raw.settings && typeof raw.settings === "object" ? raw.settings : {}
     };
   }
 
-  function clear(storage) {
-    if (!storage || typeof storage.removeItem !== "function") {
+  function defaultStorage() {
+    try {
+      if (typeof localStorage !== "undefined" && localStorage) {
+        return localStorage;
+      }
+    } catch (error) {
+      return null;
+    }
+    return null;
+  }
+
+  function saveToStorage(payload, storage) {
+    const target = storage === undefined ? defaultStorage() : storage;
+    if (!target) {
+      return { ok: false, persisted: false, error: "Browser storage is unavailable" };
+    }
+    try {
+      target.setItem(CONFIG.saveKey, JSON.stringify(payload));
+      return { ok: true, persisted: true, error: "" };
+    } catch (error) {
+      return { ok: false, persisted: false, error: error && error.message ? error.message : "Storage write failed" };
+    }
+  }
+
+  function loadFromStorage(storage) {
+    const target = storage === undefined ? defaultStorage() : storage;
+    if (!target) {
+      return { ok: false, payload: null, error: "Browser storage is unavailable", persisted: false };
+    }
+    let text = null;
+    try {
+      text = target.getItem(CONFIG.saveKey);
+    } catch (error) {
+      return { ok: false, payload: null, error: "Storage read failed", persisted: false };
+    }
+    if (!text) {
+      return { ok: false, payload: null, error: "No saved world", persisted: true };
+    }
+    try {
+      return { ok: true, payload: parsePayload(text), error: "", persisted: true };
+    } catch (error) {
+      return { ok: false, payload: null, error: error.message, persisted: true, corrupt: true };
+    }
+  }
+
+  function hasSave(storage) {
+    const target = storage === undefined ? defaultStorage() : storage;
+    if (!target) {
       return false;
     }
     try {
-      storage.removeItem(CONFIG.saveKey);
+      return Boolean(target.getItem(CONFIG.saveKey));
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function clearSave(storage) {
+    const target = storage === undefined ? defaultStorage() : storage;
+    if (!target) {
+      return false;
+    }
+    try {
+      target.removeItem(CONFIG.saveKey);
       return true;
     } catch (error) {
       return false;
     }
   }
 
-  function hasSave(storage) {
-    return read(storage).ok;
+  function exportText(payload) {
+    return JSON.stringify(payload);
   }
 
-  function summarize(data) {
-    const stats = (data && data.progress && data.progress.stats) || {};
-    return {
-      day: data && data.clock ? data.clock.day : 1,
-      blocksMined: Math.max(0, Math.floor(stats.blocksMined || 0)),
-      playtime: Math.max(0, Math.floor(stats.playtime || 0)),
-      savedAt: data && data.savedAt ? data.savedAt : 0
-    };
-  }
-
-  function formatDuration(seconds) {
-    const total = Math.max(0, Math.floor(seconds || 0));
-    const minutes = Math.floor(total / 60);
-    const remainder = total % 60;
-    if (minutes >= 60) {
-      const hours = Math.floor(minutes / 60);
-      return hours + "h " + (minutes % 60) + "m";
+  function summarize(payload) {
+    if (!payload) {
+      return "";
     }
-    return minutes + "m " + (remainder < 10 ? "0" : "") + remainder + "s";
-  }
-
-  function formatAgo(timestamp) {
-    if (!timestamp) {
-      return "not yet";
+    if (!payload.savedAt) {
+      return "saved world";
     }
-    const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
-    if (seconds < 5) {
-      return "just now";
-    }
-    if (seconds < 60) {
-      return seconds + "s ago";
-    }
-    if (seconds < 3600) {
-      return Math.floor(seconds / 60) + "m ago";
-    }
-    return Math.floor(seconds / 3600) + "h ago";
+    const date = new Date(payload.savedAt);
+    return "saved " + date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }
 
   return {
-    capture: capture,
-    validate: validate,
-    save: save,
-    read: read,
-    load: load,
-    clear: clear,
+    encodeWorld: encodeWorld,
+    decodeWorld: decodeWorld,
+    buildPayload: buildPayload,
+    parsePayload: parsePayload,
+    saveToStorage: saveToStorage,
+    loadFromStorage: loadFromStorage,
     hasSave: hasSave,
-    summarize: summarize,
-    formatDuration: formatDuration,
-    formatAgo: formatAgo
+    clearSave: clearSave,
+    defaultStorage: defaultStorage,
+    exportText: exportText,
+    summarize: summarize
   };
 });

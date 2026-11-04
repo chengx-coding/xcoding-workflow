@@ -40,29 +40,47 @@ and the new standard score what the agent actually chooses.
 
 ## Result
 
-Best XC artifact: **Emberdeep (0.4.7)**. One-shot **MOSSWILD** compared blind under **v1.3**.
+Current public artifact: **Blockfall**, the XC condition of the first controlled Docker A/B run
+(0.4.16, dsh 0.2.1-rc.5, deepseek-flash, one run each). It is a complete offline small-Minecraft
+sandbox: generated island, mining/building, tool tiers, table/furnace, mobs/survival, 16 recipes,
+save/reload, minimap, 58/58 tests, 16-state real-input play check.
 
-| | One-shot A | XC 0.4.7 B |
+| | One-shot A | XC 0.4.16 B |
 | --- | ---: | ---: |
-| PES | **82.4** | 78.8 |
-| ECS | 82.2 | **88.2** |
-| Composite | **82.4** | **81.1** |
-| Experience tier | polished | prototype (D5 <55) |
-| Art D5 | **89 polished** | **51 prototype** |
-| High / medium / low | 0 / 1 / 1 | 0 / 1 / 2 |
-| Higher | **A** | — |
+| PES | **85.2** | 74.2 |
+| ECS | 46.2 | **87.9** |
+| Composite | 75.4 | **77.6** |
+| Experience tier | **polished** | solid |
+| Art D5 | **86 polished** | 69 coherent |
+| Tests | 0/1 (stale test fails) | **58/58** |
+| page_check | fail (missing seed IDs) | **pass** |
+| High / medium | 0 / 0 | 0 / 2 |
 
-A wins by 1.3; the only decisive gap is art. Emberdeep has real-pointer interaction truth, crafting,
-map, 8-stage progression and save/reload, but its D5 is below 55, so it is not a stop.
+XC wins composite by 2.2, but loses PES by 11.0 and art by 17; this is **not a significant
+experience win**. XC's two medium findings are an 800x600 minimap clip and vague insufficient-craft
+feedback; its first-run UI also lacks a visible help/craft entry (D4 cap). The one-shot has the
+stronger experience and art, but its seed tests/page check fail.
 
-The 0.4.9 cap sample scored **A 81.8 / B 79.2**, lower than 0.4.7; it stops at the cap as **not-best**.
-The 0.4.8 visual-direction attempt was rolled back after dropping crafting/survival/progression.
+**This project is not the historical best XC score.** The 0.4.7 Emberdeep clean sample remains the
+historical best at 81.1 vs one-shot 82.4; its project was archived before this replacement. The
+current project is the Docker-verified 0.4.16 sample because it is the reproducible, isolated run.
 
-![Emberdeep](media/xc-emberdeep-day.png)
+![Blockfall title](media/blockfall-docker-title.png)
 
-![One-shot MOSSWILD](media/one-shot-mosswild.png)
+![Blockfall gameplay](media/blockfall-docker-game.png)
+
+![Blockfall inventory](media/blockfall-docker-inventory.png)
+
+### Historical result — 0.4.7 Emberdeep
+
+A 0.4.7 clean sample scored **81.1 vs one-shot 82.4** (PES 78.8, ECS 88.2, D5 51 vs 89). It remains
+the score best; its project was replaced here by the Docker-verified 0.4.16 artifact. The 0.4.9 cap
+sample scored 79.2 vs 81.8.
 
 ## Status
+
+`work-order/` is the historical 0.4.7 managed-workflow record; it does not describe the
+Docker-verified 0.4.16 project now in `project/`.
 
 The runs and scores are recorded after both outputs exist. Do not compare this sample's score with the
 compact `minecraft-sandbox-work-order` score; the prompts and profiles differ.

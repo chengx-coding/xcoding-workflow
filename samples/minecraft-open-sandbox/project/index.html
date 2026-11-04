@@ -3,35 +3,207 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Emberdeep — a small 2D sandbox</title>
-  <meta name="description" content="Emberdeep is a playable, offline 2D sandbox inspired by Minecraft. Mine, craft, build and light the deep.">
+  <title>Blockfall — a tiny offline sandbox</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="app">
-    <canvas id="game" width="1152" height="648" aria-label="Emberdeep sandbox world"></canvas>
-    <div id="hud" aria-live="polite"></div>
-    <div id="hotbar" role="toolbar" aria-label="Block and tool palette"></div>
-    <div id="hint" role="status"></div>
-    <div id="toasts" aria-live="polite"></div>
-    <div id="overlay" role="dialog" aria-modal="true" aria-label="Game menu"></div>
-  </div>
+  <main id="app">
+    <div id="stage">
+      <canvas id="game" width="960" height="540" aria-label="Blockfall world. Use WASD to move, left click to mine, right click to place."></canvas>
+
+      <div id="hud" aria-live="polite">
+        <div class="hud-row">
+          <div id="hearts" class="hud-stat" aria-label="Health"></div>
+          <div id="hunger" class="hud-stat" aria-label="Hunger"></div>
+          <div id="clock" class="hud-clock" title="World time">06:00</div>
+        </div>
+        <div id="air" class="hud-stat air-row" aria-label="Air"></div>
+        <div id="hud-selected" class="hud-selected">Empty hand</div>
+        <div id="hud-hint" class="hud-hint">WASD move · Space jump · Left click mine · Right click place · E inventory · H help</div>
+      </div>
+
+      <div id="hotbar" role="toolbar" aria-label="Hotbar"></div>
+      <div id="toasts" aria-live="polite" aria-atomic="false"></div>
+      <div id="minimap" class="minimap" aria-hidden="true"><canvas id="minimap-canvas" width="128" height="96"></canvas><span id="compass">N</span></div>
+
+      <section id="title-screen" class="screen is-open" aria-labelledby="title-heading">
+        <div class="title-panel">
+          <p class="eyebrow">A tiny offline sandbox</p>
+          <h1 id="title-heading">BLOCK<span>FALL</span></h1>
+          <p class="tagline">Dig into a generated world. Build something. Survive the night.</p>
+          <p id="save-warning" class="save-warning" hidden></p>
+          <div class="title-actions">
+            <button id="btn-new-world" class="btn btn-primary" type="button">New World</button>
+            <button id="btn-continue" class="btn" type="button" disabled>Continue</button>
+          </div>
+          <p id="save-note" class="save-note">Progress saves automatically in this browser.</p>
+          <div class="control-strip" aria-label="Primary controls">
+            <span><kbd>A</kbd><kbd>D</kbd> move</span>
+            <span><kbd>Space</kbd> jump</span>
+            <span><kbd>Left click</kbd> mine</span>
+            <span><kbd>Right click</kbd> place</span>
+            <span><kbd>E</kbd> inventory</span>
+            <span><kbd>H</kbd> help</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="inventory-screen" class="screen" aria-labelledby="inventory-heading">
+        <div class="panel inventory-panel">
+          <header class="panel-head">
+            <h2 id="inventory-heading">Inventory</h2>
+            <button class="btn btn-small" type="button" data-close="inventory-screen">Close (E)</button>
+          </header>
+          <div class="inventory-layout">
+            <div class="inventory-main">
+              <div id="inventory-grid" class="inventory-grid"></div>
+              <div class="hotbar-label">Hotbar</div>
+              <div id="inventory-hotbar" class="inventory-grid hotbar-grid"></div>
+              <p id="inventory-help" class="panel-note">Click a stack to pick it up · right click to split · Shift-click to quick-move.</p>
+            </div>
+            <aside class="craft-panel">
+              <h3>Crafting</h3>
+              <p id="craft-status" class="panel-note">Place a crafting table to unlock tools and stations.</p>
+              <div id="recipe-list" class="recipe-list"></div>
+              <p class="scroll-hint">Scroll the list for more recipes</p>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section id="furnace-screen" class="screen" aria-labelledby="furnace-heading">
+        <div class="panel furnace-panel">
+          <header class="panel-head">
+            <h2 id="furnace-heading">Furnace</h2>
+            <button class="btn btn-small" type="button" data-close="furnace-screen">Close (E)</button>
+          </header>
+          <div class="furnace-layout">
+            <div class="furnace-left">
+              <div class="furnace-slot">
+                <span class="slot-label">Smelt</span>
+                <div id="furnace-input" class="inventory-slot big-slot" data-slot="furnace-input"></div>
+              </div>
+              <div class="furnace-slot">
+                <span class="slot-label">Fuel</span>
+                <div id="furnace-fuel" class="inventory-slot big-slot" data-slot="furnace-fuel"></div>
+              </div>
+            </div>
+            <div class="furnace-middle">
+              <div class="furnace-arrow" aria-hidden="true">→</div>
+              <div class="furnace-fire" aria-hidden="true"><span id="furnace-flame"></span></div>
+            </div>
+            <div class="furnace-right">
+              <div class="furnace-slot">
+                <span class="slot-label">Result</span>
+                <div id="furnace-output" class="inventory-slot big-slot" data-slot="furnace-output"></div>
+              </div>
+            </div>
+          </div>
+          <p id="furnace-status" class="panel-note">Put ore in Smelt and coal or wood in Fuel.</p>
+          <div class="hotbar-label">Hotbar</div>
+          <div id="furnace-hotbar-grid" class="inventory-grid hotbar-grid"></div>
+          <p class="panel-note">Need an item from storage? Press E, move it to the hotbar, then reopen the furnace.</p>
+        </div>
+      </section>
+
+      <section id="help-screen" class="screen" aria-labelledby="help-heading">
+        <div class="panel help-panel">
+          <header class="panel-head">
+            <h2 id="help-heading">How to play</h2>
+            <button class="btn btn-small" type="button" data-close="help-screen">Close (H)</button>
+          </header>
+          <div class="help-grid">
+            <div>
+              <h3>Move</h3>
+              <table class="keys">
+                <tr><td><kbd>A</kbd> <kbd>D</kbd> / <kbd>Left</kbd> <kbd>Right</kbd></td><td>Walk</td></tr>
+                <tr><td><kbd>Space</kbd> / <kbd>W</kbd> / <kbd>Up</kbd></td><td>Jump · swim up · climb ladder</td></tr>
+                <tr><td><kbd>Shift</kbd></td><td>Sprint (uses hunger)</td></tr>
+                <tr><td><kbd>S</kbd> / <kbd>Down</kbd></td><td>Climb down a ladder</td></tr>
+              </table>
+              <h3>Act</h3>
+              <table class="keys">
+                <tr><td><kbd>Left click</kbd></td><td>Mine block · attack mob</td></tr>
+                <tr><td><kbd>Right click</kbd></td><td>Place block · use table/furnace · eat food</td></tr>
+                <tr><td><kbd>1</kbd>-<kbd>9</kbd> / wheel</td><td>Select hotbar slot</td></tr>
+                <tr><td><kbd>E</kbd></td><td>Inventory and crafting</td></tr>
+              </table>
+            </div>
+            <div>
+              <h3>Progress</h3>
+              <ol class="tips">
+                <li>Punch a tree to collect logs.</li>
+                <li>Craft planks and sticks, then a crafting table.</li>
+                <li>Place the table and press <kbd>E</kbd> to craft a pickaxe.</li>
+                <li>Mine stone and coal, then build a furnace.</li>
+                <li>Smelt iron, craft better tools, and light caves with torches.</li>
+                <li>At night, fight or shelter. Keep an eye on hearts and hunger.</li>
+              </ol>
+              <h3>World</h3>
+              <table class="keys">
+                <tr><td><kbd>Esc</kbd></td><td>Pause, settings, save</td></tr>
+                <tr><td><kbd>H</kbd></td><td>This help screen</td></tr>
+                <tr><td><kbd>M</kbd></td><td>Toggle minimap</td></tr>
+              </table>
+            </div>
+          </div>
+          <p class="panel-note">Progress is stored in your browser. Use Pause → Export save if you want a portable copy.</p>
+        </div>
+      </section>
+
+      <section id="pause-screen" class="screen" aria-labelledby="pause-heading">
+        <div class="panel pause-panel">
+          <h2 id="pause-heading">Paused</h2>
+          <div class="pause-actions">
+            <button id="btn-resume" class="btn btn-primary" type="button">Resume</button>
+            <button id="btn-save" class="btn" type="button">Save now</button>
+            <button id="btn-help" class="btn" type="button">How to play</button>
+            <button id="btn-export" class="btn" type="button">Export save</button>
+            <label class="btn file-btn">Import save<input id="import-file" type="file" accept=".json,application/json"></label>
+            <button id="btn-title" class="btn" type="button">Save &amp; title</button>
+          </div>
+          <div class="settings">
+            <h3>Settings</h3>
+            <label class="toggle"><input id="toggle-audio" type="checkbox" checked> Sound</label>
+            <label class="toggle"><input id="toggle-motion" type="checkbox"> Reduce motion and particles</label>
+            <label class="toggle"><input id="toggle-minimap" type="checkbox" checked> Show minimap</label>
+          </div>
+          <p id="save-status" class="panel-note" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section id="death-screen" class="screen" aria-labelledby="death-heading">
+        <div class="panel death-panel">
+          <h2 id="death-heading">You died</h2>
+          <p id="death-cause">The night got you.</p>
+          <p class="panel-note">Your world and inventory are kept. Respawn at the world spawn.</p>
+          <button id="btn-respawn" class="btn btn-primary" type="button">Respawn</button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
   <div id="status" data-state="booting" title="Page status"></div>
+
   <script src="js/config.js"></script>
   <script src="js/rng.js"></script>
-  <script src="js/blocks.js"></script>
   <script src="js/world.js"></script>
-  <script src="js/light.js"></script>
-  <script src="js/player.js"></script>
+  <script src="js/textures.js"></script>
   <script src="js/inventory.js"></script>
   <script src="js/crafting.js"></script>
-  <script src="js/progression.js"></script>
-  <script src="js/mobs.js"></script>
+  <script src="js/furnace.js"></script>
   <script src="js/save.js"></script>
-  <script src="js/audio.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/survival.js"></script>
   <script src="js/render.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="js/lighting.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/minimap.js"></script>
   <script src="js/input.js"></script>
+  <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

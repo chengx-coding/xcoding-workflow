@@ -1,115 +1,100 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-
 const config = require("../js/config.js");
 const worldApi = require("../js/world.js");
 const playerApi = require("../js/player.js");
 
-const GROUND = worldApi.GROUND_ROW;
-const DT = 1 / 60;
-
-function makePlayer(x, y) {
-  return playerApi.createPlayer(x === undefined ? 24.5 : x, y === undefined ? GROUND : y);
-}
-
-function settle(world, player, frames) {
-  const input = { left: false, right: false, jump: false, jumpPressed: false };
-  for (let i = 0; i < (frames || 90); i += 1) {
-    playerApi.update(player, world, input, DT);
-  }
-  return player;
-}
-
-test("a fresh player has the configured size and full health", () => {
-  const player = makePlayer();
-  assert.equal(player.width, config.playerWidth);
-  assert.equal(player.height, config.playerHeight);
-  assert.equal(player.health, config.maxHealth);
-  assert.equal(player.dead, false);
-});
-
-test("gravity lands the player on the spawn plateau", () => {
+function fresh() {
   const world = worldApi.createWorld(config.seed);
-  const player = settle(world, makePlayer());
+  const player = playerApi.createPlayer(world.spawn.x, world.spawn.y);
+  return { world, player };
+}
+
+test("a spawned player stands on the surface without overlapping solids", () => {
+  const { world, player } = fresh();
+  assert.equal(playerApi.overlapsSolid(world, player.x, player.y, player.width, player.height), false);
+  for (let i = 0; i < 30; i += 1) {
+    playerApi.stepPlayer(player, world, { right: false, left: false, jump: false }, 1 / 60);
+  }
   assert.equal(player.onGround, true);
-  assert.ok(Math.abs(player.y - GROUND) < 0.05, `y=${player.y}`);
 });
 
-test("walking right collides with a wall", () => {
-  const world = worldApi.createWorld(config.seed);
-  const player = settle(world, makePlayer());
-  worldApi.setBlock(world, 27, GROUND - 1, config.blocks.stone);
-  worldApi.setBlock(world, 27, GROUND - 2, config.blocks.stone);
-  const input = { left: false, right: true, jump: false, jumpPressed: false };
-  for (let i = 0; i < 120; i += 1) {
-    playerApi.update(player, world, input, DT);
+test("walking and jumping change position and return to the ground", () => {
+  const { world, player } = fresh();
+  const startX = player.x;
+  for (let i = 0; i < 40; i += 1) {
+    playerApi.stepPlayer(player, world, { right: true, jump: false }, 1 / 60);
   }
-  assert.ok(player.x < 27 - config.playerWidth / 2 + 0.05, `x=${player.x}`);
-  assert.ok(player.x > 24, "the player moved before hitting the wall");
-});
-
-test("jump lifts the player and it lands again", () => {
-  const world = worldApi.createWorld(config.seed);
-  const player = settle(world, makePlayer());
-  const startY = player.y;
-  const input = { left: false, right: false, jump: true, jumpPressed: true };
-  playerApi.update(player, world, input, DT);
-  for (let i = 0; i < 12; i += 1) {
-    playerApi.update(player, world, input, DT);
+  assert.ok(player.x > startX);
+  for (let i = 0; i < 10; i += 1) {
+    playerApi.stepPlayer(player, world, { right: false, jump: true }, 1 / 60);
   }
-  assert.ok(player.y < startY - 0.5, "the player should rise");
-  input.jump = false;
-  input.jumpPressed = false;
-  for (let i = 0; i < 200; i += 1) {
-    playerApi.update(player, world, input, DT);
+  for (let i = 0; i < 140; i += 1) {
+    playerApi.stepPlayer(player, world, { right: false, jump: false }, 1 / 60);
   }
-  assert.ok(Math.abs(player.y - startY) < 0.1, `landed at ${player.y}`);
+  assert.equal(player.onGround, true);
+  assert.equal(playerApi.overlapsSolid(world, player.x, player.y, player.width, player.height), false);
 });
 
-test("reach is measured from the player centre", () => {
-  const player = makePlayer(10.5, GROUND);
-  assert.equal(playerApi.canReach(player, 14, GROUND - 1, config.reach), true);
-  assert.equal(playerApi.canReach(player, 24, GROUND - 1, config.reach), false);
-  assert.ok(playerApi.distanceToTile(player, 14, GROUND - 1) > 4);
+test("trees and stone are mined faster with the right tool", () => {
+  const handStone = playerApi.miningSpeedFor(config.blocks.stone, null);
+  const pickStone = playerApi.miningSpeedFor(config.blocks.stone, config.itemDefs[config.itemIds.woodenPickaxe]);
+  const axeStone = playerApi.miningSpeedFor(config.blocks.stone, config.itemDefs[config.itemIds.woodenAxe]);
+  assert.ok(pickStone > handStone);
+  assert.equal(axeStone, handStone);
+  assert.ok(playerApi.miningSpeedFor(config.blocks.water, null) === 0);
 });
 
-test("overlapsTile detects the tile the player stands in", () => {
-  const player = makePlayer(10.5, GROUND);
-  assert.equal(playerApi.overlapsTile(player, 10, GROUND - 1), true);
-  assert.equal(playerApi.overlapsTile(player, 10, GROUND - 3), false);
+test("mining progresses and completes", () => {
+  const { player } = fresh();
+  const target = { x: 10, y: 62, block: config.blocks.stone };
+  let result = { done: false };
+  for (let i = 0; i < 240 && !result.done; i += 1) {
+    result = playerApi.updateMining(player, target, 1 / 60, config.itemDefs[config.itemIds.woodenPickaxe]);
+  }
+  assert.equal(result.done, true);
 });
 
-test("damage respects invulnerability and death", () => {
-  const player = makePlayer();
-  assert.equal(playerApi.damage(player, 3), true);
-  assert.equal(player.health, config.maxHealth - 3);
-  assert.equal(playerApi.damage(player, 3), false, "invulnerability window");
-  player.invuln = 0;
-  assert.equal(playerApi.damage(player, config.maxHealth), true);
+test("placement rejects occupied cells, distance and unsupported air", () => {
+  const { world, player } = fresh();
+  const ground = world.surface[Math.floor(player.x)];
+  const occupied = playerApi.validatePlacement(world, player, Math.floor(player.x), ground, config.blocks.dirt);
+  assert.equal(occupied.ok, false);
+  const far = playerApi.validatePlacement(world, player, 2, 2, config.blocks.dirt);
+  assert.equal(far.ok, false);
+  const unsupported = playerApi.validatePlacement(world, player, Math.floor(player.x) + 2, ground - 8, config.blocks.dirt);
+  assert.equal(unsupported.ok, false);
+});
+
+test("damage and respawn restore a playable state", () => {
+  const { world, player } = fresh();
+  playerApi.damagePlayer(player, 5, "test");
+  assert.equal(player.health, 15);
+  playerApi.damagePlayer(player, 99, "test");
+  assert.equal(player.health, 0);
   assert.equal(player.dead, true);
-  player.dead = true;
-  assert.equal(playerApi.damage(player, 1), false);
-});
-
-test("respawn restores health at the spawn point", () => {
-  const player = makePlayer();
-  player.health = 1;
-  player.dead = true;
-  playerApi.respawn(player, { x: 24.5, y: GROUND });
+  playerApi.respawnPlayer(player, { x: world.spawn.x, y: world.spawn.y });
+  assert.equal(player.health, 20);
   assert.equal(player.dead, false);
-  assert.equal(player.health, config.maxHealth);
-  assert.equal(player.x, 24.5);
-  assert.equal(player.y, GROUND);
+  assert.equal(player.x, world.spawn.x);
 });
 
-test("saved player state restores position and health", () => {
-  const player = makePlayer();
-  player.x = 42.5;
-  player.y = GROUND - 2;
-  player.health = 7;
-  const saved = playerApi.serialize(player);
-  const restored = playerApi.applySaved(makePlayer(), saved);
-  assert.equal(restored.x, 42.5);
-  assert.equal(restored.y, GROUND - 2);
-  assert.equal(restored.health, 7);
+test("sprinting covers more ground than walking on flat terrain", () => {
+  function flatWorld() {
+    const data = new Uint8Array(60 * 20);
+    for (let x = 0; x < 60; x += 1) {
+      data[10 * 60 + x] = config.blocks.stone;
+    }
+    return { width: 60, height: 20, data, surface: new Int16Array(60).fill(10) };
+  }
+  const world = flatWorld();
+  const walker = playerApi.createPlayer(5.5, 10);
+  const runner = playerApi.createPlayer(5.5, 10);
+  walker.onGround = true;
+  runner.onGround = true;
+  for (let i = 0; i < 60; i += 1) {
+    playerApi.stepPlayer(walker, world, { right: true, sprint: false }, 1 / 60);
+    playerApi.stepPlayer(runner, world, { right: true, sprint: true }, 1 / 60);
+  }
+  assert.ok(runner.x > walker.x + 1, "sprint should move farther");
 });

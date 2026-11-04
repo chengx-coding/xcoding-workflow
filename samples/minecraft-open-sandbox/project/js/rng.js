@@ -1,3 +1,4 @@
+/* Deterministic, dependency-free randomness for world generation. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
     module.exports = factory();
@@ -7,82 +8,100 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  // Small deterministic generator. Every world feature draws from a stream
-  // seeded from the world seed so the same seed always builds the same world.
+  function hash32(value) {
+    let h = value >>> 0;
+    h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+    h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
+    return (h ^ (h >>> 16)) >>> 0;
+  }
+
+  function hash2(x, y, seed) {
+    return hash32((x | 0) * 374761393 + (y | 0) * 668265263 + (seed | 0) * 2246822519);
+  }
+
   function mulberry32(seed) {
     let state = seed >>> 0;
     return function next() {
       state = (state + 0x6d2b79f5) >>> 0;
-      let value = state;
-      value = Math.imul(value ^ (value >>> 15), value | 1);
-      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
 
-  function hash2(x, y, seed) {
-    let h = (seed >>> 0) ^ Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263);
-    h = Math.imul(h ^ (h >>> 13), 1274126177);
-    h ^= h >>> 16;
-    return (h >>> 0) / 4294967296;
-  }
-
-  function hash1(x, seed) {
-    return hash2(x, 0x9e37, seed);
-  }
-
-  function smoothstep(t) {
-    return t * t * (3 - 2 * t);
-  }
-
-  function valueNoise1D(x, seed) {
-    const cell = Math.floor(x);
-    const t = smoothstep(x - cell);
-    const a = hash1(cell, seed);
-    const b = hash1(cell + 1, seed);
+  function noise1(x, seed) {
+    const xi = Math.floor(x);
+    const xf = x - xi;
+    const a = (hash2(xi, 0, seed) / 4294967296) * 2 - 1;
+    const b = (hash2(xi + 1, 0, seed) / 4294967296) * 2 - 1;
+    const t = xf * xf * (3 - 2 * xf);
     return a + (b - a) * t;
   }
 
-  function valueNoise2D(x, y, seed) {
-    const cx = Math.floor(x);
-    const cy = Math.floor(y);
-    const tx = smoothstep(x - cx);
-    const ty = smoothstep(y - cy);
-    const a = hash2(cx, cy, seed);
-    const b = hash2(cx + 1, cy, seed);
-    const c = hash2(cx, cy + 1, seed);
-    const d = hash2(cx + 1, cy + 1, seed);
-    const top = a + (b - a) * tx;
-    const bottom = c + (d - c) * tx;
-    return top + (bottom - top) * ty;
+  function noise2(x, y, seed) {
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+    const xf = x - xi;
+    const yf = y - yi;
+    const smoothX = xf * xf * (3 - 2 * xf);
+    const smoothY = yf * yf * (3 - 2 * yf);
+    const a = (hash2(xi, yi, seed) / 4294967296) * 2 - 1;
+    const b = (hash2(xi + 1, yi, seed) / 4294967296) * 2 - 1;
+    const c = (hash2(xi, yi + 1, seed) / 4294967296) * 2 - 1;
+    const d = (hash2(xi + 1, yi + 1, seed) / 4294967296) * 2 - 1;
+    const top = a + (b - a) * smoothX;
+    const bottom = c + (d - c) * smoothX;
+    return top + (bottom - top) * smoothY;
   }
 
-  function fbm2D(x, y, seed, octaves) {
+  function fbm1(x, seed, octaves) {
     let total = 0;
     let amplitude = 1;
     let frequency = 1;
-    let norm = 0;
-    const count = octaves || 3;
+    let normal = 0;
+    const count = octaves || 4;
     for (let i = 0; i < count; i += 1) {
-      total += valueNoise2D(x * frequency, y * frequency, seed + i * 1013) * amplitude;
-      norm += amplitude;
+      total += noise1(x * frequency, seed + i * 1013) * amplitude;
+      normal += amplitude;
       amplitude *= 0.5;
       frequency *= 2;
     }
-    return norm > 0 ? total / norm : 0;
+    return total / normal;
   }
 
-  function integerRange(random, min, max) {
-    return min + Math.floor(random() * (max - min + 1));
+  function fbm2(x, y, seed, octaves) {
+    let total = 0;
+    let amplitude = 1;
+    let frequency = 1;
+    let normal = 0;
+    const count = octaves || 3;
+    for (let i = 0; i < count; i += 1) {
+      total += noise2(x * frequency, y * frequency, seed + i * 7919) * amplitude;
+      normal += amplitude;
+      amplitude *= 0.5;
+      frequency *= 2;
+    }
+    return total / normal;
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function range(seed, min, max) {
+    return min + Math.floor(mulberry32(seed)() * (max - min + 1));
   }
 
   return {
-    mulberry32: mulberry32,
-    hash1: hash1,
+    hash32: hash32,
     hash2: hash2,
-    valueNoise1D: valueNoise1D,
-    valueNoise2D: valueNoise2D,
-    fbm2D: fbm2D,
-    integerRange: integerRange
+    mulberry32: mulberry32,
+    noise1: noise1,
+    noise2: noise2,
+    fbm1: fbm1,
+    fbm2: fbm2,
+    clamp: clamp,
+    range: range
   };
 });

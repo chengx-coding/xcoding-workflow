@@ -1,3 +1,4 @@
+/* Tiny procedural WebAudio sound effects. No audio files or network. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
     module.exports = factory();
@@ -7,180 +8,166 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const MUTE_KEY = "emberdeep.muted";
   let context = null;
   let master = null;
-  let muted = false;
-  let noiseBuffer = null;
+  let enabled = true;
+  let unlocked = false;
 
-  try {
-    muted = typeof localStorage !== "undefined" && localStorage.getItem(MUTE_KEY) === "1";
-  } catch (error) {
-    muted = false;
-  }
-
-  function hasAudio() {
-    return typeof window !== "undefined" && !!(window.AudioContext || window.webkitAudioContext);
+  function ensureContext() {
+    if (context) {
+      return context;
+    }
+    const Constructor = typeof window !== "undefined" ? (window.AudioContext || window.webkitAudioContext) : null;
+    if (!Constructor) {
+      return null;
+    }
+    try {
+      context = new Constructor();
+      master = context.createGain();
+      master.gain.value = enabled ? 0.2 : 0;
+      master.connect(context.destination);
+    } catch (error) {
+      context = null;
+      master = null;
+    }
+    return context;
   }
 
   function unlock() {
-    if (!hasAudio()) {
+    const ctx = ensureContext();
+    if (!ctx) {
       return false;
     }
-    if (!context) {
-      const Ctor = window.AudioContext || window.webkitAudioContext;
-      context = new Ctor();
-      master = context.createGain();
-      master.gain.value = 0.32;
-      master.connect(context.destination);
-      const length = Math.floor(context.sampleRate * 0.5);
-      noiseBuffer = context.createBuffer(1, length, context.sampleRate);
-      const data = noiseBuffer.getChannelData(0);
-      for (let i = 0; i < length; i += 1) {
-        data[i] = Math.random() * 2 - 1;
-      }
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(function () {});
     }
-    if (context.state === "suspended") {
-      context.resume();
-    }
+    unlocked = true;
     return true;
   }
 
-  function tone(frequency, duration, options) {
-    if (!context || muted) {
+  function now() {
+    return context ? context.currentTime : 0;
+  }
+
+  function tone(settings) {
+    if (!context || !master || !enabled) {
       return;
     }
-    const settings = options || {};
+    const start = now();
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     oscillator.type = settings.type || "square";
-    oscillator.frequency.setValueAtTime(frequency, context.currentTime);
-    if (settings.slideTo) {
-      oscillator.frequency.exponentialRampToValueAtTime(
-        Math.max(20, settings.slideTo),
-        context.currentTime + duration
-      );
+    oscillator.frequency.setValueAtTime(settings.from, start);
+    if (settings.to && settings.to !== settings.from) {
+      oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, settings.to), start + settings.duration);
     }
-    const peak = settings.gain === undefined ? 0.35 : settings.gain;
-    gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(peak, context.currentTime + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.001, settings.gain || 0.12), start + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + settings.duration);
     oscillator.connect(gain);
     gain.connect(master);
-    oscillator.start();
-    oscillator.stop(context.currentTime + duration + 0.02);
+    oscillator.start(start);
+    oscillator.stop(start + settings.duration + 0.02);
   }
 
-  function noise(duration, gainValue, filterFrequency) {
-    if (!context || muted || !noiseBuffer) {
+  function noise(duration, frequency, gainValue) {
+    if (!context || !master || !enabled) {
       return;
     }
+    const length = Math.max(1, Math.floor(context.sampleRate * duration));
+    const buffer = context.createBuffer(1, length, context.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i += 1) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+    }
     const source = context.createBufferSource();
-    source.buffer = noiseBuffer;
+    source.buffer = buffer;
     const filter = context.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = filterFrequency || 1200;
+    filter.type = "bandpass";
+    filter.frequency.value = frequency || 900;
+    filter.Q.value = 1.2;
     const gain = context.createGain();
-    gain.gain.setValueAtTime(gainValue || 0.25, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+    gain.gain.value = gainValue || 0.12;
     source.connect(filter);
     filter.connect(gain);
     gain.connect(master);
     source.start();
-    source.stop(context.currentTime + duration + 0.02);
   }
 
   function play(name) {
-    if (!unlock()) {
+    if (!enabled) {
+      return;
+    }
+    if (!context || !unlocked) {
       return;
     }
     switch (name) {
       case "mine":
-        tone(220, 0.05, { type: "square", gain: 0.08, slideTo: 150 });
-        noise(0.05, 0.06, 900);
+        noise(0.07, 520, 0.09);
+        tone({ from: 120, to: 70, duration: 0.06, type: "square", gain: 0.05 });
         break;
       case "break":
-        noise(0.14, 0.22, 700);
-        tone(90, 0.14, { type: "sine", gain: 0.16, slideTo: 60 });
+        noise(0.14, 700, 0.16);
+        tone({ from: 160, to: 60, duration: 0.12, type: "triangle", gain: 0.08 });
         break;
       case "place":
-        tone(150, 0.08, { type: "triangle", gain: 0.2, slideTo: 110 });
-        noise(0.05, 0.08, 500);
+        noise(0.05, 320, 0.11);
+        tone({ from: 180, to: 120, duration: 0.07, type: "square", gain: 0.07 });
         break;
-      case "pickup":
-        tone(660, 0.07, { type: "triangle", gain: 0.14 });
-        tone(880, 0.08, { type: "triangle", gain: 0.11 });
+      case "jump":
+        tone({ from: 300, to: 450, duration: 0.1, type: "square", gain: 0.05 });
         break;
-      case "craft":
-        tone(523, 0.09, { type: "triangle", gain: 0.16 });
-        window.setTimeout(function second() {
-          tone(659, 0.1, { type: "triangle", gain: 0.14 });
-        }, 70);
-        window.setTimeout(function third() {
-          tone(784, 0.14, { type: "triangle", gain: 0.13 });
-        }, 140);
+      case "step":
+        noise(0.03, 240, 0.035);
         break;
       case "hurt":
-        tone(160, 0.18, { type: "sawtooth", gain: 0.2, slideTo: 70 });
-        noise(0.12, 0.14, 600);
+        tone({ from: 190, to: 70, duration: 0.22, type: "sawtooth", gain: 0.11 });
         break;
       case "death":
-        tone(220, 0.3, { type: "sawtooth", gain: 0.2, slideTo: 90 });
-        window.setTimeout(function second() {
-          tone(140, 0.4, { type: "sine", gain: 0.16, slideTo: 60 });
-        }, 180);
+        tone({ from: 220, to: 45, duration: 0.8, type: "sawtooth", gain: 0.12 });
         break;
-      case "quest":
-        [523, 659, 784, 1047].forEach(function note(frequency, index) {
-          window.setTimeout(function playNote() {
-            tone(frequency, 0.16, { type: "triangle", gain: 0.13 });
-          }, index * 90);
-        });
+      case "eat":
+        noise(0.08, 500, 0.1);
+        noise(0.08, 420, 0.08);
         break;
-      case "night":
-        tone(110, 0.6, { type: "sine", gain: 0.1, slideTo: 82 });
-        tone(164, 0.5, { type: "sine", gain: 0.06, slideTo: 130 });
+      case "pickup":
+        tone({ from: 760, to: 980, duration: 0.07, type: "triangle", gain: 0.06 });
         break;
-      case "beacon":
-        [261, 329, 392, 523, 659].forEach(function chord(frequency, index) {
-          window.setTimeout(function playChord() {
-            tone(frequency, 0.7, { type: "triangle", gain: 0.1 });
-          }, index * 120);
-        });
+      case "craft":
+        tone({ from: 523, to: 523, duration: 0.09, type: "triangle", gain: 0.08 });
+        window.setTimeout(function () { tone({ from: 659, to: 659, duration: 0.09, type: "triangle", gain: 0.08 }); }, 80);
+        window.setTimeout(function () { tone({ from: 784, to: 784, duration: 0.14, type: "triangle", gain: 0.08 }); }, 160);
         break;
-      case "ui":
-        tone(440, 0.04, { type: "square", gain: 0.06 });
-        break;
-      case "error":
-        tone(180, 0.09, { type: "square", gain: 0.08, slideTo: 120 });
+      case "attack":
+        tone({ from: 260, to: 120, duration: 0.09, type: "square", gain: 0.08 });
+        noise(0.05, 900, 0.06);
         break;
       default:
-        tone(440, 0.04, { type: "square", gain: 0.05 });
+        break;
     }
   }
 
-  function setMuted(value) {
-    muted = !!value;
-    try {
-      localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
-    } catch (error) {
-      // Storage may be unavailable; mute still applies for this session.
+  function setEnabled(value) {
+    enabled = Boolean(value);
+    if (master) {
+      master.gain.value = enabled ? 0.2 : 0;
     }
-    if (master && context) {
-      master.gain.value = muted ? 0 : 0.32;
-    }
-    return muted;
   }
 
-  function isMuted() {
-    return muted;
+  function isEnabled() {
+    return enabled;
+  }
+
+  function isUnlocked() {
+    return unlocked;
   }
 
   return {
     unlock: unlock,
     play: play,
-    setMuted: setMuted,
-    isMuted: isMuted,
-    hasAudio: hasAudio
+    setEnabled: setEnabled,
+    isEnabled: isEnabled,
+    isUnlocked: isUnlocked,
+    ensureContext: ensureContext
   };
 });
