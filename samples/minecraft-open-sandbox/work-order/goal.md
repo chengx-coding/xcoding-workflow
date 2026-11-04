@@ -1,88 +1,111 @@
 ---
 schema_version: 1
 document_kind: work-order-goal
-content_language: "en"
-work_order_id: "20261102-1550-open-sandbox-xc-047"
+content_language: en
+work_order_id: 20261104-1337-2d-sandbox-game
 feature_ids: []
 orchestration:
-  main_tree_ref: ".xcoding/work-orders/20261102-1550-open-sandbox-xc-047/runtime/orchestration.xml"
+  main_tree_ref: /work/.xcoding/work-orders/20261104-1337-2d-sandbox-game/runtime/orchestration.xml
 ---
 
-# Work order goal — playable offline 2D Minecraft-inspired sandbox
+# Work Order Goal: Emberblock
 
-## Requested outcome
+## Requested Outcome
 
-Deliver, in this repository, a playable 2D sandbox game inspired by Minecraft that a person can
-play by opening `index.html` directly from the file system. The game must run with no build step, no
-package manager, no third-party libraries, no CDN, no external fonts and no network access. It must
-feel like a small Minecraft, keep the player's progress between sessions, and document its controls.
+Build **Emberblock**, a playable, offline, two-dimensional sandbox game that feels like a small
+Minecraft. The player opens `index.html` directly from `file://`, lands in a generated block world,
+moves and jumps through it, mines and places blocks, collects materials, crafts useful items, builds
+something of their own, and returns later to find their world and progress intact. Controls must be
+discoverable in the game and documented for later reference.
 
-The requested capability scope is exactly the product prompt: a small Minecraft-like 2D sandbox with
-a playable core loop, progress saving and documented controls. This goal does not pre-declare which
-Minecraft systems belong in that small sandbox; which systems are included is an analysis decision
-recorded in `analysis.md` and accepted in `solution.md`.
+The intended capability scope is a complete compact survival-sandbox loop: **explore → mine →
+collect → craft → build → persist**. The world should be large enough to wander, deep enough to dig,
+dark enough at night to make light matter, and stable enough that a reload preserves what the player
+changed. Combat, multiplayer, and content-volume parity with Minecraft are outside this pocket-sized
+goal; they are not additions to the requested loop.
 
-## Scope and constraints (with provenance)
+## Scope, Quality Contract, and Constraints
 
-| Constraint | Provenance | Consequence |
-| --- | --- | --- |
-| Playable, offline, 2D sandbox inspired by Minecraft | user (product prompt) | The deliverable is a game, not a demo or an engine shell. |
-| Runs by opening `index.html`, no build step | user (product prompt) + project bridge | Classic browser scripts only; no bundler, no ES module `import` from `file://`. |
-| No external libraries, CDNs, network access, external fonts | user (product prompt) + project bridge | Everything, including art and audio, is generated locally from code and CSS. |
-| Feel like a small Minecraft | user (product prompt) | The reference's defining loop and legible world must be present at small scale; the analysis records which reference capabilities are must, should or non-goal. |
-| Save progress | user (product prompt) | Progress survives a page reload with a user-visible save/continue state. |
-| Document the controls | user (product prompt) | Controls exist in the rendered game and in the repository README. |
-| English code, comments, README and work-order documents; UTF-8/LF | project bridge | All authored files follow this. |
-| Verification: `node --test "tests/**/*.test.js"` and `python tools/page_check.py`; do not weaken seed tests | project bridge | Both commands pass; the seed test file keeps its assertions; new tests are added for new behaviour. |
-| No third-party runtime assets; `file://` operation | project bridge | Same as the prompt; enforced by the page check. |
-| Change report waived | user instruction through the project bridge | `work_order.requires_report=false`; `work_order.report_skip_reason=user_waived`. |
+### User-facing quality contract
 
-No goal-authored exclusion is added. Nothing in the prompt is excluded, and no extra product
-feature is declared as required by this goal.
+1. **Immediate, dependable play.** Opening `index.html` presents a readable first-run screen with a
+   visible primary start action and a visible controls/help entry. The game becomes interactive with
+   no console error, build step, network request, external library, CDN, font, or asset download.
+2. **A world that reads as a world.** A deterministic seeded terrain has rolling hills, layered
+   strata, caves, ores, trees, a sky with a day/night cycle, and coherent parallax depth. Blocks look
+   deliberately illustrated rather than flat coloured cells. Two materially different visual states
+   (day and night, plus underground darkness) are visibly distinct.
+3. **A sandbox verb set that actually works.** Walking, jumping, collision, mining with per-block
+   hardness and tool speed, block drops, inventory stacking, hotbar selection, placement with reach
+   limits, and crafting all complete their advertised action and give visible feedback. Mining and
+   placement are never silent no-ops.
+4. **Persistence the player can trust.** World edits, inventory, selected slot, player position,
+   health, and time of day survive a reload. There is a visible save state, periodic autosave, manual
+   save, and a guarded new-world reset. Progress is stored locally and offline.
+5. **A small progression with a point.** Wood → planks → sticks → crafting table → wooden pickaxe →
+   stone → stone pickaxe → iron is legible through crafting availability, tool speed, and block
+   requirements. Torches make caves and night navigable.
+6. **Readable, uncluttered interface.** The HUD shows health, time, coordinates, selected item,
+   inventory/craft access, and help without covering the player's workspace at the reference
+   viewport. Mouse and keyboard controls work together; the canvas is responsive and avoids clipping
+   at a 960×600 viewport and a narrow 480px-wide viewport.
+7. **A living layer of craft.** Ambient particles, block-break feedback, sound effects generated in
+   the browser, subtle screen feedback, and pacing through the day/night cycle make the game feel
+   authored. These support the core loop rather than replacing it.
 
-## Acceptance conditions
+### Comparison target
 
-1. **Runs offline from `file://`.** Opening `index.html` directly boots the game with no build step,
-   no network request, no external library, font or asset, and no console error.
-2. **Playable first contact.** A first-time player can start the game without prior knowledge: the
-   first screen identifies the game, the primary start control is visible, and the controls needed
-   for the first action are shown before or at the moment they are needed.
-3. **Defining Minecraft-like loop and progression depth.** The game presents a real loop — gather
-   material, refine it, build with it, and advance toward a world-scale goal — with enough depth that
-   later progress depends on earlier progress. A gather-only or mine-only slice does not satisfy
-   "feels like a small Minecraft". The analysis must name the loop and the reference capabilities
-   that support it, and the solution must map each accepted capability to implementation and
-   verification.
-4. **Navigable, legible world.** The player can tell where they are and how to orient within a world
-   larger than the screen, and the world contains places worth finding.
-5. **Real interaction truth.** The primary world interaction works through genuine pointer input:
-   pressing and holding the pointer on a world target for at least 90 ms changes that world target,
-   repeatably across trials, and it is proven with browser-dispatched pointer input rather than a
-   synthetic element activation.
-6. **Visual and audio direction beyond functional UI.** The presentation establishes a coherent art
-   direction (palette, tile treatment, depth, atmosphere) and a scene state that visibly responds to
-   game state, so the result reads as a small game rather than a debug canvas.
-7. **Progress is saved and shown consistently.** If the game claims saving, a saved session reloads
-   with the same world, inventory and progression, and the interface reports the save state and saved
-   summary truthfully.
-8. **Controls are documented.** The README documents every control and the game itself exposes a
-   controls reference.
-9. **Quality bar.** `node --test "tests/**/*.test.js"` and `python tools/page_check.py` pass from the
-   project root, the seed test assertions are unchanged, and additional automated tests cover the
-   game logic and the browser interaction truth above.
-10. **No scope narrowing.** Every material capability promised by the product prompt or accepted by
-    the solution is implemented or its absence is recorded with provenance; the result document
-    reports evidence per acceptance condition.
+The concrete reference is **Minecraft's core sandbox loop** (explore, mine, craft, build, and keep
+your world). At 2D scale, Emberblock must be recognizably complete at that loop: a new player can find
+the controls, gather wood, make a tool, light a cave, place a build, and reload into it. This is a
+qualitative floor for feel and loop completeness, not a request for Minecraft's content breadth,
+mobs, dimensions, or multiplayer.
 
-## Reference-informed signature challenge
+### Reference-informed signature challenge
 
-The credible reference is Minecraft (Mojang, 2011) as a genre-defining sandbox, plus its 2D
-side-scrolling descendants. The reference is used for domain legibility, not for copying content.
-The signature elements that make a sandbox read as Minecraft-like, and that this goal expects the
-analysis to disposition, are: a block-based editable world; mining and placing blocks; a crafting
-step that converts raw material into better capability; a tool/material progression that gates
-deeper parts of the world; survival pressure that gives preparing and building a purpose; and a
-persistent world the player returns to. A small Minecraft may legitimately reduce or omit a
-signature element, but the omission must be a recorded analysis decision with user value and
-impact, and the accepted must/should elements must reach a depth where the loop sustains play rather
-than stopping after the first resource.
+The request names Minecraft, so the credible reference is Minecraft. The decision-changing signature
+capabilities are:
+
+- **Block-authored world and building:** the world is made of editable blocks whose removal and
+  placement visibly and permanently change it (`must`).
+- **Tool-gated material progression:** different materials require the right tool tier, so crafting
+  changes what the player can do (`must`).
+- **A day/night and underground light rhythm:** darkness changes how the world is navigated and makes
+  torches meaningful (`must`).
+- **A first-person-feeling survival-sandbox HUD:** health, hotbar, inventory, and crafting are one
+  continuous interface (`must`).
+- **A compact orientation aid:** coordinates plus a small surface map help the player understand a
+  finite handcrafted world (`should`; supports exploration without importing a full mapping system).
+
+Reference-derived content such as mobs, hunger, villages, redstone, and nether dimensions is not
+required by this request and is not a binding non-goal; those systems are simply beyond this pocket
+scope, and recording them as forbidden would narrow the user's request. The delivered loop must not
+be thinned below the signature musts.
+
+### Constraints and exclusions (with provenance)
+
+- Platform: vanilla HTML/CSS/JavaScript, no build step, no package manager, no runtime network access,
+  no external libraries, CDNs, fonts, or remote assets (`user`, `project`).
+- Must launch and play from `file://`; storage uses browser-local persistence only (`user`).
+- Work only inside `/work`; no project Git commit (`user`, `project`).
+- English UI, documentation, comments, and work-order text; UTF-8/LF (`project`).
+- Preserve the seed's browser/static checks and add project-appropriate tests (`project`).
+- No material exclusions beyond the platform constraints above. Features not named by the request are
+  neither promised nor forbidden; analysis prioritizes the smallest complete signature loop.
+
+## Acceptance Conditions
+
+1. From a fresh browser profile, opening `index.html` shows a visible Play/Continue action and a
+   visible Controls/Help entry, and the game reaches an interactive world without errors.
+2. A real pointer and keyboard can move, jump, mine, place, select a hotbar slot, open inventory and
+   crafting, craft at least planks, sticks, a torch, a crafting table, and a wooden/stone pickaxe.
+3. Mining different blocks takes materially different time, requires the appropriate tool for hard
+   ores, drops items into a stackable inventory, and cannot reach beyond the declared range.
+4. The player can dig into a cave or wait for night and observe a materially darker state; a placed
+   torch visibly lights its surroundings.
+5. World edits, inventory, health, selected slot, time, and position survive a page reload; manual
+   save and guarded reset are discoverable and work.
+6. The reference viewport (960×540 game area) and a narrow viewport (480px wide) keep primary actions,
+   help, health, hotbar, and inventory usable without clipping or hidden controls.
+7. Seed checks and added tests pass; a headless browser run renders a non-blank, colour-rich canvas
+   with the ready status marker. The controls are documented in the game and in `README.md`.

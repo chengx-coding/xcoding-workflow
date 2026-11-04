@@ -1,95 +1,81 @@
-# MOSSWILD
+# Blockhaven
 
-A tiny, offline 2D block-world sandbox inspired by Minecraft. Wander a procedurally generated valley, mine and build, craft better tools, survive the hollows at night, and kindle the old Warden's Lantern.
+A small, offline 2D sandbox game inspired by Minecraft. The world is generated from a
+seed, you can mine and build anywhere, craft tools and lights, survive hungry nights,
+and everything you change is saved in your browser.
 
-![A first morning in Mosswild](screenshot.png)
-
-Everything is local: plain HTML, CSS, and JavaScript, drawn with the Canvas 2D API. There is no build step, package install, server, CDN, or network access.
-
-## Run it
-
-Open `index.html` directly in a modern desktop browser (Chrome, Edge, or Firefox). That is the whole install.
-
-The first page load creates a fresh seeded world. After that, the same browser resumes your saved world automatically. Sound starts after your first key press or click, as required by browser audio policies.
-
-> Best played with a mouse and keyboard in a landscape window.
+Open `index.html` directly — no server, build step, libraries, accounts, or network
+connection are required.
 
 ## Controls
 
 | Input | Action |
 | --- | --- |
-| `A` / `D`, `←` / `→` | Walk |
-| `Space` / `W` / `↑` | Jump |
-| `Shift` | Sprint |
-| Left mouse (hold) | Mine the block under the cursor / strike a hollow |
-| Right mouse | Place the selected block, or set the selected torch / lantern / campfire down |
-| `1`–`9`, mouse wheel | Choose a hotbar slot |
-| `E` | Open / close the backpack and crafting bench |
-| `H` | Open the in-game survival guide |
-| `M` | Toggle sound |
-| `F` | Toggle fullscreen |
-| `Esc` | Pause; closes an open panel first |
-| `Ctrl` + `S` | Save immediately |
+| `A` / `D` or arrow keys | Move left / right |
+| `W`, `Space`, or up arrow | Jump |
+| `Shift` | Sprint (hold while using a table/furnace to place a block instead) |
+| Mouse | Aim and choose a block within reach |
+| Left click / hold | Mine the targeted block, or attack a mob |
+| Right click | Place the selected block, eat the selected food, or use a table/furnace |
+| `1`–`9` | Select a hotbar slot |
+| Mouse wheel | Cycle hotbar slots |
+| `E` | Open inventory and crafting (also closes it) |
+| `R` | Use a nearby furnace (or close its screen) |
+| `Q` | Drop one of the selected item |
+| `M` | Mute / unmute sound |
+| `Esc` | Pause, or close the current screen |
+| `Enter` | Start / continue from the title screen, or respawn after death |
 
-In the backpack, click any block or owned tool to bind it to the currently selected hotbar slot. Only placeable blocks and tools can be bound; materials are used from the pack automatically. Placing a solid block on a targeted solid block puts it on top.
+### Inventory
 
-## The small loop
+- **Left click** a slot to pick up a stack, then click another slot to put it down.
+- **Right click** picks up half a stack, or places a single item from the held stack.
+- **Shift-click** moves a stack between the backpack and the hotbar.
+- Click a **recipe card** to craft it. Recipes marked `table` require a placed
+  crafting table within a few blocks. Hold `Shift` while clicking a recipe to craft
+  as many as the available materials allow.
 
-1. **Gather wood.** Hold left click on a tree trunk. The field notes in the top right track the first objectives.
-2. **Craft a workbench.** Open the pack with `E`, turn a log into planks, then craft a workbench. Place it on the ground and stand nearby.
-3. **Tool up.** Stone tools need a workbench in reach. Higher tiers replace the old tool and reset its durability. Pickaxes crack rock and ore, axes speed up wood, swords are best against trouble.
-4. **Go below.** Coal glints in shallow caves. Iron requires a stone pickaxe. Torches make the dark manageable; caches of glowing amberstone are deeper still.
-5. **Kindle the lantern.** Craft the Warden's Lantern with three iron, three coal, and one torch at a workbench, then place it anywhere in the wild. This completes the field notes and quiets the hollows.
+## The first day
 
-### Survival notes
+1. Hold left click on a tree trunk until it breaks.
+2. Press `E`. Craft **Oak Planks** from logs, then **Sticks** from planks, then a
+   **Crafting Table**.
+3. Place the table with right click. With the table nearby, craft a **Wooden Pickaxe**.
+4. Mine stone and coal. Coal and a stick make **Torches**.
+5. Build a shelter before sunset. Zombies only appear in the dark at night.
+6. Eat apples or cook pork in a **Furnace** to keep your hunger up. You regenerate
+   health while well fed and resting.
 
-- **Hearts:** ten hearts, with slow natural regeneration after a long quiet spell.
-- **Night:** hollows wake after dusk and attack at close range. They burn away at dawn. Placed light keeps them from spawning nearby.
-- **Falling:** a short drop is safe; long falls hurt.
-- **Death:** you wake back at camp with your pack intact.
-- **Day length:** a full day/night cycle is five minutes, starting mid-morning. The clock at the top shows the current time and day.
+## World and survival
+
+- **Biomes:** meadows, forests, and deserts (with cacti), rolling hills, and deep caves.
+- **Ores:** coal (any pickaxe), iron (stone or better), gold and diamond (iron or better).
+- **Crafting:** planks, sticks, torches, tables, furnaces, stone bricks, glow lamps,
+  wood/stone/iron/diamond tools, swords, axes, and golden apples.
+- **Smelting:** iron ore, gold ore, sand, raw pork, cobblestone, and logs can be
+  smelted in a furnace with coal or charcoal.
+- **Mobs:** passive pigs drop pork. Zombies appear after dark, chase you, and burn in
+  morning sunlight. A sword deals more damage; left click a mob to fight.
+- **Light:** daylight floods the surface and fades into caves. Torches, glow lamps,
+  and furnaces emit warm block light. The world becomes genuinely dark at night.
+- **Death:** your pockets stay safe; you wake at your spawn point.
 
 ## Saving
 
-Progress autosaves to the browser's local storage every ten seconds, when you pause, when you complete the lantern, and when the page closes. The save includes the whole modified world, your position and health, inventory, tools and durability, hotbar, quest state, statistics, time of day, and sound setting.
-
-The pause menu shows the seed and save status. **New world** in the pause menu requires a second click and replaces the current save. To reset from outside the game, clear this page's browser storage.
+- The game autosaves every few seconds while you play, when you pause or quit to the
+  title, and when the page is hidden or closed.
+- The **Continue World** button appears on the title screen when a save exists.
+- Progress lives in `localStorage` under `blockhaven.save.v1` (settings under
+  `blockhaven.settings.v1`). It stays on the device and never uses the network.
+- A new world replaces the current save. Use a seed to recreate a world later.
 
 ## Files
 
-```text
-index.html              page shell, HUD, panels, and local script order
-favicon.svg             local pixel-leaf page icon
-screenshot.png          a first-morning capture from the headless check
-css/style.css           responsive HUD and pixel-paper UI
-js/config.js            tuning constants and block IDs
-js/content.js           blocks, items, tools, recipes, quest steps
-js/time.js              day/night clock helpers
-js/world.js             deterministic terrain, caves, ores, trees, serialization
-js/player.js            AABB platforming physics, health, tools hooks
-js/inventory.js         stacking, crafting, tool tiers, quest progress
-js/art.js               procedural pixel textures, icons, player, hollows
-js/audio.js             synthesized Web Audio sound effects and ambience
-js/render.js            layered sky, parallax, world, lighting, day/night
-js/ui.js                HUD, hotbar, backpack, help, pause, toasts
-js/main.js              game loop, input, mining/building, enemies, saves
-tests/                  Node tests for the pure simulation modules
-tools/page_check.py     static file + headless render checks
-tools/browser_check.mjs headless Chrome interaction/save/reload check
-tools/quest_check.mjs   headless full quest, UI, death, and completion check
-```
+- `index.html` — the game shell and all screens.
+- `css/game.css` — pixel interface styling.
+- `js/data.js` — blocks, items, recipes, procedural textures, and synthesized audio.
+- `js/world.js` — seeded terrain, caves, ores, lighting, and save deltas.
+- `js/game.js` — simulation, player, mobs, rendering, UI, and persistence.
 
-The game modules use small UMD wrappers so the same files run in the browser and under Node for tests. No module loader is required.
-
-## Verification
-
-```console
-node --test "tests/**/*.test.js"
-python tools/page_check.py --screenshot artifacts/page-check.png
-node tools/browser_check.mjs
-node tools/quest_check.mjs
-```
-
-The Node suite covers world generation, deterministic saves, crafting and tool gating, quest completion, collision physics, fall damage, and the clock. The Python check verifies the page has no external network references and loads the canvas and ready marker in headless Chrome. The two browser scripts drive the real page through Chrome DevTools: walking, mining, opening the pack, crafting, placing a workbench and lantern, completing the field notes, pausing, dying, respawning, and reloading a saved game. They write screenshots to `artifacts/`.
-
-No game feature requires running the test tools, a server, or a package manager.
+All art, sound, and world data are generated locally in the browser. There are no
+external assets or dependencies.

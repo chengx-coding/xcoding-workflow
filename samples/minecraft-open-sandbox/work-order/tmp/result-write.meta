@@ -1,6 +1,0 @@
-metadata.completion.required_fields=["summary","validation"]
-metadata.completion.artifacts.min=1
-metadata.completion.artifacts.max=1
-metadata.completion.artifacts.path=literal:.xcoding/work-orders/20261102-1550-open-sandbox-xc-047/result.md
-metadata.artifact.audience=internal
-metadata.artifact.content_language=en

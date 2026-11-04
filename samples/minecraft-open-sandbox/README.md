@@ -33,9 +33,10 @@ and the new standard score what the agent actually chooses.
 | `baseline-prompt.md` | The same prompt, for the one-shot condition |
 | `xc-runner.md` | Process-only instructions for the XC condition |
 | `seed/` | Shared starter project |
-| `baseline/` | One-shot result (populated after the run) |
 | `project/` | XC result (populated after the run) |
 | `evaluation/` | New open-sandbox standard, profile, score sheet and blind review |
+| `baseline/` | Same-run one-shot artifact (0.4.17 Docker A) |
+| `work-order/` | 0.4.17 Docker XC managed work order |
 | `media/` | Screenshots |
 
 ## Result
@@ -70,13 +71,16 @@ public artifact; older projects are archived privately.
 
 ![Emberblock inventory](media/emberblock-docker-inventory.png)
 
+![One-shot Blockhaven](media/blockhaven-docker-game.png)
+
 ## Status
 
-`work-order/` is the historical 0.4.7 managed-workflow record; it does not describe the
-Docker-verified 0.4.17 project now in `project/`.
+`work-order/` is the 0.4.17 Docker XC managed record for `project/`; `baseline/` is the same-run
+one-shot artifact used in the blind comparison. Older 0.4.7 records are archived privately.
 
 The runs and scores are recorded after both outputs exist. Do not compare this sample's score with the
 compact `minecraft-sandbox-work-order` score; the prompts and profiles differ.
+
 
 
 

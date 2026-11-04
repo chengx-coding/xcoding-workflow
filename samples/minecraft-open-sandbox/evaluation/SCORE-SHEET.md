@@ -1,7 +1,6 @@
 ﻿# Score sheet 鈥?open sandbox sample
 
-Standard: **M2D-SES-OSS v1.2**. Blind evaluator; identity revealed after scoring:
-**A = one-shot (MOSSWILD), B = XC 0.4.4 (Cubewood)**.
+Standard: **M2D-SES-OSS v1.3** (real-pointer interaction truth, blind pairwise art).
 
 ## Current Docker-verified artifact 鈥?0.4.17 Emberblock
 
@@ -75,6 +74,8 @@ attempt was rolled back because it dropped crafting/survival/progression (35 tes
 
 ## Evidence
 
+- 0.4.17 Docker blind report: [`blind-evaluation-docker-0.4.17.md`](blind-evaluation-docker-0.4.17.md)
+- 0.4.17: 25/25 tests; page_check pass; 34/34 trusted-input play probe; one-shot tests/page fail
 - 0.4.7 blind report: [`blind-evaluation-0.4.7.md`](blind-evaluation-0.4.7.md)
 - Emberdeep: 80/80 tests; real-pointer 10/10; screenshots
   [`../media/xc-emberdeep-day.png`](../media/xc-emberdeep-day.png),

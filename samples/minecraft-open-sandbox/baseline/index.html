@@ -1,272 +1,286 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#111b16">
-  <meta name="description" content="Mosswild is a tiny offline 2D block-world sandbox. Gather, craft, build, and kindle the old lantern.">
-  <title>Mosswild — A Tiny Block World</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0b0e13">
+  <meta name="description" content="Blockhaven is a small, offline 2D block sandbox. Mine, build, craft, and survive the night.">
+  <title>Blockhaven — a tiny block world</title>
+  <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
-  <noscript>
-    <div class="noscript-card">Mosswild is an interactive canvas game and needs JavaScript enabled. Enable JavaScript for this local page, then reload it.</div>
-  </noscript>
-  <main id="app" data-mode="loading">
-    <canvas id="game" width="1280" height="760" tabindex="0" aria-label="Mosswild: a side-view block world. Move with A and D, jump with Space, mine with the left mouse button, and place blocks with the right mouse button."></canvas>
-    <div class="screen-shade" aria-hidden="true"></div>
-    <div id="damage-flash" class="damage-flash" aria-hidden="true"></div>
+  <div id="game">
+    <canvas id="world" aria-label="Blockhaven game world"></canvas>
 
-    <div id="game-hud" class="game-hud">
-      <header class="topbar">
-        <div id="hud" class="brand-card" aria-live="polite">
-          <div class="brand-mark" aria-hidden="true"><span></span><i></i></div>
-          <div class="brand-copy">
-            <h1>MOSSWILD</h1>
-            <p id="world-subtitle">a pocket-world tale</p>
+    <div id="boot" class="screen boot">
+      <div class="boot-mark">B</div>
+      <div class="boot-text">Shaping the world…</div>
+    </div>
+
+    <!-- Title -->
+    <div id="titleScreen" class="screen hidden">
+      <div class="title-vignette"></div>
+      <div class="title-top">
+        <span class="title-kicker">A TINY WORLD OF BLOCKS</span>
+        <span class="version-chip" id="versionChip">OFFLINE · v1.0</span>
+      </div>
+      <div class="title-main">
+        <div class="logo-lockup">
+          <div class="logo-cube" aria-hidden="true">
+            <div class="cube-face cube-top"></div>
+            <div class="cube-face cube-left"></div>
+            <div class="cube-face cube-right"></div>
           </div>
+          <h1 class="game-logo">BLOCK<span>HAVEN</span></h1>
+          <p class="game-sub">Dig. Build. Survive the night.</p>
         </div>
-
-        <div class="clock-card" aria-label="World time">
-          <div class="clock-symbol" id="clock-symbol" aria-hidden="true"><span></span></div>
-          <div class="clock-copy">
-            <strong id="clock-time">09:30</strong>
-            <span id="clock-day">Day 1 · Morning</span>
-          </div>
-          <div class="clock-track" aria-hidden="true"><i id="clock-fill"></i><b id="clock-marker"></b></div>
-        </div>
-
-        <div class="top-actions" aria-label="Game menu">
-          <button id="button-help" class="pill-button" type="button" title="Controls and survival notes (H)">HELP <kbd>H</kbd></button>
-          <button id="button-sound" class="pill-button" type="button" aria-pressed="true" title="Toggle sound (M)">SOUND</button>
-          <button id="button-fullscreen" class="pill-button icon-only" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen (F)">FULL</button>
-        </div>
-      </header>
-
-      <aside id="quest-card" class="quest-card" aria-label="Field notes">
-        <button id="quest-toggle" class="quest-heading" type="button" aria-expanded="true" aria-controls="quest-body">
-          <span class="eyebrow">FIELD NOTES</span>
-          <span id="quest-count" class="quest-count">01 / 08</span>
-        </button>
-        <div id="quest-body" class="quest-body">
-          <div class="quest-tags">
-            <span class="quest-tag">THE OLD WARD</span>
-            <span id="quest-state" class="quest-state">IN PROGRESS</span>
-          </div>
-          <h2 id="quest-title">Gather oak logs</h2>
-          <p id="quest-hint">Hold left click on a tree trunk. An axe would make it quicker, but hands will do.</p>
-          <div class="quest-progress">
-            <div class="quest-progress-line" aria-hidden="true"><span id="quest-progress-fill"></span></div>
-            <div class="quest-progress-meta">
-              <span id="quest-progress-text">0 / 4 logs</span>
-              <span id="quest-chapter">THE FIRST MORNING</span>
-            </div>
-          </div>
-          <div id="quest-steps" class="quest-steps" aria-hidden="true"></div>
-        </div>
-      </aside>
-
-      <div id="toasts" class="toast-stack" aria-live="polite" aria-atomic="false"></div>
-
-      <aside id="tutorial-card" class="tutorial-card" aria-label="Starter controls">
-        <button id="tutorial-dismiss" class="tutorial-close" type="button" aria-label="Dismiss starter controls">×</button>
-        <div class="tutorial-kicker">A FIRST MORNING</div>
-        <p id="tutorial-copy">Find your feet. The wild is quiet, for now.</p>
-        <div class="key-row tutorial-keys" aria-hidden="true">
-          <span><kbd>A</kbd><kbd>D</kbd> move</span>
-          <span><kbd>SPACE</kbd> jump</span>
-          <span><kbd>LMB</kbd> mine</span>
-          <span><kbd>RMB</kbd> place</span>
-          <span><kbd>E</kbd> pack</span>
-          <span><kbd>H</kbd> guide</span>
-        </div>
-      </aside>
-
-      <div id="target-tooltip" class="target-tooltip" hidden></div>
-
-      <div id="bottom-hud" class="bottom-hud">
-        <div class="vitals-row">
-          <div id="hearts" class="hearts" role="img" aria-label="Health: 10 of 10 hearts"></div>
-          <div id="selected-readout" class="selected-readout">
-            <span id="selected-name">Wooden Pickaxe</span>
-            <span id="selected-meta">70 / 70</span>
-          </div>
-        </div>
-        <div id="hotbar" class="hotbar" role="toolbar" aria-label="Hotbar"></div>
-        <div class="hotbar-help">
-          <span><b>1–9</b> / wheel to choose</span>
-          <span><b>LMB</b> mine</span>
-          <span><b>RMB</b> place</span>
-          <span><b>E</b> pack</span>
+        <nav class="title-menu">
+          <button id="btnContinue" class="btn primary hidden">Continue World</button>
+          <button id="btnPlay" class="btn primary">Play</button>
+          <button id="btnNewWorld" class="btn">New World</button>
+          <button id="btnHowTo" class="btn">How to Play</button>
+          <button id="btnTitleSound" class="btn quiet">Sound: On</button>
+        </nav>
+        <div id="saveCard" class="save-card hidden">
+          <div class="save-card-label">LAST WORLD</div>
+          <div class="save-card-name" id="saveCardName">World</div>
+          <div class="save-card-meta" id="saveCardMeta">Day 1 · 0:00</div>
         </div>
       </div>
-
-      <div class="save-status" aria-live="polite">
-        <div id="status" data-state="booting" title="Page status" aria-hidden="true"></div>
-        <span id="save-text" class="save-text">Starting the world…</span>
+      <div class="title-bottom">
+        <span>A/D move · Space jump · Mouse to mine · E to craft</span>
+        <span>Autosaves locally · No internet required</span>
       </div>
     </div>
 
-    <section id="inventory-overlay" class="overlay" hidden aria-hidden="true">
-      <div class="modal pack-modal" role="dialog" aria-modal="true" aria-labelledby="pack-title">
-        <header class="modal-head">
+    <!-- New world -->
+    <div id="newWorldScreen" class="screen hidden">
+      <div class="window compact">
+        <div class="window-head">
           <div>
-            <p class="eyebrow">FIELD KIT</p>
-            <h2 id="pack-title">Pack &amp; Bench</h2>
+            <div class="eyebrow">BEGIN AGAIN</div>
+            <h2>New World</h2>
           </div>
-          <div class="modal-head-tools">
-            <span id="bench-status" class="bench-status">No workbench nearby</span>
-            <button class="close-button" type="button" data-close-overlay aria-label="Close pack">×</button>
-          </div>
-        </header>
-        <div class="pack-layout">
-          <section class="pack-pane" aria-labelledby="pack-pane-title">
-            <div class="pane-title">
-              <div>
-                <p class="eyebrow">CARRY</p>
-                <h3 id="pack-pane-title">Backpack</h3>
-              </div>
-              <p id="bind-note" class="pane-note">Click a block or tool to bind it to slot 1.</p>
-            </div>
-            <div id="pack-content" class="pack-content"></div>
-          </section>
-          <section class="craft-pane" aria-labelledby="craft-pane-title">
-            <div class="pane-title">
-              <div>
-                <p class="eyebrow">MAKE</p>
-                <h3 id="craft-pane-title">Crafting</h3>
-              </div>
-              <p id="craft-note" class="pane-note">Handcraft is always available. Tools need a workbench within reach.</p>
-            </div>
-            <div id="recipe-list" class="recipe-list"></div>
-          </section>
+          <button class="icon-btn" data-back="title" aria-label="Back">×</button>
         </div>
-        <footer class="modal-foot">
-          <span><kbd>E</kbd> close · <kbd>ESC</kbd> close</span>
-          <span id="pack-total">0 items carried</span>
-        </footer>
-      </div>
-    </section>
+        <div class="window-body">
+          <label class="field-label" for="seedInput">World seed <span>optional</span></label>
+          <input id="seedInput" class="text-input" maxlength="40" autocomplete="off" spellcheck="false" placeholder="e.g. mossy-hills">
+          <p class="field-help">The same seed always grows the same world. Leave it blank for a lucky one.</p>
 
-    <section id="help-overlay" class="overlay" hidden aria-hidden="true">
-      <div class="modal help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
-        <header class="modal-head">
-          <div>
-            <p class="eyebrow">A SMALL SURVIVAL GUIDE</p>
-            <h2 id="help-title">How to wander well</h2>
+          <div class="field-label">Difficulty</div>
+          <div class="segmented" id="difficultyPicker">
+            <button data-difficulty="peaceful">Peaceful</button>
+            <button data-difficulty="normal" class="active">Normal</button>
+            <button data-difficulty="hard">Hard</button>
           </div>
-          <button class="close-button" type="button" data-close-overlay aria-label="Close guide">×</button>
-        </header>
+          <p class="field-help" id="difficultyHelp">Hostile mobs appear after dark. Bring a sword.</p>
+
+          <div id="overwriteNotice" class="warning hidden">Your current saved world will be replaced.</div>
+
+          <div class="window-actions">
+            <button class="btn" data-back="title">Cancel</button>
+            <button id="createWorldBtn" class="btn primary">Create World</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory / crafting -->
+    <div id="inventoryScreen" class="screen hidden">
+      <div class="window inventory-window">
+        <div class="window-head">
+          <div>
+            <div class="eyebrow" id="invEyebrow">SURVIVAL INVENTORY</div>
+            <h2>Pockets &amp; Crafting</h2>
+          </div>
+          <div class="head-actions">
+            <span id="nearTableBadge" class="status-badge off">No table nearby</span>
+            <button class="icon-btn" data-close-inventory aria-label="Close">×</button>
+          </div>
+        </div>
+        <div class="inv-layout">
+          <section class="bag-panel">
+            <div class="section-label"><span>Backpack</span><span class="section-hint">36 slots</span></div>
+            <div id="mainGrid" class="slot-grid main-grid" aria-label="Inventory slots"></div>
+            <div class="section-label hotbar-section-label"><span>Hotbar</span><span class="section-hint">Keys 1–9</span></div>
+            <div id="invHotbar" class="slot-grid hotbar-grid" aria-label="Hotbar slots"></div>
+            <div class="inventory-tips">
+              <span><b>Click</b> move stack</span>
+              <span><b>Right-click</b> split / place one</span>
+              <span><b>Shift-click</b> quick move</span>
+              <span><b>E / Esc</b> close</span>
+            </div>
+          </section>
+          <aside class="craft-panel">
+            <div class="craft-head">
+              <div>
+                <div class="eyebrow">HANDY WORK</div>
+                <h3>Recipes</h3>
+              </div>
+              <span id="recipeCount" class="count-chip">0</span>
+            </div>
+            <div id="recipeList" class="recipe-list"></div>
+            <div class="craft-foot">Click a recipe to craft it, or shift-click to craft as many as you can. Recipes with a <b>table</b> badge need a crafting table nearby.</div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <!-- Furnace -->
+    <div id="furnaceScreen" class="screen hidden">
+      <div class="window compact furnace-window">
+        <div class="window-head">
+          <div>
+            <div class="eyebrow">HOT WORK</div>
+            <h2>Stone Furnace</h2>
+          </div>
+          <button class="icon-btn" data-close-furnace aria-label="Close">×</button>
+        </div>
+        <div class="window-body">
+          <div class="furnace-summary">
+            <div class="furnace-flame" aria-hidden="true">▰</div>
+            <div>
+              <div class="section-label">Fuel in pockets</div>
+              <div id="furnaceFuel" class="fuel-line">0 Coal</div>
+            </div>
+          </div>
+          <div id="furnaceList" class="recipe-list furnace-list"></div>
+          <p class="field-help">Each smelt uses 1 Coal. Coal is found in stone underground.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause -->
+    <div id="pauseScreen" class="screen hidden">
+      <div class="window compact pause-window">
+        <div class="window-head">
+          <div>
+            <div class="eyebrow">TAKE A BREATH</div>
+            <h2>Paused</h2>
+          </div>
+          <span id="pauseSeed" class="seed-chip">seed</span>
+        </div>
+        <div class="window-body">
+          <div class="pause-stats">
+            <div><span>Day</span><b id="pauseDay">1</b></div>
+            <div><span>Depth</span><b id="pauseDepth">Surface</b></div>
+            <div><span>Playtime</span><b id="pausePlaytime">0m</b></div>
+            <div><span>Blocks mined</span><b id="pauseMined">0</b></div>
+            <div><span>Zombies felled</span><b id="pauseZombies">0</b></div>
+            <div><span>Deaths</span><b id="pauseDeaths">0</b></div>
+          </div>
+          <nav class="pause-menu">
+            <button id="btnResume" class="btn primary">Back to World</button>
+            <button id="btnPauseHelp" class="btn">How to Play</button>
+            <button id="btnSaveNow" class="btn">Save Now</button>
+            <div class="button-row">
+              <button id="btnPauseSound" class="btn small">Sound: On</button>
+              <button id="btnFullscreen" class="btn small">Fullscreen</button>
+            </div>
+            <button id="btnQuit" class="btn quiet">Save &amp; Quit to Title</button>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help -->
+    <div id="helpScreen" class="screen hidden">
+      <div class="window help-window">
+        <div class="window-head">
+          <div>
+            <div class="eyebrow">FIELD NOTES</div>
+            <h2>How to Play</h2>
+          </div>
+          <button class="icon-btn" data-back="previous" aria-label="Close">×</button>
+        </div>
         <div class="help-layout">
-          <section class="help-section">
-            <h3>Move</h3>
-            <dl class="control-list">
-              <div><dt><kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd></dt><dd>Walk</dd></div>
-              <div><dt><kbd>SPACE</kbd> / <kbd>W</kbd></dt><dd>Jump</dd></div>
-              <div><dt><kbd>SHIFT</kbd></dt><dd>Sprint</dd></div>
-              <div><dt><kbd>1</kbd>–<kbd>9</kbd> / wheel</dt><dd>Choose hotbar slot</dd></div>
-            </dl>
+          <section class="control-card">
+            <h3>Controls</h3>
+            <div class="control-grid">
+              <div><kbd>A</kbd><kbd>D</kbd><span>Move left / right</span></div>
+              <div><kbd>Space</kbd><kbd>W</kbd><span>Jump</span></div>
+              <div><kbd>Shift</kbd><span>Sprint</span></div>
+              <div><kbd>Mouse</kbd><span>Aim &amp; reach</span></div>
+              <div><kbd>LMB</kbd><span>Mine block / attack</span></div>
+              <div><kbd>RMB</kbd><span>Place block / eat / use</span></div>
+              <div><kbd>E</kbd><span>Inventory &amp; crafting</span></div>
+              <div><kbd>R</kbd><span>Use nearby furnace</span></div>
+              <div><kbd>1–9</kbd><span>Choose hotbar slot</span></div>
+              <div><kbd>Wheel</kbd><span>Cycle hotbar</span></div>
+              <div><kbd>Q</kbd><span>Drop selected item</span></div>
+              <div><kbd>M</kbd><span>Mute sound</span></div>
+              <div><kbd>Esc</kbd><span>Pause / close screen</span></div>
+            </div>
           </section>
-          <section class="help-section">
-            <h3>Shape the world</h3>
-            <dl class="control-list">
-              <div><dt><kbd>LMB</kbd></dt><dd>Mine or attack</dd></div>
-              <div><dt><kbd>RMB</kbd></dt><dd>Place selected block</dd></div>
-              <div><dt><kbd>E</kbd></dt><dd>Pack &amp; crafting</dd></div>
-              <div><dt><kbd>M</kbd> / <kbd>F</kbd></dt><dd>Sound / fullscreen</dd></div>
-              <div><dt><kbd>ESC</kbd></dt><dd>Pause and save</dd></div>
-            </dl>
+          <section class="guide-card">
+            <h3>Your first day</h3>
+            <ol class="guide-list">
+              <li><b>Punch a tree.</b> Hold left-click on a trunk until it pops.</li>
+              <li><b>Open your pockets.</b> Press <kbd>E</kbd> and craft planks from logs, then sticks, then a crafting table.</li>
+              <li><b>Make tools.</b> A wooden pickaxe needs 3 planks and 2 sticks. Place the table to unlock better recipes nearby.</li>
+              <li><b>Dig down.</b> Coal feeds torches. Iron makes stronger tools and swords.</li>
+              <li><b>Build a shelter.</b> Place blocks with right-click. Zombies roam after sunset.</li>
+              <li><b>Eat and rest.</b> Apples and cooked pork fill your hunger. Stand still to heal when well fed.</li>
+            </ol>
           </section>
-          <section class="help-section help-goal">
-            <h3>The old ward</h3>
-            <p>Gather wood, build a workbench, and follow the field notes in the top right. Coal hides in the shallow dark. Iron waits deeper and needs a stone pickaxe. The old Warden's Lantern is the last step.</p>
-            <p class="muted">Torches keep the hollows at bay. Placed blocks stay exactly where you leave them.</p>
-          </section>
-          <section class="help-section help-small">
-            <h3>Field notes</h3>
-            <ul class="dot-list">
-              <li>Tools wear out but stone and iron tiers last much longer.</li>
-              <li>Choose the right tool: a pickaxe for rock, an axe for wood, a sword for trouble.</li>
-              <li>Right-click a solid block to place your block on top of it.</li>
-              <li>Progress saves on this browser automatically and when you pause.</li>
-              <li>No internet, install, or account is needed. Everything is generated locally.</li>
+          <section class="tips-card">
+            <h3>Good to know</h3>
+            <ul class="tip-list">
+              <li>Your world autosaves every few seconds and when you pause or leave.</li>
+              <li>Torches light caves. Monsters spawn in the dark—light your home.</li>
+              <li>Ores need better pickaxes: stone for iron, iron for gold and diamond.</li>
+              <li>Hold <kbd>Shift</kbd> while using a table or furnace to place a block instead.</li>
+              <li>Use the recipe cards in your inventory; ingredients are pulled automatically.</li>
             </ul>
           </section>
         </div>
-        <footer class="modal-foot">
-          <span>Inspired by a certain very big block game. Built as a tiny, offline homage.</span>
-          <span><kbd>H</kbd> close</span>
-        </footer>
-      </div>
-    </section>
-
-    <section id="pause-overlay" class="overlay" hidden aria-hidden="true">
-      <div class="modal pause-modal" role="dialog" aria-modal="true" aria-labelledby="pause-title">
-        <p class="eyebrow">A MOMENT'S REST</p>
-        <h2 id="pause-title">Paused</h2>
-        <p class="pause-lede">The valley holds its breath. Your lantern is still warm.</p>
-        <div class="pause-stats">
-          <div><span>Day</span><strong id="pause-day">1</strong></div>
-          <div><span>Played</span><strong id="pause-time">0m</strong></div>
-          <div><span>Hollows</span><strong id="pause-hollows">0</strong></div>
-          <div><span>Blocks placed</span><strong id="pause-blocks">0</strong></div>
-        </div>
-        <div class="pause-buttons">
-          <button id="button-resume" class="primary-button" type="button">Resume wandering</button>
-          <button id="button-pause-help" class="secondary-button" type="button">Controls &amp; guide</button>
-          <button id="button-save" class="secondary-button" type="button">Save now</button>
-          <button id="button-new-world" class="danger-button" type="button">New world</button>
-        </div>
-        <div class="pause-meta">
-          <span id="pause-seed">Seed 0000</span>
-          <span id="pause-save-state">Autosaves every 10 seconds</span>
+        <div class="help-foot">
+          <span>Everything is generated and saved on this device.</span>
+          <button class="btn small" data-back="previous">Got it</button>
         </div>
       </div>
-    </section>
-
-    <section id="death-overlay" class="overlay" hidden aria-hidden="true">
-      <div class="modal death-modal" role="dialog" aria-modal="true" aria-labelledby="death-title">
-        <p class="eyebrow">THE WILD KEEPS ITS OWN</p>
-        <h2 id="death-title">You fell.</h2>
-        <p id="death-copy">The hollows got the better of you. Your pack is safe; the morning will give you another chance.</p>
-        <button id="button-respawn" class="primary-button" type="button">Wake at camp</button>
-        <p class="death-hint">Press <kbd>R</kbd> to wake.</p>
-      </div>
-    </section>
-
-    <section id="done-overlay" class="overlay" hidden aria-hidden="true">
-      <div class="modal done-modal" role="dialog" aria-modal="true" aria-labelledby="done-title">
-        <div class="done-lantern" aria-hidden="true"><span></span></div>
-        <p class="eyebrow">THE WARD IS LIT</p>
-        <h2 id="done-title">The wild remembers.</h2>
-        <p>A small light now holds against the dark. The hollows will keep their distance, and the valley feels a little more like a home.</p>
-        <div class="done-stats">
-          <div><span>Days wandered</span><strong id="done-days">1</strong></div>
-          <div><span>Hollows met</span><strong id="done-hollows">0</strong></div>
-          <div><span>Blocks placed</span><strong id="done-blocks">0</strong></div>
-        </div>
-        <button id="button-continue" class="primary-button" type="button">Keep wandering</button>
-        <p class="done-hint">Your world stays open. Build, dig, or chase the glint of amberstone.</p>
-      </div>
-    </section>
-
-    <div id="fatal-error" class="fatal-error" hidden role="alert">
-      <strong>The world could not start.</strong>
-      <span id="fatal-error-copy"></span>
     </div>
-  </main>
 
-  <script src="js/config.js"></script>
-  <script src="js/content.js"></script>
-  <script src="js/time.js"></script>
+    <!-- Confirm -->
+    <div id="confirmScreen" class="screen hidden">
+      <div class="window tiny">
+        <div class="window-head">
+          <div><div class="eyebrow">ARE YOU SURE?</div><h2 id="confirmTitle">Leave world?</h2></div>
+        </div>
+        <div class="window-body">
+          <p id="confirmBody" class="confirm-body">Any unsaved progress will be lost.</p>
+          <div class="window-actions">
+            <button id="confirmNo" class="btn">Cancel</button>
+            <button id="confirmYes" class="btn danger">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Death -->
+    <div id="deathScreen" class="screen hidden death-screen">
+      <div class="window tiny">
+        <div class="window-head">
+          <div><div class="eyebrow">THE WORLD GOES ON</div><h2>You blacked out.</h2></div>
+        </div>
+        <div class="window-body">
+          <p class="confirm-body" id="deathBody">You wake up back at your spawn point. Your pockets are safe.</p>
+          <div class="window-actions">
+            <button id="btnDeathQuit" class="btn">Quit to Title</button>
+            <button id="btnRespawn" class="btn primary">Respawn</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="uiToast" class="ui-toast hidden"></div>
+    <div id="itemCursor" class="item-cursor hidden"></div>
+    <div id="itemTooltip" class="item-tooltip hidden"></div>
+  </div>
+
+  <script src="js/data.js"></script>
   <script src="js/world.js"></script>
-  <script src="js/player.js"></script>
-  <script src="js/inventory.js"></script>
-  <script src="js/art.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/render.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/game.js"></script>
 </body>
 </html>

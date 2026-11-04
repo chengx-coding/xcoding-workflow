@@ -1,652 +1,477 @@
-(function (root, factory) {
-  if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"), require("./content.js"));
-  } else {
-    root.MosswildWorld = factory(root.MosswildConfig, root.MosswildContent);
-  }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, CONTENT) {
+/* ============================================================
+   BLOCKHAVEN — procedural world, lighting and serialization
+   ============================================================ */
+(function () {
   "use strict";
+  const BH = window.BH;
+  const T = BH.T;
+  const W = BH.W, H = BH.H;
 
-  if (!CONFIG || !CONTENT) {
-    throw new Error("MosswildConfig and MosswildContent are required before MosswildWorld");
-  }
-
-  const B = CONFIG.block;
-
-  function mulberry32(seed) {
-    let state = seed >>> 0;
-    return function random() {
-      state += 0x6d2b79f5;
-      let value = state;
-      value = Math.imul(value ^ (value >>> 15), value | 1);
-      value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-      return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-
-  function hash2(seed, x, y) {
-    let value = (seed ^ Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263)) >>> 0;
-    value = Math.imul(value ^ (value >>> 13), 1274126177);
-    return (value ^ (value >>> 16)) >>> 0;
-  }
-
-  function smoothstep(edge0, edge1, value) {
-    const t = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
-    return t * t * (3 - 2 * t);
-  }
-
-  function valueNoise1(seed, x) {
-    const lower = Math.floor(x);
-    const fraction = x - lower;
-    const a = (hash2(seed, lower, 17) / 4294967295);
-    const b = (hash2(seed, lower + 1, 17) / 4294967295);
-    const eased = fraction * fraction * (3 - 2 * fraction);
-    return a + (b - a) * eased;
-  }
-
-  function fbm1(seed, x) {
-    return valueNoise1(seed, x) * 0.56
-      + valueNoise1(seed ^ 0xa5a5a5, x * 2.03) * 0.29
-      + valueNoise1(seed ^ 0x51ed27, x * 4.07) * 0.15;
-  }
-
-  function indexOf(world, x, y) {
-    if (!Number.isInteger(x) || !Number.isInteger(y)) {
-      return -1;
+  class World {
+    constructor(seedString) {
+      this.seedString = String(seedString || "blockhaven");
+      this.seed = BH.hashString(this.seedString);
+      this.tiles = new Uint8Array(W * H);
+      this.original = new Uint8Array(W * H);
+      this.sky = new Uint8Array(W * H);
+      this.blockLight = new Uint8Array(W * H);
+      this.heights = new Uint8Array(W);
+      this.biomes = new Uint8Array(W);
+      this.changes = new Map();
+      this.lightDirty = true;
+      this.spawnX = W / 2 + 0.5;
+      this.spawnY = 80;
+      this.generate();
+      this.recomputeLight();
     }
-    if (x < 0 || y < 0 || x >= world.width || y >= world.height) {
-      return -1;
+
+    idx(x, y) { return y * W + x; }
+
+    get(x, y) {
+      x |= 0; y |= 0;
+      if (x < 0 || x >= W) return T.BEDROCK;
+      if (y < 0) return T.AIR;
+      if (y >= H) return T.BEDROCK;
+      return this.tiles[y * W + x];
     }
-    return y * world.width + x;
-  }
 
-  function getBlock(world, x, y) {
-    const index = indexOf(world, x, y);
-    return index < 0 ? null : world.data[index];
-  }
+    getDef(x, y) { return BH.TILE_DEFS[this.get(x, y)] || BH.TILE_DEFS[0]; }
 
-  function setBlock(world, x, y, block) {
-    const index = indexOf(world, x, y);
-    if (index < 0) {
-      return false;
+    isSolid(x, y) {
+      const d = BH.TILE_DEFS[this.get(x, y)];
+      return !!(d && d.solid);
     }
-    world.data[index] = block;
-    world.revision = (world.revision || 0) + 1;
-    return true;
-  }
 
-  function isAir(world, x, y) {
-    return getBlock(world, x, y) === B.AIR;
-  }
+    isOpaque(x, y) {
+      const d = BH.TILE_DEFS[this.get(x, y)];
+      return !!(d && d.opacity >= 15);
+    }
 
-  function isSolid(world, x, y) {
-    if (x < 0 || x >= world.width || y >= world.height) {
+    set(x, y, id, record) {
+      x |= 0; y |= 0;
+      if (x < 0 || x >= W || y < 0 || y >= H) return false;
+      const i = y * W + x;
+      if (this.tiles[i] === id) return false;
+      this.tiles[i] = id;
+      if (record !== false) {
+        if (id === this.original[i]) this.changes.delete(i);
+        else this.changes.set(i, id);
+      }
+      this.lightDirty = true;
       return true;
     }
-    if (y < 0) {
-      return false;
-    }
-    const def = CONTENT.getBlockDef(getBlock(world, x, y));
-    return Boolean(def.solid);
-  }
 
-  function makeSurface(width) {
-    return new Int16Array(width);
-  }
-
-  function generateHeights(seed) {
-    const width = CONFIG.worldWidth;
-    const heights = makeSurface(width);
-    const center = Math.floor(width / 2);
-    const hillPhase = (seed % 1000) / 170;
-
-    for (let x = 0; x < width; x += 1) {
-      const broad = (fbm1(seed ^ 0x3f19a7, x * 0.021 + 4.2) - 0.5) * 16;
-      const rolling = (valueNoise1(seed ^ 0x7bf31, x * 0.061 + 1.8) - 0.5) * 5.6;
-      const ripple = Math.sin(x * 0.14 + hillPhase) * 0.7;
-      let height = 40 + broad + rolling + ripple;
-
-      // A gentler shelf around spawn, without making the valley perfectly flat.
-      const distance = Math.abs(x - center);
-      const shelf = smoothstep(5, 24, distance);
-      const spawnHeight = 40 + Math.sin(x * 0.09) * 0.25;
-      height = spawnHeight * (1 - shelf) + height * shelf;
-
-      heights[x] = Math.max(27, Math.min(54, Math.round(height)));
+    setOriginal(x, y, id) {
+      const i = y * W + x;
+      this.tiles[i] = id;
+      this.original[i] = id;
     }
 
-    // A little clearing so the player always has room to breathe and build.
-    for (let x = center - 6; x <= center + 6; x += 1) {
-      if (x >= 0 && x < width) {
-        heights[x] = 40;
+    biomeAt(x) {
+      x = BH.clamp(Math.floor(x), 0, W - 1);
+      return ["Meadow", "Forest", "Desert"][this.biomes[x]] || "Meadow";
+    }
+
+    /** Highest solid terrain tile in a column (cached generation height). */
+    groundAt(x) {
+      x = BH.clamp(Math.floor(x), 0, W - 1);
+      return this.heights[x];
+    }
+
+    surfaceForSpawn(x) {
+      x = BH.clamp(Math.floor(x), 0, W - 1);
+      for (let y = 0; y < H; y++) {
+        if (this.isSolid(x, y)) return y;
       }
+      return 80;
     }
-    return heights;
-  }
 
-  function fillTerrain(world, heights, seed) {
-    const width = world.width;
-    const height = world.height;
-    const dirtRandom = mulberry32(seed ^ 0x88c1a3);
+    // ---------------- generation ----------------
+    generate() {
+      const seed = this.seed;
+      const rng = BH.mulberry32(seed ^ 0x9e3779b9);
 
-    for (let x = 0; x < width; x += 1) {
-      const surface = heights[x];
-      const dirtDepth = 4 + Math.floor(dirtRandom() * 3);
-      for (let y = surface; y < height; y += 1) {
-        let block = B.STONE;
-        if (y >= height - 2) {
-          block = B.BEDROCK;
-        } else if (y === surface) {
-          block = B.GRASS;
-        } else if (y < surface + dirtDepth) {
-          block = B.DIRT;
-        }
-        world.data[y * width + x] = block;
-      }
-    }
-  }
+      // 1. Continent shape and topsoil
+      for (let x = 0; x < W; x++) {
+        const broad = BH.noise1(x * 0.006, seed + 11);
+        const mid = BH.noise1(x * 0.036, seed + 29);
+        const detail = BH.noise1(x * 0.135, seed + 47);
+        const ridge = BH.smoothstep(0.58, 0.84, BH.noise1(x * 0.0042, seed + 61));
+        const phase = (seed % 10000) / 10000 * Math.PI * 2;
+        const desertN = 0.5 + Math.sin(x * 0.012 + phase) * 0.26 +
+                        (BH.noise1(x * 0.028, seed + 131) - 0.5) * 0.28;
+        const forestN = 0.5 + Math.sin(x * 0.019 + phase * 1.7 + 1.3) * 0.20 +
+                        (BH.noise1(x * 0.035, seed + 211) - 0.5) * 0.26;
 
-  function carveCave(world, startX, startY, steps, rng) {
-    let x = startX;
-    let y = startY;
-    let direction = rng() < 0.5 ? -1 : 1;
-    const width = world.width;
-    const height = world.height;
+        let surface = Math.round(86 - (broad - 0.5) * 44 - (mid - 0.5) * 17 - (detail - 0.5) * 4.5 - ridge * 18);
+        surface = BH.clamp(surface, 40, 112);
 
-    for (let step = 0; step < steps; step += 1) {
-      const surface = world.surface[Math.max(0, Math.min(width - 1, x))] || 40;
-      const minY = Math.max(4, surface + 4);
-      if (y >= minY && y < height - 3) {
-        const tall = rng() < 0.32 ? 1 : 0;
-        for (let dy = -1; dy <= tall; dy += 1) {
-          for (let dx = -1; dx <= 1; dx += 1) {
-            if (dx === -1 && dy === tall && rng() < 0.6) {
-              continue;
-            }
-            const px = x + dx;
-            const py = y + dy;
-            if (px <= 1 || px >= width - 2 || py <= 1 || py >= height - 2) {
-              continue;
-            }
-            const block = getBlock(world, px, py);
-            if (block === B.STONE || block === B.DIRT || block === B.GRASS) {
-              setBlock(world, px, py, B.AIR);
-            } else if (block === B.COAL_ORE || block === B.IRON_ORE || block === B.GEM_ORE) {
-              // Caves keep their ore glints unless carving opens a fresh face.
-              if (rng() < 0.2) {
-                setBlock(world, px, py, B.AIR);
-              }
+        const desert = desertN > 0.61;
+        let biome = desert ? 2 : (forestN > 0.515 ? 1 : 0);
+        if (surface < 59 && !desert) biome = 1;
+        this.biomes[x] = biome;
+        this.heights[x] = surface;
+
+        for (let y = 0; y < H; y++) {
+          let id = T.AIR;
+          if (y >= surface) {
+            const depth = y - surface;
+            if (y >= H - 3 || (y >= H - 2 && BH.rand2(x, y, seed + 5) > 0.42)) {
+              id = T.BEDROCK;
+            } else if (depth === 0) {
+              id = desert ? T.SAND : T.GRASS;
+            } else if (depth < 5) {
+              id = desert ? T.SAND : T.DIRT;
+            } else if (depth < 8 && desert) {
+              id = T.SANDSTONE;
+            } else {
+              id = T.STONE;
             }
           }
+          this.tiles[y * W + x] = id;
         }
       }
 
-      x += direction;
-      if (x <= 3 || x >= width - 3) {
-        direction *= -1;
-      }
-      if (rng() < 0.13) {
-        direction *= -1;
-      }
-      if (rng() < 0.22) {
-        y += rng() < 0.5 ? -1 : 1;
-      }
-      if (rng() < 0.055) {
-        y += rng() < 0.5 ? -1 : 1;
-      }
-      y = Math.max(surface + 4, Math.min(height - 5, y));
-    }
-  }
-
-  function carveRoundRoom(world, centerX, centerY, radiusX, radiusY) {
-    for (let dy = -radiusY; dy <= radiusY; dy += 1) {
-      for (let dx = -radiusX; dx <= radiusX; dx += 1) {
-        if ((dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY) > 1) {
-          continue;
-        }
-        const x = centerX + dx;
-        const y = centerY + dy;
-        if (x <= 1 || x >= world.width - 2 || y <= 1 || y >= world.height - 2) {
-          continue;
-        }
-        const surface = world.surface[x] || 40;
-        if (y < surface + 4) {
-          continue;
-        }
-        const block = getBlock(world, x, y);
-        if (block !== null && !CONTENT.getBlockDef(block).unbreakable) {
-          setBlock(world, x, y, B.AIR);
-        }
-      }
-    }
-  }
-
-  function carveSpawnStair(world, heights, seed) {
-    const center = Math.floor(world.width / 2);
-    const startX = center + 8;
-    const startSurface = heights[Math.max(0, Math.min(world.width - 1, startX))] || 40;
-    const rng = mulberry32(seed ^ 0x2b16af);
-    const carved = [];
-
-    for (let step = 0; step < 44; step += 1) {
-      const x = startX + step;
-      if (x >= world.width - 2) {
-        break;
-      }
-      const floorY = startSurface + Math.floor(step / 2);
-      for (let y = floorY - 1; y >= floorY - 3; y -= 1) {
-        const block = getBlock(world, x, y);
-        if (block !== null && !CONTENT.getBlockDef(block).unbreakable) {
-          setBlock(world, x, y, B.AIR);
-          carved.push({ x, y });
-        }
-      }
-      // Widen the stair a little at the mouth so it reads as an invitation.
-      if (step < 6) {
-        const side = step % 2 === 0 ? -1 : 1;
-        const px = startX + step + side;
-        if (px > 0 && px < world.width) {
-          setBlock(world, px, floorY - 1, B.AIR);
-          setBlock(world, px, floorY - 2, B.AIR);
-        }
-      }
-      if (rng() < 0.16) {
-        // Store a few ledge blocks near the stair for visual interest.
-        const ledgeX = x + 1;
-        if (ledgeX < world.width - 1) {
-          setBlock(world, ledgeX, floorY, B.STONE);
-        }
-      }
-    }
-
-    return { startX, carved };
-  }
-
-  function carveCaves(world, seed) {
-    const rng = mulberry32(seed ^ 0x493a2d);
-    const count = 16;
-    for (let i = 0; i < count; i += 1) {
-      const x = 10 + Math.floor(rng() * (world.width - 20));
-      const surface = world.surface[x] || 40;
-      const depth = 6 + Math.floor(rng() * 28);
-      const y = Math.min(world.height - 7, surface + depth);
-      const steps = 34 + Math.floor(rng() * 74);
-      carveCave(world, x, y, steps, rng);
-    }
-    for (let i = 0; i < 4; i += 1) {
-      const x = 20 + Math.floor(rng() * (world.width - 40));
-      const surface = world.surface[x] || 40;
-      const y = Math.min(world.height - 8, surface + 18 + Math.floor(rng() * 24));
-      carveRoundRoom(world, x, y, 3 + Math.floor(rng() * 3), 2 + Math.floor(rng() * 2));
-    }
-  }
-
-  function canPlaceOre(world, x, y) {
-    if (x < 2 || x >= world.width - 2 || y < 2 || y >= world.height - 3) {
-      return false;
-    }
-    const surface = world.surface[x] || 40;
-    return y > surface + 2 && getBlock(world, x, y) === B.STONE;
-  }
-
-  function placeOreCluster(world, x, y, blockId, size, rng) {
-    let placed = 0;
-    for (let attempt = 0; attempt < size * 5 && placed < size; attempt += 1) {
-      const radius = 1;
-      const px = x + Math.floor(rng() * (radius * 2 + 1)) - radius;
-      const py = y + Math.floor(rng() * (radius * 2 + 1)) - radius;
-      if (canPlaceOre(world, px, py)) {
-        setBlock(world, px, py, blockId);
-        placed += 1;
-      }
-    }
-    return placed;
-  }
-
-  function addOres(world, seed) {
-    const rng = mulberry32(seed ^ 0x7faa19);
-    const specs = [
-      { block: B.COAL_ORE, clusters: 76, minDepth: 4, depthRange: 26, minSize: 2, maxSize: 5 },
-      { block: B.IRON_ORE, clusters: 58, minDepth: 10, depthRange: 34, minSize: 2, maxSize: 4 },
-      { block: B.GEM_ORE, clusters: 24, minDepth: 23, depthRange: 38, minSize: 1, maxSize: 3 }
-    ];
-
-    specs.forEach(function (spec) {
-      for (let i = 0; i < spec.clusters; i += 1) {
-        const x = 6 + Math.floor(rng() * (world.width - 12));
-        const surface = world.surface[x] || 40;
-        const depth = spec.minDepth + Math.floor(rng() * spec.depthRange);
-        const y = surface + depth;
-        if (y >= world.height - 4) {
-          continue;
-        }
-        const size = spec.minSize + Math.floor(rng() * (spec.maxSize - spec.minSize + 1));
-        placeOreCluster(world, x, y, spec.block, size, rng);
-      }
-    });
-
-    // A visible coal glint near the bottom of the spawn stair so the first
-    // descent has a clear reward and a hint of what waits below.
-    const stairFloor = (world.surface[Math.floor(world.width / 2) + 10] || 40) + 6;
-    const coalX = Math.floor(world.width / 2) + 23;
-    if (canPlaceOre(world, coalX, stairFloor + 2)) {
-      setBlock(world, coalX, stairFloor + 2, B.COAL_ORE);
-      if (canPlaceOre(world, coalX + 1, stairFloor + 2)) {
-        setBlock(world, coalX + 1, stairFloor + 2, B.COAL_ORE);
-      }
-      if (canPlaceOre(world, coalX + 1, stairFloor + 1)) {
-        setBlock(world, coalX + 1, stairFloor + 1, B.COAL_ORE);
-      }
-    }
-  }
-
-  function addTree(world, x, seed, style, rng) {
-    if (x < 3 || x >= world.width - 3) {
-      return false;
-    }
-    const surface = world.surface[x];
-    if (getBlock(world, x, surface) !== B.GRASS || getBlock(world, x, surface - 1) !== B.AIR) {
-      return false;
-    }
-    // A tree needs two quiet rows under it and a little shoulder room.
-    for (let dx = -1; dx <= 1; dx += 1) {
-      const sx = x + dx;
-      if (getBlock(world, sx, world.surface[sx] || 40) !== B.GRASS) {
-        return false;
-      }
-    }
-
-    const trunkHeight = style === "pine"
-      ? 7 + Math.floor(rng() * 3)
-      : 4 + Math.floor(rng() * 3);
-    const topY = surface - trunkHeight;
-
-    for (let y = surface - 1; y >= topY; y -= 1) {
-      if (y < 2) {
-        return false;
-      }
-    }
-
-    for (let y = surface - 1; y >= topY; y -= 1) {
-      setBlock(world, x, y, B.LOG);
-    }
-
-    if (style === "pine") {
-      const layers = 4;
-      for (let layer = 0; layer < layers; layer += 1) {
-        const y = topY + layer - 1;
-        const radius = Math.max(1, 3 - layer);
-        for (let dx = -radius; dx <= radius; dx += 1) {
-          if (dx === 0 && layer < layers - 1 && rng() < 0.35) {
-            continue;
+      // 2. Caves — soft noise chambers with a few long horizontal drafts
+      for (let x = 1; x < W - 1; x++) {
+        const surf = this.heights[x];
+        for (let y = surf + 4; y < H - 4; y++) {
+          if (this.tiles[y * W + x] === T.BEDROCK) continue;
+          const depth = y - surf;
+          const chamber = BH.fbm2(x * 0.045, y * 0.072, seed + 301, 3);
+          const draft = Math.abs(BH.noise2(x * 0.016, y * 0.042, seed + 377) - 0.5);
+          const deep = BH.clamp((depth - 35) / 100, 0, 0.12);
+          const threshold = 0.625 - deep;
+          if (chamber > threshold || (depth > 16 && draft < 0.018 && chamber > 0.48)) {
+            this.tiles[y * W + x] = T.AIR;
           }
-          for (let dy = 0; dy < 2; dy += 1) {
-            const px = x + dx;
-            const py = y + dy;
-            if (getBlock(world, px, py) === B.AIR) {
-              setBlock(world, px, py, B.LEAVES);
+        }
+      }
+
+      // 3. Ore veins
+      this.generateVeins(rng, seed);
+
+      // 4. Gravel pockets and little surface boulders
+      for (let i = 0; i < 90; i++) {
+        const x = 4 + Math.floor(rng() * (W - 8));
+        const surf = this.heights[x];
+        const y = surf + 3 + Math.floor(rng() * Math.min(48, H - surf - 8));
+        this.blob(x, y, 1 + Math.floor(rng() * 2), T.GRAVEL, rng, T.STONE, T.DIRT);
+      }
+
+      // 5. Trees and ground cover
+      this.plantTrees(seed, rng);
+      this.plantCover(seed, rng);
+      this.plantDesert(seed, rng);
+
+      // 6. Pick a friendly spawn before the trees at the very center wrap it up
+      let bestX = W >> 1;
+      let bestScore = Infinity;
+      for (let x = 16; x < W - 16; x++) {
+        if (this.biomes[x] === 2) continue;
+        if (this.isSolid(x, this.heights[x] - 1)) continue;
+        let slope = 0;
+        for (let k = -2; k <= 2; k++) {
+          slope += Math.abs(this.heights[x + k] - this.heights[x]);
+          if (k !== 0 && this.isSolid(x + k, this.heights[x + k] - 1)) slope += 7;
+        }
+        const score = slope + Math.abs(x - (W >> 1)) * 0.055;
+        if (score < bestScore) { bestScore = score; bestX = x; }
+      }
+      if (!Number.isFinite(bestScore) || bestScore > 200) {
+        bestX = W >> 1;
+        // A world with an unlucky all-desert roll still gets an oasis to start in.
+        for (let x = bestX - 3; x <= bestX + 3; x++) {
+          const gy = this.heights[x];
+          this.tiles[gy * W + x] = T.GRASS;
+          this.tiles[(gy - 1) * W + x] = T.AIR;
+          this.tiles[(gy - 2) * W + x] = T.AIR;
+        }
+      }
+      this.ensureSpawnTrees(bestX, rng);
+      this.spawnX = bestX + 0.5;
+      this.spawnY = this.heights[bestX];
+      // Clear only the spawn column's headroom (never a full clearing), so trees
+      // and canopies around the start stay natural instead of being sliced off.
+      for (let y = Math.max(0, this.spawnY - 4); y < this.spawnY; y++) {
+        this.tiles[y * W + bestX] = T.AIR;
+      }
+
+      // 7. border columns keep the camera inside the world
+      for (const x of [0, 1, W - 2, W - 1]) {
+        for (let y = this.heights[x] - 1; y < H; y++) {
+          this.tiles[y * W + x] = T.BEDROCK;
+        }
+      }
+
+      this.original.set(this.tiles);
+      this.changes.clear();
+      this.lightDirty = true;
+    }
+
+    generateVeins(rng, seed) {
+      const veins = [
+        { tile: T.COAL_ORE, count: 340, min: 6, max: 78, size: [3, 7] },
+        { tile: T.IRON_ORE, count: 230, min: 12, max: 120, size: [2, 6] },
+        { tile: T.GOLD_ORE, count: 75, min: 42, max: 155, size: [2, 5] },
+        { tile: T.DIAMOND_ORE, count: 32, min: 76, max: 178, size: [1, 4] }
+      ];
+      for (const v of veins) {
+        for (let n = 0; n < v.count; n++) {
+          let x = 3 + Math.floor(rng() * (W - 6));
+          let y = v.min + Math.floor(rng() * (v.max - v.min));
+          const steps = v.size[0] + Math.floor(rng() * (v.size[1] - v.size[0] + 1));
+          for (let s = 0; s < steps; s++) {
+            if (x > 2 && x < W - 3 && y > 1 && y < H - 4) {
+              const i = y * W + x;
+              if (this.tiles[i] === T.STONE) this.tiles[i] = v.tile;
             }
-          }
-        }
-      }
-    } else {
-      for (let dy = -2; dy <= 2; dy += 1) {
-        const radius = dy === -2 || dy === 2 ? 2 : 3;
-        for (let dx = -radius; dx <= radius; dx += 1) {
-          if (dx === 0 && dy >= 0) {
-            continue;
-          }
-          if (dx * dx + dy * dy > radius * radius + 1) {
-            continue;
-          }
-          const edge = Math.abs(dx) === radius || Math.abs(dy) === 2;
-          if (edge && rng() < 0.22) {
-            continue;
-          }
-          const px = x + dx;
-          const py = topY + dy;
-          if (px > 1 && px < world.width - 1 && getBlock(world, px, py) === B.AIR) {
-            setBlock(world, px, py, B.LEAVES);
+            const dir = Math.floor(rng() * 4);
+            if (dir === 0) x++;
+            else if (dir === 1) x--;
+            else if (dir === 2) y++;
+            else y--;
           }
         }
       }
     }
-    return true;
-  }
 
-  function addTrees(world, seed, stairStartX) {
-    const rng = mulberry32(seed ^ 0x1a83d5);
-    const center = Math.floor(world.width / 2);
-    const protectedStair = function (x) {
-      return x >= stairStartX - 1 && x <= stairStartX + 46;
-    };
-    const trees = [];
-    const forced = [
-      { x: center - 9, style: "oak" },
-      { x: center + 6, style: "oak" },
-      { x: center + 19, style: "pine" },
-      { x: center - 24, style: "pine" }
-    ];
-    forced.forEach(function (tree) {
-      if (!protectedStair(tree.x) && addTree(world, tree.x, seed, tree.style, rng)) {
-        trees.push(tree);
-      }
-    });
-
-    let lastTreeX = -10;
-    for (let x = 4; x < world.width - 4; x += 1) {
-      if (Math.abs(x - center) < 5 || protectedStair(x) || x - lastTreeX < 4) {
-        continue;
-      }
-      const surface = world.surface[x];
-      if (getBlock(world, x, surface) !== B.GRASS || getBlock(world, x, surface - 1) !== B.AIR) {
-        continue;
-      }
-      if (rng() > 0.11) {
-        continue;
-      }
-      const style = rng() < 0.26 ? "pine" : "oak";
-      if (addTree(world, x, seed, style, rng)) {
-        lastTreeX = x;
-        trees.push({ x, style });
-      }
-    }
-    return trees;
-  }
-
-  function findSpawn(world) {
-    const preferred = Math.floor(world.width / 2);
-    for (let radius = 0; radius < 40; radius += 1) {
-      const options = radius === 0 ? [preferred] : [preferred - radius, preferred + radius];
-      for (let i = 0; i < options.length; i += 1) {
-        const x = options[i];
-        if (x < 1 || x >= world.width - 1) {
-          continue;
-        }
-        const surface = world.surface[x];
-        if (getBlock(world, x, surface) === B.GRASS
-          && getBlock(world, x, surface - 1) === B.AIR
-          && getBlock(world, x, surface - 2) === B.AIR) {
-          return { x: x + 0.5, y: surface };
+    blob(cx, cy, radius, tile, rng, ...replace) {
+      for (let y = cy - radius; y <= cy + radius; y++) {
+        for (let x = cx - radius; x <= cx + radius; x++) {
+          if (x < 2 || x >= W - 2 || y < 2 || y >= H - 3) continue;
+          if ((x - cx) * (x - cx) + (y - cy) * (y - cy) > radius * radius + 1) continue;
+          if (rng() < 0.14) continue;
+          const current = this.tiles[y * W + x];
+          if (replace.includes(current)) this.tiles[y * W + x] = tile;
         }
       }
     }
-    return { x: preferred + 0.5, y: 40 };
-  }
 
-  function createWorld(seedInput) {
-    const seed = Number(seedInput) >>> 0;
-    const width = CONFIG.worldWidth;
-    const height = CONFIG.worldHeight;
-    const data = new Uint8Array(width * height);
-    const heights = generateHeights(seed);
-    const world = {
-      width,
-      height,
-      seed,
-      data,
-      surface: heights,
-      revision: 0
-    };
-
-    fillTerrain(world, heights, seed);
-    const stair = carveSpawnStair(world, heights, seed);
-    carveCaves(world, seed);
-    addOres(world, seed);
-    addTrees(world, seed, stair.startX);
-
-    // A small abandoned camp makes the clearing feel inhabited, and a single
-    // torch marks the old stair into the dark below.
-    const center = Math.floor(width / 2);
-    const campX = center - 3;
-    const campSurface = heights[campX];
-    if (getBlock(world, campX, campSurface) === B.GRASS
-      && getBlock(world, campX, campSurface - 1) === B.AIR) {
-      setBlock(world, campX, campSurface - 1, B.CAMPFIRE);
-    }
-    const torchX = stair.startX - 1;
-    const torchSurface = heights[torchX];
-    if (getBlock(world, torchX, torchSurface) === B.GRASS
-      && getBlock(world, torchX, torchSurface - 1) === B.AIR) {
-      setBlock(world, torchX, torchSurface - 1, B.TORCH);
-    }
-
-    const spawn = findSpawn(world);
-    world.spawn = spawn;
-    world.meta = { stairStartX: stair.startX };
-    return world;
-  }
-
-  function encodeRuns(data) {
-    const runs = [];
-    if (!data || data.length === 0) {
-      return runs;
-    }
-    let value = data[0];
-    let count = 1;
-    for (let i = 1; i < data.length; i += 1) {
-      if (data[i] === value && count < 65535) {
-        count += 1;
-      } else {
-        runs.push(value, count);
-        value = data[i];
-        count = 1;
+    plantTrees(seed, rng) {
+      let x = 6;
+      while (x < W - 6) {
+        const biome = this.biomes[x];
+        const y = this.heights[x];
+        const chance = biome === 2 ? 0 : biome === 1 ? 0.95 : 0.7;
+        if (biome !== 2 && rng() < chance && this.get(x, y) === T.GRASS) {
+          this.placeTree(x, y, 4 + Math.floor(rng() * 4), rng);
+        }
+        x += biome === 2 ? 12 + Math.floor(rng() * 9) : biome === 1 ? 2 + Math.floor(rng() * 2) : 4 + Math.floor(rng() * 4);
       }
     }
-    runs.push(value, count);
-    return runs;
-  }
 
-  function decodeRuns(runs, expectedLength) {
-    if (!Array.isArray(runs) || runs.length % 2 !== 0) {
-      throw new Error("Invalid block run data");
-    }
-    const data = new Uint8Array(expectedLength);
-    let offset = 0;
-    for (let i = 0; i < runs.length; i += 2) {
-      const value = runs[i];
-      const count = runs[i + 1];
-      if (!Number.isInteger(value) || value < 0 || value > 15) {
-        throw new Error("Invalid block id in save");
+    hasTreeNear(x, radius) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        for (let dy = -8; dy <= 0; dy++) {
+          if (this.get(x + dx, this.heights[BH.clamp(x + dx, 0, W - 1)] + dy) === T.LOG) return true;
+        }
       }
-      if (!Number.isInteger(count) || count < 0) {
-        throw new Error("Invalid block run length");
-      }
-      if (offset + count > expectedLength) {
-        throw new Error("Block run data is too long");
-      }
-      data.fill(value, offset, offset + count);
-      offset += count;
+      return false;
     }
-    if (offset !== expectedLength) {
-      throw new Error("Block run data is too short");
-    }
-    return data;
-  }
 
-  function worldToSave(world) {
-    return {
-      width: world.width,
-      height: world.height,
-      seed: world.seed,
-      surface: Array.from(world.surface),
-      runs: encodeRuns(world.data),
-      spawn: world.spawn
-    };
-  }
-
-  function worldFromSave(payload) {
-    if (!payload || typeof payload !== "object") {
-      throw new Error("Missing world data");
-    }
-    const width = Number(payload.width);
-    const height = Number(payload.height);
-    if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
-      throw new Error("Invalid world dimensions");
-    }
-    if (width > 512 || height > 256 || width * height > 131072) {
-      throw new Error("World save is too large");
-    }
-    if (!Array.isArray(payload.surface) || payload.surface.length !== width) {
-      throw new Error("Invalid surface data");
-    }
-    const surface = Int16Array.from(payload.surface.map(function (v) {
-      if (!Number.isInteger(v) || v < 0 || v >= height) {
-        throw new Error("Invalid surface height");
-      }
-      return v;
-    }));
-    const data = decodeRuns(payload.runs, width * height);
-    const spawn = payload.spawn && Number.isFinite(payload.spawn.x) && Number.isFinite(payload.spawn.y)
-      ? { x: Number(payload.spawn.x), y: Number(payload.spawn.y) }
-      : { x: width / 2 + 0.5, y: surface[Math.floor(width / 2)] };
-    return {
-      width,
-      height,
-      seed: Number(payload.seed) >>> 0,
-      data,
-      surface,
-      spawn,
-      revision: 0,
-      meta: {}
-    };
-  }
-
-  function findGroundBelow(world, x, startY) {
-    const top = Math.max(1, Math.min(world.height - 2, Math.floor(startY)));
-    for (let y = top; y < world.height - 1; y += 1) {
-      if (isSolid(world, x, y) && !isSolid(world, x, y - 1)) {
-        return y;
+    ensureSpawnTrees(centerX, rng) {
+      for (const side of [-1, 1]) {
+        let planted = false;
+        for (let dist = 4; dist < 34; dist++) {
+          const x = centerX + side * dist;
+          if (x < 5 || x > W - 6 || this.biomes[x] === 2) continue;
+          const y = this.heights[x];
+          if (this.get(x, y) !== T.GRASS) continue;
+          if (this.hasTreeNear(x, 3)) { planted = true; break; }
+          this.placeTree(x, y, 5 + Math.floor(rng() * 3), rng);
+          planted = true;
+          break;
+        }
+        if (!planted) {
+          // Desert fallback: a compact grassy oasis with one tree.
+          for (let dist = 4; dist < 22; dist++) {
+            const x = centerX + side * dist;
+            if (x < 5 || x > W - 6) continue;
+            const y = this.heights[x];
+            if (!BH.TILE_DEFS[this.get(x, y)].solid) continue;
+            for (let dx = -2; dx <= 2; dx++) {
+              if (x + dx < 3 || x + dx > W - 4) continue;
+              this.tiles[y * W + x + dx] = T.GRASS;
+              for (let dy = 1; dy <= 4; dy++) this.tiles[(y - dy) * W + x + dx] = T.AIR;
+            }
+            this.placeTree(x, y, 6, rng);
+            break;
+          }
+        }
       }
     }
-    return world.height - 2;
-  }
 
-  function countBlocks(world, blockId) {
-    let count = 0;
-    for (let i = 0; i < world.data.length; i += 1) {
-      if (world.data[i] === blockId) {
-        count += 1;
+    placeTree(x, groundY, height, rng) {
+      const top = groundY - height;
+      for (let y = groundY - 1; y >= top; y--) {
+        const cur = this.get(x, y);
+        if (cur === T.AIR || !BH.TILE_DEFS[cur].solid) this.tiles[y * W + x] = T.LOG;
+      }
+      const canopyY = top - 1;
+      for (let dy = -2; dy <= 2; dy++) {
+        const rad = dy <= -1 ? 2 : dy === 0 ? 2 : 1;
+        for (let dx = -rad; dx <= rad; dx++) {
+          if (Math.abs(dx) === rad && Math.abs(dy) === 2 && rng() < 0.55) continue;
+          const lx = x + dx, ly = canopyY + dy;
+          if (lx < 1 || lx >= W - 1 || ly < 1) continue;
+          if (this.tiles[ly * W + lx] === T.AIR) this.tiles[ly * W + lx] = T.LEAVES;
+        }
+      }
+      // A leafy cap
+      for (let dx = -1; dx <= 1; dx++) {
+        const lx = x + dx, ly = canopyY - 2;
+        if (this.get(lx, ly) === T.AIR) this.tiles[ly * W + lx] = T.LEAVES;
       }
     }
-    return count;
+
+    plantCover(seed, rng) {
+      for (let x = 2; x < W - 2; x++) {
+        const surf = this.heights[x];
+        if (this.biomes[x] === 2) continue;
+        if (this.get(x, surf) !== T.GRASS) continue;
+        if (this.get(x, surf - 1) !== T.AIR) continue;
+        const r = BH.rand2(x, 7, seed + 900);
+        if (r < 0.105) this.tiles[(surf - 1) * W + x] = T.TALL_GRASS;
+        else if (r < 0.128) this.tiles[(surf - 1) * W + x] = T.ROSE;
+        else if (r < 0.152) this.tiles[(surf - 1) * W + x] = T.DANDELION;
+      }
+      // Mushrooms tucked into dark cave floors
+      for (let i = 0; i < 100; i++) {
+        const x = 4 + Math.floor(rng() * (W - 8));
+        const y = 40 + Math.floor(rng() * (H - 46));
+        if (this.get(x, y) === T.AIR && this.get(x, y + 1) === T.STONE && this.get(x, y - 1) === T.AIR) {
+          this.tiles[y * W + x] = T.MUSHROOM;
+        }
+      }
+    }
+
+  
+    plantDesert(seed, rng) {
+      for (let x = 3; x < W - 3; x++) {
+        if (this.biomes[x] !== 2) continue;
+        const surf = this.heights[x];
+        if (this.get(x, surf) !== T.SAND || this.get(x, surf - 1) !== T.AIR) continue;
+        if (BH.rand2(x, 99, seed + 501) > 0.085) continue;
+        const height = 1 + Math.floor(rng() * 3);
+        for (let i = 0; i < height; i++) {
+          if (this.get(x, surf - 1 - i) === T.AIR) this.tiles[(surf - 1 - i) * W + x] = T.CACTUS;
+        }
+      }
+    }
+
+  // ---------------- lighting ----------------
+    recomputeLight() {
+      const N = W * H;
+      const sky = this.sky;
+      const block = this.blockLight;
+      sky.fill(0);
+      block.fill(0);
+      const q = [];
+
+      // Vertical sky light. Leaves dim the column but do not stop it.
+      for (let x = 0; x < W; x++) {
+        let light = 15;
+        for (let y = 0; y < H; y++) {
+          const i = y * W + x;
+          const def = BH.TILE_DEFS[this.tiles[i]];
+          if (!def) continue;
+          if (def.opacity >= 15) break;
+          light = Math.max(0, light - def.opacity);
+          if (light <= 0) break;
+          sky[i] = light;
+          q.push(i);
+        }
+      }
+      this.spreadLight(sky, q);
+
+      // Emissive blocks.
+      const bq = [];
+      for (let i = 0; i < N; i++) {
+        const def = BH.TILE_DEFS[this.tiles[i]];
+        if (!def || !def.light) continue;
+        block[i] = def.light;
+        bq.push(i);
+      }
+      this.spreadLight(block, bq);
+      this.lightDirty = false;
+    }
+
+    spreadLight(arr, queue) {
+      let qi = 0;
+      while (qi < queue.length) {
+        const i = queue[qi++];
+        const level = arr[i];
+        if (level <= 1) continue;
+        const x = i % W;
+        const y = (i / W) | 0;
+        const sides = [
+          x > 0 ? i - 1 : -1,
+          x < W - 1 ? i + 1 : -1,
+          y > 0 ? i - W : -1,
+          y < H - 1 ? i + W : -1
+        ];
+        for (let k = 0; k < 4; k++) {
+          const ni = sides[k];
+          if (ni < 0) continue;
+          const def = BH.TILE_DEFS[this.tiles[ni]];
+          if (!def || def.opacity >= 15) continue;
+          const next = level - 1 - def.opacity;
+          if (next > arr[ni]) {
+            arr[ni] = next;
+            queue.push(ni);
+          }
+        }
+      }
+    }
+
+    /** Soft maximum of nearby light, so surfaces in a lit room are visible. */
+    lightAt(x, y, skyFactor) {
+      let skyL = 0, blockL = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const i = (y + dy) * W + (x + dx);
+          if (i < 0 || i >= W * H) continue;
+          if (this.sky[i] > skyL) skyL = this.sky[i];
+          if (this.blockLight[i] > blockL) blockL = this.blockLight[i];
+        }
+      }
+      const s = (skyL / 15) * skyFactor;
+      const b = blockL / 15;
+      return Math.max(s, b);
+    }
+
+    // ---------------- persistence ----------------
+    serialize() {
+      const changes = [];
+      this.changes.forEach((v, k) => changes.push([k, v]));
+      return {
+        seed: this.seedString,
+        spawnX: this.spawnX,
+        spawnY: this.spawnY,
+        changes
+      };
+    }
+
+    applySerialized(data) {
+      if (!data) return;
+      if (Array.isArray(data.changes)) {
+        for (const pair of data.changes) {
+          if (!Array.isArray(pair) || pair.length < 2) continue;
+          const i = pair[0] | 0;
+          const id = pair[1] | 0;
+          if (i < 0 || i >= W * H || !BH.TILE_DEFS[id]) continue;
+          this.tiles[i] = id;
+          if (id === this.original[i]) this.changes.delete(i);
+          else this.changes.set(i, id);
+        }
+      }
+      if (typeof data.spawnX === "number" && isFinite(data.spawnX)) this.spawnX = data.spawnX;
+      if (typeof data.spawnY === "number" && isFinite(data.spawnY)) this.spawnY = data.spawnY;
+      this.lightDirty = true;
+      this.recomputeLight();
+    }
   }
 
-  return {
-    createWorld,
-    getBlock,
-    setBlock,
-    isAir,
-    isSolid,
-    findGroundBelow,
-    findSpawn,
-    worldToSave,
-    worldFromSave,
-    encodeRuns,
-    decodeRuns,
-    countBlocks,
-    indexOf,
-    mulberry32,
-    hash2
-  };
-});
+  BH.World = World;
+})();

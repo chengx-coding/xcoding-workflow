@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Mosswild leaf icon">
-  <rect width="32" height="32" rx="5" fill="#17251b"/>
-  <rect x="4" y="4" width="24" height="24" rx="3" fill="none" stroke="#d6e0bd" stroke-opacity="0.25"/>
-  <path d="M8 23C7 14 12 7 25 6c0 11-6 18-17 17Z" fill="#bdd57c"/>
-  <path d="M9 22 23 8" stroke="#6f8f4d" stroke-width="2" stroke-linecap="square"/>
-  <path d="M13 16h6v2h-6zM17 12h5v2h-5z" fill="#d6e89e" fill-opacity="0.55"/>
-  <rect x="23" y="23" width="4" height="4" fill="#eac16d"/>
-  <rect x="5" y="24" width="3" height="3" fill="#eac16d" fill-opacity="0.5"/>
-</svg>

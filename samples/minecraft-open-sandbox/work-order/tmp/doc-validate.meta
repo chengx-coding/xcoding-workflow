@@ -1,9 +1,0 @@
-metadata.completion.required_fields=["summary","validation"]
-metadata.completion.artifacts.min=0
-metadata.completion.artifacts.max=0
-metadata.completion.checks=["xc-document"]
-metadata.completion.check.xc-document.subject=bb:document.path
-metadata.completion.check.xc-document.facts.document_kind=bb:document.kind
-metadata.completion.check.xc-document.facts.content_language=bb:document.receipt.content_language
-metadata.completion.check.xc-document.facts.audience=bb:document.receipt.audience
-metadata.artifact.audience=internal
