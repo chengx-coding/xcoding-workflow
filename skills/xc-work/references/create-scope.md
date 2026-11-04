@@ -80,10 +80,13 @@ A task with no visual surface must not be required to produce screenshots/backgr
 evidence; a task with a visual surface uses the visual profile. Record a surface as not applicable only
 with a reason.
 
-**Visual-state backdrop and first-run.** For a interactive visual experience product, add **must** capabilities for
-the first-run affordance (visible button/tutorial/task, not a passive key/README) and the state-dependent
-backdrop/empty/fallback when content is removed/covered or a mode/theme/time/viewport changes; execute
-before/after and a fresh-state probe. This is a task-class must, not a universal
+**Visual-state backdrop and first-run.** For an interactive visual experience product, add **must**
+capabilities for the first-run affordance (a visible primary start/action **and** a visible
+help/controls entry; not a passive key/README or hidden overlay), actionable failure feedback for
+prerequisite actions (name what is missing and how much), the state-dependent backdrop/empty/fallback
+when content is removed/covered or a mode/theme/time/viewport changes, and no clipping/occlusion of the
+primary action/help/status at the declared minimum viewport; execute before/after, a fresh-state probe
+and a minimum-viewport probe. This is a task-class must, not a universal
 requirement; a pure code/docs task records not-applicable.
 
 **Experience products.** If the deliverable is a visual/interactive experience product (an interactive visual product whose acceptance is experiential), use the proposed

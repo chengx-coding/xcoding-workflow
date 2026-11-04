@@ -15,8 +15,13 @@ authorize adding a feature that the request does not support.
 ## 1. First-run discoverability
 
 For an interactive visual experience product, the first-run affordance is a **must owned by the visual output-surface
-contract**; this profile does not restate the rule. Other experience products use the proposed lens.
-Verify from a fresh state and link the executed entry-point evidence.
+contract**; this profile does not restate the full rule. The fresh-state check must find **both** a
+visible primary start/action affordance and a visible help/controls entry; a passive keybinding
+legend, a README line, or a hidden overlay is not enough. For an action with prerequisites, the
+failure feedback must name what is missing and how much; a generic "missing ingredients/requirements"
+is not actionable. At the declared minimum viewport, the primary action, help entry and primary
+status/controls must not be clipped or occluded. Verify from a fresh state and link the executed
+entry-point and viewport evidence.
 For a rendered product, apply the visual owner's **interaction truth** check when primary controls
 exist: a real-pointer test must show the same hit target at pointerdown/up and the advertised effect;
 an enabled-looking no-op is a defect. Record the visual review against the task's quality target;

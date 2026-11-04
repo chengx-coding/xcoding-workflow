@@ -144,6 +144,16 @@ class CreateScopeFidelityContractTest(unittest.TestCase):
         self.assertIn("cycle", record.lower())
         self.assertIn("residual", record.lower())
 
+    def test_first_run_discoverability_is_executable(self):
+        exp = read(SKILLS / "xc-work" / "references" / "experience-quality.md")
+        scope = read(SKILLS / "xc-work" / "references" / "create-scope.md")
+        verify = read(SKILLS / "xc-verification" / "SKILL.md")
+        self.assertIn("visible help/controls entry", exp)
+        self.assertIn("help/controls entry", scope)
+        self.assertIn("visible primary start/action", scope)
+        self.assertIn("visible help/controls entry", verify)
+        self.assertIn("minimum viewport", exp)
+
     def test_sample_provenance_gate_exists(self):
         ref = read(SKILLS / "xc-workflow-evolution" / "references" / "sample-provenance.md")
         script = read(SKILLS / "xc-workflow-evolution" / "scripts" / "check_sample_provenance.py")
