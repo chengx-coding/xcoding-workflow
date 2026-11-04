@@ -1,536 +1,614 @@
-/* Canvas renderer: sky, parallax, tiles, characters, selection and particles. */
-(function (root, factory) {
-  if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"), require("./rng.js"), require("./textures.js"));
-  } else {
-    root.SandboxRender = factory(root.SandboxConfig, root.SandboxRng, root.SandboxTextures);
-  }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, RNG, TEX) {
+(function () {
   "use strict";
 
-  const B = CONFIG.blocks;
+  const CONFIG = window.SandboxConfig;
+  const WORLD = window.SandboxWorld;
+  const TEXTURES = window.SandboxTextures;
+  const RNG = window.SandboxRng;
   const TILE = CONFIG.tileSize;
+  const VIEW_W = CONFIG.viewWidth;
+  const VIEW_H = CONFIG.viewHeight;
 
   function clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
+    return Math.max(min, Math.min(max, value));
   }
 
   function mix(a, b, t) {
-    return a + (b - a) * t;
-  }
-
-  function hexToRgb(hex) {
-    const value = hex.replace("#", "");
     return [
-      parseInt(value.slice(0, 2), 16),
-      parseInt(value.slice(2, 4), 16),
-      parseInt(value.slice(4, 6), 16)
+      Math.round(a[0] + (b[0] - a[0]) * t),
+      Math.round(a[1] + (b[1] - a[1]) * t),
+      Math.round(a[2] + (b[2] - a[2]) * t)
     ];
   }
 
-  function mixColor(a, b, t) {
-    const ca = hexToRgb(a);
-    const cb = hexToRgb(b);
-    return "rgb(" + Math.round(mix(ca[0], cb[0], t)) + "," + Math.round(mix(ca[1], cb[1], t)) + "," + Math.round(mix(ca[2], cb[2], t)) + ")";
+  function css(color, alpha) {
+    if (alpha === undefined) {
+      return "rgb(" + color[0] + "," + color[1] + "," + color[2] + ")";
+    }
+    return "rgba(" + color[0] + "," + color[1] + "," + color[2] + "," + alpha + ")";
   }
 
-  const SKY_KEYS = [
-    { t: 0.0, top: "#ef9a63", bottom: "#ffe1b0" },
-    { t: 0.1, top: "#72bbe8", bottom: "#cdeeff" },
-    { t: 0.25, top: "#56a8df", bottom: "#bde7fa" },
-    { t: 0.42, top: "#6ab1df", bottom: "#ffd39b" },
-    { t: 0.5, top: "#e8765f", bottom: "#71406e" },
-    { t: 0.58, top: "#20264a", bottom: "#11172d" },
-    { t: 0.75, top: "#070c1c", bottom: "#101a34" },
-    { t: 0.9, top: "#1b2142", bottom: "#3a2b48" },
-    { t: 1.0, top: "#ef9a63", bottom: "#ffe1b0" }
-  ];
+  function skyPalette(timeOfDay, dayFactor) {
+    const sunHeight = Math.sin((timeOfDay - 0.25) * Math.PI * 2);
+    const dayness = clamp(sunHeight * 2.3 + 0.38, 0, 1);
+    const dusk = clamp(1 - Math.abs(sunHeight) * 3.7, 0, 1) * 0.9;
+    const nightTop = [7, 13, 32];
+    const nightBottom = [28, 42, 68];
+    const dayTop = [91, 157, 202];
+    const dayBottom = [203, 232, 235];
+    const duskTop = [78, 49, 84];
+    const duskBottom = [232, 133, 86];
+    let top = mix(nightTop, dayTop, dayness);
+    let bottom = mix(nightBottom, dayBottom, dayness);
+    if (dusk > 0) {
+      top = mix(top, duskTop, dusk);
+      bottom = mix(bottom, duskBottom, dusk);
+    }
+    return {
+      top: top,
+      bottom: bottom,
+      dayness: dayness,
+      dusk: dusk,
+      sunHeight: sunHeight
+    };
+  }
 
-  function skyColors(time) {
-    const t = ((time % 1) + 1) % 1;
-    for (let i = 0; i < SKY_KEYS.length - 1; i += 1) {
-      const a = SKY_KEYS[i];
-      const b = SKY_KEYS[i + 1];
-      if (t >= a.t && t <= b.t) {
-        const local = (t - a.t) / (b.t - a.t || 1);
-        return {
-          top: mixColor(a.top, b.top, local),
-          bottom: mixColor(a.bottom, b.bottom, local),
-          phase: local
-        };
+  function createRenderer(canvas) {
+    const ctx = canvas.getContext("2d");
+    canvas.width = VIEW_W;
+    canvas.height = VIEW_H;
+    ctx.imageSmoothingEnabled = false;
+    const lightCanvas = document.createElement("canvas");
+    const lightCtx = lightCanvas.getContext("2d");
+    const stars = [];
+    const clouds = [];
+    const hillLayers = [];
+    const starRand = RNG.sampleRng(CONFIG.seed, 12345);
+    for (let index = 0; index < 90; index += 1) {
+      stars.push({
+        x: starRand() * VIEW_W,
+        y: starRand() * VIEW_H * 0.7,
+        r: starRand() < 0.15 ? 1.7 : 1,
+        a: 0.35 + starRand() * 0.6
+      });
+    }
+    const cloudRand = RNG.sampleRng(CONFIG.seed, 54321);
+    for (let index = 0; index < 7; index += 1) {
+      clouds.push({
+        x: cloudRand() * VIEW_W,
+        y: 40 + cloudRand() * 170,
+        w: 80 + cloudRand() * 130,
+        h: 16 + cloudRand() * 18,
+        speed: 4 + cloudRand() * 8,
+        alpha: 0.18 + cloudRand() * 0.22
+      });
+    }
+    for (let layer = 0; layer < 3; layer += 1) {
+      const rand = RNG.sampleRng(CONFIG.seed + 90 + layer, 707);
+      const points = [];
+      const step = 18 - layer * 3;
+      for (let x = 0; x <= VIEW_W * 2 + step; x += step) {
+        const wave = Math.sin(x * (0.012 + layer * 0.003) + layer * 2.1) * (22 - layer * 4);
+        const detail = (rand() - 0.5) * (18 - layer * 4);
+        points.push({ x: x, y: 120 + wave + detail + layer * 18 });
       }
+      hillLayers.push({
+        points: points,
+        base: 395 + layer * 34,
+        parallax: 0.08 + layer * 0.06,
+        color: layer === 0 ? [68, 92, 92] : layer === 1 ? [48, 74, 64] : [31, 53, 46]
+      });
     }
-    return { top: SKY_KEYS[0].top, bottom: SKY_KEYS[0].bottom, phase: 0 };
-  }
 
-  function nightAmount(time) {
-    const t = ((time % 1) + 1) % 1;
-    const angle = (t - 0.25) * Math.PI * 2;
-    return clamp((1 - Math.cos(angle)) / 2, 0, 1);
-  }
-
-  function drawSky(ctx, time, viewWidth, viewHeight, shakeX, shakeY) {
-    const colors = skyColors(time);
-    const gradient = ctx.createLinearGradient(0, -shakeY, 0, viewHeight - shakeY);
-    gradient.addColorStop(0, colors.top);
-    gradient.addColorStop(1, colors.bottom);
-    ctx.fillStyle = gradient;
-    ctx.fillRect(-shakeX, -shakeY, viewWidth + Math.abs(shakeX) * 2, viewHeight + Math.abs(shakeY) * 2);
-    return colors;
-  }
-
-  function drawStars(ctx, time, viewWidth, viewHeight) {
-    const night = nightAmount(time);
-    if (night <= 0.05) {
-      return;
+    function screenToWorld(clientX, clientY, camera) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = VIEW_W / rect.width;
+      const scaleY = VIEW_H / rect.height;
+      return {
+        x: ((clientX - rect.left) * scaleX + camera.x) / TILE,
+        y: ((clientY - rect.top) * scaleY + camera.y) / TILE
+      };
     }
-    const random = RNG.mulberry32(918273);
-    ctx.save();
-    ctx.globalAlpha = night * 0.9;
-    for (let i = 0; i < 110; i += 1) {
-      const x = Math.floor(random() * viewWidth);
-      const y = Math.floor(random() * viewHeight * 0.62);
-      const size = random() < 0.12 ? 2 : 1;
-      ctx.fillStyle = random() < 0.2 ? "#ffe9b0" : "#dbe8ff";
-      ctx.fillRect(x, y, size, size);
-    }
-    ctx.restore();
-  }
 
-  function drawCelestial(ctx, time, viewWidth, viewHeight, shakeX, shakeY) {
-    const t = ((time % 1) + 1) % 1;
-    const horizon = viewHeight * 0.62;
-    const isDay = t < 0.5;
-    const local = isDay ? t / 0.5 : (t - 0.5) / 0.5;
-    const x = 70 + local * (viewWidth - 140);
-    const y = horizon - Math.sin(local * Math.PI) * horizon * 0.82;
-    ctx.save();
-    ctx.translate(-shakeX, -shakeY);
-    if (isDay) {
-      const glow = ctx.createRadialGradient(x, y, 4, x, y, 70);
-      glow.addColorStop(0, "rgba(255, 240, 170, 0.75)");
-      glow.addColorStop(1, "rgba(255, 220, 120, 0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(x - 70, y - 70, 140, 140);
-      ctx.fillStyle = "#ffe27a";
-      ctx.fillRect(x - 14, y - 14, 28, 28);
-      ctx.fillStyle = "#fff2b0";
-      ctx.fillRect(x - 10, y - 10, 20, 20);
-    } else {
-      const glow = ctx.createRadialGradient(x, y, 4, x, y, 60);
-      glow.addColorStop(0, "rgba(200, 220, 255, 0.35)");
-      glow.addColorStop(1, "rgba(160, 190, 255, 0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(x - 60, y - 60, 120, 120);
-      ctx.fillStyle = "#dce7ff";
-      ctx.fillRect(x - 15, y - 15, 30, 30);
-      ctx.fillStyle = "#0d1426";
-      ctx.fillRect(x - 4, y - 16, 20, 20);
-    }
-    ctx.restore();
-  }
+    function drawSky(state) {
+      const palette = skyPalette(state.timeOfDay, state.dayFactor);
+      const gradient = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      gradient.addColorStop(0, css(palette.top));
+      gradient.addColorStop(0.72, css(palette.bottom));
+      gradient.addColorStop(1, css(mix(palette.bottom, [45, 51, 54], 0.3)));
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
-  function drawClouds(ctx, time, camera, viewWidth, viewHeight, shakeX, shakeY) {
-    const night = nightAmount(time);
-    const random = RNG.mulberry32(4411);
-    ctx.save();
-    ctx.translate(-shakeX, -shakeY);
-    ctx.globalAlpha = 0.34 + (1 - night) * 0.34;
-    for (let i = 0; i < 11; i += 1) {
-      const baseX = random() * 2200;
-      const baseY = 40 + random() * 190;
-      const scale = 0.7 + random() * 1.1;
-      const drift = time * 160 + i * 37;
-      let x = ((baseX - camera.x * 0.18 + drift) % (viewWidth + 360)) - 180;
-      if (x < -220) {
-        x += viewWidth + 360;
-      }
-      const y = baseY - camera.y * 0.08;
-      ctx.fillStyle = night > 0.45 ? "#5a6382" : "#ffffff";
-      ctx.fillRect(x, y, 86 * scale, 12 * scale);
-      ctx.fillRect(x + 12 * scale, y - 8 * scale, 52 * scale, 12 * scale);
-      ctx.fillRect(x + 26 * scale, y + 10 * scale, 38 * scale, 8 * scale);
-      ctx.fillStyle = night > 0.45 ? "#6d7698" : "#e8f3fb";
-      ctx.fillRect(x + 6 * scale, y + 4 * scale, 62 * scale, 4 * scale);
-    }
-    ctx.restore();
-  }
-
-  function drawHills(ctx, time, camera, viewWidth, viewHeight, shakeX, shakeY) {
-    const colors = skyColors(time);
-    const night = nightAmount(time);
-    const horizon = viewHeight * 0.68 - camera.y * 0.12;
-    ctx.save();
-    ctx.translate(-shakeX, -shakeY);
-    for (let layer = 0; layer < 2; layer += 1) {
-      ctx.beginPath();
-      ctx.moveTo(0, viewHeight);
-      const parallax = layer === 0 ? 0.08 : 0.17;
-      const base = horizon + layer * 44;
-      for (let x = 0; x <= viewWidth + 40; x += 40) {
-        const worldX = x + camera.x * parallax;
-        const wave = Math.sin(worldX * (layer === 0 ? 0.006 : 0.009) + layer * 2.1) * (layer === 0 ? 34 : 24);
-        const wave2 = RNG.noise1(worldX * 0.01, 71 + layer) * 18;
-        ctx.lineTo(x, base + wave + wave2);
-      }
-      ctx.lineTo(viewWidth, viewHeight);
-      ctx.closePath();
-      const dark = layer === 0 ? 0.18 : 0.1;
-      const baseColor = mixColor(colors.bottom, "#20303a", 0.42 + dark + night * 0.32);
-      ctx.fillStyle = baseColor;
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  function updateCamera(camera, player, world, viewWidth, viewHeight, dt, lookX, lookY) {
-    const targetX = player.x * TILE - viewWidth / 2 + clamp(lookX || 0, -70, 70);
-    const targetY = (player.y - player.height * 0.55) * TILE - viewHeight / 2 + clamp(lookY || 0, -45, 45);
-    const smooth = Math.min(1, (dt || 1 / 60) * 9);
-    camera.x += (targetX - camera.x) * smooth;
-    camera.y += (targetY - camera.y) * smooth;
-    camera.x = clamp(camera.x, 0, Math.max(0, world.width * TILE - viewWidth));
-    camera.y = clamp(camera.y, 0, Math.max(0, world.height * TILE - viewHeight));
-    return camera;
-  }
-
-  function screenX(worldX, camera) {
-    return worldX * TILE - camera.x;
-  }
-
-  function screenY(worldY, camera) {
-    return worldY * TILE - camera.y;
-  }
-
-  function drawCaveWall(ctx, x, y, world, screen) {
-    const depth = y - (world.surface[x] || 0);
-    const hash = RNG.hash2(x, y, world.seed);
-    if (depth < 5) {
-      ctx.fillStyle = hash % 3 === 0 ? "#3a2a1d" : "#2f2318";
-    } else {
-      ctx.fillStyle = hash % 3 === 0 ? "#2a2b2d" : "#232426";
-    }
-    ctx.fillRect(screen.x, screen.y, TILE, TILE);
-    if (hash % 7 === 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.035)";
-      ctx.fillRect(screen.x + (hash % 20), screen.y + (hash % 16), 3, 3);
-    }
-  }
-
-  function drawWorld(ctx, world, camera, viewWidth, viewHeight, time, shakeX, shakeY) {
-    const firstColumn = Math.max(0, Math.floor(camera.x / TILE) - 1);
-    const lastColumn = Math.min(world.width - 1, Math.ceil((camera.x + viewWidth) / TILE) + 1);
-    const firstRow = Math.max(0, Math.floor(camera.y / TILE) - 1);
-    const lastRow = Math.min(world.height - 1, Math.ceil((camera.y + viewHeight) / TILE) + 1);
-    const waterOffset = Math.floor((time * 24) % TILE);
-
-    ctx.save();
-    ctx.translate(-shakeX, -shakeY);
-    for (let y = firstRow; y <= lastRow; y += 1) {
-      for (let x = firstColumn; x <= lastColumn; x += 1) {
-        const block = world.data[y * world.width + x];
-        const sx = Math.round(x * TILE - camera.x);
-        const sy = Math.round(y * TILE - camera.y);
-        const screen = { x: sx, y: sy };
-        if (block === B.air) {
-          if (y > (world.surface[x] || 0) + 1) {
-            drawCaveWall(ctx, x, y, world, screen);
-          }
-          continue;
-        }
-        if (block === B.water) {
-          if (y > (world.surface[x] || 0) + 1) {
-            drawCaveWall(ctx, x, y, world, screen);
-          }
-          const variants = TEX.blockVariants(B.water);
-          const image = variants ? variants[0] : null;
-          if (image) {
-            ctx.save();
-            ctx.globalAlpha = 0.82;
-            ctx.drawImage(image, sx, sy + (waterOffset % 4), TILE, TILE);
-            ctx.restore();
-          } else {
-            ctx.fillStyle = "#2b6ca6";
-            ctx.fillRect(sx, sy, TILE, TILE);
-          }
-          if (y === firstRow || world.data[(y - 1) * world.width + x] !== B.water) {
-            ctx.fillStyle = "rgba(180, 230, 255, 0.35)";
-            ctx.fillRect(sx, sy, TILE, 2);
-          }
-          continue;
-        }
-        if ((block === B.flower || block === B.tallGrass || block === B.torch) && y > (world.surface[x] || 0) + 1) {
-          drawCaveWall(ctx, x, y, world, screen);
-        }
-        const variants = TEX.blockVariants(block);
-        const image = variants ? variants[RNG.hash2(x, y, world.seed) % variants.length] : null;
-        if (image) {
-          ctx.drawImage(image, sx, sy, TILE, TILE);
-        } else {
-          ctx.fillStyle = "#9e9e9e";
-          ctx.fillRect(sx, sy, TILE, TILE);
-        }
-        if (block === B.grass) {
-          ctx.fillStyle = "rgba(255,255,255,0.06)";
-          ctx.fillRect(sx, sy, TILE, 2);
+      const starAlpha = Math.pow(1 - palette.dayness, 2.1);
+      if (starAlpha > 0.02) {
+        for (let index = 0; index < stars.length; index += 1) {
+          const star = stars[index];
+          ctx.fillStyle = "rgba(246, 242, 220, " + (star.a * starAlpha) + ")";
+          ctx.fillRect(Math.round(star.x), Math.round(star.y), star.r, star.r);
         }
       }
-    }
-    ctx.restore();
-  }
 
-  function drawSelection(ctx, target, camera, progress, valid, shakeX, shakeY) {
-    if (!target) {
-      return;
-    }
-    const x = Math.round(target.x * TILE - camera.x) - shakeX;
-    const y = Math.round(target.y * TILE - camera.y) - shakeY;
-    ctx.save();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = valid === false ? "rgba(255, 96, 96, 0.95)" : "rgba(255, 255, 255, 0.85)";
-    ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 0.5, y + 0.5, TILE - 1, TILE - 1);
-    if (progress > 0 && progress < 1) {
-      ctx.strokeStyle = "rgba(20, 14, 10, 0.85)";
-      ctx.lineWidth = 1;
-      const stage = Math.floor(progress * 5);
-      for (let i = 0; i <= stage; i += 1) {
-        const offset = (i * 5) % 20;
+      const horizon = 424;
+      if (palette.sunHeight > -0.08) {
+        const dayT = clamp((state.timeOfDay - 0.25) / 0.5, 0, 1);
+        const sunX = dayT * VIEW_W;
+        const sunY = horizon - Math.sin(dayT * Math.PI) * 285;
+        const glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 90);
+        glow.addColorStop(0, "rgba(255, 238, 175, 0.9)");
+        glow.addColorStop(0.18, "rgba(255, 205, 125, 0.45)");
+        glow.addColorStop(1, "rgba(255, 164, 86, 0)");
+        ctx.fillStyle = glow;
+        ctx.fillRect(sunX - 100, sunY - 100, 200, 200);
+        ctx.fillStyle = "#fff2b8";
         ctx.beginPath();
-        ctx.moveTo(x + 2 + offset * 0.4, y + 3);
-        ctx.lineTo(x + 6 + offset * 0.3, y + 10 + (i % 3) * 3);
-        ctx.lineTo(x + 3 + offset * 0.2, y + 19);
+        ctx.arc(sunX, sunY, 22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.beginPath();
+        ctx.arc(sunX - 6, sunY - 6, 8, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        const nightT = clamp(((state.timeOfDay + 1) % 1 - 0.75) / 0.5, 0, 1);
+        const moonX = nightT * VIEW_W;
+        const moonY = horizon - Math.sin(nightT * Math.PI) * 265;
+        ctx.fillStyle = "rgba(229, 237, 224, 0.9)";
+        ctx.beginPath();
+        ctx.arc(moonX, moonY, 19, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(35, 48, 65, 0.25)";
+        ctx.beginPath();
+        ctx.arc(moonX + 7, moonY - 5, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(229,237,224,0.08)";
+        ctx.beginPath();
+        ctx.arc(moonX, moonY, 48, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (let index = 0; index < clouds.length; index += 1) {
+        const cloud = clouds[index];
+        const x = ((cloud.x + state.timeOfDay * 1800 * (cloud.speed / 8) - state.camera.x * 0.035) % (VIEW_W + 320)) - 160;
+        const y = cloud.y - state.camera.y * 0.02;
+        const alpha = cloud.alpha * (0.45 + palette.dayness * 0.55);
+        ctx.fillStyle = "rgba(238, 244, 242, " + alpha + ")";
+        const puffs = 4;
+        for (let puff = 0; puff < puffs; puff += 1) {
+          const offset = (puff - 1.5) * (cloud.w / 5);
+          const radius = cloud.h * (0.6 + (puff % 2) * 0.45);
+          ctx.beginPath();
+          ctx.arc(x + offset, y + Math.sin(puff) * 3, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillRect(x - cloud.w * 0.22, y, cloud.w * 0.55, cloud.h * 0.5);
+      }
+    }
+
+    function drawHills(state) {
+      const palette = skyPalette(state.timeOfDay, state.dayFactor);
+      for (let layer = 0; layer < hillLayers.length; layer += 1) {
+        const data = hillLayers[layer];
+        const offset = -(state.camera.x * data.parallax) % (VIEW_W * 2);
+        const tint = mix(data.color, palette.bottom, layer === 0 ? 0.35 : 0.12);
+        const darkness = 1 - palette.dayness;
+        const color = mix(tint, [11, 20, 24], darkness * 0.55);
+        ctx.fillStyle = css(color);
+        ctx.beginPath();
+        ctx.moveTo(-VIEW_W, VIEW_H);
+        for (let index = 0; index < data.points.length; index += 1) {
+          const point = data.points[index];
+          const x = point.x + offset - VIEW_W * 0.5;
+          const y = data.base - point.y + state.camera.y * (1 - data.parallax) * 0.2;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(VIEW_W * 2, VIEW_H);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    function drawCaveBackdrop(state) {
+      const world = state.world;
+      const camera = state.camera;
+      const firstColumn = Math.max(0, Math.floor(camera.x / TILE) - 1);
+      const lastColumn = Math.min(world.width - 1, Math.ceil((camera.x + VIEW_W) / TILE) + 1);
+      const gradient = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+      gradient.addColorStop(0, "#241a16");
+      gradient.addColorStop(0.55, "#171210");
+      gradient.addColorStop(1, "#0d0b0c");
+      for (let x = firstColumn; x <= lastColumn; x += 1) {
+        const surfaceY = world.surface ? world.surface[x] : WORLD.findSurfaceY(world, x);
+        const screenY = surfaceY * TILE - camera.y;
+        if (screenY >= VIEW_H) {
+          continue;
+        }
+        const left = Math.round(x * TILE - camera.x);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(left, Math.max(0, Math.round(screenY)), TILE + 1, VIEW_H - Math.max(0, screenY));
+      }
+      ctx.fillStyle = "rgba(255, 232, 196, 0.03)";
+      for (let x = firstColumn; x <= lastColumn; x += 1) {
+        const surfaceY = world.surface ? world.surface[x] : WORLD.findSurfaceY(world, x);
+        const screenY = Math.max(0, Math.round(surfaceY * TILE - camera.y));
+        if (screenY < VIEW_H) {
+          const left = Math.round(x * TILE - camera.x);
+          for (let y = screenY + 22; y < VIEW_H; y += 34) {
+            ctx.fillRect(left + 3, y, TILE - 6, 1);
+          }
+        }
+      }
+    }
+
+    function drawWorld(state) {
+      const world = state.world;
+      const camera = state.camera;
+      const firstColumn = Math.max(0, Math.floor(camera.x / TILE) - 1);
+      const lastColumn = Math.min(world.width - 1, Math.ceil((camera.x + VIEW_W) / TILE) + 1);
+      const firstRow = Math.max(0, Math.floor(camera.y / TILE) - 1);
+      const lastRow = Math.min(world.height - 1, Math.ceil((camera.y + VIEW_H) / TILE) + 1);
+      for (let y = firstRow; y <= lastRow; y += 1) {
+        for (let x = firstColumn; x <= lastColumn; x += 1) {
+          const block = world.data[y * world.width + x];
+          if (block === CONFIG.blocks.air) {
+            continue;
+          }
+          const variant = Math.floor(RNG.hash2(x, y, world.seed + 44) * TEXTURES.VARIANTS);
+          const sx = Math.round(x * TILE - camera.x);
+          const sy = Math.round(y * TILE - camera.y);
+          TEXTURES.drawBlock(ctx, block, sx, sy, TILE, variant);
+          const definition = CONFIG.blockDefs[block];
+          if (definition && definition.solid && block !== CONFIG.blocks.torch) {
+            const above = y > 0 ? world.data[(y - 1) * world.width + x] : CONFIG.blocks.air;
+            if (above === CONFIG.blocks.air || CONFIG.blockDefs[above].transparent) {
+              ctx.fillStyle = "rgba(255, 242, 204, 0.16)";
+              ctx.fillRect(sx, sy, TILE, 1);
+            }
+            ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
+            ctx.fillRect(sx, sy + TILE - 1, TILE, 1);
+            ctx.fillRect(sx + TILE - 1, sy, 1, TILE);
+          }
+        }
+      }
+    }
+
+    function drawLighting(state) {
+      const world = state.world;
+      const camera = state.camera;
+      const firstColumn = Math.max(0, Math.floor(camera.x / TILE));
+      const lastColumn = Math.min(world.width - 1, Math.ceil((camera.x + VIEW_W) / TILE));
+      const firstRow = Math.max(0, Math.floor(camera.y / TILE));
+      const lastRow = Math.min(world.height - 1, Math.ceil((camera.y + VIEW_H) / TILE));
+      const cols = lastColumn - firstColumn + 1;
+      const rows = lastRow - firstRow + 1;
+      if (cols <= 0 || rows <= 0) {
+        return;
+      }
+      if (lightCanvas.width !== cols || lightCanvas.height !== rows) {
+        lightCanvas.width = cols;
+        lightCanvas.height = rows;
+      }
+      const image = lightCtx.createImageData(cols, rows);
+      const data = image.data;
+      const day = state.dayFactor;
+      for (let row = 0; row < rows; row += 1) {
+        const worldY = firstRow + row;
+        for (let col = 0; col < cols; col += 1) {
+          const worldX = firstColumn + col;
+          const index = (row * cols + col) * 4;
+          const block = world.data[worldY * world.width + worldX];
+          const surfaceY = world.surface ? world.surface[worldX] : WORLD.findSurfaceY(world, worldX);
+          if (block === CONFIG.blocks.air && worldY < surfaceY) {
+            data[index + 3] = 0;
+            continue;
+          }
+          let light = WORLD.lightAt(world, worldX, worldY, day);
+          light = Math.max(light, 2.8);
+          const depth = Math.max(0, worldY - surfaceY);
+          const ambient = Math.max(0, 4.9 - depth * 0.13) * (0.45 + day * 0.55);
+          light = Math.max(light, ambient);
+          if (block !== CONFIG.blocks.air) {
+            const neighbors = [
+              worldX > 0 ? WORLD.lightAt(world, worldX - 1, worldY, day) : 0,
+              worldX < world.width - 1 ? WORLD.lightAt(world, worldX + 1, worldY, day) : 0,
+              worldY > 0 ? WORLD.lightAt(world, worldX, worldY - 1, day) : 0,
+              worldY < world.height - 1 ? WORLD.lightAt(world, worldX, worldY + 1, day) : 0
+            ];
+            light = Math.max(light, Math.max(neighbors[0], neighbors[1], neighbors[2], neighbors[3]) - 1);
+          }
+          const darkness = Math.pow(1 - clamp(light / 15, 0, 1), 1.15);
+          data[index] = 7;
+          data[index + 1] = 11;
+          data[index + 2] = 24;
+          data[index + 3] = Math.round(darkness * (block === CONFIG.blocks.air ? 238 : 205));
+        }
+      }
+      lightCtx.putImageData(image, 0, 0);
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(
+        lightCanvas,
+        Math.round(firstColumn * TILE - camera.x),
+        Math.round(firstRow * TILE - camera.y),
+        cols * TILE,
+        rows * TILE
+      );
+      ctx.restore();
+      ctx.imageSmoothingEnabled = false;
+
+      const lightRadius = 5.4 * TILE;
+      for (let row = 0; row < rows; row += 1) {
+        for (let col = 0; col < cols; col += 1) {
+          const worldX = firstColumn + col;
+          const worldY = firstRow + row;
+          if (world.data[worldY * world.width + worldX] !== CONFIG.blocks.torch) {
+            continue;
+          }
+          const x = worldX * TILE - camera.x + TILE / 2;
+          const y = worldY * TILE - camera.y + TILE / 2;
+          const glow = ctx.createRadialGradient(x, y, 2, x, y, lightRadius);
+          glow.addColorStop(0, "rgba(255, 195, 91, 0.24)");
+          glow.addColorStop(0.35, "rgba(255, 133, 49, 0.11)");
+          glow.addColorStop(1, "rgba(255, 110, 36, 0)");
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          ctx.fillStyle = glow;
+          ctx.fillRect(x - lightRadius, y - lightRadius, lightRadius * 2, lightRadius * 2);
+          ctx.restore();
+        }
+      }
+    }
+
+    function drawTarget(state) {
+      const hover = state.hover;
+      if (!hover || !hover.visible) {
+        return;
+      }
+      const camera = state.camera;
+      const sx = Math.round(hover.x * TILE - camera.x);
+      const sy = Math.round(hover.y * TILE - camera.y);
+      const valid = hover.valid;
+      ctx.save();
+      ctx.strokeStyle = valid ? "rgba(255,255,255,0.88)" : "rgba(239,110,93,0.9)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx + 1, sy + 1, TILE - 2, TILE - 2);
+      ctx.strokeStyle = valid ? "rgba(30,30,30,0.55)" : "rgba(80,20,18,0.6)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(sx + 3, sy + 3, TILE - 6, TILE - 6);
+      const corner = 5;
+      ctx.strokeStyle = valid ? "rgba(255, 226, 153, 0.95)" : "rgba(255, 140, 120, 0.95)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + corner);
+      ctx.lineTo(sx, sy);
+      ctx.lineTo(sx + corner, sy);
+      ctx.moveTo(sx + TILE - corner, sy);
+      ctx.lineTo(sx + TILE, sy);
+      ctx.lineTo(sx + TILE, sy + corner);
+      ctx.moveTo(sx, sy + TILE - corner);
+      ctx.lineTo(sx, sy + TILE);
+      ctx.lineTo(sx + corner, sy + TILE);
+      ctx.moveTo(sx + TILE - corner, sy + TILE);
+      ctx.lineTo(sx + TILE, sy + TILE);
+      ctx.lineTo(sx + TILE, sy + TILE - corner);
+      ctx.stroke();
+      ctx.restore();
+
+      if (state.mining && state.mining.x === hover.x && state.mining.y === hover.y && state.mining.progress > 0) {
+        drawCracks(sx, sy, state.mining.progress);
+      }
+    }
+
+    function drawCracks(sx, sy, progress) {
+      const stage = clamp(progress, 0, 1);
+      const lines = [
+        [[8, 1], [9, 7], [5, 11]],
+        [[15, 1], [13, 7], [16, 12]],
+        [[1, 13], [7, 15], [10, 22]],
+        [[22, 10], [17, 13], [20, 19]],
+        [[11, 8], [7, 13], [12, 17]],
+        [[3, 4], [8, 6], [11, 3]]
+      ];
+      ctx.save();
+      ctx.strokeStyle = "rgba(16, 12, 9, 0.75)";
+      ctx.lineWidth = 1.4;
+      const count = Math.max(1, Math.ceil(stage * lines.length));
+      for (let index = 0; index < count; index += 1) {
+        const line = lines[index];
+        ctx.beginPath();
+        ctx.moveTo(sx + line[0][0], sy + line[0][1]);
+        for (let point = 1; point < line.length; point += 1) {
+          ctx.lineTo(sx + line[point][0], sy + line[point][1]);
+        }
         ctx.stroke();
       }
+      ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+      ctx.fillRect(sx + 6, sy + 4, Math.round(3 * stage), 1);
+      ctx.restore();
     }
-    ctx.restore();
-  }
 
-  function drawPlayer(ctx, player, camera, time, shakeX, shakeY) {
-    const sx = Math.round(player.x * TILE - camera.x) - shakeX;
-    const sy = Math.round(player.y * TILE - camera.y) - shakeY;
-    const w = Math.round(player.width * TILE);
-    const h = Math.round(player.height * TILE);
-    const walk = Math.sin(player.walkTime) * (player.moving ? 1 : 0);
-    const hurt = player.hurtCooldown > 0 && Math.floor(time * 30) % 2 === 0;
-
-    ctx.save();
-    ctx.translate(sx, sy);
-    ctx.scale(player.facing >= 0 ? 1 : -1, 1);
-    ctx.fillStyle = "rgba(0,0,0,0.18)";
-    ctx.beginPath();
-    ctx.ellipse(0, 1, w * 0.62, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    const bodyTop = -h + 4;
-    const skin = hurt ? "#ff9a9a" : "#e3b07a";
-    const shirt = hurt ? "#f2b2b2" : "#2f8f83";
-    const pants = hurt ? "#e0a0a0" : "#3b4a7a";
-    const hair = "#4a2f1b";
-
-    // Legs
-    ctx.fillStyle = pants;
-    ctx.fillRect(-7, -12, 6, 11 + walk * 2);
-    ctx.fillRect(1, -12, 6, 11 - walk * 2);
-    ctx.fillStyle = "#2b2b33";
-    ctx.fillRect(-7, -2 + walk * 2, 6, 2);
-    ctx.fillRect(1, -2 - walk * 2, 6, 2);
-
-    // Body
-    ctx.fillStyle = shirt;
-    ctx.fillRect(-8, bodyTop + 15, 16, 16);
-    ctx.fillStyle = "rgba(255,255,255,0.13)";
-    ctx.fillRect(-8, bodyTop + 15, 3, 16);
-
-    // Arms
-    const swing = player.swing > 0 ? Math.sin(player.swing * Math.PI) : 0;
-    ctx.fillStyle = shirt;
-    ctx.fillRect(-11, bodyTop + 16 - swing * 4, 3, 13);
-    ctx.fillStyle = skin;
-    ctx.fillRect(-11, bodyTop + 27 - swing * 4, 3, 4);
-    ctx.fillStyle = shirt;
-    ctx.fillRect(8, bodyTop + 16 + swing * 4, 3, 13);
-    ctx.fillStyle = skin;
-    ctx.fillRect(8, bodyTop + 27 + swing * 4, 3, 4);
-
-    // Head
-    ctx.fillStyle = skin;
-    ctx.fillRect(-8, bodyTop, 16, 15);
-    ctx.fillStyle = hair;
-    ctx.fillRect(-9, bodyTop - 2, 18, 6);
-    ctx.fillRect(-9, bodyTop - 2, 5, 11);
-    ctx.fillStyle = "#2b2b33";
-    ctx.fillRect(2, bodyTop + 6, 2, 2);
-    ctx.fillRect(-4, bodyTop + 6, 2, 2);
-    ctx.fillStyle = "rgba(120, 70, 40, 0.55)";
-    ctx.fillRect(-1, bodyTop + 10, 4, 1);
-
-    // Hand item (a small tool silhouette so the selected slot reads in-world)
-    if (player.heldItem && player.heldItem.kind === "tool") {
-      ctx.fillStyle = "#c9ced4";
-      ctx.fillRect(11, bodyTop + 12 + swing * 4, 2, 10);
-    } else if (player.heldItem && player.heldItem.kind === "block") {
-      ctx.fillStyle = "#b07a43";
-      ctx.fillRect(10, bodyTop + 18 + swing * 4, 5, 5);
-    }
-    ctx.restore();
-  }
-
-  function drawEntities(ctx, entities, camera, time, shakeX, shakeY) {
-    if (!entities || !entities.length) {
-      return;
-    }
-    for (const entity of entities) {
-      const sx = Math.round(entity.x * TILE - camera.x) - shakeX;
-      const sy = Math.round(entity.y * TILE - camera.y) - shakeY;
-      const w = Math.round((entity.width || 0.8) * TILE);
-      const h = Math.round((entity.height || 0.9) * TILE);
-      ctx.save();
-      ctx.translate(sx, sy);
-      const hurt = entity.hurt > 0 && Math.floor(time * 24) % 2 === 0;
-      ctx.fillStyle = "rgba(0,0,0,0.2)";
-      ctx.beginPath();
-      ctx.ellipse(0, 1, w * 0.55, 3, 0, 0, Math.PI * 2);
-      ctx.fill();
-      if (entity.type === "slime") {
-        const squash = 1 + Math.sin(time * 6 + entity.phase) * 0.12;
-        ctx.fillStyle = hurt ? "#ffb3b3" : "#5fc46a";
-        ctx.fillRect(-w / 2, -h * squash, w, h * squash);
-        ctx.fillStyle = "#2f7d39";
-        ctx.fillRect(-w / 2 + 3, -h * squash + 4, 3, 3);
-        ctx.fillRect(w / 2 - 6, -h * squash + 4, 3, 3);
-        ctx.fillStyle = "rgba(255,255,255,0.25)";
-        ctx.fillRect(-w / 2 + 4, -h * squash + 6, 5, 4);
-      } else if (entity.type === "zombie") {
-        ctx.fillStyle = hurt ? "#ffb3b3" : "#4e7a4e";
-        ctx.fillRect(-6, -h + 14, 12, 12);
-        ctx.fillStyle = "#3d5f3d";
-        ctx.fillRect(-6, -h + 14, 12, 4);
-        ctx.fillStyle = "#5d8f5d";
-        ctx.fillRect(-6, -h + 4, 5, 7);
-        ctx.fillRect(1, -h + 4, 5, 7);
-        ctx.fillStyle = "#d94b4b";
-        ctx.fillRect(-4, -h + 7, 2, 2);
-        ctx.fillRect(2, -h + 7, 2, 2);
-        ctx.fillStyle = "#3a4a6a";
-        ctx.fillRect(-6, -h + 24, 5, 7);
-        ctx.fillRect(1, -h + 24, 5, 7);
-      } else if (entity.type === "pig") {
-        ctx.fillStyle = hurt ? "#ffb3b3" : "#e79a9a";
-        ctx.fillRect(-w / 2, -h, w, h * 0.7);
-        ctx.fillStyle = "#c97a7a";
-        ctx.fillRect(-w / 2 + 2, -h + 4, 3, 3);
-        ctx.fillRect(w / 2 - 5, -h + 4, 3, 3);
-        ctx.fillStyle = "#d98a8a";
-        ctx.fillRect(w / 2 - 2, -h + 7, 4, 4);
-        ctx.fillStyle = "#8a4c4c";
-        ctx.fillRect(-w / 2 + 3, -h + h * 0.7 - 2, 3, 4);
-        ctx.fillRect(w / 2 - 6, -h + h * 0.7 - 2, 3, 4);
-      } else if (entity.type === "chicken") {
-        ctx.fillStyle = hurt ? "#ffb3b3" : "#f2f0e6";
-        ctx.fillRect(-6, -h, 12, 9);
-        ctx.fillStyle = "#e8c34a";
-        ctx.fillRect(4, -h + 2, 4, 3);
-        ctx.fillStyle = "#d94b4b";
-        ctx.fillRect(-2, -h - 2, 4, 3);
-        ctx.fillStyle = "#c9a23a";
-        ctx.fillRect(-3, -2, 2, 3);
-        ctx.fillRect(1, -2, 2, 3);
+    function drawParticles(state) {
+      const particles = state.particles || [];
+      const camera = state.camera;
+      for (let index = 0; index < particles.length; index += 1) {
+        const particle = particles[index];
+        const alpha = clamp(particle.life / particle.maxLife, 0, 1);
+        ctx.fillStyle = "rgba(" + particle.color[0] + "," + particle.color[1] + "," + particle.color[2] + "," + alpha + ")";
+        const size = particle.size * TILE;
+        ctx.fillRect(
+          Math.round(particle.x * TILE - camera.x),
+          Math.round(particle.y * TILE - camera.y),
+          Math.max(2, Math.round(size)),
+          Math.max(2, Math.round(size))
+        );
       }
-      if (entity.health < entity.maxHealth) {
-        const ratio = Math.max(0, entity.health / entity.maxHealth);
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
-        ctx.fillRect(-12, -h - 8, 24, 3);
-        ctx.fillStyle = "#e74c4c";
-        ctx.fillRect(-12, -h - 8, 24 * ratio, 3);
+    }
+
+    function drawPlayer(state) {
+      const player = state.player;
+      const camera = state.camera;
+      const px = Math.round(player.x * TILE - camera.x);
+      const feetY = Math.round(player.y * TILE - camera.y);
+      const width = Math.round(player.width * TILE);
+      const height = Math.round(player.height * TILE);
+      const bob = player.onGround ? Math.sin(player.walkTime * 12) * Math.min(1.4, Math.abs(player.vx) * 0.18) : 0;
+      const facing = player.facing < 0 ? -1 : 1;
+      const swing = state.swing || 0;
+      const armAngle = Math.sin(swing * Math.PI) * 0.8;
+
+      ctx.save();
+      if (player.onGround) {
+        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        ctx.beginPath();
+        ctx.ellipse(px, feetY + 1, width * 0.6, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.translate(px, feetY + bob);
+      ctx.scale(facing, 1);
+
+      const legSwing = player.onGround ? Math.sin(player.walkTime * 12) * Math.min(3, Math.abs(player.vx)) : 1.5;
+      const skin = "#ddb087";
+      const skinShade = "#b98561";
+      const shirt = "#2f6a61";
+      const shirtLight = "#3f8b79";
+      const pantsDark = "#263249";
+      const hair = "#4a2c20";
+
+      ctx.fillStyle = "rgba(0,0,0,0.24)";
+      ctx.fillRect(-width / 2 + 1, -height + 1, width, height);
+      ctx.fillStyle = pantsDark;
+      ctx.fillRect(-width / 2 + 1, -14, 6, 14 + legSwing);
+      ctx.fillRect(width / 2 - 7, -14, 6, 14 - legSwing);
+      ctx.fillStyle = "#1c1716";
+      ctx.fillRect(-width / 2, -3 + legSwing, 7, 3);
+      ctx.fillRect(width / 2 - 7, -3 - legSwing, 7, 3);
+
+      ctx.fillStyle = shirt;
+      ctx.fillRect(-width / 2 + 1, -28, width - 2, 16);
+      ctx.fillStyle = shirtLight;
+      ctx.fillRect(-width / 2 + 1, -28, width - 2, 3);
+      ctx.fillStyle = "#d7b24d";
+      ctx.fillRect(-2, -27, 3, 2);
+
+      ctx.fillStyle = skinShade;
+      ctx.fillRect(-width / 2 - 1, -26, 4, 12);
+      ctx.fillStyle = skin;
+      ctx.fillRect(width / 2 - 3, -26, 4, 12);
+      const handY = -16 - Math.round(armAngle * 6);
+      ctx.fillStyle = skin;
+      ctx.fillRect(width / 2 - 3, handY, 5, 5);
+
+      const item = state.heldItem;
+      if (item) {
+        ctx.save();
+        ctx.translate(width / 2 + 1, handY - 2);
+        ctx.rotate(-0.55 - armAngle * 0.5);
+        TEXTURES.drawItem(ctx, item, -8, -12, 18);
+        ctx.restore();
+      }
+
+      ctx.fillStyle = skin;
+      ctx.fillRect(-6, -41, 12, 12);
+      ctx.fillStyle = skinShade;
+      ctx.fillRect(2, -38, 5, 3);
+      ctx.fillStyle = "#2c201d";
+      ctx.fillRect(3, -36, 2, 2);
+      ctx.fillStyle = hair;
+      ctx.fillRect(-7, -43, 14, 5);
+      ctx.fillRect(-7, -40, 3, 6);
+      ctx.fillStyle = "#5c3626";
+      ctx.fillRect(-4, -44, 8, 2);
+
+      if (player.hurtCooldown > 0.25) {
+        ctx.fillStyle = "rgba(255, 80, 58, 0.32)";
+        ctx.fillRect(-width / 2 - 1, -height, width + 2, height);
       }
       ctx.restore();
     }
+
+    function drawVignette() {
+      const gradient = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.32, VIEW_W / 2, VIEW_H / 2, VIEW_W * 0.7);
+      gradient.addColorStop(0, "rgba(0,0,0,0)");
+      gradient.addColorStop(1, "rgba(3,7,10,0.34)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
+
+    function draw(state) {
+      const palette = skyPalette(state.timeOfDay, state.dayFactor);
+      drawSky(state);
+      drawHills(state);
+      drawCaveBackdrop(state);
+      drawWorld(state);
+      drawLighting(state);
+      drawParticles(state);
+      drawPlayer(state);
+      drawTarget(state);
+      ctx.save();
+      if (palette.dusk > 0.4 && state.dayFactor > 0.25) {
+        ctx.globalCompositeOperation = "soft-light";
+        ctx.fillStyle = "rgba(255, 130, 69, " + (palette.dusk * 0.08) + ")";
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      }
+      drawVignette();
+      ctx.restore();
+    }
+
+    function drawMinimap(targetCanvas, state) {
+      const minimapCtx = targetCanvas.getContext("2d");
+      const width = targetCanvas.width;
+      const height = targetCanvas.height;
+      const world = state.world;
+      minimapCtx.clearRect(0, 0, width, height);
+      minimapCtx.fillStyle = "rgba(8, 13, 18, 0.78)";
+      minimapCtx.fillRect(0, 0, width, height);
+      const top = 24;
+      const bottom = height - 8;
+      const span = world.height - 30;
+      for (let x = 0; x < width; x += 1) {
+        const worldX = Math.floor((x / width) * world.width);
+        const surfaceY = WORLD.findSurfaceY(world, worldX);
+        const screenY = top + clamp((surfaceY - 30) / span, 0, 1) * (bottom - top);
+        const block = world.data[surfaceY * world.width + worldX];
+        let color = "#668a55";
+        if (block === CONFIG.blocks.sand) {
+          color = "#c9b070";
+        } else if (block === CONFIG.blocks.stone || block === CONFIG.blocks.cobblestone) {
+          color = "#737d7e";
+        } else if (block === CONFIG.blocks.wood || block === CONFIG.blocks.leaves) {
+          color = "#4e7444";
+        }
+        minimapCtx.fillStyle = color;
+        minimapCtx.fillRect(x, screenY, 1, height - screenY);
+        minimapCtx.fillStyle = "rgba(255,255,255,0.06)";
+        minimapCtx.fillRect(x, screenY, 1, 1);
+      }
+      const playerX = clamp((state.player.x / world.width) * width, 2, width - 2);
+      const playerY = top + clamp((state.player.y - 30) / span, 0, 1) * (bottom - top);
+      minimapCtx.fillStyle = "#ffcc70";
+      minimapCtx.beginPath();
+      minimapCtx.moveTo(playerX, playerY - 4);
+      minimapCtx.lineTo(playerX - 4, playerY + 3);
+      minimapCtx.lineTo(playerX + 4, playerY + 3);
+      minimapCtx.closePath();
+      minimapCtx.fill();
+      minimapCtx.strokeStyle = "rgba(255, 220, 147, 0.75)";
+      minimapCtx.strokeRect(playerX - 5, playerY - 5, 10, 10);
+      minimapCtx.fillStyle = "rgba(239, 238, 222, 0.8)";
+      minimapCtx.font = "9px monospace";
+      minimapCtx.fillText("SURFACE", 5, 13);
+      minimapCtx.fillStyle = "rgba(175, 196, 190, 0.68)";
+      minimapCtx.fillText(Math.floor(state.player.x) + ", " + Math.floor(state.player.y), width - 52, 13);
+    }
+
+    return {
+      draw: draw,
+      drawMinimap: drawMinimap,
+      screenToWorld: screenToWorld,
+      canvas: canvas
+    };
   }
 
-  function drawParticles(ctx, particles, camera, shakeX, shakeY) {
-    if (!particles || !particles.length) {
-      return;
-    }
-    ctx.save();
-    for (const p of particles) {
-      const x = p.x * TILE - camera.x - shakeX;
-      const y = p.y * TILE - camera.y - shakeY;
-      const alpha = Math.max(0, Math.min(1, p.life / p.maxLife));
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = p.color;
-      ctx.fillRect(Math.round(x), Math.round(y), p.size, p.size);
-    }
-    ctx.restore();
-  }
-
-  function drawNightTint(ctx, time, viewWidth, viewHeight, shakeX, shakeY) {
-    const night = nightAmount(time);
-    if (night <= 0.02) {
-      return;
-    }
-    ctx.save();
-    ctx.fillStyle = "rgba(8, 12, 30, " + (night * 0.38).toFixed(3) + ")";
-    ctx.fillRect(-shakeX, -shakeY, viewWidth + Math.abs(shakeX) * 2, viewHeight + Math.abs(shakeY) * 2);
-    ctx.restore();
-  }
-
-  function drawCrosshair(ctx, mouseX, mouseY) {
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.72)";
-    ctx.fillRect(mouseX - 5, mouseY, 4, 1);
-    ctx.fillRect(mouseX + 2, mouseY, 4, 1);
-    ctx.fillRect(mouseX, mouseY - 5, 1, 4);
-    ctx.fillRect(mouseX, mouseY + 2, 1, 4);
-    ctx.restore();
-  }
-
-  function renderFrame(ctx, state) {
-    const viewWidth = CONFIG.viewWidth;
-    const viewHeight = CONFIG.viewHeight;
-    const shake = state.shake || { x: 0, y: 0 };
-    const shakeX = shake.x || 0;
-    const shakeY = shake.y || 0;
-    const time = state.time == null ? 0.3 : state.time;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, viewWidth, viewHeight);
-
-    drawSky(ctx, time, viewWidth, viewHeight, shakeX, shakeY);
-    drawStars(ctx, time, viewWidth, viewHeight);
-    drawCelestial(ctx, time, viewWidth, viewHeight, shakeX, shakeY);
-    drawClouds(ctx, time, state.camera, viewWidth, viewHeight, shakeX, shakeY);
-    drawHills(ctx, time, state.camera, viewWidth, viewHeight, shakeX, shakeY);
-    drawWorld(ctx, state.world, state.camera, viewWidth, viewHeight, time, shakeX, shakeY);
-    drawEntities(ctx, state.entities, state.camera, time, shakeX, shakeY);
-    drawPlayer(ctx, state.player, state.camera, time, shakeX, shakeY);
-    drawParticles(ctx, state.particles, state.camera, shakeX, shakeY);
-    if (state.lighting) {
-      state.lighting(ctx, state, { shakeX: shakeX, shakeY: shakeY });
-    } else {
-      drawNightTint(ctx, time, viewWidth, viewHeight, shakeX, shakeY);
-    }
-    drawSelection(ctx, state.target, state.camera, state.miningProgress || 0, state.targetValid, shakeX, shakeY);
-    if (state.showCrosshair !== false) {
-      drawCrosshair(ctx, state.mouseX || viewWidth / 2, state.mouseY || viewHeight / 2);
-    }
-    ctx.restore();
-  }
-
-  return {
-    renderFrame: renderFrame,
-    updateCamera: updateCamera,
-    screenX: screenX,
-    screenY: screenY,
-    skyColors: skyColors,
-    nightAmount: nightAmount,
-    drawNightTint: drawNightTint,
-    drawSky: drawSky,
-    drawWorld: drawWorld,
-    drawPlayer: drawPlayer,
-    TILE: TILE
+  window.SandboxRender = {
+    createRenderer: createRenderer,
+    skyPalette: skyPalette
   };
-});
+})();

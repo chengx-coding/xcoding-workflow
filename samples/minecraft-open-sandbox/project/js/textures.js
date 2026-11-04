@@ -1,541 +1,488 @@
-/* Procedural pixel-art textures and item icons. No external assets. */
-(function (root, factory) {
-  if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./config.js"), require("./rng.js"));
-  } else {
-    root.SandboxTextures = factory(root.SandboxConfig, root.SandboxRng);
-  }
-})(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG, RNG) {
+(function () {
   "use strict";
 
-  const SIZE = 16;
-  const B = CONFIG.blocks;
-  const cache = { blocks: null, items: null };
+  const TILE = 24;
+  const VARIANTS = 3;
+  const rng = window.SandboxRng;
 
-  function makeCanvas() {
+  function hexToRgb(hex) {
+    const value = parseInt(hex.replace("#", ""), 16);
+    return { r: (value >> 16) & 255, g: (value >> 8) & 255, b: value & 255 };
+  }
+
+  function shade(hex, amount) {
+    const color = hexToRgb(hex);
+    const clamp = function (value) { return Math.max(0, Math.min(255, Math.round(value))); };
+    return "rgb(" + clamp(color.r + amount) + "," + clamp(color.g + amount) + "," + clamp(color.b + amount) + ")";
+  }
+
+  function makeCanvas(size) {
     const canvas = document.createElement("canvas");
-    canvas.width = SIZE;
-    canvas.height = SIZE;
+    canvas.width = size;
+    canvas.height = size;
     return canvas;
   }
 
-  function px(ctx, x, y, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, 1, 1);
-  }
-
-  function fill(ctx, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, SIZE, SIZE);
-  }
-
-  function speckle(ctx, color, count, random) {
-    ctx.fillStyle = color;
-    for (let i = 0; i < count; i += 1) {
-      const x = Math.floor(random() * SIZE);
-      const y = Math.floor(random() * SIZE);
-      const w = random() < 0.2 ? 2 : 1;
-      ctx.fillRect(x, y, w, 1);
-    }
-  }
-
-  function line(ctx, x0, y0, x1, y1, color) {
-    ctx.fillStyle = color;
-    let dx = Math.abs(x1 - x0);
-    let dy = Math.abs(y1 - y0);
-    let sx = x0 < x1 ? 1 : -1;
-    let sy = y0 < y1 ? 1 : -1;
-    let err = dx - dy;
-    let x = x0;
-    let y = y0;
-    for (let guard = 0; guard < 64; guard += 1) {
-      ctx.fillRect(x, y, 1, 1);
-      if (x === x1 && y === y1) {
-        break;
-      }
-      const e2 = 2 * err;
-      if (e2 > -dy) {
-        err -= dy;
-        x += sx;
-      }
-      if (e2 < dx) {
-        err += dx;
-        y += sy;
+  function fillPixelBase(ctx, color, variation, rand, size) {
+    const step = 2;
+    for (let y = 0; y < size; y += step) {
+      for (let x = 0; x < size; x += step) {
+        const offset = (rand() - 0.5) * variation;
+        ctx.fillStyle = shade(color, offset);
+        ctx.fillRect(x, y, step, step);
       }
     }
   }
 
-  function paintGrass(ctx, random) {
-    fill(ctx, "#7a5230");
-    speckle(ctx, "#6a4527", 30, random);
-    speckle(ctx, "#8b6038", 18, random);
-    ctx.fillStyle = "#4e9b3e";
-    ctx.fillRect(0, 0, SIZE, 4);
-    for (let x = 0; x < SIZE; x += 1) {
-      px(ctx, x, 0, random() < 0.55 ? "#67bf52" : "#3f8334");
-      if (random() < 0.4) {
-        px(ctx, x, 1, "#58aa45");
-      }
-      if (random() < 0.25) {
-        px(ctx, x, 4, "#3f8334");
-      }
-      if (random() < 0.14) {
-        px(ctx, x, 5, "#3f8334");
-      }
-    }
-    for (let i = 0; i < 5; i += 1) {
-      const x = 1 + Math.floor(random() * 14);
-      px(ctx, x, 3, "#7ad35f");
+  function speckle(ctx, colors, count, rand, size, min, max) {
+    for (let index = 0; index < count; index += 1) {
+      const x = Math.floor(rand() * size);
+      const y = Math.floor(rand() * size);
+      const w = min + Math.floor(rand() * (max - min + 1));
+      ctx.fillStyle = colors[Math.floor(rand() * colors.length)];
+      ctx.fillRect(x, y, w, w);
     }
   }
 
-  function paintDirt(ctx, random) {
-    fill(ctx, "#7a5230");
-    speckle(ctx, "#6a4527", 38, random);
-    speckle(ctx, "#8b6038", 24, random);
-    speckle(ctx, "#5c3b21", 12, random);
-    for (let i = 0; i < 3; i += 1) {
-      const x = Math.floor(random() * 14);
-      const y = Math.floor(random() * 14);
-      ctx.fillStyle = "#5c3b21";
+  function drawStoneBase(ctx, rand, size) {
+    fillPixelBase(ctx, "#7c8384", 34, rand, size);
+    speckle(ctx, ["#666f72", "#949b9a", "#5c6669"], 28, rand, size, 1, 2);
+    ctx.strokeStyle = "rgba(55, 63, 65, 0.45)";
+    ctx.lineWidth = 1;
+    for (let crack = 0; crack < 2; crack += 1) {
+      let x = Math.floor(rand() * size);
+      let y = Math.floor(rand() * size);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      const steps = 2 + Math.floor(rand() * 3);
+      for (let step = 0; step < steps; step += 1) {
+        x += Math.floor((rand() - 0.5) * 7);
+        y += 2 + Math.floor(rand() * 4);
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawGrass(ctx, rand, size) {
+    fillPixelBase(ctx, "#7a573c", 26, rand, size);
+    speckle(ctx, ["#896245", "#664833", "#977155"], 18, rand, size, 1, 2);
+    const lip = 5 + Math.floor(rand() * 3);
+    for (let x = 0; x < size; x += 1) {
+      const depth = lip + Math.floor(rand() * 2);
+      ctx.fillStyle = "#4f8a3b";
+      ctx.fillRect(x, 0, 1, depth);
+      ctx.fillStyle = x % 3 === 0 ? "#6caf4e" : "#5c9b43";
+      ctx.fillRect(x, 0, 1, Math.max(1, depth - 2));
+    }
+    ctx.fillStyle = "#7dc45a";
+    ctx.fillRect(0, 0, size, 1);
+    ctx.fillStyle = "rgba(53, 92, 42, 0.55)";
+    for (let x = 0; x < size; x += 3) {
+      ctx.fillRect(x, lip, 1, 2 + Math.floor(rand() * 3));
+    }
+    for (let blade = 0; blade < 4; blade += 1) {
+      const x = Math.floor(rand() * size);
+      ctx.fillStyle = "#73b953";
+      ctx.fillRect(x, 0, 1, 2);
+    }
+  }
+
+  function drawDirt(ctx, rand, size) {
+    fillPixelBase(ctx, "#7d5a3d", 30, rand, size);
+    speckle(ctx, ["#916b4a", "#62452f", "#a37a54", "#553b2a"], 30, rand, size, 1, 2);
+  }
+
+  function drawSand(ctx, rand, size) {
+    fillPixelBase(ctx, "#d6bd7b", 26, rand, size);
+    speckle(ctx, ["#b89d60", "#e8d292", "#c4a968"], 38, rand, size, 1, 2);
+  }
+
+  function drawCobble(ctx, rand, size) {
+    ctx.fillStyle = "#4f5657";
+    ctx.fillRect(0, 0, size, size);
+    const stones = [
+      [1, 1, 9, 8], [11, 2, 8, 6], [20, 1, 4, 9], [1, 10, 7, 6],
+      [9, 9, 9, 7], [19, 11, 5, 5], [2, 17, 10, 6], [13, 17, 9, 6]
+    ];
+    stones.forEach(function (stone, index) {
+      const base = index % 2 === 0 ? "#7f8888" : "#8f9796";
+      ctx.fillStyle = shade(base, (rand() - 0.5) * 20);
+      ctx.fillRect(stone[0], stone[1], stone[2], stone[3]);
+      ctx.fillStyle = "rgba(255,255,255,0.16)";
+      ctx.fillRect(stone[0], stone[1], stone[2], 1);
+      ctx.fillStyle = "rgba(35,42,43,0.4)";
+      ctx.fillRect(stone[0], stone[1] + stone[3] - 1, stone[2], 1);
+    });
+    speckle(ctx, ["#626b6b", "#a0a7a5"], 16, rand, size, 1, 1);
+  }
+
+  function drawWood(ctx, rand, size) {
+    fillPixelBase(ctx, "#775233", 24, rand, size);
+    ctx.fillStyle = "rgba(61, 38, 22, 0.55)";
+    for (let x = 2; x < size; x += 5) {
+      ctx.fillRect(x, 0, 1, size);
+    }
+    for (let line = 0; line < 6; line += 1) {
+      const x = Math.floor(rand() * size);
+      const y = Math.floor(rand() * size);
+      ctx.fillStyle = "#9b7147";
       ctx.fillRect(x, y, 2, 1);
+      ctx.fillStyle = "#593b25";
+      ctx.fillRect(x + 2, y + 2, 1, 1);
+    }
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.fillRect(5, 0, 1, size);
+  }
+
+  function drawLeaves(ctx, rand, size) {
+    ctx.clearRect(0, 0, size, size);
+    const greens = ["#356d35", "#468740", "#5b9b48", "#2a5a2c", "#6eae55"];
+    for (let index = 0; index < 36; index += 1) {
+      const x = Math.floor(rand() * (size - 4));
+      const y = Math.floor(rand() * (size - 4));
+      const w = 3 + Math.floor(rand() * 4);
+      const h = 3 + Math.floor(rand() * 3);
+      ctx.fillStyle = greens[Math.floor(rand() * greens.length)];
+      ctx.fillRect(x, y, w, h);
+    }
+    for (let index = 0; index < 5; index += 1) {
+      const x = Math.floor(rand() * (size - 2));
+      const y = Math.floor(rand() * (size - 2));
+      ctx.clearRect(x, y, 2, 2);
+    }
+    ctx.fillStyle = "rgba(20, 45, 22, 0.28)";
+    for (let index = 0; index < 9; index += 1) {
+      ctx.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 1);
     }
   }
 
-  function paintStone(ctx, random) {
-    fill(ctx, "#6f7378");
-    speckle(ctx, "#5d6166", 34, random);
-    speckle(ctx, "#82878d", 26, random);
-    speckle(ctx, "#4c5055", 10, random);
-    for (let i = 0; i < 3; i += 1) {
-      const x = Math.floor(random() * 12) + 1;
-      const y = Math.floor(random() * 12) + 1;
-      line(ctx, x, y, x + 2 + Math.floor(random() * 3), y + 1, "#565a5f");
+  function drawPlanks(ctx, rand, size) {
+    fillPixelBase(ctx, "#b47b43", 22, rand, size);
+    for (let y = 0; y < size; y += 6) {
+      ctx.fillStyle = "rgba(83, 48, 24, 0.6)";
+      ctx.fillRect(0, y, size, 1);
+      ctx.fillStyle = "rgba(255, 221, 160, 0.18)";
+      ctx.fillRect(0, y + 1, size, 1);
+    }
+    for (let index = 0; index < 10; index += 1) {
+      ctx.fillStyle = "rgba(107, 63, 31, 0.42)";
+      ctx.fillRect(Math.floor(rand() * size), Math.floor(rand() * size), 1, 4);
+    }
+    ctx.fillStyle = "rgba(63, 38, 20, 0.45)";
+    [4, 15].forEach(function (x) {
+      ctx.fillRect(x, 9, 1, 1);
+      ctx.fillRect(x, 21, 1, 1);
+    });
+  }
+
+  function drawOre(ctx, rand, size, colors) {
+    drawStoneBase(ctx, rand, size);
+    for (let cluster = 0; cluster < 5; cluster += 1) {
+      const cx = 3 + Math.floor(rand() * (size - 7));
+      const cy = 3 + Math.floor(rand() * (size - 7));
+      for (let index = 0; index < 4; index += 1) {
+        ctx.fillStyle = colors[Math.floor(rand() * colors.length)];
+        ctx.fillRect(cx + Math.floor(rand() * 4), cy + Math.floor(rand() * 4), 2, 2);
+      }
+      ctx.fillStyle = "rgba(0,0,0,0.32)";
+      ctx.fillRect(cx, cy + 4, 1, 1);
     }
   }
 
-  function paintWood(ctx, random) {
-    fill(ctx, "#6d4a2a");
-    for (let x = 0; x < SIZE; x += 4) {
-      ctx.fillStyle = "#54371e";
-      ctx.fillRect(x, 0, 1, SIZE);
-    }
-    for (let x = 2; x < SIZE; x += 4) {
-      ctx.fillStyle = "#895f37";
-      ctx.fillRect(x, 0, 1, SIZE);
-    }
-    speckle(ctx, "#7d552f", 22, random);
-    for (let i = 0; i < 4; i += 1) {
-      ctx.fillStyle = "#4a2f19";
-      ctx.fillRect(1 + Math.floor(random() * 14), Math.floor(random() * 16), 1, 3);
-    }
+  function drawTorch(ctx, rand, size) {
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = "rgba(255, 185, 72, 0.16)";
+    ctx.fillRect(5, 0, 14, 14);
+    ctx.fillStyle = "#6d4327";
+    ctx.fillRect(10, 9, 4, 14);
+    ctx.fillStyle = "#9b6a3c";
+    ctx.fillRect(11, 10, 1, 12);
+    ctx.fillStyle = "#2b1a12";
+    ctx.fillRect(9, 21, 6, 2);
+    ctx.fillStyle = "#ffb43b";
+    ctx.fillRect(8, 4, 8, 7);
+    ctx.fillStyle = "#ffd56a";
+    ctx.fillRect(9, 2, 6, 7);
+    ctx.fillStyle = "#fff2b0";
+    ctx.fillRect(10, 1, 4, 4);
+    ctx.fillStyle = "rgba(255, 95, 32, 0.75)";
+    ctx.fillRect(11, 8, 2, 3);
   }
 
-  function paintLeaves(ctx, random) {
-    fill(ctx, "#2e6b31");
-    for (let i = 0; i < 48; i += 1) {
-      const x = Math.floor(random() * SIZE);
-      const y = Math.floor(random() * SIZE);
-      ctx.fillStyle = random() < 0.5 ? "#3d8a3d" : "#245827";
-      ctx.fillRect(x, y, random() < 0.3 ? 2 : 1, 1);
+  function drawTable(ctx, rand, size) {
+    drawPlanks(ctx, rand, size);
+    ctx.fillStyle = "#6f4526";
+    ctx.fillRect(0, 0, size, 3);
+    ctx.fillRect(0, 0, 3, size);
+    ctx.fillRect(size - 3, 0, 3, size);
+    ctx.fillRect(0, size - 3, size, 3);
+    ctx.fillStyle = "#c99355";
+    ctx.fillRect(4, 4, 16, 16);
+    ctx.fillStyle = "#5b3a22";
+    for (let index = 0; index < 3; index += 1) {
+      ctx.fillRect(7, 7 + index * 4, 10, 1);
+      ctx.fillRect(7 + index * 4, 7, 1, 10);
     }
-    for (let i = 0; i < 12; i += 1) {
-      const x = Math.floor(random() * SIZE);
-      const y = Math.floor(random() * SIZE);
-      ctx.clearRect(x, y, 1, 1);
-    }
+    ctx.fillStyle = "#e2b778";
+    ctx.fillRect(4, 4, 16, 1);
+    ctx.fillRect(4, 4, 1, 16);
   }
 
-  function paintSand(ctx, random) {
-    fill(ctx, "#d8c27b");
-    speckle(ctx, "#c4ad67", 34, random);
-    speckle(ctx, "#e7d492", 22, random);
-    speckle(ctx, "#b39a55", 8, random);
+  function drawFurnace(ctx, rand, size) {
+    drawCobble(ctx, rand, size);
+    ctx.fillStyle = "#4b4f50";
+    ctx.fillRect(4, 4, 16, 18);
+    ctx.fillStyle = "#202527";
+    ctx.fillRect(6, 11, 12, 9);
+    ctx.fillStyle = "#333839";
+    ctx.fillRect(5, 4, 14, 7);
+    ctx.fillStyle = "#ff8f32";
+    ctx.fillRect(8, 16, 2, 2);
+    ctx.fillRect(13, 14, 2, 2);
+    ctx.fillStyle = "#ffcf5e";
+    ctx.fillRect(9, 18, 1, 1);
+    ctx.fillRect(14, 16, 1, 1);
+    ctx.fillStyle = "rgba(255,255,255,0.13)";
+    ctx.fillRect(5, 5, 14, 1);
   }
 
-  function paintWater(ctx, random) {
-    fill(ctx, "#2b6ca6");
-    for (let y = 0; y < SIZE; y += 4) {
-      for (let x = 0; x < SIZE; x += 1) {
-        if ((x + y + Math.floor(random() * 3)) % 7 < 3) {
-          px(ctx, x, y + 1, "#3f83bd");
-        }
+  function drawGlass(ctx, rand, size) {
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = "rgba(196, 236, 241, 0.2)";
+    ctx.fillRect(0, 0, size, size);
+    ctx.strokeStyle = "rgba(219, 251, 255, 0.78)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, size - 1, size - 1);
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.fillRect(3, 4, 6, 1);
+    ctx.fillRect(4, 3, 1, 6);
+    ctx.fillRect(15, 16, 5, 1);
+    ctx.fillStyle = "rgba(151, 211, 221, 0.3)";
+    ctx.fillRect(1, 7, 1, 8);
+  }
+
+  function drawStoneBricks(ctx, rand, size) {
+    fillPixelBase(ctx, "#7f8787", 20, rand, size);
+    ctx.fillStyle = "#4b5254";
+    for (let y = 0; y < size; y += 6) {
+      ctx.fillRect(0, y, size, 1);
+      const offset = (y / 6) % 2 === 0 ? 0 : 6;
+      for (let x = offset; x < size; x += 12) {
+        ctx.fillRect(x, y, 1, 6);
       }
     }
-    speckle(ctx, "#58a0d4", 12, random);
-    ctx.globalAlpha = 1;
+    speckle(ctx, ["#9aa39f", "#5f6868"], 18, rand, size, 1, 1);
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.fillRect(1, 1, size - 2, 1);
   }
 
-  function paintCoal(ctx, random) {
-    paintStone(ctx, random);
-    for (let i = 0; i < 5; i += 1) {
-      const x = 1 + Math.floor(random() * 12);
-      const y = 2 + Math.floor(random() * 12);
-      ctx.fillStyle = "#1c1c1e";
-      ctx.fillRect(x, y, 2 + Math.floor(random() * 2), 2);
-      px(ctx, x + 1, y, "#3a3a3e");
+  function drawFlower(ctx, rand, size) {
+    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = "#3e7c3a";
+    ctx.fillRect(11, 11, 2, 11);
+    ctx.fillRect(8, 15, 3, 1);
+    ctx.fillRect(13, 18, 3, 1);
+    const petals = ["#e56345", "#f48b4c", "#f6b05b", "#d94f46"];
+    for (let index = 0; index < 8; index += 1) {
+      const angle = (index / 8) * Math.PI * 2;
+      const x = 12 + Math.cos(angle) * 4;
+      const y = 8 + Math.sin(angle) * 4;
+      ctx.fillStyle = petals[index % petals.length];
+      ctx.fillRect(Math.round(x), Math.round(y), 3, 3);
+    }
+    ctx.fillStyle = "#ffd768";
+    ctx.fillRect(11, 7, 3, 3);
+  }
+
+  function drawTallGrass(ctx, rand, size) {
+    ctx.clearRect(0, 0, size, size);
+    const greens = ["#4f8d3f", "#65a44d", "#3d7135", "#7cbb5c"];
+    for (let blade = 0; blade < 8; blade += 1) {
+      const x = 2 + Math.floor(rand() * (size - 4));
+      const h = 7 + Math.floor(rand() * 12);
+      const lean = rand() < 0.5 ? -1 : 1;
+      ctx.fillStyle = greens[Math.floor(rand() * greens.length)];
+      ctx.fillRect(x, size - h, 1, h);
+      ctx.fillRect(x + lean, size - h + 1, 1, Math.max(1, h - 5));
     }
   }
 
-  function paintIron(ctx, random) {
-    paintStone(ctx, random);
-    for (let i = 0; i < 5; i += 1) {
-      const x = 1 + Math.floor(random() * 12);
-      const y = 2 + Math.floor(random() * 12);
-      ctx.fillStyle = "#b98255";
-      ctx.fillRect(x, y, 2, 2);
-      px(ctx, x, y, "#e2b183");
+  function paintBlock(ctx, blockId, rand) {
+    switch (blockId) {
+      case 1: drawGrass(ctx, rand, TILE); break;
+      case 2: drawDirt(ctx, rand, TILE); break;
+      case 3: drawStoneBase(ctx, rand, TILE); break;
+      case 4: drawWood(ctx, rand, TILE); break;
+      case 5: drawLeaves(ctx, rand, TILE); break;
+      case 6: drawCobble(ctx, rand, TILE); break;
+      case 7: drawSand(ctx, rand, TILE); break;
+      case 8: drawPlanks(ctx, rand, TILE); break;
+      case 9: drawOre(ctx, rand, TILE, ["#252a2c", "#353b3e", "#171c1e"]); break;
+      case 10: drawOre(ctx, rand, TILE, ["#c48b65", "#dfb18b", "#8f5e43"]); break;
+      case 11: drawTorch(ctx, rand, TILE); break;
+      case 12: drawTable(ctx, rand, TILE); break;
+      case 13: drawFurnace(ctx, rand, TILE); break;
+      case 14: drawGlass(ctx, rand, TILE); break;
+      case 15: drawStoneBricks(ctx, rand, TILE); break;
+      case 16: drawFlower(ctx, rand, TILE); break;
+      case 17: drawTallGrass(ctx, rand, TILE); break;
+      default:
+        ctx.clearRect(0, 0, TILE, TILE);
+        break;
     }
   }
 
-  function paintPlanks(ctx, random) {
-    fill(ctx, "#b07a43");
-    for (let y = 0; y < SIZE; y += 4) {
-      ctx.fillStyle = "#8a5a2f";
-      ctx.fillRect(0, y, SIZE, 1);
-      ctx.fillStyle = "#c58f55";
-      ctx.fillRect(0, y + 1, SIZE, 1);
+  const blockCache = new Map();
+  const iconCache = new Map();
+
+  function getBlockCanvas(blockId, variant) {
+    const key = blockId + ":" + variant;
+    if (blockCache.has(key)) {
+      return blockCache.get(key);
     }
-    for (let i = 0; i < 5; i += 1) {
-      ctx.fillStyle = "#7a4b27";
-      const x = Math.floor(random() * 16);
-      ctx.fillRect(x, Math.floor(random() * 4) * 4 + 2, 1, 1);
-      ctx.fillRect((x + 7) % 16, Math.floor(random() * 4) * 4 + 2, 1, 1);
-    }
-  }
-
-  function paintTable(ctx, random) {
-    paintPlanks(ctx, random);
-    ctx.fillStyle = "#5d3a1e";
-    ctx.fillRect(0, 0, SIZE, 2);
-    ctx.fillRect(0, 0, 2, SIZE);
-    ctx.fillRect(0, SIZE - 2, SIZE, 2);
-    ctx.fillStyle = "#d1a35e";
-    ctx.fillRect(3, 3, 4, 4);
-    ctx.fillRect(9, 9, 4, 4);
-    ctx.fillStyle = "#6b4527";
-    ctx.fillRect(4, 4, 2, 2);
-    ctx.fillRect(10, 10, 2, 2);
-    ctx.fillStyle = "#3a3a3e";
-    ctx.fillRect(9, 3, 1, 5);
-    ctx.fillRect(8, 3, 3, 1);
-  }
-
-  function paintFurnace(ctx, random) {
-    paintStone(ctx, random);
-    ctx.fillStyle = "#4b4d51";
-    ctx.fillRect(3, 4, 10, 9);
-    ctx.fillStyle = "#232326";
-    ctx.fillRect(4, 6, 8, 6);
-    ctx.fillStyle = "#f2a33b";
-    ctx.fillRect(5, 9, 2, 2);
-    ctx.fillRect(9, 9, 2, 2);
-    ctx.fillStyle = "#f7d05a";
-    ctx.fillRect(6, 10, 1, 1);
-    ctx.fillRect(10, 10, 1, 1);
-    ctx.fillStyle = "#8d9298";
-    ctx.fillRect(3, 3, 10, 1);
-  }
-
-  function paintTorch(ctx) {
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    ctx.fillStyle = "#6b4626";
-    ctx.fillRect(7, 7, 2, 8);
-    ctx.fillStyle = "#8f6236";
-    ctx.fillRect(7, 7, 1, 8);
-    ctx.fillStyle = "#f08a24";
-    ctx.fillRect(6, 3, 4, 4);
-    ctx.fillStyle = "#ffd166";
-    ctx.fillRect(7, 2, 2, 3);
-    ctx.fillStyle = "#fff3b0";
-    ctx.fillRect(7, 3, 1, 1);
-    ctx.fillStyle = "rgba(255, 190, 80, 0.35)";
-    ctx.fillRect(5, 2, 6, 6);
-  }
-
-  function paintGlass(ctx) {
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    ctx.fillStyle = "rgba(196, 226, 240, 0.28)";
-    ctx.fillRect(1, 1, 14, 14);
-    ctx.fillStyle = "rgba(210, 236, 248, 0.75)";
-    ctx.fillRect(0, 0, SIZE, 1);
-    ctx.fillRect(0, 0, 1, SIZE);
-    ctx.fillRect(15, 0, 1, SIZE);
-    ctx.fillRect(0, 15, SIZE, 1);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
-    line(ctx, 3, 12, 12, 3, "rgba(255, 255, 255, 0.45)");
-    line(ctx, 4, 13, 13, 4, "rgba(255, 255, 255, 0.25)");
-  }
-
-  function paintLadder(ctx) {
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    ctx.fillStyle = "#8a5a2f";
-    ctx.fillRect(3, 0, 2, SIZE);
-    ctx.fillRect(11, 0, 2, SIZE);
-    for (let y = 3; y < SIZE; y += 5) {
-      ctx.fillStyle = "#b07a43";
-      ctx.fillRect(3, y, 10, 2);
-    }
-  }
-
-  function paintStoneBrick(ctx, random) {
-    fill(ctx, "#777b80");
-    ctx.fillStyle = "#5b5f64";
-    ctx.fillRect(0, 7, SIZE, 1);
-    ctx.fillRect(0, 15, SIZE, 1);
-    for (let y = 0; y < 16; y += 8) {
-      const offset = y === 0 ? 0 : 4;
-      for (let x = offset; x < 16; x += 8) {
-        ctx.fillRect(x, y, 1, 7);
-      }
-    }
-    speckle(ctx, "#878c92", 14, random);
-  }
-
-  function paintFlower(ctx) {
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    ctx.fillStyle = "#3d8a3d";
-    ctx.fillRect(7, 8, 2, 7);
-    ctx.fillRect(4, 11, 4, 1);
-    ctx.fillStyle = "#d94343";
-    ctx.fillRect(5, 3, 6, 5);
-    ctx.fillStyle = "#ff6b6b";
-    ctx.fillRect(6, 4, 2, 2);
-    ctx.fillRect(8, 4, 2, 2);
-    ctx.fillStyle = "#f7d05a";
-    ctx.fillRect(7, 5, 2, 2);
-  }
-
-  function paintTallGrass(ctx) {
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    ctx.fillStyle = "#3d8a3d";
-    ctx.fillRect(3, 8, 1, 7);
-    ctx.fillRect(6, 5, 1, 10);
-    ctx.fillRect(9, 7, 1, 8);
-    ctx.fillRect(12, 9, 1, 6);
-    ctx.fillStyle = "#58aa45";
-    ctx.fillRect(6, 4, 1, 2);
-    ctx.fillRect(9, 6, 1, 2);
-    ctx.fillRect(3, 7, 1, 2);
-  }
-
-  function paintBlock(id, variant) {
-    const canvas = makeCanvas();
+    const canvas = makeCanvas(TILE);
     const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    const random = RNG.mulberry32((id * 2654435761 + variant * 40503) >>> 0);
-    switch (id) {
-      case B.grass: paintGrass(ctx, random); break;
-      case B.dirt: paintDirt(ctx, random); break;
-      case B.stone: paintStone(ctx, random); break;
-      case B.wood: paintWood(ctx, random); break;
-      case B.leaves: paintLeaves(ctx, random); break;
-      case B.sand: paintSand(ctx, random); break;
-      case B.water: paintWater(ctx, random); break;
-      case B.coalOre: paintCoal(ctx, random); break;
-      case B.ironOre: paintIron(ctx, random); break;
-      case B.planks: paintPlanks(ctx, random); break;
-      case B.table: paintTable(ctx, random); break;
-      case B.furnace: paintFurnace(ctx, random); break;
-      case B.torch: paintTorch(ctx); break;
-      case B.glass: paintGlass(ctx); break;
-      case B.ladder: paintLadder(ctx); break;
-      case B.stoneBrick: paintStoneBrick(ctx, random); break;
-      case B.flower: paintFlower(ctx); break;
-      case B.tallGrass: paintTallGrass(ctx); break;
-      default: fill(ctx, "#9e9e9e"); break;
-    }
+    const rand = rng.sampleRng((blockId + 1) * 7919, (variant + 1) * 104729 + blockId);
+    paintBlock(ctx, blockId, rand);
+    blockCache.set(key, canvas);
     return canvas;
   }
 
-  function createBlockTextures() {
-    const map = {};
-    Object.keys(CONFIG.blockDefs).forEach(function (key) {
-      const id = Number(key);
-      if (id === B.air) {
-        return;
-      }
-      map[id] = [paintBlock(id, 0), paintBlock(id, 1), paintBlock(id, 2)];
-    });
-    cache.blocks = map;
-    return map;
-  }
-
-  function iconBase() {
-    return makeCanvas();
-  }
-
-  function paintTool(ctx, kind, materialColor, darkColor) {
-    ctx.clearRect(0, 0, SIZE, SIZE);
-    // Handle from bottom-left to top-right.
-    line(ctx, 4, 13, 11, 6, "#6b4626");
-    line(ctx, 5, 13, 12, 6, "#8f6236");
-    if (kind === "pickaxe") {
-      ctx.fillStyle = materialColor;
-      ctx.fillRect(5, 3, 7, 2);
-      ctx.fillRect(4, 4, 2, 2);
-      ctx.fillRect(11, 4, 2, 2);
-      ctx.fillStyle = darkColor;
-      ctx.fillRect(6, 5, 1, 2);
-      ctx.fillRect(10, 5, 1, 2);
-    } else if (kind === "axe") {
-      ctx.fillStyle = materialColor;
-      ctx.fillRect(8, 2, 5, 6);
-      ctx.fillStyle = darkColor;
-      ctx.fillRect(11, 3, 2, 4);
-      ctx.fillStyle = materialColor;
-      ctx.fillRect(9, 8, 2, 2);
-    } else if (kind === "sword") {
-      ctx.fillStyle = materialColor;
-      line(ctx, 8, 2, 13, 7, materialColor);
-      line(ctx, 9, 2, 14, 7, darkColor);
-      ctx.fillStyle = darkColor;
-      ctx.fillRect(5, 8, 6, 2);
-      ctx.fillStyle = "#6b4626";
-      ctx.fillRect(4, 10, 2, 4);
+  function drawBlock(ctx, blockId, x, y, size, variant) {
+    if (blockId === 0) {
+      return;
     }
+    const image = getBlockCanvas(blockId, (variant || 0) % VARIANTS);
+    ctx.drawImage(image, 0, 0, TILE, TILE, Math.round(x), Math.round(y), size, size);
   }
 
-  function paintItem(id) {
-    const canvas = iconBase();
+  function drawPickaxe(ctx, size, tier) {
+    const head = tier >= 3 ? "#d8e0e3" : tier === 2 ? "#9ba3a5" : "#b9864f";
+    const edge = tier >= 3 ? "#f4f7f8" : tier === 2 ? "#c4cbcc" : "#d6a566";
+    ctx.strokeStyle = "#6d4327";
+    ctx.lineWidth = Math.max(2, size * 0.09);
+    ctx.lineCap = "square";
+    ctx.beginPath();
+    ctx.moveTo(size * 0.28, size * 0.82);
+    ctx.lineTo(size * 0.66, size * 0.25);
+    ctx.stroke();
+    ctx.strokeStyle = head;
+    ctx.lineWidth = Math.max(3, size * 0.12);
+    ctx.beginPath();
+    ctx.moveTo(size * 0.24, size * 0.26);
+    ctx.quadraticCurveTo(size * 0.52, size * 0.05, size * 0.84, size * 0.25);
+    ctx.stroke();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = Math.max(1, size * 0.035);
+    ctx.beginPath();
+    ctx.moveTo(size * 0.28, size * 0.22);
+    ctx.quadraticCurveTo(size * 0.52, size * 0.04, size * 0.8, size * 0.21);
+    ctx.stroke();
+  }
+
+  function drawIcon(ctx, itemId, size) {
+    const item = window.SandboxConfig.items[itemId];
+    if (!item) {
+      ctx.fillStyle = "#b45b5b";
+      ctx.fillRect(size * 0.2, size * 0.2, size * 0.6, size * 0.6);
+      return;
+    }
+    if (item.blockId !== undefined) {
+      const pad = size * 0.06;
+      ctx.drawImage(getBlockCanvas(item.blockId, 0), 0, 0, TILE, TILE, pad, pad, size - pad * 2, size - pad * 2);
+      return;
+    }
+    if (item.type === "tool") {
+      drawPickaxe(ctx, size, item.tool.tier);
+      return;
+    }
+    if (itemId === "stick") {
+      ctx.strokeStyle = "#6d4327";
+      ctx.lineWidth = Math.max(2, size * 0.1);
+      ctx.beginPath();
+      ctx.moveTo(size * 0.3, size * 0.8);
+      ctx.lineTo(size * 0.7, size * 0.2);
+      ctx.stroke();
+      ctx.strokeStyle = "#a57441";
+      ctx.lineWidth = Math.max(1, size * 0.04);
+      ctx.beginPath();
+      ctx.moveTo(size * 0.33, size * 0.77);
+      ctx.lineTo(size * 0.68, size * 0.25);
+      ctx.stroke();
+      return;
+    }
+    if (itemId === "coal") {
+      ctx.fillStyle = "#222729";
+      ctx.beginPath();
+      ctx.moveTo(size * 0.25, size * 0.55);
+      ctx.lineTo(size * 0.38, size * 0.25);
+      ctx.lineTo(size * 0.7, size * 0.22);
+      ctx.lineTo(size * 0.8, size * 0.5);
+      ctx.lineTo(size * 0.62, size * 0.78);
+      ctx.lineTo(size * 0.3, size * 0.75);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#596367";
+      ctx.fillRect(size * 0.34, size * 0.32, size * 0.12, size * 0.1);
+      return;
+    }
+    if (itemId === "raw_iron") {
+      ctx.fillStyle = "#8d7768";
+      ctx.fillRect(size * 0.22, size * 0.42, size * 0.56, size * 0.4);
+      ctx.fillStyle = "#c6926a";
+      ctx.fillRect(size * 0.3, size * 0.3, size * 0.26, size * 0.2);
+      ctx.fillRect(size * 0.56, size * 0.34, size * 0.16, size * 0.16);
+      ctx.fillStyle = "#e0b58d";
+      ctx.fillRect(size * 0.34, size * 0.34, size * 0.1, size * 0.06);
+      return;
+    }
+    if (itemId === "iron_ingot") {
+      ctx.fillStyle = "#c9d4d7";
+      ctx.beginPath();
+      ctx.moveTo(size * 0.22, size * 0.62);
+      ctx.lineTo(size * 0.34, size * 0.36);
+      ctx.lineTo(size * 0.76, size * 0.36);
+      ctx.lineTo(size * 0.64, size * 0.62);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#eef5f6";
+      ctx.fillRect(size * 0.34, size * 0.36, size * 0.42, size * 0.05);
+      ctx.fillStyle = "#8b9b9f";
+      ctx.fillRect(size * 0.27, size * 0.56, size * 0.4, size * 0.05);
+      return;
+    }
+    ctx.fillStyle = "#c29456";
+    ctx.fillRect(size * 0.28, size * 0.28, size * 0.44, size * 0.44);
+  }
+
+  function getIconCanvas(itemId, size) {
+    const iconSize = size || 48;
+    const key = itemId + ":" + iconSize;
+    if (iconCache.has(key)) {
+      return iconCache.get(key);
+    }
+    const canvas = makeCanvas(iconSize);
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    const def = CONFIG.itemDefs[id];
-    if (!def) {
-      fill(ctx, "#ff00ff");
-      return canvas;
-    }
-    if (def.kind === "block") {
-      const blockId = def.place;
-      const variants = cache.blocks && cache.blocks[blockId];
-      if (variants && variants[0]) {
-        ctx.drawImage(variants[0], 0, 0);
-        return canvas;
-      }
-    }
-    if (def.kind === "tool") {
-      const colors = {
-        1: ["#b07a43", "#7a4b27"],
-        2: ["#9aa0a6", "#6f7378"],
-        3: ["#d8dde3", "#9aa0a6"]
-      };
-      const pair = colors[def.tier] || colors[1];
-      paintTool(ctx, def.tool, pair[0], pair[1]);
-      return canvas;
-    }
-    if (id === CONFIG.itemIds.stick) {
-      line(ctx, 4, 12, 11, 4, "#8a5a2f");
-      line(ctx, 5, 12, 12, 4, "#b07a43");
-      return canvas;
-    }
-    if (id === CONFIG.itemIds.coal) {
-      ctx.fillStyle = "#1c1c1e";
-      ctx.fillRect(4, 6, 8, 6);
-      ctx.fillRect(5, 5, 6, 8);
-      ctx.fillStyle = "#3a3a3e";
-      ctx.fillRect(6, 7, 3, 2);
-      ctx.fillRect(10, 10, 2, 1);
-      return canvas;
-    }
-    if (id === CONFIG.itemIds.rawIron) {
-      ctx.fillStyle = "#b98255";
-      ctx.fillRect(3, 6, 10, 7);
-      ctx.fillRect(7, 4, 5, 3);
-      ctx.fillStyle = "#e2b183";
-      ctx.fillRect(5, 7, 3, 2);
-      ctx.fillRect(9, 9, 2, 2);
-      return canvas;
-    }
-    if (id === CONFIG.itemIds.ironIngot) {
-      ctx.fillStyle = "#c9ced4";
-      ctx.fillRect(4, 7, 8, 5);
-      ctx.fillRect(5, 5, 6, 2);
-      ctx.fillStyle = "#eef2f5";
-      ctx.fillRect(5, 6, 4, 1);
-      ctx.fillStyle = "#8f969d";
-      ctx.fillRect(6, 11, 5, 1);
-      return canvas;
-    }
-    if (id === CONFIG.itemIds.apple) {
-      ctx.fillStyle = "#d94343";
-      ctx.fillRect(4, 5, 8, 8);
-      ctx.fillRect(5, 4, 6, 10);
-      ctx.fillStyle = "#ff6b6b";
-      ctx.fillRect(6, 6, 2, 2);
-      ctx.fillStyle = "#3d8a3d";
-      ctx.fillRect(8, 2, 2, 3);
-      return canvas;
-    }
-    if (id === CONFIG.itemIds.rawPork || id === CONFIG.itemIds.cookedPork) {
-      const meat = id === CONFIG.itemIds.cookedPork ? "#a85a35" : "#e88a8a";
-      const edge = id === CONFIG.itemIds.cookedPork ? "#7a3d22" : "#c96b6b";
-      ctx.fillStyle = edge;
-      ctx.fillRect(3, 6, 10, 7);
-      ctx.fillStyle = meat;
-      ctx.fillRect(4, 7, 8, 5);
-      ctx.fillStyle = edge;
-      ctx.fillRect(6, 9, 3, 2);
-      return canvas;
-    }
-    if (id === CONFIG.itemIds.slimeball) {
-      ctx.fillStyle = "#66c46b";
-      ctx.fillRect(4, 5, 8, 8);
-      ctx.fillRect(5, 4, 6, 10);
-      ctx.fillStyle = "#a2e6a5";
-      ctx.fillRect(6, 6, 3, 3);
-      return canvas;
-    }
-    if (id === CONFIG.itemIds.rottenFlesh) {
-      ctx.fillStyle = "#7d6b4e";
-      ctx.fillRect(4, 6, 8, 7);
-      ctx.fillStyle = "#5d4e36";
-      ctx.fillRect(6, 8, 4, 3);
-      ctx.fillStyle = "#9a8768";
-      ctx.fillRect(5, 7, 2, 1);
-      return canvas;
-    }
-    fill(ctx, "#9e9e9e");
+    drawIcon(ctx, itemId, iconSize);
+    iconCache.set(key, canvas);
     return canvas;
   }
 
-  function createItemIcons() {
-    const map = {};
-    Object.keys(CONFIG.itemDefs).forEach(function (key) {
-      const id = Number(key);
-      map[id] = paintItem(id);
-    });
-    cache.items = map;
-    return map;
+  function drawItem(ctx, itemId, x, y, size) {
+    const icon = getIconCanvas(itemId, 48);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(icon, Math.round(x), Math.round(y), size, size);
   }
 
-  function ensure() {
-    if (!cache.blocks) {
-      createBlockTextures();
-    }
-    if (!cache.items) {
-      createItemIcons();
-    }
-    return cache;
-  }
-
-  function blockVariants(id) {
-    ensure();
-    return cache.blocks[id] || null;
-  }
-
-  function itemIcon(id) {
-    ensure();
-    return cache.items[id] || null;
-  }
-
-  return {
-    size: SIZE,
-    create: ensure,
-    createBlockTextures: createBlockTextures,
-    createItemIcons: createItemIcons,
-    blockVariants: blockVariants,
-    itemIcon: itemIcon,
-    paintBlock: paintBlock,
-    paintItem: paintItem
+  window.SandboxTextures = {
+    TILE: TILE,
+    VARIANTS: VARIANTS,
+    getBlockCanvas: getBlockCanvas,
+    drawBlock: drawBlock,
+    getIconCanvas: getIconCanvas,
+    drawItem: drawItem,
+    shade: shade
   };
-});
+})();

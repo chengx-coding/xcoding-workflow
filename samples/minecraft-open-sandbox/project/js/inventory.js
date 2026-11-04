@@ -1,4 +1,3 @@
-/* Stack, hotbar and slot operations shared by the page and the tests. */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
     module.exports = factory(require("./config.js"));
@@ -8,305 +7,246 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (CONFIG) {
   "use strict";
 
-  const SLOT_COUNT = 36;
-  const HOTBAR_COUNT = 9;
-
-  function maxStack(id) {
-    const def = CONFIG.itemDefs[id];
-    return def ? def.maxStack : 64;
+  function getItemDef(itemId) {
+    return CONFIG.items[itemId] || null;
   }
 
-  function makeStack(id, count) {
-    if (!CONFIG.itemDefs[id] || count <= 0) {
-      return null;
-    }
-    const limit = maxStack(id);
-    return { id: id, count: Math.min(Math.floor(count), limit) };
+  function stackLimit(itemId) {
+    const definition = getItemDef(itemId);
+    return definition ? definition.stack : 64;
   }
 
-  function createInventory() {
+  function createInventory(size) {
+    const capacity = Number.isInteger(size) ? size : CONFIG.inventorySize;
     return {
-      slots: new Array(SLOT_COUNT).fill(null),
-      selected: 0
+      size: capacity,
+      slots: new Array(capacity).fill(null)
     };
   }
 
-  function normalize(inventory) {
-    if (!inventory || !Array.isArray(inventory.slots)) {
-      throw new Error("Invalid inventory");
-    }
-    if (!Number.isInteger(inventory.selected)) {
-      inventory.selected = 0;
-    }
-    inventory.selected = ((inventory.selected % HOTBAR_COUNT) + HOTBAR_COUNT) % HOTBAR_COUNT;
-    for (let i = 0; i < SLOT_COUNT; i += 1) {
-      const slot = inventory.slots[i];
-      if (!slot || !CONFIG.itemDefs[slot.id] || slot.count <= 0) {
-        inventory.slots[i] = null;
-      } else {
-        slot.count = Math.min(slot.count, maxStack(slot.id));
-      }
-    }
-    return inventory;
+  function cloneInventory(inventory) {
+    return {
+      size: inventory.size,
+      slots: inventory.slots.map(function (slot) {
+        return slot ? { id: slot.id, count: slot.count } : null;
+      })
+    };
   }
 
-  function addItem(inventory, id, count) {
-    let remaining = Math.max(0, Math.floor(count));
-    if (!CONFIG.itemDefs[id] || remaining <= 0) {
-      return remaining;
+  function makeStack(itemId, count) {
+    const definition = getItemDef(itemId);
+    if (!definition) {
+      throw new Error("Unknown item: " + itemId);
     }
-    const limit = maxStack(id);
-    for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
-      const slot = inventory.slots[i];
-      if (slot && slot.id === id && slot.count < limit) {
-        const moved = Math.min(limit - slot.count, remaining);
-        slot.count += moved;
-        remaining -= moved;
-      }
-    }
-    for (let i = 0; i < inventory.slots.length && remaining > 0; i += 1) {
-      if (!inventory.slots[i]) {
-        const moved = Math.min(limit, remaining);
-        inventory.slots[i] = { id: id, count: moved };
-        remaining -= moved;
-      }
-    }
-    return remaining;
+    return { id: itemId, count: Math.max(1, Math.min(definition.stack, Math.floor(count || 1))) };
   }
 
-  function countItem(inventory, id) {
+  function countItem(inventory, itemId) {
     let total = 0;
-    for (let i = 0; i < inventory.slots.length; i += 1) {
-      const slot = inventory.slots[i];
-      if (slot && slot.id === id) {
+    for (let index = 0; index < inventory.size; index += 1) {
+      const slot = inventory.slots[index];
+      if (slot && slot.id === itemId) {
         total += slot.count;
       }
     }
     return total;
   }
 
-  function removeItem(inventory, id, count) {
-    let remaining = Math.max(0, Math.floor(count));
-    if (remaining <= 0) {
-      return 0;
+  function addItem(inventory, itemId, count) {
+    const definition = getItemDef(itemId);
+    const amount = Math.floor(count || 1);
+    if (!definition || amount <= 0) {
+      return { added: 0, remaining: amount > 0 ? amount : 0 };
     }
-    for (let i = inventory.slots.length - 1; i >= 0 && remaining > 0; i -= 1) {
-      const slot = inventory.slots[i];
-      if (slot && slot.id === id) {
-        const moved = Math.min(slot.count, remaining);
-        slot.count -= moved;
+    let remaining = amount;
+    const limit = definition.stack;
+    for (let index = 0; index < inventory.size && remaining > 0; index += 1) {
+      const slot = inventory.slots[index];
+      if (slot && slot.id === itemId && slot.count < limit) {
+        const moved = Math.min(limit - slot.count, remaining);
+        slot.count += moved;
         remaining -= moved;
-        if (slot.count <= 0) {
-          inventory.slots[i] = null;
+      }
+    }
+    for (let index = 0; index < inventory.size && remaining > 0; index += 1) {
+      if (!inventory.slots[index]) {
+        const moved = Math.min(limit, remaining);
+        inventory.slots[index] = { id: itemId, count: moved };
+        remaining -= moved;
+      }
+    }
+    return { added: amount - remaining, remaining: remaining };
+  }
+
+  function removeItem(inventory, itemId, count) {
+    let remaining = Math.floor(count || 1);
+    if (remaining <= 0) {
+      return true;
+    }
+    if (countItem(inventory, itemId) < remaining) {
+      return false;
+    }
+    for (let index = 0; index < inventory.size && remaining > 0; index += 1) {
+      const slot = inventory.slots[index];
+      if (!slot || slot.id !== itemId) {
+        continue;
+      }
+      const taken = Math.min(slot.count, remaining);
+      slot.count -= taken;
+      remaining -= taken;
+      if (slot.count <= 0) {
+        inventory.slots[index] = null;
+      }
+    }
+    return remaining === 0;
+  }
+
+  function hasItems(inventory, ingredients) {
+    if (!Array.isArray(ingredients)) {
+      return false;
+    }
+    for (let index = 0; index < ingredients.length; index += 1) {
+      const ingredient = ingredients[index];
+      if (countItem(inventory, ingredient.id) < ingredient.count) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function missingIngredients(inventory, ingredients) {
+    const missing = [];
+    if (!Array.isArray(ingredients)) {
+      return missing;
+    }
+    for (let index = 0; index < ingredients.length; index += 1) {
+      const ingredient = ingredients[index];
+      const have = countItem(inventory, ingredient.id);
+      if (have < ingredient.count) {
+        missing.push({ id: ingredient.id, need: ingredient.count, have: have, short: ingredient.count - have });
+      }
+    }
+    return missing;
+  }
+
+  function nearbyStations(world, playerX, playerY) {
+    const found = { none: true, table: false, furnace: false, counts: { table: 0, furnace: 0 } };
+    if (!world) {
+      return found;
+    }
+    const radius = CONFIG.stationReach;
+    const centerX = Math.floor(playerX);
+    const centerY = Math.floor(playerY - 0.5);
+    for (let y = centerY - radius; y <= centerY + radius; y += 1) {
+      for (let x = centerX - radius; x <= centerX + radius; x += 1) {
+        if (x < 0 || y < 0 || x >= world.width || y >= world.height) {
+          continue;
+        }
+        const block = world.data[y * world.width + x];
+        if (block === CONFIG.blocks.craftingTable) {
+          found.table = true;
+          found.counts.table += 1;
+        } else if (block === CONFIG.blocks.furnace) {
+          found.furnace = true;
+          found.counts.furnace += 1;
         }
       }
     }
-    return Math.floor(count) - remaining;
+    return found;
   }
 
-
-  function spaceFor(inventory, id, count) {
-    if (!CONFIG.itemDefs[id]) {
-      return 0;
+  function recipeStatus(recipe, inventory, stations) {
+    const station = recipe.station || "none";
+    const stationOk = station === "none" || !!(stations && stations[station]);
+    const missing = missingIngredients(inventory, recipe.ingredients);
+    let reason = "";
+    if (!stationOk) {
+      reason = recipe.station === "furnace" ? "Place a furnace nearby." : "Place a crafting table nearby.";
+    } else if (missing.length > 0) {
+      const first = missing[0];
+      const item = getItemDef(first.id);
+      reason = "Need " + first.short + " more " + (item ? item.name : first.id) + ".";
     }
-    const limit = maxStack(id);
-    let space = 0;
-    for (let i = 0; i < inventory.slots.length; i += 1) {
-      const slot = inventory.slots[i];
-      if (!slot) {
-        space += limit;
-      } else if (slot.id === id) {
-        space += limit - slot.count;
-      }
-      if (space >= count) {
-        return count;
-      }
-    }
-    return space;
+    return {
+      ok: stationOk && missing.length === 0,
+      stationOk: stationOk,
+      missing: missing,
+      reason: reason
+    };
   }
 
-  function hasSpaceFor(inventory, id, count) {
-    return spaceFor(inventory, id, count) >= count;
-  }
-
-  function hasItem(inventory, id, count) {
-    return countItem(inventory, id) >= count;
-  }
-
-  function selectedStack(inventory) {
-    return inventory.slots[inventory.selected] || null;
-  }
-
-  function setSelected(inventory, index) {
-    if (!Number.isInteger(index)) {
-      return;
+  function craftRecipe(inventory, recipe, stations) {
+    const status = recipeStatus(recipe, inventory, stations);
+    if (!status.ok) {
+      return { ok: false, reason: status.reason, output: recipe.output, inventory: inventory };
     }
-    inventory.selected = ((index % HOTBAR_COUNT) + HOTBAR_COUNT) % HOTBAR_COUNT;
-  }
-
-  function cycleSelected(inventory, direction) {
-    const delta = direction < 0 ? -1 : 1;
-    inventory.selected = (inventory.selected + delta + HOTBAR_COUNT) % HOTBAR_COUNT;
-  }
-
-  function takeFromSlot(inventory, index, amount) {
-    const slot = inventory.slots[index];
-    if (!slot) {
-      return null;
-    }
-    const moved = Math.max(1, Math.min(slot.count, amount || slot.count));
-    const stack = { id: slot.id, count: moved };
-    slot.count -= moved;
-    if (slot.count <= 0) {
-      inventory.slots[index] = null;
-    }
-    return stack;
-  }
-
-  function putIntoSlot(inventory, index, stack) {
-    if (!stack || !CONFIG.itemDefs[stack.id]) {
-      return null;
-    }
-    const current = inventory.slots[index];
-    if (!current) {
-      inventory.slots[index] = { id: stack.id, count: stack.count };
-      return null;
-    }
-    if (current.id === stack.id) {
-      const limit = maxStack(current.id);
-      const moved = Math.min(limit - current.count, stack.count);
-      current.count += moved;
-      const left = stack.count - moved;
-      return left > 0 ? { id: stack.id, count: left } : null;
-    }
-    inventory.slots[index] = { id: stack.id, count: stack.count };
-    return current;
-  }
-
-  function moveStack(inventory, from, to, amount) {
-    if (from === to) {
-      return false;
-    }
-    const source = inventory.slots[from];
-    if (!source) {
-      return false;
-    }
-    const moving = amount ? Math.min(amount, source.count) : source.count;
-    const stack = takeFromSlot(inventory, from, moving);
-    const leftover = putIntoSlot(inventory, to, stack);
-    if (leftover) {
-      // Put the unmerged remainder back where it came from.
-      if (!inventory.slots[from]) {
-        inventory.slots[from] = leftover;
-      } else {
-        addItem(inventory, leftover.id, leftover.count);
+    const working = cloneInventory(inventory);
+    for (let index = 0; index < recipe.ingredients.length; index += 1) {
+      const ingredient = recipe.ingredients[index];
+      if (!removeItem(working, ingredient.id, ingredient.count)) {
+        return { ok: false, reason: "Missing ingredients.", output: recipe.output, inventory: inventory };
       }
     }
-    return true;
+    const added = addItem(working, recipe.output.id, recipe.output.count);
+    if (added.remaining > 0) {
+      return { ok: false, reason: "Your inventory is full.", output: recipe.output, inventory: inventory };
+    }
+    inventory.slots = working.slots;
+    return {
+      ok: true,
+      reason: "",
+      output: recipe.output,
+      remaining: added.remaining,
+      inventory: inventory
+    };
   }
 
-  function splitSlot(inventory, index) {
-    const slot = inventory.slots[index];
-    if (!slot || slot.count < 2) {
-      return null;
-    }
-    const half = Math.floor(slot.count / 2);
-    slot.count -= half;
-    const empty = inventory.slots.indexOf(null);
-    if (empty < 0) {
-      slot.count += half;
-      return null;
-    }
-    inventory.slots[empty] = { id: slot.id, count: half };
-    return empty;
+  function canCraft(inventory, recipe, stations) {
+    return recipeStatus(recipe, inventory, stations).ok;
   }
 
-  function consumeSelected(inventory, amount) {
-    const slot = selectedStack(inventory);
-    if (!slot) {
-      return false;
+  function totalItems(inventory) {
+    let total = 0;
+    for (let index = 0; index < inventory.size; index += 1) {
+      if (inventory.slots[index]) {
+        total += inventory.slots[index].count;
+      }
     }
-    const moved = amount || 1;
-    if (slot.count < moved) {
-      return false;
-    }
-    slot.count -= moved;
-    if (slot.count <= 0) {
-      inventory.slots[inventory.selected] = null;
-    }
-    return true;
+    return total;
   }
 
-  function selectedTool(inventory) {
-    const slot = selectedStack(inventory);
-    if (!slot) {
-      return null;
+  function firstEmptySlot(inventory) {
+    for (let index = 0; index < inventory.size; index += 1) {
+      if (!inventory.slots[index]) {
+        return index;
+      }
     }
-    const def = CONFIG.itemDefs[slot.id];
-    return def && def.kind === "tool" ? def : null;
+    return -1;
   }
 
-  function serializeInventory(inventory) {
+  function serializeSlots(inventory) {
     return inventory.slots.map(function (slot) {
       return slot ? [slot.id, slot.count] : null;
     });
   }
 
-  function deserializeInventory(data) {
-    const inventory = createInventory();
-    if (!Array.isArray(data)) {
-      return inventory;
-    }
-    for (let i = 0; i < Math.min(SLOT_COUNT, data.length); i += 1) {
-      const entry = data[i];
-      if (Array.isArray(entry) && CONFIG.itemDefs[entry[0]] && entry[1] > 0) {
-        inventory.slots[i] = { id: entry[0], count: Math.min(entry[1], maxStack(entry[0])) };
-      }
-    }
-    return inventory;
-  }
-
-  function sortInventory(inventory) {
-    const totals = {};
-    for (let i = 0; i < inventory.slots.length; i += 1) {
-      const slot = inventory.slots[i];
-      if (slot) {
-        totals[slot.id] = (totals[slot.id] || 0) + slot.count;
-        inventory.slots[i] = null;
-      }
-    }
-    Object.keys(totals)
-      .map(Number)
-      .sort(function (a, b) { return a - b; })
-      .forEach(function (id) {
-        addItem(inventory, id, totals[id]);
-      });
-  }
-
   return {
-    slotCount: SLOT_COUNT,
-    hotbarCount: HOTBAR_COUNT,
-    maxStack: maxStack,
-    makeStack: makeStack,
+    getItemDef: getItemDef,
+    stackLimit: stackLimit,
     createInventory: createInventory,
-    normalize: normalize,
+    cloneInventory: cloneInventory,
+    makeStack: makeStack,
     addItem: addItem,
-    countItem: countItem,
     removeItem: removeItem,
-    hasItem: hasItem,
-    spaceFor: spaceFor,
-    hasSpaceFor: hasSpaceFor,
-    selectedStack: selectedStack,
-    setSelected: setSelected,
-    cycleSelected: cycleSelected,
-    takeFromSlot: takeFromSlot,
-    putIntoSlot: putIntoSlot,
-    moveStack: moveStack,
-    splitSlot: splitSlot,
-    consumeSelected: consumeSelected,
-    selectedTool: selectedTool,
-    serializeInventory: serializeInventory,
-    deserializeInventory: deserializeInventory,
-    sortInventory: sortInventory
+    countItem: countItem,
+    hasItems: hasItems,
+    missingIngredients: missingIngredients,
+    nearbyStations: nearbyStations,
+    recipeStatus: recipeStatus,
+    craftRecipe: craftRecipe,
+    canCraft: canCraft,
+    totalItems: totalItems,
+    firstEmptySlot: firstEmptySlot,
+    serializeSlots: serializeSlots
   };
 });

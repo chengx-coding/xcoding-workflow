@@ -3,7 +3,32 @@
 Standard: **M2D-SES-OSS v1.2**. Blind evaluator; identity revealed after scoring:
 **A = one-shot (MOSSWILD), B = XC 0.4.4 (Cubewood)**.
 
-## Current Docker-verified artifact 鈥?0.4.16 Blockfall
+## Current Docker-verified artifact 鈥?0.4.17 Emberblock
+
+Standard: **M2D-SES-OSS v1.3**. One controlled Docker run each; X = XC, Y = one-shot, revealed after
+scoring. Same prompt/model/provider/budget, separate containers.
+
+| Field | One-shot A | XC 0.4.17 B |
+| --- | ---: | ---: |
+| PES | **88.3** | 83.7 |
+| ECS | 50.8 | **91.5** |
+| Composite | 78.9 | **85.7** |
+| Experience tier | **polished** | **polished** |
+| Art D5 | **89** | 81 |
+| Tests | 0/1 (stale test fails) | **25/25** |
+| page_check | fail | **pass** |
+| High / medium | 0 / 0 | 0 / 0 |
+
+XC wins composite by 6.8 and ECS by 40.7; one-shot leads PES by 4.6 and art by 8. Both polished, no
+high/medium. This is a significant composite/engineering win but not an all-aspect win.
+
+### Previous Docker artifact 鈥?0.4.16 Blockfall
+
+XC composite 77.6 vs one-shot 75.4; PES 74.2 vs 85.2; D5 69 vs 86; XC 58/58 tests, one-shot tests
+fail. The 0.4.17 run adds first-run discoverability and improves XC to 85.7.
+
+## Historical best before Docker 鈥?0.4.7 Emberdeep
+
 
 Standard: **M2D-SES-OSS v1.3**. One controlled Docker run each; X = XC, Y = one-shot, revealed after
 scoring. Same prompt/model/provider/budget, separate containers.
@@ -63,4 +88,5 @@ attempt was rolled back because it dropped crafting/survival/progression (35 tes
   [`../media/xc-cubewood-day.png`](../media/xc-cubewood-day.png),
   [`../media/xc-cubewood-backdrop.png`](../media/xc-cubewood-backdrop.png)
 - One-shot: 29/29 tests, browser/quest checks; [`../media/one-shot-mosswild.png`](../media/one-shot-mosswild.png)
+
 

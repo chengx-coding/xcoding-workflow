@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import shutil
 import struct
@@ -177,45 +176,22 @@ def static_checks(page: Path) -> list[str]:
 
 
 def screenshot(chrome: Path, page: Path, target: Path, width: int, height: int) -> None:
-    # Chrome needs a writable HOME and a short user-data directory. Some CI
-    # containers provide neither, so isolate both and keep the path short
-    # enough for the Unix process-singleton socket.
-    profile = Path(tempfile.mkdtemp(prefix="xc-page-"))
-    home = profile / "home"
-    (home / ".local" / "share").mkdir(parents=True, exist_ok=True)
-    (profile / "tmp").mkdir(parents=True, exist_ok=True)
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "HOME": str(home),
-            "TMPDIR": str(profile / "tmp"),
-            "XDG_CONFIG_HOME": str(home / ".config"),
-            "XDG_CACHE_HOME": str(home / ".cache"),
-            "XDG_DATA_HOME": str(home / ".local" / "share"),
-        }
-    )
     command = [
         str(chrome),
         "--headless=new",
-        "--no-sandbox",
-        "--disable-dev-shm-usage",
         "--disable-gpu",
         "--hide-scrollbars",
         "--no-first-run",
         "--no-default-browser-check",
         "--virtual-time-budget=3000",
-        f"--user-data-dir={profile / 'chrome'}",
         f"--window-size={width},{height}",
         f"--screenshot={target}",
         page.as_uri(),
     ]
-    try:
-        completed = subprocess.run(command, capture_output=True, text=True, timeout=90, env=environment)
-        if completed.returncode != 0 or not target.is_file() or target.stat().st_size == 0:
-            detail = (completed.stderr or completed.stdout or "").strip().splitlines()
-            raise CheckError("headless Chrome screenshot failed" + (": " + detail[-1] if detail else ""))
-    finally:
-        shutil.rmtree(profile, ignore_errors=True)
+    completed = subprocess.run(command, capture_output=True, text=True, timeout=90)
+    if completed.returncode != 0 or not target.is_file() or target.stat().st_size == 0:
+        detail = (completed.stderr or completed.stdout or "").strip().splitlines()
+        raise CheckError("headless Chrome screenshot failed" + (": " + detail[-1] if detail else ""))
 
 
 def main() -> int:
