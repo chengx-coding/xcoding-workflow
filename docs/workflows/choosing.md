@@ -75,8 +75,6 @@ The read-only `operation=plan` uses the six governance facts plus bridge policy,
 
 A minimal mutation can use one combined implementation/focused-verification leaf and one plan-specific finalizer, with no mandatory `goal.md`, `analysis.md`, `solution.md`, or `result.md`. Module, uncertain, high-risk, collaborative, cross-session, or full-audit facts progressively add separate verification, durable documents, gates, review, and recovery. Adaptive work has no generic global node ceiling; individual loops remain bounded.
 
-Every mutation-mode plan carries the `change_report` capability, because a work order that produces analysable change units must explain them; read-only modes never acquire it, even when unknown facts escalate to the full capability set. On the adaptive path the report follows implementation and verification and precedes any adaptive review node, and that order is main-session policy there; its initial strength tier follows the confirmed `risk` and `audit` facts, and its human gate stays closed unless the user explicitly asks for it.
-
 Workflow measurements named `context_bytes` count normalized UTF-8 runtime protocol payload bytes. They are not token counts, model latency, execution latency, cost, or quality measurements. Normalization folds host path separators as well as roots, timestamps, and digests, so a recorded measurement is reproducible from another checkout location, another operating system, and another CPython version rather than only from the host that recorded it.
 
 ## Selection Rules
@@ -91,4 +89,4 @@ Use workflow evolution when the thing being changed is XC itself or a project's 
 
 ## Services Are Not Lifecycle Choices
 
-[`xc-open-work-order`](../../skills/xc-open-work-order/SKILL.md) creates a durable workbench for a caller, but it is not a substitute for choosing a lifecycle. Analysis, clarification, implementation, verification, change report, review, document evolution, and orchestration Skills are also bounded capabilities used by the selected lifecycle.
+[`xc-open-work-order`](../../skills/xc-open-work-order/SKILL.md) creates a durable workbench for a caller, but it is not a substitute for choosing a lifecycle. Analysis, clarification, implementation, verification, review, document evolution, and orchestration Skills are also bounded capabilities used by the selected lifecycle.

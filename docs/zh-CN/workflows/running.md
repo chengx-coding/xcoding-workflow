@@ -7,16 +7,15 @@
 ## 生命周期
 
 1. **加载项目策略。** 在选择命令或作出项目专属假设前，读取项目指引、workshop 桥接和已声明的知识指引。对每个变更类工单，本步还要运行强制的 [`xc-conventions`](../../../skills/xc-conventions/SKILL.md) L1 扫描（按比例的规范发现地板），读取适用的声明性规则，并记录 `found` 或 `not-applicable` 结果；直达路径改为执行更轻的 L0 触发线，一旦看到显著规范、冲突或非局部范围就升级。
-2. **打开并初始化 work order。** 创建持久 workbench，初始化受管树，并在写入第一份顶层文档前固定 work order 文档语言。使用开启器返回的 `tmp_path` 存放临时文件与过程文件；既有 workbench 没有该目录时创建 `<workbench>/tmp/`。若该工单会产出变更报告，就在此处、工作树仍处于打开状态时采集基线：打开状态之后无法再恢复。采集按比例进行，因为版本控制已经持有变更前的内容：快照只保存版本控制无法复现的部分，即开启时与基线提交字节不同的已跟踪路径，以及开启时未跟踪的路径；每个开启时干净的已跟踪路径都从该提交读回，而开启时缺失于工作树的已跟踪路径只记录其名称。解析为不产出报告的工单在此不采集任何内容。当版本控制无法提供基线一侧时，采集会失败关闭、不复制任何内容并报告一个具名错误；只有在用户通过采集命令的显式选择项明确同意，并记录其决定引用时，才会执行完整复制。采集命令、其采集范围与它写出的记录见 [`xc-change-report`](../../../skills/xc-change-report/SKILL.md)。
+2. **打开并初始化 work order。** 创建持久 workbench，初始化受管树，并在写入第一份顶层文档前固定 work order 文档语言。使用开启器返回的 `tmp_path` 存放临时文件与过程文件；既有 workbench 没有该目录时创建 `<workbench>/tmp/`。
 3. **记录目标。** `goal.md` 定义请求结果、边界、约束和验收方向。`create` 的验收条件要包含用户可见质量契约、intended capability scope、每个 material exclusion/新增约束的来源，以及存在时的具体比较对象；goal 自己发明的 material exclusion 在用户确认前不得绑定。存在可信领域参考时，质量契约还要携带 signature-experience 挑战。`change`/`repair` 要包含任务相应的质量 bar（需求满足、不回归）。
 4. **建立证据。** 需要事实、影响、备选方案、诊断、feature 协调或规范深度研读时，[`xc-analysis`](../../../skills/xc-analysis/SKILL.md)记录不同视角的证据，并把接受的事实综合到 `analysis.md`。对 `change`/`repair`，analysis 记录 scope assessment：代码成熟度与耦合、请求幅度、最小一致选项、可选更大方案、推荐和不确定性。对 `create`，analysis 记录约束、质量契约和设计选项，对照原始请求，并携带 capability map（must/should/non-goals，含 source、acceptance、verification）；标出 material omission、单方面缩窄和无来源的 goal-authored exclusion。存在可信参考时记录小型 signature-experience table；提供 prior capability inventory 时记录 preserve/improve/replace/retire/defer 处置。对交互或有状态的 create 任务，包含 journey/integrity capability，并选择公开的 output-surface profile（`visual`、`cli-library-api` 或 `docs`）；profile 拥有表面特定的证据。非视觉任务不使用 visual profile；只有状态标签的行不算充分。 体验型产品使用 proposed experience-quality overlay；交互式视觉体验产品同时应用 visual row 的 first-run affordance 和 visual-state backdrop must。
 5. **澄清人类决策。** 当证据无法回答重要决策时，[`xc-clarify`](../../../skills/xc-clarify/SKILL.md)在方案选择前通过主会话 gate 提出有界问题。它不能代替调查。材料性的范围歧义，或 repair 的正确修复需要跨越设计、机制或需求边界，就是这样的决策。
 6. **选择并批准方案。** `solution.md` 记录选定变更、边界、风险、兼容性影响、验证策略和 scope decision：任务类型、最小性力度、选定范围、放开/升级触发条件、需要时的用户确认、实现边界。对 `create`，还要记录 accepted capability matrix，把每个 must/should capability 映射到实现与验证；未覆盖的 must 不得进入批准。提供 prior capability inventory 时，solution gate 为强制，matrix 携带 preserve/improve/replace/retire/defer 处置。重要决策和未解决风险必须经过显式用户 gate。在用户显式授权的自主自进化线中，可以按[自进化规范](../../../skills/xc-workflow-evolution/references/self-evolution-discipline.md)委托该 gate；gate 仍须实际执行，记录 delegated decision，不可委托边界仍归用户所有。
 7. **执行有界实现节点。** 每个 [`xc-implementation`](../../../skills/xc-implementation/SKILL.md) worker 只接收一个已批准范围，按任务采用相应幅度实现（create 在质量契约内最大化；change 用最小充分范围；repair 保持强最小性预设），只修改归其所有的文件，记录证据，并通过运行时报告结果。worker 不得静默扩大或缩小范围；范围不足时停下并返回。
 8. **验证。** [`xc-verification`](../../../skills/xc-verification/SKILL.md)运行项目定义的检查并记录覆盖缺口。对 `create`，使用 analysis 选择的 output-surface profile，把证据映射到 accepted matrix 中的每个 must/should capability；测试全过不等于未验证 capability 已证明。`must` journey gap 会失败/阻塞验证，直到执行或按记录的风险接受；`should` gap 可保留为记录。存在 prior capability inventory 时，映射到每个 preserve/improve disposition 以及 replace/retire 的原因/影响。失败证据返回所属生命周期，而不是静默降低验收标准。非视觉任务不得被要求提供视觉证据。 体验型产品执行首次可发现性、视觉评审（视觉质量必须有独立 critic；non-visual 检查才允许记录 self-review 限制）、状态背景和 progression 检查。
-9. **解释变更。** [`xc-change-report`](../../../skills/xc-change-report/SKILL.md)把工单的变更集合产出为一个离线自包含 HTML 报告，以及校验该报告所依据的覆盖清单。每个可分析变更单元都有分析与所引用代码绑定地覆盖，说明改了什么、为什么存在、体现了什么设计、处于更大流程的哪一环。在本生命周期中，报告 group 是结果文档之前的最后一个 group，挂载在验证 group 之后。代码返工会使报告过期，此时刷新同一个报告，而不是把节点判为失败。只读模式不产出报告；实测的可分析变更单元数为零时，记录为跳过决策。报告的人类门禁可选且默认关闭。
-10. **按需评审。** 需要独立质量评估时，[`xc-review`](../../../skills/xc-review/SKILL.md)评估不可变输入并产出可追踪 finding；对 code/solution review 还检查 under-scope、over-scope 和 scope drift。对 `create`，under-scope 要对照原始请求加 accepted capability matrix，而不只是 approved solution；没有用户/项目来源的 material exclusion 属于无来源缩窄。存在 reference signature 时，缺失或明显削弱的 signature must capability 是 under-scope；signature should capability 也是 under-scope，除非 accepted matrix 记录了带原因和影响的 deferral；导入无关参考 feature 是 over-scope。存在 prior capability inventory 时，无解释的缺失是 finding；replace/retire 需要记录原因、影响和来源，prior should 可带原因、影响、来源和重新进入触发条件而接受为 defer。若评审要求代码返工，则刷新报告，而不是留下过期报告。
-11. **形成结果并关闭。** `result.md` 在 work order 最终完成前汇总已交付行为、验证、未解决风险和相关 artifact，并在报告小节记录报告路径与清单路径；报告未产出时，记录对应的跳过决策。
+9. **按需评审。** 需要独立质量评估时，[`xc-review`](../../../skills/xc-review/SKILL.md)评估不可变输入并产出可追踪 finding；对 code/solution review 还检查 under-scope、over-scope 和 scope drift。对 `create`，under-scope 要对照原始请求加 accepted capability matrix，而不只是 approved solution；没有用户/项目来源的 material exclusion 属于无来源缩窄。存在 reference signature 时，缺失或明显削弱的 signature must capability 是 under-scope；signature should capability 也是 under-scope，除非 accepted matrix 记录了带原因和影响的 deferral；导入无关参考 feature 是 over-scope。存在 prior capability inventory 时，无解释的缺失是 finding；replace/retire 需要记录原因、影响和来源，prior should 可带原因、影响、来源和重新进入触发条件而接受为 defer。
+10. **形成结果并关闭。** `result.md` 在 work order 最终完成前汇总已交付行为、验证、未解决风险和相关 artifact。
 
 顶层 work order 文档是持久记录，不是程序计数器。动态顺序、就绪状态、循环、重试、blocker 和进度都留在运行时树中。
 
@@ -24,9 +23,9 @@
 
 `xc-work operation=adaptive-run` 需要显式选择；现有 `run` 行为保持不变。Adaptive template 初始只包含 root 和开放的 sequence `work-group`。调用方先验证 plan receipt，添加全部初始 required leaf 和 plan-specific finalizer，再关闭 group 并开始执行。
 
-最小变更使用一个合并 implementation/focused-verification worker 和 finalizer，共两个可执行叶子节点。只有持久目标、证据综合、实质决策、结果留存或 full audit 需要时，才分别增加顶层文档。更复杂事实按稳定顺序添加 capability：goal、analysis 或 diagnosis、clarification、solution、approval、implementation unit、verification scope、change report、独立 review、result 和 finalization。这个顺序属于 adaptive 路径，在那里是 main-session policy：报告节点被放在独立 review 叶子之前，使评审者读到报告。完整生命周期的顺序由其模板固定，并不是这份列表。
+最小变更使用一个合并 implementation/focused-verification worker 和 finalizer，共两个可执行叶子节点。只有持久目标、证据综合、实质决策、结果留存或 full audit 需要时，才分别增加顶层文档。更复杂事实按稳定顺序添加 capability：goal、analysis 或 diagnosis、clarification、solution、approval、implementation unit、verification scope、独立 review、result 和 finalization。这个顺序属于 adaptive 路径，在那里是 main-session policy。完整生命周期的顺序由其模板固定，并不是这份列表。
 
-自适应 finalizer 检查每个计划来源的标识、角色、成功状态、声明的产物数量、非空产物路径及所需基线，不要求 HTML 文件名。适用时，报告阶段仍负责生成和验证实际报告；实测可分析单元数为零时，声明覆盖清单或跳过决策证据，并记录 `zero_analyzable_units`。主会话在收尾前核对这一处置。通用来源检查本身不证明报告正确。继续使用早期 plan receipt 前，应通过当前 planner 重新生成。
+自适应 finalizer 检查每个计划来源的标识、角色、成功状态、声明的产物数量和非空产物路径。继续使用早期 plan receipt 前，应通过当前 planner 重新生成。
 
 Worker 发现范围扩大或其他前提时，应在继续修改前 block。主会话可以 reopen group，在被阻塞的直接子节点前插入 re-plan 或 recovery，发布新 plan，再 unblock 原节点继续执行或记录 no-op/rollback 证据。大型任务可以持续增加经过复审的子树，没有全局节点数上限；每个 loop 仍显式有界。
 
@@ -37,8 +36,6 @@ Worker 发现范围扩大或其他前提时，应在继续修改前 block。主�
 写作者先说明目的、结论或读者需要采取的行动，再在读者获得上下文后展开技术细节。必要术语在第一次出现时简短解释。删除重复内容和无助于理解的过程叙述，但保留关键事实、约束、证据、风险、兼容性影响和未决事项。
 
 调用方在嵌入文档演进子树前，通过 `document.authoring_requirements` 传入简短的明确要求。较长要求保存在输入文档或 artifact 中。用户明确要求优先于默认写作风格，但不能覆盖真实性、安全、受管结构、来源记录或必要证据。
-
-变更报告是以自包含 HTML 交付的面向用户 artifact，不是受管 Markdown 文档。它的正文通过兼容文档入口使用同一套 [`xc-writing`](../../../skills/xc-writing/SKILL.md) 方法，HTML 特有结构仍由报告契约拥有。结构校验不评定可读性分数，也不证明语义正确。
 
 命令、标识符、路径、日志和机器输出在需要精确引用时保持原样；其周围的解释和摘要仍应易读。内部技术 artifact 可以根据预期受众保留较高的专业密度。
 

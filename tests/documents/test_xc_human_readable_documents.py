@@ -40,7 +40,7 @@ class HumanReadableDocumentContractTests(unittest.TestCase):
         for relative in links:
             target = writing_root / relative.split("#", 1)[0]
             self.assertTrue(target.is_file(), relative)
-        for owner in ("xc-document", "xc-review", "xc-change-report"):
+        for owner in ("xc-document", "xc-review"):
             for text in (document_skill, writing_skill):
                 self.assertNotIn(f"{owner}/references/", text)
 
@@ -72,7 +72,6 @@ class HumanReadableDocumentContractTests(unittest.TestCase):
     def test_every_user_facing_artifact_producer_references_the_public_contract(self) -> None:
         producers = (
             "xc-analysis",
-            "xc-change-report",
             "xc-diagnosis",
             "xc-implementation",
             "xc-review",
@@ -88,11 +87,6 @@ class HumanReadableDocumentContractTests(unittest.TestCase):
 
         implementation = (SKILLS / "xc-implementation" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("project documentation delivered through the work order", implementation)
-
-        report_contract = (SKILLS / "xc-change-report" / "references" / "change-report-contract.md").read_text(encoding="utf-8")
-        h39 = report_contract.split("**H39**", 1)[1].split("**H40**", 1)[0]
-        self.assertIn("xc-writing", h39)
-        self.assertIn("xc-document", h39)
 
 
 if __name__ == "__main__":

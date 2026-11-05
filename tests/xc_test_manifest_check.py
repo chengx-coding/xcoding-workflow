@@ -35,8 +35,7 @@ from tests.support import tiers  # noqa: E402
 REPRESENTATIVE_PATHS = {
     "runtime": "src/xcoding/runtime/core.py",
     "governance": "skills/xc-work/src/classify.py",
-    "lifecycle": "skills/xc-change-report/assets/change-report-flow.json",
-    "change_report": "skills/xc-change-report/scripts/build_manifest.py",
+    "lifecycle": "skills/xc-work/assets/adaptive-work-order-flow.json",
     "documents": "skills/xc-document/scripts/validate_document.py",
     "packaging": "pyproject.toml",
     "daemon": "src/xcoding/daemon/server.py",

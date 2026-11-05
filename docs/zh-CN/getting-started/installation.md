@@ -72,7 +72,7 @@ Workshop 仓库拓扑在 workshop-setup 步骤中选定（默认：独立工作�
 
 ## 就绪检查
 
-当项目 setup 记录所指的某个 Skill 根目录缺少本应装有的包，或该包缺少其 assets 时，`xcoding doctor --target-root <project> --json` 会让其 `skill-packages` 检查失败，退出码 4，错误码 `readiness-failed`。既没有 setup 记录、也完全没有安装任何 XC 包的项目则通过检查，并由 `skill-packages-absent` 警告记录，因为不存在可以被判定为不完整的已安装 Skill 根目录。对受影响的宿主运行 `xcoding setup` 以恢复包；不要手工把文件复制进受管 Skill 根目录。
+`xcoding doctor --target-root <project> --json` 运行 python、path、git、tk、bundle、delegation-adapters 与 target 检查；必需检查未通过时，以退出码 4 和错误码 `readiness-failed` 失败。
 
 ## 准备 Skill 内部 Worker
 
@@ -104,7 +104,7 @@ Dry run 会报告 create、replace、remove 和 unchanged 操作，并始终返�
 
 项目内 transaction 状态位于 `.agents/.xcoding-setup/`：
 
-- `manifest.json` 记录成功 generation、desired host set、Bundle identity、受管路径、hash 和共享 owner。它还记录 `report_package.name`、`report_package.template_file`，以及按宿主保存已安装 `xc-change-report` 包解析后绝对路径的 `report_package.paths.<host>`；报告阶段的挂载指令从该记录解析其子树模板，没有该记录的项目才回退到宿主到 Skill 根目录的对照表。
+- `manifest.json` 记录成功 generation、desired host set、Bundle identity、受管路径、hash 和共享 owner。
 - `journal.json` 记录进行中的 transaction，只在可能需要 recovery 时存在。
 - `staging/` 与 generation backup 保存安全完成或回滚所需的 package-owned transaction 数据。
 

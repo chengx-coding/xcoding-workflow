@@ -110,18 +110,15 @@ class ConfigContractDriftTests(unittest.TestCase):
                 "independent-nested",
             )
 
-    def test_report_default_contract_agrees(self) -> None:
-        self.assertEqual(core.REPORT_DEFAULT, "code-change-only")
-        self.assertEqual(self.author.REPORT_DEFAULT, "code-change-only")
-        self.assertEqual(core.ALLOWED_REPORT_DEFAULTS, self.author.ALLOWED_REPORT_DEFAULTS)
-        self.assertEqual(
-            core.DEFAULT_CONFIG["report"]["default"],
-            self.author.DEFAULT_CONFIG["report"]["default"],
-        )
+    def test_legacy_config_with_a_report_section_still_loads(self) -> None:
+        """A configuration written before the report stage was removed still loads.
 
-    def test_existing_config_without_a_report_section_still_loads(self) -> None:
-        """The backward-compatibility case: every configuration file written before this section
-        existed has no `report` key, and must keep loading with the default filled in."""
+        `report.default` is no longer a known section: `validate_config` checks the
+        known sections only and `load_config` keeps extra keys unread, so an old file
+        remains loadable without migration and the retired key is neither required nor
+        interpreted. Both the runtime and the author mirror must agree, because they
+        read the same file.
+        """
         with tempfile.TemporaryDirectory() as temp:
             config_path = self._write(
                 temp,
@@ -141,6 +138,7 @@ class ConfigContractDriftTests(unittest.TestCase):
                         "heartbeat_seconds": 15,
                         "idle_shutdown_seconds": 120,
                     },
+                    "report": {"default": "always"},
                 },
             )
             core_ok, core_config = self._load(core, config_path)
@@ -149,49 +147,10 @@ class ConfigContractDriftTests(unittest.TestCase):
             self.assertTrue(author_ok)
             assert core_config is not None
             assert author_config is not None
-            self.assertEqual(core_config["report"]["default"], "code-change-only")
-            self.assertEqual(author_config["report"]["default"], "code-change-only")
-
-    def test_every_report_tier_is_accepted_by_both(self) -> None:
-        for tier in ("never", "code-change-only", "always"):
-            with self.subTest(tier=tier):
-                with tempfile.TemporaryDirectory() as temp:
-                    config_path = self._write(temp, {"report": {"default": tier}})
-                    core_ok, core_config = self._load(core, config_path)
-                    author_ok, author_config = self._load(self.author, config_path)
-                    self.assertTrue(core_ok)
-                    self.assertTrue(author_ok)
-                    assert core_config is not None
-                    assert author_config is not None
-                    self.assertEqual(core_config["report"]["default"], tier)
-                    self.assertEqual(author_config["report"]["default"], tier)
-
-    def test_unknown_report_tier_rejected_by_both(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            config_path = self._write(temp, {"report": {"default": "sometimes"}})
-            core_ok, _ = self._load(core, config_path)
-            author_ok, _ = self._load(self.author, config_path)
-            self.assertFalse(core_ok)
-            self.assertFalse(author_ok)
-
-    def test_non_object_report_section_rejected_by_both(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            config_path = self._write(temp, {"report": "always"})
-            core_ok, _ = self._load(core, config_path)
-            author_ok, _ = self._load(self.author, config_path)
-            self.assertFalse(core_ok)
-            self.assertFalse(author_ok)
-
-    def test_shipped_runtime_asset_declares_the_default_tier(self) -> None:
-        asset = (
-            REPOSITORY_ROOT
-            / "skills"
-            / "xc-orchestration-runtime"
-            / "assets"
-            / "xc-orchestration-runtime.json"
-        )
-        declared = json.loads(asset.read_text(encoding="utf-8"))
-        self.assertEqual(declared["report"]["default"], core.REPORT_DEFAULT)
+            self.assertEqual(core_config["report"], {"default": "always"})
+            self.assertEqual(author_config["report"], {"default": "always"})
+            self.assertNotIn("report", core.DEFAULT_CONFIG)
+            self.assertNotIn("report", self.author.DEFAULT_CONFIG)
 
 
 if __name__ == "__main__":

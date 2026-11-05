@@ -1,6 +1,6 @@
 # JIT Milestone Decomposition Protocol
 
-Compact main-session protocol for large managed work orders whose top-level tree keeps milestones only. Each milestone subtree is grown just-in-time when the milestone starts. `assets/jit-milestone-template.xml` is the runtime shape; all operations below are public runtime commands.
+Compact main-session protocol for large managed work orders whose top-level tree keeps milestones only. Each milestone subtree is grown just-in-time when the milestone starts. `assets/jit-milestone-template.xml` is the runtime shape; all operations below are public runtime commands. `assets/jit-milestone-flow.json` is the subtree flow specification, not an initialisation path for any shipped workflow; a milestone-only work order initialises the work-order template through `xc-work`, and a test harness that points `init` at the subtree template only exercises its shape.
 
 ## Template Shape
 
@@ -16,10 +16,6 @@ The instantiated milestone subtree contains exactly:
 - The minimal tree is a legal prefix of the maximal workflow. All growth is additive (`add-node`, `embed-subtree`, `reopen-group`); escalation never discards completed work and never rewrites accepted contracts.
 - Before the first milestone leaf starts, all initial leaves AND the plan-specific finalizer with evidence thresholds MUST exist. The static finalizer exists from `init`; its thresholds live in `milestone.evidence_sources` (compact JSON array of terminal leaf IDs) plus the declared `min_sources` and `artifact_min`. Publish `milestone.evidence_sources` with `set` before starting the first leaf. The finalizer's control packet is an advisory evidence projection: it reports unresolved until the threshold is met, and completion does not reject it. The main session MUST verify the packet resolves before completing the finalizer; this discipline, with the finalizer starting only after `milestone.accepted == approved`, keeps a minimal tree from sealing before its evidence threshold is established.
 - Evidence gaps and acceptance conditions trigger reviewed dynamic subtrees or recovery work; they are never silently skipped.
-
-## Report Coverage
-
-`assets/jit-milestone-template.xml` is a **subtree, not a work-order root**, and it declares no report stage. A milestone-only work order initialises `work-order-template.xml` through `xc-work`; that root owns the report stage, so the enclosing root's report covers the milestone subtree's change set and `milestone-finalizer` consumes only `milestone.accepted`. `jit-milestone-flow.json` is consequently not an initialisation path for any shipped workflow. `tests/test_xc_jit_milestone.py` points `init` at the subtree template directly to exercise its shape without an `embed-subtree` step; that harness is a test fixture, not an offered way to open a work order.
 
 ## Lifecycle
 

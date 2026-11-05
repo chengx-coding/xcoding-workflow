@@ -47,17 +47,15 @@ These are binding. Do not re-open them, and do not ask the user about them.
 3. **Add an independent visual review.** Before the result, render the page, inspect a 960x600
    screenshot, and run an independent visual review (for example through `xc-review`). Fix every
    required finding and re-check.
-4. **The change-report stage is waived.** Set `work_order.requires_report=false` and
-   `work_order.report_skip_reason=user_waived`; do not mount the report group.
-5. **Do not create a project Git commit.** The project bridge forbids it because the enclosing
+4. **Do not create a project Git commit.** The project bridge forbids it because the enclosing
    repository owns the sample's single scoped commit.
-6. **No user is available.** Never ask a question; complete any main-session gate yourself with a
+5. **No user is available.** Never ask a question; complete any main-session gate yourself with a
    concrete decision that records the reasoning.
-7. **Use only the runtime public interface.** Every runtime read and write goes through
+6. **Use only the runtime public interface.** Every runtime read and write goes through
    `xcoding runtime ...`; never open or edit `runtime/orchestration.xml`.
-8. **Keep temporary files local.** Put scripts, logs, screenshots and intermediate output under the
+7. **Keep temporary files local.** Put scripts, logs, screenshots and intermediate output under the
    work order's `tmp/` directory; never declare a temporary file as an artifact.
-9. **Regression isolation is binding.** Run from a clean seed in an isolated workspace that contains
+8. **Regression isolation is binding.** Run from a clean seed in an isolated workspace that contains
    no public sample, baseline, prior sample result, or any existing implementation. Do not read,
    search for, or consult those paths. The baseline and historical results are used only for
    evaluation after the run, never as implementation input.

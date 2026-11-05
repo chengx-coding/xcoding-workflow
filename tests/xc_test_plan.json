@@ -37,7 +37,7 @@
   "clusters": {
     "runtime": {
       "directory": "tests/runtime",
-      "domain": "Orchestration runtime state machine: scheduling, transitions, integrity, persistence, subtree archival, restore points, control packets, silent outcome visibility, milestones, work-order mount, resume brief, governance stats, config contract drift",
+      "domain": "Orchestration runtime state machine: scheduling, transitions, integrity, persistence, subtree archival, restore points, control packets, silent outcome visibility, milestones, resume brief, governance stats, config contract drift",
       "modules": [
         "test_xc_orchestration_runtime",
         "test_xc_archive_subtree",
@@ -45,7 +45,6 @@
         "test_xc_control_packet",
         "test_xc_silent_outcome_visibility",
         "test_xc_jit_milestone",
-        "test_xc_work_order_mount",
         "test_xc_open_work_order",
         "test_xc_resume_brief",
         "test_xc_governance_stats",
@@ -59,13 +58,10 @@
     },
     "governance": {
       "directory": "tests/governance",
-      "domain": "Governance classification, adaptive planning and enforcement, recovery planning, decision registry, fact cache, verification staleness, convention scanning, workshop setup, feature directory, lifecycle templates and disposition, new-feature report, orchestration author, runtime CLI parity and runtime query; plus the private-workshop citation guard",
+      "domain": "Governance classification, adaptive planning and enforcement, recovery planning, decision registry, fact cache, verification staleness, convention scanning, workshop setup, feature directory, lifecycle templates, template author commit boundary, orchestration author, runtime CLI parity and runtime query; plus the private-workshop citation guard",
       "modules": [
         "test_xc_adaptive_planning",
-        "test_xc_adaptive_enforcement",
         "test_xc_adaptive_work_order",
-        "test_xc_work_lifecycle_contract",
-        "test_xc_lifecycle_disposition",
         "test_xc_recovery_plan",
         "test_xc_decision_registry",
         "test_xc_fact_cache",
@@ -76,7 +72,7 @@
         "test_xc_clarify",
         "test_xc_deliberate",
         "test_xc_lifecycle_templates",
-        "test_xc_new_feature_report",
+        "test_xc_author_commit_boundary",
         "test_xc_orchestration_author",
         "test_create_scope_fidelity",
         "test_sample_provenance",
@@ -89,7 +85,7 @@
     },
     "lifecycle": {
       "directory": "tests/lifecycle",
-      "domain": "Full lifecycle end-to-end including feature adoption and new feature, gate recovery, report group ordering; document evolution end-to-end",
+      "domain": "Full lifecycle end-to-end including feature adoption and new feature; document evolution end-to-end",
       "modules": [
         "test_xc_lifecycle_e2e",
         "test_xc_document_evolution_e2e"
@@ -97,26 +93,9 @@
       "baseline_seconds": 304.1,
       "baseline_tests": 25
     },
-    "change_report": {
-      "directory": "tests/change_report",
-      "domain": "xc-change-report coverage: manifest enumeration, baseline capture, validation, protocol and normative-text drift, author commit boundary, human-readable report",
-      "modules": [
-        "test_xc_change_report",
-        "test_xc_change_report_baseline",
-        "test_xc_change_report_capture_scope",
-        "test_xc_change_report_enumeration",
-        "test_xc_change_report_validation",
-        "test_xc_change_report_protocol",
-        "test_xc_change_report_flow",
-        "test_xc_author_commit_boundary",
-        "test_xc_human_readable_documents"
-      ],
-      "baseline_seconds": 743.8,
-      "baseline_tests": 257
-    },
     "documents": {
       "directory": "tests/documents",
-      "domain": "Document frontmatter and schema, rendering, LF write contract, skill mirror",
+      "domain": "Document frontmatter and schema, rendering, LF write contract, skill mirror, human-readable document contract",
       "modules": [
         "test_lf_write_contract",
         "test_xc_document",
@@ -124,7 +103,8 @@
         "test_xc_document_render",
         "test_xc_frontmatter_yaml",
         "test_xc_repository_consistency",
-        "test_xc_skill_mirror"
+        "test_xc_skill_mirror",
+        "test_xc_human_readable_documents"
       ],
       "baseline_seconds": 25.5,
       "baseline_tests": 36,
@@ -141,7 +121,6 @@
         "test_xc_package_wheel",
         "test_xc_package_cli",
         "test_xc_setup_transaction",
-        "test_xc_doctor_report_package",
         "test_xc_stage1_matrix",
         "test_install_skills",
         "test_xc_install_skills_guard",
@@ -241,8 +220,6 @@
             "tests.support.test_xc_test_support",
             "tests.documents.test_xc_frontmatter_yaml",
             "tests.packaging.test_xc_version_consistency",
-            "tests.governance.test_xc_lifecycle_disposition",
-            "tests.governance.test_xc_work_lifecycle_contract",
             "tests.governance.test_xc_runtime_query",
             "tests.packaging.test_xc_package_metadata",
             "tests.daemon.test_xc_daemon_protocol",
@@ -307,8 +284,7 @@
       "clusters": [
         "runtime",
         "governance",
-        "lifecycle",
-        "change_report"
+        "lifecycle"
       ]
     },
     {
@@ -349,18 +325,9 @@
       ]
     },
     {
-      "prefix": "skills/xc-change-report/",
-      "clusters": [
-        "change_report",
-        "lifecycle",
-        "governance"
-      ]
-    },
-    {
       "prefix": "skills/xc-document-evolution/",
       "clusters": [
         "documents",
-        "change_report",
         "governance"
       ]
     },
@@ -368,7 +335,6 @@
       "prefix": "skills/xc-document/",
       "clusters": [
         "documents",
-        "change_report",
         "governance"
       ]
     },
@@ -487,7 +453,6 @@
       "prefix": "docs/",
       "clusters": [
         "documents",
-        "change_report",
         "packaging"
       ]
     },
@@ -495,7 +460,6 @@
       "prefix": "README.md",
       "clusters": [
         "documents",
-        "change_report",
         "packaging"
       ]
     },
@@ -503,7 +467,6 @@
       "prefix": "README.zh-CN.md",
       "clusters": [
         "documents",
-        "change_report",
         "packaging"
       ]
     },
@@ -548,18 +511,10 @@
     "test_ensure_gitignore": 0.678,
     "test_install_skills": 7.375,
     "test_lf_write_contract": 3.279,
-    "test_xc_adaptive_enforcement": 5.588,
     "test_xc_adaptive_planning": 2.91,
     "test_xc_adaptive_work_order": 6.856,
     "test_xc_archive_subtree": 94.085,
     "test_xc_author_commit_boundary": 31.89,
-    "test_xc_change_report": 356.953,
-    "test_xc_change_report_baseline": 70.478,
-    "test_xc_change_report_capture_scope": 99.074,
-    "test_xc_change_report_enumeration": 54.285,
-    "test_xc_change_report_flow": 0.116,
-    "test_xc_change_report_protocol": 0.037,
-    "test_xc_change_report_validation": 38.721,
     "test_xc_clarify": 19.862,
     "test_xc_control_packet": 20.714,
     "test_xc_convention_scanner": 1.069,
@@ -570,7 +525,6 @@
     "test_xc_delegation": 0.489,
     "test_xc_delegation_cli": 1.682,
     "test_xc_delegation_gateway": 0.044,
-    "test_xc_doctor_report_package": 1.085,
     "test_xc_document": 1.357,
     "test_xc_document_evolution": 0.316,
     "test_xc_document_evolution_e2e": 32.118,
@@ -582,10 +536,8 @@
     "test_xc_human_readable_documents": 0.001,
     "test_xc_install_skills_guard": 13.669,
     "test_xc_jit_milestone": 8.181,
-    "test_xc_lifecycle_disposition": 0.004,
     "test_xc_lifecycle_e2e": 272.028,
     "test_xc_lifecycle_templates": 5.155,
-    "test_xc_new_feature_report": 14.57,
     "test_xc_open_work_order": 2.456,
     "test_xc_orchestration_author": 13.732,
     "test_xc_orchestration_runtime": 189.257,
@@ -607,12 +559,10 @@
     "test_xc_verification_staleness": 3.512,
     "test_xc_version_consistency": 0.068,
     "test_xc_viewer": 2.213,
-    "test_xc_work_lifecycle_contract": 0.001,
-    "test_xc_work_order_mount": 0.112,
     "test_xc_workflow_governance": 186.123,
     "test_xc_workshop_setup": 0.642
   },
   "module_weights_source": "measured per-module wall seconds and collected test counts from a full serial baseline profile on a 20-logical-core Windows machine; used only as the sharding cost model",
   "module_test_counts": {},
-  "expected_collected_tests": 1028
+  "expected_collected_tests": 693
 }

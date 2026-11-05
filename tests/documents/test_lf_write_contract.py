@@ -13,9 +13,9 @@ checkable, so the contract cannot quietly rot back into a split.
 
 The scan covers production code only. `tests/` is excluded deliberately: a test
 fixture is not agent-authoring guidance, and several fixtures write CRLF content
-on purpose -- `test_xc_change_report.py` materialises a CRLF worktree to prove
-the change report handles one. Scanning them would force either broken fixtures
-or a suppression list, and would not reduce the risk this contract addresses.
+on purpose to prove line-ending handling. Scanning them would force either broken
+fixtures or a suppression list, and would not reduce the risk this contract
+addresses.
 """
 
 from __future__ import annotations

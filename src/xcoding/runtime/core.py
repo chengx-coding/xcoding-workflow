@@ -30,14 +30,6 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tupl
 ALLOWED_WORKSHOP_TOPOLOGIES = {"independent-link", "independent-nested", "same-repo", "no-git"}
 WORKSHOP_TOPOLOGY_DEFAULT = "independent-link"
 
-# Whether a work order produces a change report, when nothing more specific says otherwise.
-# The tier is only a default: an explicit user instruction wins, and a project bridge may tighten
-# it. `code-change-only` is the shipped value because it reproduces the existing mode-derived
-# behaviour exactly -- mutation modes commit to a report, read-only modes do not -- so adding this
-# section changes nothing for a project that does not set it.
-ALLOWED_REPORT_DEFAULTS = {"never", "code-change-only", "always"}
-REPORT_DEFAULT = "code-change-only"
-
 DEFAULT_CONFIG: Dict[str, Any] = {
     "schema_version": 1,
     "git": {
@@ -60,9 +52,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "workshop": {
         "topology": WORKSHOP_TOPOLOGY_DEFAULT,
-    },
-    "report": {
-        "default": REPORT_DEFAULT,
     },
 }
 
@@ -432,18 +421,6 @@ def validate_config(config: Dict[str, Any], source: str) -> None:
             raise ConfigError(
                 "workshop.topology must be one of {}".format(
                     ", ".join(sorted(ALLOWED_WORKSHOP_TOPOLOGIES))
-                ),
-                {"source": source},
-            )
-    report = config.get("report")
-    if report is not None:
-        if not isinstance(report, dict):
-            raise ConfigError("report must be an object", {"source": source})
-        tier = report.get("default", REPORT_DEFAULT)
-        if tier not in ALLOWED_REPORT_DEFAULTS:
-            raise ConfigError(
-                "report.default must be one of {}".format(
-                    ", ".join(sorted(ALLOWED_REPORT_DEFAULTS))
                 ),
                 {"source": source},
             )

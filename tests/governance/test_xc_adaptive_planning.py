@@ -20,63 +20,50 @@ import plan_work_policy as policy
 
 
 MINIMAL_PLAN_SNAPSHOT = (
-    '{"schema_version":1,"ok":true,"mode":"change","pace":"fast","capabilities":{"goa'
-    'l_document":false,"analysis":false,"clarification":false,"solution":false,"appro'
-    'val":false,"split_implementation":false,"separate_verification":false,"independe'
-    'nt_review":false,"result_document":false,"resumable_recovery":false,"change_repo'
-    'rt":true},"implementation_units_min":1,"verification_scopes":["focused"],"depth"'
-    ':{"analysis_perspectives":0,"review_passes":0,"recovery_exercises":0},"optional_'
-    'depth":{"analysis_perspectives":{"floor":0,"value":0,"trimmed":true},"review_pas'
-    'ses":{"floor":0,"value":0,"trimmed":true},"recovery_exercises":{"floor":0,"value'
-    '":0,"trimmed":true},"regression_scope":{"floor":["focused"],"value":["focused"],'
-    '"trimmed":true}},"required_nodes":[{"logical_key":"implementation-1","role":"imp'
-    'lementation","artifact_min":1,"verification_scope":"focused"},{"logical_key":"re'
-    'port","role":"report","artifact_min":1,"source_keys":["work_order.report_baselin'
-    'e"]},{"logical_key":"finalize","role":"finalizer","artifact_min":0}],"required_p'
-    'rovenance":{"goal_document":[],"analysis":[],"clarification":[],"solution":[],"a'
-    'pproval":[],"split_implementation":[],"separate_verification":[],"independent_re'
-    'view":[],"result_document":[],"resumable_recovery":[],"change_report":["mode:cha'
-    'nge"]},"facts":{"governance":{"needs_persistence":"yes","material_impact":"yes",'
-    '"difficult_rollback":"no","crosses_sessions":"no","multiple_actors":"no","audit_'
-    'required":"no"},"bridge_policy":"none","task":{"scope":"single-location","clarit'
-    'y":"exact","risk":"low","verification":"focused","coordination":"single","durati'
-    'on":"single-step","audit":"runtime-only"}},"reason_codes":["mode:change","task:v'
-    'erification:focused"],"planning_status":"planned","diagnostic":null,"plan_receip'
-    't":{"schema_version":1,"request_sha256":"0ba415c1d84b1c062757d9d8e908cac628f88c0'
-    'a2f4c91de36192d87c40a2570","bridge_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-    'aaaaaaaaaaaaaaaaaaaaaaaaaaaa","mode":"change","pace":"fast","capabilities":{"goa'
-    'l_document":false,"analysis":false,"clarification":false,"solution":false,"appro'
-    'val":false,"split_implementation":false,"separate_verification":false,"independe'
-    'nt_review":false,"result_document":false,"resumable_recovery":false,"change_repo'
-    'rt":true},"implementation_units_min":1,"verification_scopes":["focused"],"depth"'
-    ':{"analysis_perspectives":0,"review_passes":0,"recovery_exercises":0},"optional_'
-    'depth":{"analysis_perspectives":{"floor":0,"value":0,"trimmed":true},"review_pas'
-    'ses":{"floor":0,"value":0,"trimmed":true},"recovery_exercises":{"floor":0,"value'
-    '":0,"trimmed":true},"regression_scope":{"floor":["focused"],"value":["focused"],'
-    '"trimmed":true}},"required_nodes":[{"logical_key":"implementation-1","role":"imp'
-    'lementation","artifact_min":1,"verification_scope":"focused"},{"logical_key":"re'
-    'port","role":"report","artifact_min":1,"source_keys":["work_order.report_baselin'
-    'e"]},{"logical_key":"finalize","role":"finalizer","artifact_min":0}],"facts":{"g'
-    'overnance":{"needs_persistence":"yes","material_impact":"yes","difficult_rollbac'
-    'k":"no","crosses_sessions":"no","multiple_actors":"no","audit_required":"no"},"b'
-    'ridge_policy":"none","task":{"scope":"single-location","clarity":"exact","risk":'
-    '"low","verification":"focused","coordination":"single","duration":"single-step",'
-    '"audit":"runtime-only"}},"report_strength":"minimal","plan_id":"08a9ef886870c515'
-    '0595256593eb0d817e7c676f1c1e7de312605db22cf43e5b"}}'
-)
-
-
-# Report filenames belong to the report domain; the generic finalizer retains
-# the report node and its declared baseline source key.
-REPORT_ARTIFACT_NAME = "change-report.html"
-BASELINE_KEY = "work_order.report_baseline"
-# A syntactically well-formed `commit:digest:algorithm` baseline value. The
-# validator's contract is non-emptiness, so the test supplies a value that is
-# unmistakably a fixture rather than an implied real capture.
-BASELINE_VALUE = (
-    "ac583c3646122ae35159c64c8c7143def4f17885:"
-    "cf190d29e21631fade7e12783febbe6614c02d37bf2c98b5b0f8fac31289f7aa:"
-    "sha256(path-nul-contenthash-lf/v1)"
+    '{"schema_version":1,"ok":true,"mode":"change","pace":"fast","capabilitie'
+    's":{"goal_document":false,"analysis":false,"clarification":false,"soluti'
+    'on":false,"approval":false,"split_implementation":false,"separate_verifi'
+    'cation":false,"independent_review":false,"result_document":false,"resuma'
+    'ble_recovery":false},"implementation_units_min":1,"verification_scopes":'
+    '["focused"],"depth":{"analysis_perspectives":0,"review_passes":0,"recove'
+    'ry_exercises":0},"optional_depth":{"analysis_perspectives":{"floor":0,"v'
+    'alue":0,"trimmed":true},"review_passes":{"floor":0,"value":0,"trimmed":t'
+    'rue},"recovery_exercises":{"floor":0,"value":0,"trimmed":true},"regressi'
+    'on_scope":{"floor":["focused"],"value":["focused"],"trimmed":true}},"req'
+    'uired_nodes":[{"logical_key":"implementation-1","role":"implementation",'
+    '"artifact_min":1,"verification_scope":"focused"},{"logical_key":"finaliz'
+    'e","role":"finalizer","artifact_min":0}],"required_provenance":{"goal_do'
+    'cument":[],"analysis":[],"clarification":[],"solution":[],"approval":[],'
+    '"split_implementation":[],"separate_verification":[],"independent_review'
+    '":[],"result_document":[],"resumable_recovery":[]},"facts":{"governance"'
+    ':{"needs_persistence":"yes","material_impact":"yes","difficult_rollback"'
+    ':"no","crosses_sessions":"no","multiple_actors":"no","audit_required":"n'
+    'o"},"bridge_policy":"none","task":{"scope":"single-location","clarity":"'
+    'exact","risk":"low","verification":"focused","coordination":"single","du'
+    'ration":"single-step","audit":"runtime-only"}},"reason_codes":["mode:cha'
+    'nge","task:verification:focused"],"planning_status":"planned","diagnosti'
+    'c":null,"plan_receipt":{"schema_version":1,"request_sha256":"0ba415c1d84'
+    'b1c062757d9d8e908cac628f88c0a2f4c91de36192d87c40a2570","bridge_sha256":"'
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","mode"'
+    ':"change","pace":"fast","capabilities":{"goal_document":false,"analysis"'
+    ':false,"clarification":false,"solution":false,"approval":false,"split_im'
+    'plementation":false,"separate_verification":false,"independent_review":f'
+    'alse,"result_document":false,"resumable_recovery":false},"implementation'
+    '_units_min":1,"verification_scopes":["focused"],"depth":{"analysis_persp'
+    'ectives":0,"review_passes":0,"recovery_exercises":0},"optional_depth":{"'
+    'analysis_perspectives":{"floor":0,"value":0,"trimmed":true},"review_pass'
+    'es":{"floor":0,"value":0,"trimmed":true},"recovery_exercises":{"floor":0'
+    ',"value":0,"trimmed":true},"regression_scope":{"floor":["focused"],"valu'
+    'e":["focused"],"trimmed":true}},"required_nodes":[{"logical_key":"implem'
+    'entation-1","role":"implementation","artifact_min":1,"verification_scope'
+    '":"focused"},{"logical_key":"finalize","role":"finalizer","artifact_min"'
+    ':0}],"facts":{"governance":{"needs_persistence":"yes","material_impact":'
+    '"yes","difficult_rollback":"no","crosses_sessions":"no","multiple_actors'
+    '":"no","audit_required":"no"},"bridge_policy":"none","task":{"scope":"si'
+    'ngle-location","clarity":"exact","risk":"low","verification":"focused","'
+    'coordination":"single","duration":"single-step","audit":"runtime-only"}}'
+    ',"plan_id":"0927c908cbd45d8cb2d0645c508aa9826cb2bda413bafc0cb79a6781be1e'
+    '9940"}}'
 )
 
 
@@ -127,7 +114,15 @@ class AdaptivePlanningTests(unittest.TestCase):
                 for name, enabled in payload["capabilities"].items()
                 if enabled
             },
-            {"change_report"},
+            set(),
+        )
+        # The report stage is gone from the lifecycle: no capability names it and the
+        # receipt carries no report-specific field.
+        self.assertNotIn("change_report", payload["capabilities"])
+        self.assertNotIn("report_strength", payload["plan_receipt"])
+        self.assertNotIn(
+            "report",
+            [item["logical_key"] for item in payload["required_nodes"]],
         )
         self.assertEqual(
             payload["depth"],
@@ -335,26 +330,7 @@ class AdaptivePlanningTests(unittest.TestCase):
             ("smoke", "focused", "regression", "multi-environment", "performance"),
         )
 
-    def test_change_report_capability_is_mutation_only(self) -> None:
-        self.assertIn("change_report", policy.CAPABILITIES)
-        self.assertEqual(policy.CAPABILITIES[-1], "change_report")
-        self.assertIn("change_report", policy.MUTATION_ONLY_CAPABILITIES)
-        for mode in ("create", "change", "repair", "maintenance"):
-            facts = self.base_facts()
-            facts["mode"] = mode
-            payload = policy.build_plan(facts)
-            self.assertTrue(payload["capabilities"]["change_report"], mode)
-            self.assertIn(
-                f"mode:{mode}",
-                payload["required_provenance"]["change_report"],
-            )
-        for mode in ("investigation", "review"):
-            facts = self.base_facts()
-            facts["mode"] = mode
-            payload = policy.build_plan(facts)
-            self.assertFalse(payload["capabilities"]["change_report"], mode)
-
-    def test_create_mode_carries_goal_result_and_report(self) -> None:
+    def test_create_mode_carries_goal_result_and_design_capabilities(self) -> None:
         facts = self.base_facts()
         facts["mode"] = "create"
         facts["request"] = "Create a small offline artifact from scratch."
@@ -362,80 +338,49 @@ class AdaptivePlanningTests(unittest.TestCase):
         capabilities = payload["capabilities"]
         self.assertTrue(capabilities["goal_document"])
         self.assertTrue(capabilities["result_document"])
-        self.assertTrue(capabilities["change_report"])
         self.assertTrue(capabilities["analysis"])
         self.assertTrue(capabilities["solution"])
         self.assertTrue(capabilities["approval"])
+        self.assertNotIn("change_report", capabilities)
         self.assertIn("mode:create", payload["required_provenance"]["analysis"])
         self.assertIn("mode:create", payload["required_provenance"]["solution"])
         self.assertIn("mode:create", payload["required_provenance"]["goal_document"])
         self.assertIn("mode:create", payload["required_provenance"]["result_document"])
-        flow = (ROOT / "skills" / "xc-work" / "assets" / "work-order-flow.json").read_text(encoding="utf-8")
-        template = (ROOT / "skills" / "xc-work" / "assets" / "work-order-template.xml").read_text(encoding="utf-8")
-        for shipped in (flow, template):
-            self.assertIn("true for create, change, repair, and maintenance", shipped)
 
-    def test_report_node_precedes_review_nodes_and_names_the_baseline_source(self) -> None:
+    def test_plan_required_nodes_declare_no_report_source_keys(self) -> None:
+        """The finalizer's evidence model has no report slot or baseline source key.
+
+        Before the report stage was removed the planner declared a `report` node that
+        carried a `work_order.report_baseline` source key. The generic node list must now
+        contain only the implementation leaf and the finalizer, and no planned node may
+        declare a source key or artifact-name constraint.
+        """
         facts = self.base_facts()
         facts["risk"] = "high"
         payload = policy.build_plan(facts)
         keys = [item["logical_key"] for item in payload["required_nodes"]]
-        self.assertIn("report", keys)
-        self.assertLess(keys.index("report"), keys.index("review-1"))
-        self.assertLess(keys.index("report"), keys.index("finalize"))
-        report_node = next(
-            item for item in payload["required_nodes"] if item["logical_key"] == "report"
-        )
-        self.assertEqual(report_node["role"], "report")
-        self.assertEqual(report_node["artifact_min"], 1)
-        self.assertEqual(report_node["source_keys"], ["work_order.report_baseline"])
-        self.assertNotIn("required_artifact_name", report_node)
+        self.assertNotIn("report", keys)
+        self.assertIn("review-1", keys)
+        self.assertEqual(keys[-1], "finalize")
         for item in payload["required_nodes"]:
-            if item["logical_key"] != "report":
-                self.assertNotIn("source_keys", item)
-                self.assertNotIn("required_artifact_name", item)
+            self.assertNotIn("source_keys", item)
+            self.assertNotIn("required_artifact_name", item)
 
-    def test_read_only_plans_never_acquire_the_change_report_capability(self) -> None:
+    def test_read_only_plans_never_acquire_mutation_capabilities(self) -> None:
         facts = self.base_facts()
         facts["mode"] = "review"
         facts["material_impact"] = "unknown"
         payload = policy.build_plan(facts)
         self.assertEqual(payload["planning_status"], "planned")
         self.assertTrue(payload["capabilities"]["analysis"])
-        self.assertFalse(payload["capabilities"]["change_report"])
+        self.assertFalse(payload["capabilities"]["split_implementation"])
+        self.assertFalse(payload["capabilities"]["separate_verification"])
+        self.assertNotIn("change_report", payload["capabilities"])
         self.assertNotIn("report_strength", payload["plan_receipt"])
         self.assertNotIn(
             "report",
             [item["logical_key"] for item in payload["required_nodes"]],
         )
-
-    def test_report_strength_maps_confirmed_risk_and_audit_facts(self) -> None:
-        expectations = (
-            ({"risk": "low", "audit": "runtime-only"}, "minimal"),
-            ({"risk": "medium", "audit": "runtime-only"}, "standard"),
-            ({"risk": "low", "audit": "result"}, "full"),
-            ({"risk": "low", "audit": "full"}, "full"),
-            ({"risk": "high", "audit": "runtime-only"}, "full"),
-        )
-        for overrides, expected in expectations:
-            facts = self.base_facts()
-            facts.update(overrides)
-            if overrides["audit"] != "runtime-only":
-                facts["audit_required"] = "yes"
-            payload = policy.build_plan(facts)
-            with self.subTest(**overrides):
-                self.assertTrue(payload["capabilities"]["change_report"])
-                self.assertEqual(payload["plan_receipt"]["report_strength"], expected)
-                self.assertEqual(policy.derive_report_strength(facts), expected)
-        facts = self.base_facts()
-        facts["mode"] = "investigation"
-        self.assertFalse(policy.build_plan(facts)["capabilities"]["change_report"])
-        for mode in policy.MODES:
-            facts = self.base_facts()
-            facts["mode"] = mode
-            facts["risk"] = "high"
-            with self.subTest(mode=mode):
-                self.assertEqual(policy.derive_report_strength(facts), "full")
 
     def test_smoke_grade_combines_into_implementation_node(self) -> None:
         facts = self.base_facts()
@@ -626,17 +571,8 @@ class AdaptivePlanningTests(unittest.TestCase):
         self.assertEqual(payload["documentation_grade"], "full-user")
         self.assertTrue(payload["capabilities"]["independent_review"])
 
-    def test_smoke_manifest_binds_the_planned_sources_and_requires_the_baseline_key(self) -> None:
-        """Corrected expectation: the smoke path binds its two sources **and** publishes the
-        report node's declared source key.
-
-        The previous name — `test_smoke_manifest_binding_is_tolerated` — and its packet, whose
-        blackboard carried only `work_order.plan_id`, encoded the tolerance G-37 removed: the
-        validator accepted a plan-required report node whose declared `source_keys` entry was
-        never published, so a manifest could pass with no baseline value at all. The positive
-        half publishes the key; the negative half removes it again and asserts the refusal
-        naming the key, so the test pins the new behaviour rather than the removed tolerance.
-        """
+    def test_smoke_manifest_binds_the_planned_sources(self) -> None:
+        """The smoke path binds its one planned source and refuses a missing source record."""
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
@@ -644,9 +580,12 @@ class AdaptivePlanningTests(unittest.TestCase):
             facts["verification"] = "smoke"
             facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
             receipt = policy.build_plan(facts)["plan_receipt"]
+            self.assertEqual(
+                [item["logical_key"] for item in receipt["required_nodes"]],
+                ["implementation-1", "finalize"],
+            )
             source_map = {
                 "implementation-1": {"node_id": "rt_smoke_worker"},
-                "report": {"node_id": "rt_smoke_report"},
             }
             packet = {
                 "packet": {
@@ -656,7 +595,6 @@ class AdaptivePlanningTests(unittest.TestCase):
                     },
                     "blackboard": [
                         {"key": "work_order.plan_id", "value": receipt["plan_id"]},
-                        {"key": BASELINE_KEY, "value": BASELINE_VALUE},
                     ],
                     "source_categories": [
                         {
@@ -668,18 +606,6 @@ class AdaptivePlanningTests(unittest.TestCase):
                                     "role": "implementation",
                                     "status": "succeeded",
                                     "artifacts": ["smoke-artifact.md"],
-                                }
-                            ],
-                        },
-                        {
-                            "name": "plan-report",
-                            "sources": [
-                                {
-                                    "node_id": "rt_smoke_report",
-                                    "logical_key": "report",
-                                    "role": "report",
-                                    "status": "succeeded",
-                                    "artifacts": [REPORT_ARTIFACT_NAME],
                                 }
                             ],
                         },
@@ -703,22 +629,18 @@ class AdaptivePlanningTests(unittest.TestCase):
                 arguments,
             )
             self.assertEqual(code, 0, payload)
-            self.assertEqual(payload["min_sources"], 2)
+            self.assertEqual(payload["min_sources"], 1)
+            self.assertEqual(payload["source_ids"], ["rt_smoke_worker"])
 
-            # The removed tolerance: the same smoke packet without the declared key is refused,
-            # and the refusal names the key the caller failed to publish.
-            unpublished = json.loads(json.dumps(packet))
-            unpublished["packet"]["blackboard"] = [
-                {"key": "work_order.plan_id", "value": receipt["plan_id"]}
-            ]
-            arguments[5] = json.dumps(unpublished, separators=(",", ":"))
+            # A missing planned source record is refused and names the logical key.
+            arguments[3] = "{}"
             code, payload = self.invoke(
                 SCRIPTS / "validate_adaptive_manifest.py",
                 arguments,
             )
             self.assertEqual(code, 2, payload)
-            self.assertEqual(payload["error"]["code"], "missing_required_source_key")
-            self.assertEqual(payload["error"]["keys"], [BASELINE_KEY])
+            self.assertEqual(payload["error"]["code"], "missing_required_source")
+            self.assertEqual(payload["error"]["keys"], ["implementation-1"])
 
     def test_governance_tightening_never_removes_capabilities(self) -> None:
         base = policy.build_plan(self.base_facts())
@@ -810,7 +732,7 @@ class AdaptivePlanningTests(unittest.TestCase):
         self.assertEqual(payload["verification_scopes"], [])
         self.assertFalse(payload["capabilities"]["split_implementation"])
         self.assertFalse(payload["capabilities"]["separate_verification"])
-        self.assertFalse(payload["capabilities"]["change_report"])
+        self.assertNotIn("change_report", payload["capabilities"])
 
         with mock.patch.object(
             plan_work.subprocess,
@@ -893,7 +815,7 @@ class AdaptivePlanningTests(unittest.TestCase):
             self.assertEqual(payload["error"]["code"], "plan_policy_mismatch")
 
     def test_adaptive_manifest_requires_every_planned_source(self) -> None:
-        """Every planned source and its declared baseline remain required."""
+        """Every planned source remains required, and no node declares a source key."""
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
@@ -901,12 +823,24 @@ class AdaptivePlanningTests(unittest.TestCase):
             facts["scope"] = "module"
             facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
             receipt = policy.build_plan(facts)["plan_receipt"]
-            report_node = next(
+            planned = [
                 item
                 for item in receipt["required_nodes"]
-                if item["logical_key"] == "report"
+                if item["role"] != "finalizer"
+            ]
+            self.assertTrue(
+                any(
+                    item["logical_key"].startswith("implementation-")
+                    for item in planned
+                )
             )
-            self.assertNotIn("required_artifact_name", report_node)
+            self.assertNotIn(
+                "report",
+                [item["logical_key"] for item in planned],
+            )
+            for item in receipt["required_nodes"]:
+                self.assertNotIn("required_artifact_name", item)
+                self.assertNotIn("source_keys", item)
             source_map: dict[str, dict[str, object]] = {}
             packet_categories: list[dict[str, object]] = []
             for index, item in enumerate(receipt["required_nodes"]):
@@ -941,7 +875,6 @@ class AdaptivePlanningTests(unittest.TestCase):
                     },
                     "blackboard": [
                         {"key": "work_order.plan_id", "value": receipt["plan_id"]},
-                        {"key": BASELINE_KEY, "value": BASELINE_VALUE},
                     ],
                     "source_categories": packet_categories,
                 }
@@ -984,113 +917,24 @@ class AdaptivePlanningTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertEqual(payload["error"]["code"], "invalid_adaptive_manifest")
 
-    def test_adaptive_manifest_accepts_the_planned_report_node(self) -> None:
-        """A report leaf may deliver domain evidence without a generic filename constraint."""
-        with tempfile.TemporaryDirectory() as temporary:
-            bridge = Path(temporary) / "WORKFLOW.md"
-            bridge.write_text("# Workflow\n", encoding="utf-8")
-            facts = self.base_facts()
-            facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
-            receipt = policy.build_plan(facts)["plan_receipt"]
-            sources = [
-                item
-                for item in receipt["required_nodes"]
-                if item["role"] != "finalizer"
-            ]
-            self.assertEqual(
-                [item["logical_key"] for item in sources],
-                ["implementation-1", "report"],
-            )
-            self.assertTrue(all("required_artifact_name" not in item for item in sources))
-            source_map: dict[str, dict[str, object]] = {}
-            packet_categories: list[dict[str, object]] = []
-            for index, item in enumerate(sources):
-                node_id = f"rt_report_{index}"
-                source_map[item["logical_key"]] = {"node_id": node_id}
-                packet_categories.append(
-                    {
-                        "name": f"plan-{item['logical_key']}",
-                        "sources": [
-                            {
-                                "node_id": node_id,
-                                "logical_key": item["logical_key"],
-                                "role": item["role"],
-                                "status": "succeeded",
-                                "artifacts": [
-                                    f"report-source-{index}-{unit}"
-                                    for unit in range(item["artifact_min"])
-                                ],
-                            }
-                        ],
-                    }
-                )
-            packet = {
-                "packet": {
-                    "target": {
-                        "logical_key": "finalize",
-                        "role": "work-order-finalize",
-                    },
-                    "blackboard": [
-                        {"key": "work_order.plan_id", "value": receipt["plan_id"]},
-                        {"key": BASELINE_KEY, "value": BASELINE_VALUE},
-                    ],
-                    "source_categories": packet_categories,
-                }
-            }
-            arguments = [
-                "--receipt-json",
-                json.dumps(receipt, separators=(",", ":")),
-                "--source-map-json",
-                json.dumps(source_map, separators=(",", ":")),
-                "--packet-json",
-                json.dumps(packet, separators=(",", ":")),
-                "--request",
-                facts["request"],
-                "--bridge",
-                str(bridge),
-            ]
-            code, payload = self.invoke(
-                SCRIPTS / "validate_adaptive_manifest.py",
-                arguments,
-            )
-            self.assertEqual(code, 0, payload)
-            self.assertEqual(payload["min_sources"], 2)
-
-            missing_map = {
-                key: value for key, value in source_map.items() if key != "report"
-            }
-            arguments[3] = json.dumps(missing_map, separators=(",", ":"))
-            code, payload = self.invoke(
-                SCRIPTS / "validate_adaptive_manifest.py",
-                arguments,
-            )
-            self.assertEqual(code, 2)
-            self.assertEqual(payload["error"]["code"], "missing_required_source")
-            self.assertEqual(payload["error"]["keys"], ["report"])
-
-    def report_slot_manifest(
+    def implementation_slot_manifest(
         self,
         receipt: dict[str, object],
         *,
-        baseline: str | None,
-        report_artifacts: list[str],
+        artifacts: list[object] | str,
     ) -> tuple[dict[str, dict[str, str]], dict[str, object]]:
-        """The minimal plan's two-source finalizer manifest.
+        """The minimal plan's finalizer manifest, with one implementation source.
 
-        `baseline is None` omits the declared key from the blackboard entirely; any other
-        value (including `""` and whitespace) is published as-is.
+        `artifacts` is passed through verbatim so the malformed-source cases can
+        feed the validator shapes no well-formed producer emits.
         """
-        blackboard = [{"key": "work_order.plan_id", "value": receipt["plan_id"]}]
-        if baseline is not None:
-            blackboard.append({"key": BASELINE_KEY, "value": baseline})
-        source_map = {
-            "implementation-1": {"node_id": "rt_impl"},
-            "report": {"node_id": "rt_report"},
-        }
+        source_map = {"implementation-1": {"node_id": "rt_impl"}}
         packet = {
             "packet": {
                 "target": {"logical_key": "finalize", "role": "work-order-finalize"},
-                "blackboard": blackboard,
+                "blackboard": [
+                    {"key": "work_order.plan_id", "value": receipt["plan_id"]},
+                ],
                 "source_categories": [
                     {
                         "name": "plan-implementation-1",
@@ -1100,19 +944,7 @@ class AdaptivePlanningTests(unittest.TestCase):
                                 "logical_key": "implementation-1",
                                 "role": "implementation",
                                 "status": "succeeded",
-                                "artifacts": ["implementation.md"],
-                            }
-                        ],
-                    },
-                    {
-                        "name": "plan-report",
-                        "sources": [
-                            {
-                                "node_id": "rt_report",
-                                "logical_key": "report",
-                                "role": "report",
-                                "status": "succeeded",
-                                "artifacts": list(report_artifacts),
+                                "artifacts": artifacts,
                             }
                         ],
                     },
@@ -1145,17 +977,17 @@ class AdaptivePlanningTests(unittest.TestCase):
             ],
         )
 
-    def test_report_slot_accepts_domain_evidence_and_rejects_malformed_sources(self) -> None:
+    def test_implementation_slot_accepts_domain_evidence_and_rejects_malformed_sources(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
             facts = self.base_facts()
             facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
             receipt = policy.build_plan(facts)["plan_receipt"]
-            for delivered in ("change-report-manifest.json", REPORT_ARTIFACT_NAME):
+            for delivered in ("implementation.md", "combined-work.txt"):
                 with self.subTest(delivered=delivered):
-                    source_map, packet = self.report_slot_manifest(
-                        receipt, baseline=BASELINE_VALUE, report_artifacts=[delivered]
+                    source_map, packet = self.implementation_slot_manifest(
+                        receipt, artifacts=[delivered]
                     )
                     code, payload = self.validate_manifest(bridge, facts, receipt, source_map, packet)
                     self.assertEqual(code, 0, payload)
@@ -1163,94 +995,47 @@ class AdaptivePlanningTests(unittest.TestCase):
             invalid_sources = [
                 {"artifacts": []}, {"artifacts": [None]}, {"artifacts": [1]},
                 {"artifacts": [""]}, {"artifacts": [" "]},
-                {"artifacts": [REPORT_ARTIFACT_NAME, None]},
-                {"artifacts": "change-report-manifest.json"},
-                {"role": "implementation"}, {"status": "failed"},
+                {"artifacts": ["implementation.md", None]},
+                {"artifacts": "implementation.md"},
+                {"role": "verification"}, {"status": "failed"},
                 {"status": "blocked"}, {"status": "running"},
                 {"node_id": "wrong"}, {"logical_key": "wrong"},
             ]
             for changes in invalid_sources:
                 with self.subTest(changes=changes):
-                    source_map, packet = self.report_slot_manifest(
-                        receipt, baseline=BASELINE_VALUE, report_artifacts=["change-report-manifest.json"]
+                    source_map, packet = self.implementation_slot_manifest(
+                        receipt, artifacts=["implementation.md"]
                     )
-                    packet["packet"]["source_categories"][1]["sources"][0].update(changes)
+                    packet["packet"]["source_categories"][0]["sources"][0].update(changes)
                     code, payload = self.validate_manifest(bridge, facts, receipt, source_map, packet)
                     self.assertEqual(code, 2, payload)
                     self.assertEqual(payload["error"]["code"], "invalid_packet_source")
-            source_map, packet = self.report_slot_manifest(
-                receipt, baseline=BASELINE_VALUE, report_artifacts=["change-report-manifest.json"]
+            source_map, packet = self.implementation_slot_manifest(
+                receipt, artifacts=["implementation.md"]
             )
-            packet["packet"]["source_categories"][1]["sources"] *= 2
+            packet["packet"]["source_categories"][0]["sources"] *= 2
             code, payload = self.validate_manifest(bridge, facts, receipt, source_map, packet)
             self.assertEqual(code, 2, payload)
             self.assertEqual(payload["error"]["code"], "invalid_category_cardinality")
 
-    def test_receipt_with_retired_filename_constraint_requires_replanning(self) -> None:
+    def test_receipt_with_a_retired_artifact_constraint_requires_replanning(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             bridge = Path(temporary) / "WORKFLOW.md"
             bridge.write_text("# Workflow\n", encoding="utf-8")
             facts = self.base_facts()
             facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
             receipt = policy.build_plan(facts)["plan_receipt"]
-            next(item for item in receipt["required_nodes"] if item["logical_key"] == "report")["required_artifact_name"] = REPORT_ARTIFACT_NAME
-            source_map, packet = self.report_slot_manifest(
-                receipt, baseline=BASELINE_VALUE, report_artifacts=[REPORT_ARTIFACT_NAME]
+            next(
+                item
+                for item in receipt["required_nodes"]
+                if item["logical_key"] == "implementation-1"
+            )["required_artifact_name"] = "implementation.md"
+            source_map, packet = self.implementation_slot_manifest(
+                receipt, artifacts=["implementation.md"]
             )
             code, payload = self.validate_manifest(bridge, facts, receipt, source_map, packet)
             self.assertEqual(code, 2, payload)
             self.assertEqual(payload["error"]["code"], "plan_policy_mismatch")
-
-    def test_unpublished_baseline_key_is_refused(self) -> None:
-        """G-37 negative test: the report node's declared source key must be non-blank.
-
-        Against the pre-change validator every packet below exited 0 — the validator never read
-        `source_keys` — so a report slot could validate clean while proving no baseline at all.
-        The blank and tab cases are included because a truthiness test would accept them; the
-        check is `.strip()`-based, and the refusal names the key the caller failed to publish.
-        """
-        with tempfile.TemporaryDirectory() as temporary:
-            bridge = Path(temporary) / "WORKFLOW.md"
-            bridge.write_text("# Workflow\n", encoding="utf-8")
-            facts = self.base_facts()
-            facts["bridge_sha256"] = hashlib.sha256(bridge.read_bytes()).hexdigest()
-            receipt = policy.build_plan(facts)["plan_receipt"]
-            report_node = next(
-                item
-                for item in receipt["required_nodes"]
-                if item["logical_key"] == "report"
-            )
-            self.assertEqual(report_node["source_keys"], [BASELINE_KEY])
-            source_map, _ = self.report_slot_manifest(
-                receipt, baseline=BASELINE_VALUE, report_artifacts=[REPORT_ARTIFACT_NAME]
-            )
-            for label, baseline in (
-                ("absent", None),
-                ("empty", ""),
-                ("blank", "   "),
-                ("tab", "\t"),
-            ):
-                with self.subTest(baseline=label):
-                    _, packet = self.report_slot_manifest(
-                        receipt,
-                        baseline=baseline,
-                        report_artifacts=[REPORT_ARTIFACT_NAME],
-                    )
-                    code, payload = self.validate_manifest(
-                        bridge, facts, receipt, source_map, packet
-                    )
-                    self.assertEqual(code, 2, (label, payload))
-                    self.assertEqual(payload["error"]["code"], "missing_required_source_key")
-                    self.assertEqual(payload["error"]["keys"], [BASELINE_KEY])
-            _, packet = self.report_slot_manifest(
-                receipt, baseline=BASELINE_VALUE, report_artifacts=[REPORT_ARTIFACT_NAME]
-            )
-            code, payload = self.validate_manifest(
-                bridge, facts, receipt, source_map, packet
-            )
-            self.assertEqual(code, 0, payload)
-            self.assertTrue(payload["ok"])
-            self.assertEqual(payload["min_sources"], 2)
 
     def test_receipt_validator_rejects_invalid_fact_domains(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

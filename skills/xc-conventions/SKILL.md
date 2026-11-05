@@ -45,7 +45,7 @@ Used after governance returns `direct`, before the first substantive action. Rea
 
 ### L1 — mandatory managed floor
 
-Runs inside preparation for every managed mutation, on both `run` and `adaptive-run`, at the same point the report baseline is captured. It adds no node or group and is independent of the analysis capability, so proportional pruning of analysis cannot remove it.
+Runs inside preparation for every managed mutation, on both `run` and `adaptive-run`, before the first mutating leaf. It adds no node or group and is independent of the analysis capability, so proportional pruning of analysis cannot remove it.
 
 Two layers are deliberately separated:
 

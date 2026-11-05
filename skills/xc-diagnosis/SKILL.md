@@ -34,7 +34,7 @@ Diagnosis node artifacts default to internal English. A caller may explicitly re
 
 ## Instrumentation
 
-Temporary diagnostic source changes require explicit caller authorization, a declared artifact describing the exact diff, focused evidence collection, and removal before node completion. If safe removal cannot be established because concurrent changes occurred, block the node and escalate to the main-session user gate. Because the mutation must be gone before the node completes, it is not part of any change set the enclosing work order reports; the removal obligation is what covers it.
+Temporary diagnostic source changes require explicit caller authorization, a declared artifact describing the exact diff, focused evidence collection, and removal before node completion. If safe removal cannot be established because concurrent changes occurred, block the node and escalate to the main-session user gate. Because the mutation must be gone before the node completes, it is not part of the delivered change set; the removal obligation is what covers it.
 
 ## Constraints
 

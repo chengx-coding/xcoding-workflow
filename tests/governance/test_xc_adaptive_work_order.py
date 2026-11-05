@@ -16,22 +16,9 @@ RUNTIME = ROOT / "tests" / "runtime_cli.py"
 PLANNER_SCRIPTS = ROOT / "skills" / "xc-work" / "scripts"
 SPEC = ROOT / "skills" / "xc-work" / "assets" / "adaptive-work-order-flow.json"
 TEMPLATE = ROOT / "skills" / "xc-work" / "assets" / "adaptive-work-order-template.xml"
-WORK_SKILL = ROOT / "skills" / "xc-work" / "SKILL.md"
-CHANGE_REPORT_TEMPLATE = (
-    ROOT / "skills" / "xc-change-report" / "assets" / "change-report-template.xml"
-)
 sys.path.insert(0, str(PLANNER_SCRIPTS))
 
 import plan_work_policy as policy
-
-# The declared source key G-37 made enforceable, and a well-formed
-# `commit:digest:algorithm` value that satisfies it without implying a real capture.
-BASELINE_KEY = "work_order.report_baseline"
-BASELINE_VALUE = (
-    "ac583c3646122ae35159c64c8c7143def4f17885:"
-    "cf190d29e21631fade7e12783febbe6614c02d37bf2c98b5b0f8fac31289f7aa:"
-    "sha256(path-nul-contenthash-lf/v1)"
-)
 
 
 class AdaptiveWorkOrderTests(unittest.TestCase):
@@ -140,37 +127,15 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
             self.assertEqual(payload["counts"], {"pending": 2})
 
     def test_minimal_managed_path_has_the_plan_required_leaves(self) -> None:
-        self.minimal_managed_path(zero_units=False)
-
-    def test_zero_unit_report_completes_without_html(self) -> None:
-        self.minimal_managed_path(zero_units=True)
-
-    def minimal_managed_path(self, *, zero_units: bool) -> None:
         """Exercise real runtime sources, manifest validation and finalization.
 
-        The zero-unit branch measures an unchanged Git repository through the report
-        domain before completing its report leaf with only the generated manifest.
+        The plan's minimal mutation requires exactly one implementation leaf and the
+        finalizer. The work order completes without a report, baseline capture or any
+        report-specific blackboard key.
         """
         with tempfile.TemporaryDirectory() as temporary:
             tree, workshop = self.environment(Path(temporary))
             group = self.find_group(tree)
-            baseline_value = BASELINE_VALUE
-            if zero_units:
-                business_repo = Path(temporary) / "business-repo"
-                business_repo.mkdir()
-                (business_repo / "sample.py").write_text("VALUE = 1\n", encoding="utf-8", newline="\n")
-                for arguments in (
-                    ["init", "--quiet"], ["add", "sample.py"],
-                    ["-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "-m", "Initial fixture"],
-                ):
-                    subprocess.run(["git", *arguments], cwd=business_repo, check=True, capture_output=True)
-                report_workbench = workshop / "work-orders" / "adaptive"
-                captured = self.run_json(
-                    ROOT / "skills" / "xc-change-report" / "scripts" / "capture_baseline.py",
-                    "--repo", str(business_repo), "--workbench", str(report_workbench),
-                    "--work-order-id", "20260803-0000-adaptive",
-                )
-                baseline_value = f"{captured['head']}:{captured['expected_digest']}:{captured['algorithm']}"
             artifact = (
                 workshop
                 / "work-orders"
@@ -211,46 +176,6 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 f"metadata.completion.artifacts.path=literal:{artifact}",
             )
             worker_id = str(worker["node"]["id"])
-            report_artifact = (
-                workshop
-                / "work-orders"
-                / "adaptive"
-                / "artifacts"
-                / ("change-report-manifest.json" if zero_units else "change-report.html")
-            )
-            reporter = self.run_json(
-                RUNTIME,
-                "add-node",
-                "--tree",
-                str(tree),
-                "--parent",
-                group,
-                "--logical-key",
-                "report",
-                "--title",
-                "Produce change report",
-                "--type",
-                "task",
-                "--role",
-                "report",
-                "--executor",
-                "subagent",
-                "--instructions",
-                "Produce the minimal-strength change report from the recorded baseline.",
-                "--deliverables",
-                str(report_artifact),
-                "--acceptance",
-                "The report covers every analyzable change unit of this work order.",
-                "--metadata",
-                'metadata.completion.required_fields=["summary","validation"]',
-                "--metadata",
-                "metadata.completion.artifacts.min=1",
-                "--metadata",
-                "metadata.completion.artifacts.max=1",
-                "--metadata",
-                f"metadata.completion.artifacts.path=literal:{report_artifact}",
-            )
-            reporter_id = str(reporter["node"]["id"])
             self.run_json(
                 RUNTIME,
                 "set",
@@ -259,11 +184,7 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--set",
                 f'adaptive.sources.implementation-1=["{worker_id}"]',
                 "--set",
-                f'adaptive.sources.report=["{reporter_id}"]',
-                "--set",
                 "work_order.plan_id=" + "a" * 64,
-                "--set",
-                f"{BASELINE_KEY}={baseline_value}",
             )
             finalizer = self.run_json(
                 RUNTIME,
@@ -295,15 +216,7 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--metadata",
                 "metadata.control_packet.category.plan-implementation-1.artifact_min=1",
                 "--metadata",
-                'metadata.control_packet.category.plan-report.selectors=["bb:adaptive.sources.report"]',
-                "--metadata",
-                "metadata.control_packet.category.plan-report.min_sources=1",
-                "--metadata",
-                "metadata.control_packet.category.plan-report.artifact_min=1",
-                "--metadata",
-                'metadata.control_packet.blackboard_keys=["work_order.plan_id","'
-                + BASELINE_KEY
-                + '","work_order.report_skip_reason","report.path"]',
+                'metadata.control_packet.blackboard_keys=["work_order.plan_id"]',
                 "--metadata",
                 'metadata.completion.required_fields=["summary","validation"]',
             )
@@ -342,52 +255,6 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--artifact",
                 str(artifact),
             )
-            self.run_json(
-                RUNTIME,
-                "start",
-                "--tree",
-                str(tree),
-                "--node",
-                reporter_id,
-                "--agent",
-                "report-author",
-            )
-            if zero_units:
-                measured = self.run_json(
-                    ROOT / "skills" / "xc-change-report" / "scripts" / "build_manifest.py",
-                    "--repo", str(business_repo), "--work-order-id", "20260803-0000-adaptive",
-                    "--baseline-commit", captured["head"],
-                    "--baseline-digest", captured["expected_digest"],
-                    "--tmp-dir", str(report_workbench / "tmp"), "--out", str(report_artifact),
-                )
-                self.assertEqual(measured["units_total"], 0)
-                self.assertFalse(measured["run_required"])
-                self.assertTrue(report_artifact.is_file())
-                self.assertFalse(report_artifact.with_name("change-report.html").exists())
-                self.run_json(
-                    RUNTIME, "set", "--tree", str(tree),
-                    "--set", "work_order.report_skip_reason=zero_analyzable_units",
-                    "--set", "report.path=",
-                )
-            else:
-                report_artifact.write_text(
-                    "<!doctype html><html lang=\"en\"></html>\n",
-                    encoding="utf-8", newline="\n",
-                )
-            self.run_json(
-                RUNTIME,
-                "complete",
-                "--tree",
-                str(tree),
-                "--node",
-                reporter_id,
-                "--summary",
-                "Measured zero analyzable units; HTML skipped." if zero_units else "Produced the minimal-strength change report.",
-                "--validation",
-                "Coverage validation passed.",
-                "--artifact",
-                str(report_artifact),
-            )
             facts = {
                 "needs_persistence": "yes",
                 "material_impact": "yes",
@@ -414,6 +281,10 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 bridge.read_bytes()
             ).hexdigest()
             receipt = policy.build_plan(facts)["plan_receipt"]
+            self.assertEqual(
+                [item["logical_key"] for item in receipt["required_nodes"]],
+                ["implementation-1", "finalize"],
+            )
             self.run_json(
                 RUNTIME,
                 "set",
@@ -425,9 +296,6 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
             source_map = {
                 "implementation-1": {
                     "node_id": worker_id,
-                },
-                "report": {
-                    "node_id": reporter_id,
                 },
             }
             packet = self.run_json(
@@ -442,18 +310,8 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 item["key"]: item["value"]
                 for item in packet["packet"]["blackboard"]
             }
-            self.assertEqual(
-                projected.get(BASELINE_KEY),
-                baseline_value,
-                "the finalizer's projection must carry the published baseline, which is the "
-                "declared source key G-37 requires",
-            )
             self.assertEqual(projected.get("work_order.plan_id"), receipt["plan_id"])
-            if zero_units:
-                self.assertEqual(projected["work_order.report_skip_reason"], "zero_analyzable_units")
-                self.assertEqual(projected["report.path"], "")
-                report_source = next(category for category in packet["packet"]["source_categories"] if category["name"] == "plan-report")["sources"][0]
-                self.assertEqual(report_source["artifacts"], [str(report_artifact)])
+            self.assertNotIn("report.path", projected)
             manifest = self.run_json(
                 PLANNER_SCRIPTS / "validate_adaptive_manifest.py",
                 "--receipt-json",
@@ -467,22 +325,22 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--bridge",
                 str(bridge),
             )
-            self.assertEqual(manifest["source_ids"], [worker_id, reporter_id])
-            self.assertEqual(manifest["min_sources"], 2)
-            self.assertEqual(manifest["artifact_min"], 2)
+            self.assertEqual(manifest["source_ids"], [worker_id])
+            self.assertEqual(manifest["min_sources"], 1)
+            self.assertEqual(manifest["artifact_min"], 1)
             self.assertEqual(
                 [
                     category["sources"][0]["node_id"]
                     for category in packet["packet"]["source_categories"]
                 ],
-                [worker_id, reporter_id],
+                [worker_id],
             )
             self.assertEqual(
                 [
                     category["sources"][0]["logical_key"]
                     for category in packet["packet"]["source_categories"]
                 ],
-                ["implementation-1", "report"],
+                ["implementation-1"],
             )
             self.run_json(
                 RUNTIME,
@@ -506,31 +364,19 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--validation",
                 "Required source and focused verification evidence are present.",
             )
-            self.assertEqual(completed["counts"]["succeeded"], 5)
+            self.assertEqual(completed["counts"]["succeeded"], 4)
             summary = self.run_json(RUNTIME, "summary", "--tree", str(tree))
             self.assertEqual(summary["status"], "complete")
-            self.assertEqual(summary["counts"]["succeeded"], 5)
+            self.assertEqual(summary["counts"]["succeeded"], 4)
 
-    def test_embed_after_a_successful_leaf_is_sealed_and_documented(self) -> None:
-        """G-21: the report node must exist before the first leaf starts, and the page says so.
+    def test_completion_seals_the_tree_against_late_nodes_and_writes(self) -> None:
+        """A successful leaf that settles the plan seals the tree.
 
-        The runtime half is decisive against the pre-change tree only as a property of the
-        engine (`core.py` `is_runtime_sealed`/`require_runtime_mutable`), which is not what this
-        work order changed; what was missing is the *statement*, because the shipped sentence
-        placed the report node "after the implementation and verification nodes" and said
-        nothing about the moment it is added. Both halves are asserted here so the documented
-        constraint and the mechanism it describes are pinned together.
+        The adaptive contract requires every initial plan-required node and the
+        finalizer to be added before the first leaf starts. The runtime enforces
+        the consequence: once the last planned leaf succeeds, the tree is sealed
+        and neither late structure nor a late blackboard write is accepted.
         """
-        adaptive = self.adaptive_section()
-        self.assertIn("before the first leaf starts", adaptive)
-        self.assertIn("a successful leaf seals the tree", adaptive)
-        self.assertIn("tree_sealed", adaptive)
-        self.assertIn("sequence position", adaptive)
-        self.assertNotIn(
-            "Embed the `xc-change-report` subtree once after the implementation "
-            "and verification nodes",
-            adaptive,
-        )
         with tempfile.TemporaryDirectory() as temporary:
             tree, workshop = self.environment(Path(temporary))
             group = self.find_group(tree)
@@ -610,8 +456,7 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "completing every planned leaf seals the tree",
             )
 
-            # A plan-required node appended after the leaf succeeded is refused, which is the
-            # mechanism the page's constraint describes.
+            # A plan-required node appended after the leaf succeeded is refused.
             code, payload = self.run_raw(
                 RUNTIME,
                 "add-node",
@@ -620,61 +465,36 @@ class AdaptiveWorkOrderTests(unittest.TestCase):
                 "--parent",
                 group,
                 "--logical-key",
-                "report",
+                "late-work",
                 "--title",
-                "Produce change report",
+                "Late work",
                 "--type",
                 "task",
                 "--role",
-                "report",
+                "implementation",
                 "--executor",
                 "subagent",
                 "--instructions",
-                "Produce the change report from the recorded baseline.",
+                "Work planned after the tree settled.",
                 "--deliverables",
-                str(workshop / "work-orders" / "adaptive" / "artifacts" / "change-report.html"),
+                str(workshop / "work-orders" / "adaptive" / "artifacts" / "late.md"),
                 "--acceptance",
-                "The report covers every analyzable change unit.",
+                "The late work is accepted.",
             )
             self.assertEqual(code, 2, payload)
             self.assertEqual(payload["error"]["code"], "tree_sealed")
 
-            # Embedding the report subtree after the leaf succeeded is refused by the same
-            # guard, so neither supported form can be added late.
-            code, payload = self.run_raw(
-                RUNTIME,
-                "embed-subtree",
-                "--tree",
-                str(tree),
-                "--parent",
-                group,
-                "--template",
-                str(CHANGE_REPORT_TEMPLATE),
-                "--instance-id",
-                "report",
-            )
-            self.assertEqual(code, 2, payload)
-            self.assertEqual(payload["error"]["code"], "tree_sealed")
-
-            # The blackboard write the report leaf would have needed is refused as well: the
-            # sealed tree cannot be repaired into a reportable state after the fact.
+            # The blackboard write a late leaf would have needed is refused as well.
             code, payload = self.run_raw(
                 RUNTIME,
                 "set",
                 "--tree",
                 str(tree),
                 "--set",
-                f"{BASELINE_KEY}={BASELINE_VALUE}",
+                "work_order.plan_id=" + "a" * 64,
             )
             self.assertEqual(code, 2, payload)
             self.assertEqual(payload["error"]["code"], "tree_sealed")
-
-    def adaptive_section(self) -> str:
-        """The adaptive contract text, so the assertion is scoped to this path's paragraph."""
-        text = WORK_SKILL.read_text(encoding="utf-8")
-        start = text.index("## Adaptive Run Operation")
-        end = text.index("## Run Operation")
-        return text[start:end]
 
     def test_sequence_group_exposes_only_the_first_planned_leaf(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

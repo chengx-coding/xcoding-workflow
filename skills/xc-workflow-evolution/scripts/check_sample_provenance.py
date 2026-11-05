@@ -38,7 +38,7 @@ def resolve_prior(value: Path) -> Path:
 
 def write_report(out: Path, report: dict) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
 def main() -> int:

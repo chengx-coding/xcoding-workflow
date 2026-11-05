@@ -4,7 +4,7 @@
 
 xcoding-workflow helps coding agents carry work from an initial request to a tested, reviewed result. It works across programming languages, frameworks, and the applications that run coding agents, known here as **Agent hosts**.
 
-Current source candidate version: <!-- xc:version -->0.4.17<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
+Current source candidate version: <!-- xc:version -->0.4.18<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
 
 ## How XC fits together
 
@@ -53,9 +53,7 @@ flowchart TD
     gate -- "rejected or revision" --> recovery["Recovery work"] --> solution
     implementation --> verification["Verification"]
     verification -- "fails" --> implementation
-    verification --> report["Change report<br/>when policy requires"]
-    report --> result["Result and evidence"]
-    verification -- "no report due" --> result
+    verification --> result["Result and evidence"]
 ```
 
 The six facts are: whether progress or evidence must be kept for later; whether the work changes shared code, a public contract, user data, permissions, production or infrastructure state, a security boundary, or a release asset; whether a complete one-step rollback is unavailable; whether the work must wait, restart, continue in another session, or depend on an asynchronous result; whether multiple people, agents, or external systems coordinate; and whether a retained review, approval, verification, audit, or commit record is required. Each answer is `yes`, `no`, or `unknown`; only six confirmed `no` answers allow direct work. Project rules may require the managed path even then.
@@ -83,11 +81,11 @@ sequenceDiagram
 
 ## See it work
 
-The [sample work order](samples/minecraft-sandbox-work-order/README.md) is a real, complete run: a seeded consumer project was driven by the DeepSeek Harness command line through a standard create-mode managed lifecycle to build a playable 2D sandbox. The run uses `create` with a quality contract and no minimality presumption, and keeps the normal stages: goal, analysis, solution, approval, implementation, verification and result. Only the change report is deliberately waived. The run is isolated from the baseline and prior implementations. The work order, its documents, its verification evidence and the rendered orchestration tree are all archived in the sample. It also contains one direct run of the same task without XC, with screenshots and an honest comparison. Every sample run is scored with the fixed experience-first [sample evaluation standard](samples/minecraft-sandbox-work-order/evaluation/STANDARD.md) and its reusable [score sheet](samples/minecraft-sandbox-work-order/evaluation/SCORE-SHEET.md): PES (75%), Engineering & Code Quality (25%), a small minimum gate, and a ranked defect ledger with caps.
+The [sample work order](samples/minecraft-sandbox-work-order/README.md) is a real, complete run: a seeded consumer project was driven by the DeepSeek Harness command line through a standard create-mode managed lifecycle to build a playable 2D sandbox. The run uses `create` with a quality contract and no minimality presumption. The archived run reflects the lifecycle of the version that produced it, and its archived work order records those stages. The run is isolated from the baseline and prior implementations. The work order, its documents, its verification evidence and the rendered orchestration tree are all archived in the sample. It also contains one direct run of the same task without XC, with screenshots and an honest comparison. Every sample run is scored with the fixed experience-first [sample evaluation standard](samples/minecraft-sandbox-work-order/evaluation/STANDARD.md) and its reusable [score sheet](samples/minecraft-sandbox-work-order/evaluation/SCORE-SHEET.md): PES (75%), Engineering & Code Quality (25%), a small minimum gate, and a ranked defect ledger with caps.
 
 ![The completed sample orchestration tree](samples/minecraft-sandbox-work-order/tree/orchestration-tree.png)
 
-The image is the final orchestration tree of that run, exported from the read-only local viewer. The sample README explains how to read it, including the skipped change-report group and conditional review/recovery branches; the pending nodes are their unreachable children.
+The image is the final orchestration tree of that run, exported from the read-only local viewer. In that archived tree, the pending nodes are the unreachable children of the conditional review and recovery branches.
 
 ## What it does
 
@@ -95,7 +93,6 @@ The image is the final orchestration tree of that run, exported from the read-on
 - Small, low-risk tasks can be completed directly.
 - Work that needs a plan, review, recovery, or a durable record runs as a **managed work order**. The work order keeps the goal, decisions, progress, and evidence together.
 - An explicitly adaptive managed work order can start with one combined work leaf and one finalizer, then add documents, analysis, gates, verification, review, and recovery as confirmed facts require.
-- A work order that changed analysable code can produce a **change report**: one offline HTML file that explains each change, the design and trade-offs behind it, and where it sits in the larger flow, together with a mechanical proof that no analysable change unit was left unexplained.
 - The `.xcoding` directory is the project's workflow workspace. It is kept in a separate Git repository, so workflow history does not mix with source-code history.
 - [`xc-writing`](skills/xc-writing/SKILL.md) guides technical answers, explanations, drafting, revision, and writing review. It preserves evidence and conditions while adapting to the reader; it can be used independently or through the existing document-writing entry.
 - Long-lived product features are managed only when you explicitly create or adopt them. Ordinary maintenance does not create a feature automatically.
@@ -134,10 +131,10 @@ Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed w
 
 The supported distribution is `xcoding-workflow`; `0.1.0` is distributed only as an immutable GitHub Release. It is not published on PyPI. If the immutable release and its integrity files are not available, there is no supported public installation artifact yet.
 
-For a published release, download the wheel and integrity files from that same release and verify them as described in [Installation](docs/getting-started/installation.md). The following filename illustrates the current, unpublished `0.4.17` source candidate; it is not an available release artifact or evidence of release qualification. Install it only after a candidate wheel has been built and verified for your intended use:
+For a published release, download the wheel and integrity files from that same release and verify them as described in [Installation](docs/getting-started/installation.md). The following filename illustrates the current, unpublished `0.4.18` source candidate; it is not an available release artifact or evidence of release qualification. Install it only after a candidate wheel has been built and verified for your intended use:
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.4.17-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.4.18-py3-none-any.whl
 xcoding version --json
 ```
 

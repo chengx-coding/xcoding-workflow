@@ -4,7 +4,7 @@
 
 xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审查的结果。它不绑定特定编程语言、框架或运行编码 Agent 的应用；本文把这类应用称为 **Agent 宿主**。
 
-当前源码候选版本：<!-- xc:version -->0.4.17<!-- /xc:version -->。[版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
+当前源码候选版本：<!-- xc:version -->0.4.18<!-- /xc:version -->。[版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
 
 ## XC 由哪些部分组成
 
@@ -53,9 +53,7 @@ flowchart TD
     gate -- "拒绝或需修订" --> recovery["恢复工作"] --> solution
     implementation --> verification["验证"]
     verification -- "失败" --> implementation
-    verification --> report["变更报告<br/>政策要求时"]
-    report --> result["结果与证据"]
-    verification -- "无需报告" --> result
+    verification --> result["结果与证据"]
 ```
 
 六项事实是：进度或证据是否必须保留到以后；工作是否改变共享代码、公开约定、用户数据、权限、生产或基础设施状态、安全边界或发布资产；是否无法一步完整回退；是否必须等待、重启、在另一个会话继续或依赖异步结果；是否需要多个人、Agent 或外部系统协作；是否需要保留审查、审批、验证、审计或提交记录。每项只能回答 `yes`、`no` 或 `unknown`；只有六项全部确认为 `no` 才允许直接执行。即使如此，项目规则仍可要求走受管路径。
@@ -83,11 +81,11 @@ sequenceDiagram
 
 ## 看它实际跑一次
 
-[工单示例](samples/minecraft-sandbox-work-order/README.zh-CN.md) 是一次真实、完整的运行：一个预先准备种子内容的消费项目由 DeepSeek Harness 命令行驱动，走标准的 create 模式受管生命周期，构建出一个可游玩的 2D 沙盒。这次运行使用 `create` 携带质量契约、没有最小化预设，并保留正常阶段：goal、analysis、solution、approval、implementation、verification、result；只刻意豁免变更报告。运行与 baseline 及旧实现隔离。工单、文档、验证证据和渲染出的编排树都归档在示例里。示例还包含同一任务的第二次直接执行（不使用 XC），附截图和诚实的对比。每次 sample 运行都用固定的 experience-first [评测标准](samples/minecraft-sandbox-work-order/evaluation/STANDARD.md) 和可复用的 [score sheet](samples/minecraft-sandbox-work-order/evaluation/SCORE-SHEET.md) 评分：PES（75%）、Engineering & Code Quality（25%）、一个很小的 minimum gate，以及带 caps 的分级 defect ledger。
+[工单示例](samples/minecraft-sandbox-work-order/README.zh-CN.md) 是一次真实、完整的运行：一个预先准备种子内容的消费项目由 DeepSeek Harness 命令行驱动，走标准的 create 模式受管生命周期，构建出一个可游玩的 2D 沙盒。这次运行使用 `create` 携带质量契约、没有最小化预设。归档运行反映的是产出它的那个版本的生命周期，其归档工单记录了那些阶段。运行与 baseline 及旧实现隔离。工单、文档、验证证据和渲染出的编排树都归档在示例里。示例还包含同一任务的第二次直接执行（不使用 XC），附截图和诚实的对比。每次 sample 运行都用固定的 experience-first [评测标准](samples/minecraft-sandbox-work-order/evaluation/STANDARD.md) 和可复用的 [score sheet](samples/minecraft-sandbox-work-order/evaluation/SCORE-SHEET.md) 评分：PES（75%）、Engineering & Code Quality（25%）、一个很小的 minimum gate，以及带 caps 的分级 defect ledger。
 
 ![完成的示例编排树](samples/minecraft-sandbox-work-order/tree/orchestration-tree.png)
 
-这张图是该次运行最终的编排树，由只读的本地 Viewer 导出。示例 README 说明了怎么读它，包括被跳过的变更报告组和条件式 review/recovery 分支；pending 节点是它们的不可达子节点。
+这张图是该次运行最终的编排树，由只读的本地 Viewer 导出。在那棵归档树中，pending 节点是条件式 review 与 recovery 分支的不可达子节点。
 
 ## 它能做什么
 
@@ -95,7 +93,6 @@ sequenceDiagram
 - 小型、低风险的任务可以直接完成。
 - 需要计划、审查、故障恢复或长期留痕的任务使用**受管工单**。工单把目标、决策、进度和证据保存在一起。
 - 显式选择自适应受管工单时，可以从一个合并工作叶子节点和一个 finalizer 开始，再根据已确认事实增加文档、分析、门禁、验证、审查与恢复。
-- 改动了可分析代码的工单可以产出一份**变更报告**：一个离线 HTML 文件，逐条说明改了什么、背后的设计与权衡，以及它处于更大流程的哪一环，并附上机械证明，说明没有可分析变更单元被漏掉。
 - 项目中的 `.xcoding` 目录是工作流专用空间。它使用独立的 Git 仓库，避免把这些记录混入源码提交历史。
 - [`xc-writing`](skills/xc-writing/SKILL.md) 指导技术问答、解释、起草、修订和文字审阅，在适应读者的同时保留证据与条件；既可独立使用，也可通过现有文档写作入口使用。
 - 只有在你明确创建或接管时，长期维护的产品功能才会成为受管功能。普通维护不会自动创建功能。
@@ -134,10 +131,10 @@ python skills/xc-work/scripts/classify.py [事实参数]
 
 受支持的 distribution 是 `xcoding-workflow`；`0.1.0` 只通过不可变 GitHub Release 分发，不发布到 PyPI。如果不可变 release 及其完整性文件尚不可用，就还没有受支持的公开安装产物。
 
-对于已经发布的 release，应从该 release 下载 wheel 和完整性文件，并按[安装](docs/zh-CN/getting-started/installation.md)中的说明校验。以下文件名仅示意当前尚未发布的 `0.4.17` 源码候选，不表示发行产物已经可用或已获得发行资格。只有在候选 wheel 完成构建并针对预期用途验证后，才安装它：
+对于已经发布的 release，应从该 release 下载 wheel 和完整性文件，并按[安装](docs/zh-CN/getting-started/installation.md)中的说明校验。以下文件名仅示意当前尚未发布的 `0.4.18` 源码候选，不表示发行产物已经可用或已获得发行资格。只有在候选 wheel 完成构建并针对预期用途验证后，才安装它：
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.4.17-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.4.18-py3-none-any.whl
 xcoding version --json
 ```
 

@@ -72,7 +72,7 @@ That development installer replaces only the `xc-*` packages the previous instal
 
 ## Readiness check
 
-`xcoding doctor --target-root <project> --json` fails its `skill-packages` check with exit code 4 and error code `readiness-failed` when a Skill root the project's setup record names is missing an installed package it should hold, or holds one without its assets. A project with no setup record and no installed XC package instead passes with a `skill-packages-absent` warning, because there is no installed Skill root to be incomplete. Run `xcoding setup` for the affected host to restore a package; do not hand-copy files into a managed Skill root.
+`xcoding doctor --target-root <project> --json` runs the python, path, git, tk, bundle, delegation-adapters, and target checks, and exits with code 4 and error code `readiness-failed` when a required check does not pass.
 
 ## Prepare a Skill-local worker
 
@@ -104,7 +104,7 @@ Ordinary setup performs first installation and managed upgrade through one stage
 
 Project-local transaction state is under `.agents/.xcoding-setup/`:
 
-- `manifest.json` records the successful generation, desired host set, Bundle identity, managed paths, hashes, and shared owners. It also records `report_package.name`, `report_package.template_file`, and `report_package.paths.<host>` holding the resolved absolute path of the installed `xc-change-report` package for that host; the report stage's mount instruction resolves its subtree template from that record, with the host-to-Skill-root table as the fallback for a project that has no such record.
+- `manifest.json` records the successful generation, desired host set, Bundle identity, managed paths, hashes, and shared owners.
 - `journal.json` records an in-progress transaction and is present only when recovery may be required.
 - `staging/` and generation backups hold package-owned transaction data needed for safe completion or rollback.
 

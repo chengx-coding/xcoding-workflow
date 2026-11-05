@@ -46,7 +46,7 @@ The caller embeds document-evolution subtrees under `analysis-document` and, whe
 
 ### Where a baseline write lands
 
-Under the `same-repo` topology a feature baseline is a tracked product path, so updating one becomes an analysable change unit that the enclosing work order's change report explains like any other change, including when the reconciliation concluded that no product behavior changed. The other topologies keep the workshop outside that enumeration. This Skill does not choose the topology and does not change it; `xc-workshop-setup` fixed it before this work order opened.
+Under the `same-repo` topology a feature baseline is a tracked product path; the other topologies keep the workshop out of the product's tracked history. This Skill does not choose the topology and does not change it; `xc-workshop-setup` fixed it before this work order opened.
 
 ## Constraints
 

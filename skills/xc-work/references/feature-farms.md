@@ -26,11 +26,6 @@ Compact main-session pattern for large parallel work inside one work order. A fe
 - The node reconciles each result against the approved solution and feature baselines before recording it as work-order output.
 - Conflicts that stay inside the approved solution or baseline intent may be resolved explicitly; incompatible evidence is never merged silently. Unsupported claims may be discarded; contradicting evidence may not.
 
-## Report Coverage
-
-- A farm's subtrees run under one work-order root, and that root owns the work order's report stage. **The enclosing root's report covers the farm's whole change set once**; a farm produces no report per subtree and adds no second report stage.
-- A milestone subtree therefore declares no report node, and a milestone-only work order initialises the work-order template rather than `jit-milestone-flow.json` (`jit-milestone-protocol.md`, Report Coverage). The integration node likewise writes no report of its own.
-
 ## Conflict Escalation
 
 - An ambiguous conflict — drift, product-intent conflict, or concurrent baseline modification — goes to a main-session user gate with the collected evidence and one focused question. This matches the xc-analysis rule: ambiguous conflict requires a user gate.

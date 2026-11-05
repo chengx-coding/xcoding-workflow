@@ -151,7 +151,6 @@ class PlanContractTests(unittest.TestCase):
         representatives = {
             "runtime": "src/xcoding/runtime/core.py",
             "governance": "skills/xc-analysis/SKILL.md",
-            "change_report": "skills/xc-change-report/scripts/build_manifest.py",
             "documents": "skills/xc-document/scripts/validate_document.py",
             "packaging": "pyproject.toml",
             "daemon": "src/xcoding/daemon/server.py",

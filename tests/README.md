@@ -13,7 +13,7 @@ tests/
     tiers.py                   the only implementation of the selection rules
     worker.py                  isolated shard worker used by the runner
     cli.py git.py runtime.py templates.py
-  runtime/       governance/   lifecycle/   change_report/   documents/
+  runtime/       governance/   lifecycle/   documents/
   packaging/     daemon/       viewer/      delegation/
   runtime_cli.py  viewer_cli.py  workflow_scenario_harness.py   (frozen paths)
   test_xc_workflow_governance.py                                (frozen path)
@@ -43,11 +43,10 @@ belongs to exactly one cluster.
 
 | Cluster | Domain |
 | --- | --- |
-| `runtime` | Orchestration runtime state machine: scheduling, transitions, integrity, persistence, subtree archival, restore points, control packets, milestones, work-order mount, resume brief, config drift |
-| `governance` | Governance classification, adaptive planning and enforcement, recovery, decision registry, fact cache, verification staleness, convention scanning, workshop setup, lifecycle templates, orchestration author, runtime CLI parity; the private-workshop citation guard |
+| `runtime` | Orchestration runtime state machine: scheduling, transitions, integrity, persistence, subtree archival, restore points, control packets, milestones, resume brief, config drift |
+| `governance` | Governance classification, adaptive planning and enforcement, recovery, decision registry, fact cache, verification staleness, convention scanning, workshop setup, lifecycle templates, template author commit boundary, orchestration author, runtime CLI parity; the private-workshop citation guard |
 | `lifecycle` | Full lifecycle end to end, including feature adoption and new feature, plus document-evolution end to end |
-| `change_report` | The `xc-change-report` package: enumeration, baseline, validation, protocol drift, author commit boundary |
-| `documents` | Document frontmatter and schema, rendering, LF write contract, skill mirror |
+| `documents` | Document frontmatter and schema, rendering, LF write contract, skill mirror, human-readable document contract |
 | `packaging` | Packaging, wheel, bundle, CLI entry points, installation, agents export, version consistency |
 | `daemon` | Daemon protocol, server, lifecycle |
 | `viewer` | Read-only viewer |
