@@ -6,7 +6,7 @@ This is the canonical English documentation for xcoding-workflow. The Chinese tr
 
 ## Getting started
 
-- [Installation](getting-started/installation.md): prerequisites, package-owned installation, managed upgrades, recovery, and rollback.
+- [Installation](getting-started/installation.md): prerequisites, the two-phase CLI and payload installation, user and project scopes, legacy adoption, ownership, upgrade, uninstall, recovery, and rollback.
 - [Quick start](getting-started/quick-start.md): create an independent workshop and choose the first managed lifecycle.
 
 ## Concepts

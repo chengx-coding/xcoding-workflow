@@ -19,7 +19,7 @@
     "src/xcoding/runtime/core.py": "09ea9eecb0241fd430d6e092f3027cc35f5942ae0a6bfed8393797b67497d0ae",
     "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
     "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
-    "src/xcoding/cli.py": "2b18aae52faf063f8fa80bef16b9fdd2cf1ecde02c2abc4ba17856d9bb8e7384",
+    "src/xcoding/cli.py": "81c1f413889a22b3aa84ea111cd66dca34dc61ae960052528328d1b104bbf847",
     "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
     "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
     "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",
@@ -30,7 +30,7 @@
     "skills/xc-document/assets/templates/work-order-result.md": "0a7c44fa21f0f49d897e176aa06f39959671c5bd0cb4cb97d0db4be648a80471",
     "skills/xc-document/assets/templates/node-artifact.md": "f9a1aee11ef8c79a0b313dee7e9bbb64d0eb208522186b8fd948eb75f3fba11e"
   },
-  "recording_base_commit": "e5f87364d28b26e0ee749ee9fad289cae60e59ff",
+  "recording_base_commit": "a547a7062de27491ba05b36dd0dbf02e6afe5fa0",
   "scenario_fixture": "tests/fixtures/model_robust_workflow/scenarios-v1.json",
   "measurements": {
     "profiles": {
@@ -439,174 +439,174 @@
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.context_bytes",
         "historical_value": 64753,
         "current_value": 91604,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 26851
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_false.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.context_bytes",
         "historical_value": 65417,
         "current_value": 92268,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 26851
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.nodes",
         "historical_value": 28,
         "current_value": 32,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T1-M.auto_commit_true.metrics.runtime_calls",
         "historical_value": 33,
         "current_value": 35,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.context_bytes",
         "historical_value": 90546,
         "current_value": 127326,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 36780
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_false.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.context_bytes",
         "historical_value": 91459,
         "current_value": 128239,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 36780
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.nodes",
         "historical_value": 36,
         "current_value": 41,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 5
       },
       {
         "field": "measurements.profiles.T2.auto_commit_true.metrics.runtime_calls",
         "historical_value": 45,
         "current_value": 47,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 2
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.context_bytes",
         "historical_value": 140138,
         "current_value": 192723,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 52585
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_false.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.context_bytes",
         "historical_value": 141549,
         "current_value": 194134,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 52585
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.nodes",
         "historical_value": 46,
         "current_value": 52,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T3.auto_commit_true.metrics.runtime_calls",
         "historical_value": 70,
         "current_value": 74,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.context_bytes",
         "historical_value": 164894,
         "current_value": 219430,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 54536
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_false.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 4
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.context_bytes",
         "historical_value": 166554,
         "current_value": 221090,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 54536
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.nodes",
         "historical_value": 49,
         "current_value": 55,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 6
       },
       {
         "field": "measurements.profiles.T4.auto_commit_true.metrics.runtime_calls",
         "historical_value": 85,
         "current_value": 89,
-        "explanation": "Remove the change-report stage from the lifecycle",
+        "explanation": "Add the install lifecycle commands to the CLI",
         "numeric_delta": 4
       }
     ]
   },
   "change_note": {
-    "reason": "Remove the change-report stage from the lifecycle",
+    "reason": "Add the install lifecycle commands to the CLI",
     "old_value": {
       "profiles": {
         "T0": {
@@ -1412,7 +1412,7 @@
       "src/xcoding/runtime/core.py": "09ea9eecb0241fd430d6e092f3027cc35f5942ae0a6bfed8393797b67497d0ae",
       "src/xcoding/runtime/query.py": "3daeb8aef64a14169f8421b597237acb1b0a1dbaf7af2b7167a388cfa304db57",
       "src/xcoding/runtime/assets/minimal-template.xml": "799072a4ef8ab126edcb342aeaea98c4b9e12b406e8903d94bb50bd0c5c9e9ad",
-      "src/xcoding/cli.py": "2b18aae52faf063f8fa80bef16b9fdd2cf1ecde02c2abc4ba17856d9bb8e7384",
+      "src/xcoding/cli.py": "81c1f413889a22b3aa84ea111cd66dca34dc61ae960052528328d1b104bbf847",
       "skills/xc-work/assets/work-order-template.xml": "8ce30fc77c6ae44e9834f4283ae8a6c116e23ff5dd94d38af12e4299163f1997",
       "skills/xc-document-evolution/assets/document-evolution-template.xml": "81133661eaabcfd70c7af17771f2db03323a9879517054b5950390dac2b78649",
       "skills/xc-document/scripts/render_document.py": "4ca70d30564422dd03e9758ea53c43522fc53e94ec2c0690962ce2cb2f699517",

@@ -2,7 +2,7 @@
 
 **语言：** [English](../../getting-started/quick-start.md) | **简体中文**
 
-本指南从消费项目开始，并假设 `PATH` 中已有必要的 `xcoding` 工具，且至少一个 Agent 宿主已经由 `xcoding setup` 配置。如果任一前提缺失，请先阅读[安装](installation.md)。安装 wheel 会提供工具；setup 会在显式项目根目录中安装并拥有所选宿主的 XC Skills 与 subagent 定义。`build_agents.py` 只用于 xcoding-workflow 检出目录的开发镜像。
+本指南从消费项目开始，并假设 `xcoding` CLI 已通过 `uv` 从已验证 wheel 安装，且 XC 载荷已通过 `xcoding install` 安装：默认用户级作用域，或通过 `xcoding install --scope project --project-root /absolute/path/to/project`（也可直接用 `xcoding setup`）安装项目级作用域。如果任一前提缺失，请先阅读[安装](installation.md)。安装 wheel 会提供 CLI；`xcoding install` 与 `xcoding setup` 会从已安装 wheel 安装并拥有所选宿主的 XC Skills 与 subagent 定义。`build_agents.py` 只用于 xcoding-workflow 检出目录的开发镜像。
 
 ## 1. 选择消费项目
 

@@ -6,7 +6,7 @@
 
 ## 入门
 
-- [安装](getting-started/installation.md)：前置条件、包提供的安装、受管升级、恢复与回滚。
+- [安装](getting-started/installation.md)：前置条件、CLI 与载荷的两阶段安装、用户级与项目级作用域、旧布局采纳、所有权、升级、卸载、恢复与回滚。
 - [快速开始](getting-started/quick-start.md)：创建独立 workshop，并选择第一个受管生命周期。
 
 ## 概念

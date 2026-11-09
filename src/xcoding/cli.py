@@ -5,13 +5,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
-from importlib import resources
+from importlib import import_module, resources
 from pathlib import Path
 from typing import Any, Sequence
 
+from . import lifecycle
 from .bundle.manifest import BundleValidationError
-from .bundle.resources import inspect_installed_bundle, installed_bundle_root
+from .bundle.resources import (
+    DISTRIBUTION_NAME,
+    inspect_installed_bundle,
+    installed_bundle_root,
+)
 from .doctor import DoctorReadinessError, doctor_report
 from .runtime import application as runtime_application
 from .setup_plan import SetupInputError, SetupReadinessError
@@ -30,6 +36,12 @@ EXIT_INPUT = 2
 EXIT_BUNDLE = 3
 EXIT_READINESS = 4
 EXIT_INTERNAL = 5
+
+# The CLI payload is removed by the external uv tool manager, never by the
+# running process.  The output captured from that step is bounded so a huge
+# uv transcript cannot dominate the JSON envelope.
+CLI_REMOVAL_TIMEOUT = 300
+CLI_REMOVAL_OUTPUT_LIMIT = 4000
 
 _RUNTIME_TEMPLATE = (
     "assets",
@@ -66,6 +78,19 @@ _COMMAND_HELP = (
     ("bundle inspect", "Inspect the installed Skill bundle."),
     ("doctor", "Report host readiness for an xcoding installation."),
     ("setup", "Install or repair the Skill bundle for one or more hosts."),
+    (
+        "install",
+        "Install or repair the XC Skills and agent definitions for a user "
+        "home or a project root.",
+    ),
+    (
+        "upgrade",
+        "Reconcile the installed payload, optionally replacing the CLI from a wheel first.",
+    ),
+    (
+        "uninstall",
+        "Remove the manifest-owned XC payload and archive the setup state.",
+    ),
     ("runtime", "Manage managed orchestration runtime trees."),
     ("viewer", "Serve the local read-only runtime tree viewer."),
     ("daemon", "Serve the loopback read-only runtime query daemon."),
@@ -116,6 +141,32 @@ def _build_parser() -> argparse.ArgumentParser:
     setup.add_argument("--host", action="append", default=[])
     setup.add_argument("--rollback", action="store_true")
     setup.add_argument("--recover", action="store_true")
+
+    install = commands.add_parser("install", add_help=False)
+    install.add_argument("--scope", choices=("user", "project"), default="user")
+    install.add_argument("--project-root")
+    install.add_argument("--host", action="append", default=[])
+    install.add_argument("--dry-run", action="store_true")
+    install.add_argument("--adopt-legacy", action="store_true")
+    install.add_argument("--json", action="store_true", dest="json_output")
+
+    upgrade = commands.add_parser("upgrade", add_help=False)
+    upgrade.add_argument("--scope", choices=("user", "project"), default="user")
+    upgrade.add_argument("--project-root")
+    upgrade.add_argument("--host", action="append", default=[])
+    upgrade.add_argument("--wheel")
+    upgrade.add_argument("--force", action="store_true")
+    upgrade.add_argument("--adopt-legacy", action="store_true")
+    upgrade.add_argument("--dry-run", action="store_true")
+    upgrade.add_argument("--json", action="store_true", dest="json_output")
+
+    uninstall = commands.add_parser("uninstall", add_help=False)
+    uninstall.add_argument("--scope", choices=("user", "project"), default="user")
+    uninstall.add_argument("--project-root")
+    uninstall.add_argument("--keep-state", action="store_true")
+    uninstall.add_argument("--all", action="store_true")
+    uninstall.add_argument("--dry-run", action="store_true")
+    uninstall.add_argument("--json", action="store_true", dest="json_output")
     return parser
 
 
@@ -128,6 +179,12 @@ def _command_name(arguments: Sequence[str]) -> str:
         return "doctor"
     if arguments[:1] == ["setup"]:
         return "setup"
+    if arguments[:1] == ["install"]:
+        return "install"
+    if arguments[:1] == ["upgrade"]:
+        return "upgrade"
+    if arguments[:1] == ["uninstall"]:
+        return "uninstall"
     return ""
 
 
@@ -248,6 +305,94 @@ def _require_json(arguments: argparse.Namespace) -> None:
         )
 
 
+def _bounded_cli_output(value: object) -> str:
+    text = "" if value is None else str(value)
+    if len(text) <= CLI_REMOVAL_OUTPUT_LIMIT:
+        return text
+    half = CLI_REMOVAL_OUTPUT_LIMIT // 2
+    return f"{text[:half]}\n...<truncated>...\n{text[-half:]}"
+
+
+def _uninstall_cli(*, requested: bool, dry_run: bool) -> tuple[str, dict[str, Any]]:
+    """Remove the installed CLI through uv; failure is reported, never raised.
+
+    Returns ``(status, details)`` where status is ``removed``, ``dry-run``, or
+    ``external-required``.  The caller owns the exit code, so a failed external
+    step can still carry the completed payload result.
+
+    :mod:`subprocess` is imported lazily on purpose: no other command needs it,
+    and this module stays free of a module-level subprocess import.
+    """
+    uv = shutil.which("uv")
+    command = [uv or "uv", "tool", "uninstall", DISTRIBUTION_NAME]
+    details: dict[str, Any] = {
+        "command": command,
+        "available": uv is not None,
+        "attempted": False,
+    }
+    if not requested:
+        details["reason"] = (
+            "the CLI is removed only by an external step; run the command in "
+            "an external shell or rerun with --all"
+        )
+        return "external-required", details
+    if dry_run:
+        details["reason"] = "dry-run does not remove the installed CLI"
+        return "dry-run", details
+    if uv is None:
+        details["reason"] = (
+            "uv is not on PATH; run 'uv tool uninstall "
+            f"{DISTRIBUTION_NAME}' in an external shell"
+        )
+        return "external-required", details
+    details["attempted"] = True
+    subprocess = import_module("subprocess")
+    try:
+        completed = subprocess.run(
+            command,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=CLI_REMOVAL_TIMEOUT,
+            check=False,
+            shell=False,
+        )
+    except subprocess.TimeoutExpired:
+        details.update(
+            {
+                "reason": "uv tool uninstall timed out",
+                "timeout": True,
+                "returncode": None,
+                "stdout": "",
+                "stderr": "",
+            }
+        )
+        return "external-required", details
+    except OSError as error:
+        details.update(
+            {
+                "reason": "uv could not be executed",
+                "exception": type(error).__name__,
+                "message": str(error),
+                "returncode": None,
+            }
+        )
+        return "external-required", details
+    details.update(
+        {
+            "returncode": completed.returncode,
+            "stdout": _bounded_cli_output(completed.stdout),
+            "stderr": _bounded_cli_output(completed.stderr),
+        }
+    )
+    if completed.returncode == 0:
+        return "removed", details
+    details["reason"] = "uv tool uninstall exited nonzero"
+    return "external-required", details
+
+
 def _execute(arguments: argparse.Namespace, command: str) -> dict[str, Any]:
     _require_json(arguments)
     if command == "version":
@@ -287,6 +432,51 @@ def _execute(arguments: argparse.Namespace, command: str) -> dict[str, Any]:
             arguments.host,
             dry_run=arguments.dry_run,
         )
+    if command == "install":
+        return lifecycle.install(
+            scope=arguments.scope,
+            project_root=arguments.project_root,
+            hosts=arguments.host or None,
+            dry_run=arguments.dry_run,
+            adopt_legacy=arguments.adopt_legacy,
+        )
+    if command == "upgrade":
+        return lifecycle.upgrade(
+            scope=arguments.scope,
+            project_root=arguments.project_root,
+            hosts=arguments.host or None,
+            wheel=arguments.wheel,
+            force=arguments.force,
+            dry_run=arguments.dry_run,
+            adopt_legacy=arguments.adopt_legacy,
+        )
+    if command == "uninstall":
+        result = lifecycle.uninstall(
+            scope=arguments.scope,
+            project_root=arguments.project_root,
+            dry_run=arguments.dry_run,
+            keep_state=arguments.keep_state,
+        )
+        cli_status, cli_details = _uninstall_cli(
+            requested=arguments.all,
+            dry_run=arguments.dry_run,
+        )
+        result["cli_removal"] = cli_status
+        result["cli_removal_details"] = cli_details
+        if arguments.all and not arguments.dry_run and cli_status != "removed":
+            raise lifecycle.LifecycleError(
+                "cli_removal_failed",
+                (
+                    "the payload phase finished but the CLI removal requires an "
+                    "external step; the installation is not fully removed"
+                ),
+                details={
+                    "payload": result,
+                    "cli_removal": cli_status,
+                    "cli_removal_details": cli_details,
+                },
+            )
+        return result
     raise CliInputError("invalid_arguments", "unknown command")
 
 

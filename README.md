@@ -4,7 +4,7 @@
 
 xcoding-workflow helps coding agents carry work from an initial request to a tested, reviewed result. It works across programming languages, frameworks, and the applications that run coding agents, known here as **Agent hosts**.
 
-Current source candidate version: <!-- xc:version -->0.4.18<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
+Current source candidate version: <!-- xc:version -->0.4.19<!-- /xc:version -->. The [version policy](docs/development/versioning.md) requires a recommendation and explicit user consent before a bump; a source version does not establish public release availability.
 
 ## How XC fits together
 
@@ -20,7 +20,7 @@ flowchart LR
         bridge[".xcoding/WORKFLOW.md<br/>project bridge"]
     end
     subgraph engine["xcoding command line"]
-        cli["runtime · viewer · setup"]
+        cli["setup · install · upgrade · uninstall · runtime · viewer"]
         tree["Managed runtime tree<br/>single progress authority"]
     end
     subgraph project["Consumer project"]
@@ -131,29 +131,53 @@ Use [`xc-work`](skills/xc-work/SKILL.md) with `operation=run` to start managed w
 
 The supported distribution is `xcoding-workflow`; `0.1.0` is distributed only as an immutable GitHub Release. It is not published on PyPI. If the immutable release and its integrity files are not available, there is no supported public installation artifact yet.
 
-For a published release, download the wheel and integrity files from that same release and verify them as described in [Installation](docs/getting-started/installation.md). The following filename illustrates the current, unpublished `0.4.18` source candidate; it is not an available release artifact or evidence of release qualification. Install it only after a candidate wheel has been built and verified for your intended use:
+For a published release, download the wheel and integrity files from that same release and verify them as described in [Installation](docs/getting-started/installation.md). The following filename illustrates the current, unpublished `0.4.19` source candidate; it is not an available release artifact or evidence of release qualification. Install it only after a candidate wheel has been built and verified for your intended use:
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.4.18-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.4.19-py3-none-any.whl
 xcoding version --json
 ```
 
 Builds containing the new shortcut also support `xcoding --version`; existing installations can keep using `xcoding version --json` until upgraded to a build containing that change. Reinstalling the same historical wheel does not add the capability.
 
-The installation creates only the `xcoding` command. Configure one or more explicit hosts from the consumer project root; repeated `--host` values form the complete desired host set:
+This installs the CLI only. The XC Skills and agent definitions are a separate payload phase owned by the installed CLI:
 
 ```console
+xcoding install --json
+xcoding doctor --target-root <home> --json
+```
+
+`xcoding install` defaults to the user scope, writes under your home directory, records ownership in `<home>/.agents/.xcoding-setup/manifest.json`, and selects all four supported hosts (`claude-code`, `codex`, `opencode`, `trae`) unless `--host` narrows the set. `.agents/skills` is shared by `codex`, `opencode`, and `trae` and is written once. Add `--dry-run` to inspect the plan with zero writes. A home prepared by the 0.3.6 development installers is migrated explicitly with `xcoding install --scope user --adopt-legacy --json`; adoption verifies hashes and preserves drifted or unknown files.
+
+For a project-scoped payload, keep using the existing setup path or its thin lifecycle alias:
+
+```console
+xcoding install --scope project --project-root /absolute/path/to/consumer --host codex --host trae --json
 xcoding setup --project-root /absolute/path/to/consumer --host codex --host trae --json
 ```
 
-Inspect the same plan without writing by adding `--dry-run`. If setup reports an interrupted journal, run explicit recovery; to restore the previous successful generation, run rollback:
+Upgrade the CLI and payload together from a verified wheel, or reconcile the payload to the current CLI:
+
+```console
+xcoding upgrade --json
+xcoding upgrade --wheel /absolute/path/to/<verified-wheel>.whl --json
+```
+
+Remove the payload; add `--all` to also request `uv tool uninstall xcoding-workflow`. A running CLI cannot delete itself on Windows, so a failed CLI removal is reported explicitly and never as full success:
+
+```console
+xcoding uninstall --json
+xcoding uninstall --all --json
+```
+
+`xcoding install --scope project` requires an explicit `--project-root`, and `xcoding setup` requires an explicit `--project-root` and at least one explicit `--host`. Neither infers the project from the current directory or detects hosts interactively. Without `--host`, `xcoding install` uses the fixed four-host default set. Legacy adoption is explicit and user-scope-only: both `install` and `upgrade` require `--adopt-legacy` to adopt a 0.3.6 layout, and no force option overwrites an unmanaged file or a drifted managed file; `upgrade --force` only reinstalls an equal-version wheel. If setup reports an interrupted journal, run explicit recovery; to restore the previous successful generation, run rollback:
 
 ```console
 xcoding setup --project-root /absolute/path/to/consumer --recover --json
 xcoding setup --project-root /absolute/path/to/consumer --rollback --json
 ```
 
-Setup refuses unmanaged conflicts and drifted managed files instead of overwriting them. XC does not provide `install.ps1`, `install.sh`, a remote-script pipe command, automatic host detection, or a force option. See [Installation](docs/getting-started/installation.md) for host paths, desired-state updates, recovery, rollback, release integrity, and support policy.
+Continue with the [quick start](docs/getting-started/quick-start.md) after the payload is installed and verified. See [Installation](docs/getting-started/installation.md) for host paths, the two-phase bootstrap, user and project scopes, legacy adoption, ownership, upgrade and uninstall failure semantics, recovery, rollback, release integrity, and support policy.
 
 ## Create the workflow workspace
 
@@ -205,7 +229,7 @@ Agent hosts use different invocation syntax. Follow your host's normal Skill syn
 - [Writing and quality Skills](docs/reference/skills/implementation-and-quality.md)
 - [Work-order sample](samples/minecraft-sandbox-work-order/README.md)
 
-`build_agents.py` is only for developing this repository. It refreshes this checkout's local Skill mirror; it does not install XC into another project.
+`build_agents.py` and the checkout installers `install_skills.py` and `skills/xc-workflow-evolution/scripts/install_xc_skills.py` are only for developing this repository. They do not install XC into a consumer project; use `xcoding install`, `xcoding upgrade`, and `xcoding uninstall` for a consumer installation.
 
 ## License
 

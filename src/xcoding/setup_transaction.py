@@ -44,6 +44,20 @@ HOST_TARGETS: Mapping[str, tuple[PurePosixPath, PurePosixPath]] = {
 }
 HOST_ORDER = tuple(HOST_TARGETS)
 
+# Legacy development installers record ownership in one manifest per host tree
+# (``<root>/.agents`` and ``<root>/.claude``).  Adoption reads those records
+# only when explicitly requested, verifies every file against its recorded
+# hash, and archives the manifests after a successful transaction.
+LEGACY_MANIFEST_NAME = ".xc-skill-install-manifest.json"
+LEGACY_MANIFEST_SCHEMA_VERSION = 1
+LEGACY_TARGETS: tuple[tuple[str, PurePosixPath], ...] = (
+    ("agents", PurePosixPath(".agents") / LEGACY_MANIFEST_NAME),
+    ("claude", PurePosixPath(".claude") / LEGACY_MANIFEST_NAME),
+)
+LEGACY_ARCHIVE_PREFIX = ".xcoding-setup-legacy-"
+UNINSTALL_ARCHIVE_PREFIX = ".xcoding-setup-uninstalled-"
+ADOPTION_BACKUP_NAME = "adoption.json"
+
 
 class SetupTransactionError(RuntimeError):
     """Stable setup failure with machine-readable details."""
@@ -1204,6 +1218,1040 @@ def _load_manifest(paths: Mapping[str, Path]) -> tuple[dict[str, Any] | None, di
     return manifest, _manifest_files(manifest)
 
 
+def load_setup_manifest(
+    project_root: str | os.PathLike[str],
+) -> tuple[dict[str, Any] | None, dict[str, dict[str, Any]]]:
+    """Read the installed setup manifest without locking or writing.
+
+    This is the read-only entry point used by payload readiness checks.  It
+    validates the same canonical JSON and ownership schema as a mutating setup
+    transaction and returns ``(None, {})`` when no manifest is installed.
+    """
+
+    return _load_manifest(_state_paths(Path(project_root)))
+
+
+def _merge_managed(
+    managed: Mapping[str, Mapping[str, Any]],
+    extra_managed: Mapping[str, Mapping[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Merge adoption claims into the manifest-owned records.
+
+    A path claimed with two different hashes is ambiguous ownership, so the
+    transaction fails closed instead of silently weakening its hash guard.
+    """
+
+    merged: dict[str, dict[str, Any]] = {
+        relative: dict(record) for relative, record in managed.items()
+    }
+    for relative, claim in extra_managed.items():
+        existing = merged.get(relative)
+        if existing is not None and existing.get("sha256") != claim.get("sha256"):
+            raise SetupTransactionError(
+                "legacy_manifest_conflict",
+                "legacy adoption claim conflicts with the setup manifest",
+                details={
+                    "path": relative,
+                    "manifest_sha256": existing.get("sha256"),
+                    "adoption_sha256": claim.get("sha256"),
+                },
+            )
+        if existing is None:
+            merged[relative] = dict(claim)
+        else:
+            merged[relative] = {
+                **dict(claim),
+                "owners": set(existing.get("owners") or claim.get("owners") or ()),
+            }
+    return merged
+
+
+def _observe_regular_file(path: Path) -> dict[str, Any]:
+    """Classify one existing target without following links or writing."""
+
+    try:
+        present = path.exists() or path.is_symlink()
+    except OSError:
+        return {"state": "unreadable", "sha256": None}
+    if not present:
+        return {"state": "missing", "sha256": None}
+    if _is_link_or_reparse(path):
+        return {"state": "not-regular-file", "sha256": None}
+    try:
+        if not path.is_file():
+            return {"state": "not-regular-file", "sha256": None}
+        return {"state": "file", "sha256": _sha256(path.read_bytes())}
+    except OSError:
+        return {"state": "unreadable", "sha256": None}
+
+
+def _legacy_manifest_error(
+    relative: PurePosixPath,
+    message: str,
+    **details: Any,
+) -> SetupTransactionError:
+    return SetupTransactionError(
+        "legacy_manifest_invalid",
+        message,
+        details={"path": relative.as_posix(), **details},
+    )
+
+
+def _load_legacy_manifest(
+    root: Path,
+    relative: PurePosixPath,
+) -> dict[str, Any] | None:
+    """Read one development-installer ownership manifest without writing.
+
+    The legacy schema records ``expected_packages`` and per-file SHA-256 values
+    relative to ``<target_root>/skills``.  Anything structurally unexpected is a
+    hard error: adoption must never guess which bytes it may claim.
+    """
+
+    target = _project_path(root, relative)
+    if not (target.exists() or target.is_symlink()):
+        return None
+    _validate_chain(root, relative)
+    try:
+        data = target.read_bytes()
+    except OSError as error:
+        raise _legacy_manifest_error(
+            relative,
+            "legacy install manifest is unreadable",
+            exception=type(error).__name__,
+        ) from error
+    try:
+        value = json.loads(data.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise _legacy_manifest_error(
+            relative,
+            "legacy install manifest is not valid UTF-8 JSON",
+            exception=type(error).__name__,
+        ) from error
+    if (
+        not isinstance(value, dict)
+        or value.get("schema_version") != LEGACY_MANIFEST_SCHEMA_VERSION
+    ):
+        raise _legacy_manifest_error(
+            relative,
+            "legacy install manifest schema is unsupported",
+        )
+    packages = value.get("expected_packages")
+    if (
+        not isinstance(packages, list)
+        or not packages
+        or not all(isinstance(package, str) and package for package in packages)
+    ):
+        raise _legacy_manifest_error(
+            relative,
+            "legacy install manifest package inventory is invalid",
+        )
+    raw_files = value.get("files")
+    if not isinstance(raw_files, list):
+        raise _legacy_manifest_error(
+            relative,
+            "legacy install manifest file inventory is invalid",
+        )
+    files: dict[str, str] = {}
+    for item in raw_files:
+        if (
+            not isinstance(item, dict)
+            or not isinstance(item.get("path"), str)
+            or not isinstance(item.get("sha256"), str)
+            or len(item["sha256"]) != 64
+            or any(character not in "0123456789abcdef" for character in item["sha256"])
+        ):
+            raise _legacy_manifest_error(
+                relative,
+                "legacy install manifest has an invalid file record",
+            )
+        try:
+            file_relative = _safe_relative(
+                item["path"],
+                field="legacy.files.path",
+            ).as_posix()
+        except SetupTransactionError as error:
+            raise _legacy_manifest_error(
+                relative,
+                "legacy install manifest has an unsafe file path",
+                value=item["path"],
+            ) from error
+        if file_relative in files:
+            raise _legacy_manifest_error(
+                relative,
+                "legacy install manifest has duplicate file records",
+                value=file_relative,
+            )
+        files[file_relative] = item["sha256"]
+    return {
+        "manifest": value,
+        "files": files,
+        "packages": [str(package) for package in packages],
+    }
+
+
+def legacy_install_status(
+    project_root: str | os.PathLike[str],
+) -> dict[str, Any]:
+    """Summarize a development-installer (0.3.6) tree without changing it.
+
+    Doctor uses this read-only probe to distinguish a clean root from one that
+    still carries the two legacy ``.xc-skill-install-manifest.json`` records.
+    A manifest is detected as soon as the file exists; structural problems are
+    reported per manifest instead of raised, so an unreadable legacy tree is
+    still reported as drift rather than as a clean machine.  Nothing is
+    claimed, adopted, moved, or written.
+    """
+
+    root = Path(project_root)
+    manifests: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+    revisions: list[str] = []
+    package_counts: dict[str, int] = {}
+    file_counts: dict[str, int] = {}
+    package_total = 0
+    file_total = 0
+    detected = False
+    for label, relative in LEGACY_TARGETS:
+        summary: dict[str, Any] = {
+            "path": relative.as_posix(),
+            "label": label,
+            "present": False,
+            "valid": False,
+        }
+        package_counts[label] = 0
+        file_counts[label] = 0
+        target = _project_path(root, relative)
+        try:
+            present = target.exists() or target.is_symlink()
+        except OSError:
+            present = False
+        if not present:
+            manifests.append(summary)
+            continue
+        detected = True
+        summary["present"] = True
+        try:
+            legacy = _load_legacy_manifest(root, relative)
+        except SetupTransactionError as error:
+            error_record: dict[str, Any] = {
+                "path": summary["path"],
+                "label": label,
+                "code": error.code,
+                "message": str(error),
+                "details": error.details,
+            }
+            errors.append(error_record)
+            manifests.append({**summary, "error": error_record})
+            continue
+        except OSError as error:
+            error_record = {
+                "path": summary["path"],
+                "label": label,
+                "code": "environment_error",
+                "message": "legacy install manifest is unreadable",
+                "details": {"exception": type(error).__name__},
+            }
+            errors.append(error_record)
+            manifests.append({**summary, "error": error_record})
+            continue
+        if legacy is None:
+            # The file disappeared between the presence check and the read.
+            summary["present"] = False
+            manifests.append(summary)
+            continue
+        value = legacy["manifest"]
+        shape_error: str | None = None
+        if (
+            not isinstance(value.get("installer_version"), str)
+            or not value.get("installer_version")
+        ):
+            shape_error = (
+                "legacy install manifest has an invalid installer version"
+            )
+        elif (
+            not isinstance(value.get("source_revision"), str)
+            or not value.get("source_revision")
+        ):
+            shape_error = (
+                "legacy install manifest has an invalid source revision"
+            )
+        if shape_error is not None:
+            error_record = {
+                "path": summary["path"],
+                "label": label,
+                "code": "legacy_manifest_invalid",
+                "message": shape_error,
+                "details": {"path": summary["path"]},
+            }
+            errors.append(error_record)
+            manifests.append({**summary, "error": error_record})
+            continue
+        package_count = len(legacy["packages"])
+        file_count = len(legacy["files"])
+        summary.update(
+            {
+                "valid": True,
+                "schema_version": value.get("schema_version"),
+                "installer_version": value["installer_version"],
+                "source_revision": value["source_revision"],
+                "package_count": package_count,
+                "file_count": file_count,
+            }
+        )
+        manifests.append(summary)
+        revisions.append(value["source_revision"])
+        package_counts[label] = package_count
+        file_counts[label] = file_count
+        package_total += package_count
+        file_total += file_count
+    return {
+        "detected": detected,
+        "manifest_paths": [
+            entry["path"] for entry in manifests if entry["present"]
+        ],
+        "manifests": manifests,
+        "source_revisions": list(dict.fromkeys(revisions)),
+        "package_counts": {
+            "total": package_total,
+            "by_manifest": package_counts,
+        },
+        "file_counts": {
+            "total": file_total,
+            "by_manifest": file_counts,
+        },
+        "errors": errors,
+    }
+
+
+def _disabled_adoption_summary() -> dict[str, Any]:
+    counts = {"legacy": 0, "current": 0, "total": 0, "preserved": 0}
+    return {
+        "requested": False,
+        "manifests": [],
+        "claims": {"legacy": 0, "current": 0, "total": 0},
+        "counts": counts,
+        "preserved": [],
+        "preserved_count": 0,
+        "archive": {
+            "performed": False,
+            "directory": None,
+            "sources": [],
+            "archived": [],
+            "retained": [],
+            "manifests": [],
+        },
+        "cleanup": _empty_cleanup_summary(
+            requested=False,
+            status="not-requested",
+        ),
+    }
+
+
+def _desired_package_names(
+    desired: Mapping[str, Mapping[str, Any]],
+    skill_root: PurePosixPath,
+) -> set[str]:
+    """Return the package names the new Bundle distributes under one skill root."""
+
+    names: set[str] = set()
+    for relative_value in desired:
+        relative = PurePosixPath(relative_value)
+        if skill_root not in relative.parents:
+            continue
+        tail = relative.relative_to(skill_root)
+        if len(tail.parts) >= 2:
+            names.add(tail.parts[0])
+    return names
+
+
+def _empty_cleanup_summary(*, requested: bool, status: str) -> dict[str, Any]:
+    return {
+        "requested": requested,
+        "status": status,
+        "retired": [],
+        "retired_package_names": [],
+        "removed_cache_paths": [],
+        "removed_cache_count": 0,
+        "removed_directories": [],
+        "removed_directory_count": 0,
+        "preserved": [],
+        "preserved_count": 0,
+        "errors": [],
+    }
+
+
+def _plan_adoption(
+    root: Path,
+    desired: Mapping[str, Mapping[str, Any]],
+    hosts: tuple[str, ...],
+) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+    """Verify legacy and already-current bytes before a transaction plans them.
+
+    Only files whose current bytes are proven are claimed.  Everything else is
+    reported as preserved and is never modified or deleted by this transaction.
+    """
+
+    _manifest, managed = _load_manifest(_state_paths(root))
+    claims: dict[str, dict[str, Any]] = {}
+    preserved: list[dict[str, Any]] = []
+    manifest_summaries: list[dict[str, Any]] = []
+    retired: list[dict[str, Any]] = []
+    legacy_claims = 0
+    current_claims = 0
+    for label, relative in LEGACY_TARGETS:
+        skill_root = relative.parent / "skills"
+        hosts_for_root = [
+            host for host in hosts if HOST_TARGETS[host][1] == skill_root
+        ]
+        legacy = _load_legacy_manifest(root, relative)
+        summary: dict[str, Any] = {
+            "path": relative.as_posix(),
+            "label": label,
+            "present": legacy is not None,
+            "in_scope": bool(hosts_for_root),
+            "skill_root": skill_root.as_posix(),
+        }
+        if legacy is not None:
+            summary.update(
+                {
+                    "schema_version": legacy["manifest"].get("schema_version"),
+                    "source_revision": legacy["manifest"].get("source_revision"),
+                    "package_count": len(legacy["packages"]),
+                    "file_count": len(legacy["files"]),
+                }
+            )
+        manifest_summaries.append(summary)
+        if legacy is None:
+            continue
+        if hosts_for_root:
+            desired_packages = _desired_package_names(desired, skill_root)
+            retired_packages = [
+                package
+                for package in dict.fromkeys(legacy["packages"])
+                if package not in desired_packages
+            ]
+            if retired_packages:
+                retired.append(
+                    {
+                        "source": relative.as_posix(),
+                        "skill_root": skill_root.as_posix(),
+                        "packages": retired_packages,
+                    }
+                )
+        for file_relative, recorded in sorted(legacy["files"].items()):
+            target_relative = skill_root / PurePosixPath(file_relative)
+            target_key = target_relative.as_posix()
+            entry: dict[str, Any] = {
+                "path": target_key,
+                "source": relative.as_posix(),
+                "expected_sha256": recorded,
+                "status": "preserved",
+            }
+            if not hosts_for_root:
+                preserved.append({**entry, "reason": "host-not-selected"})
+                continue
+            observed = _observe_regular_file(_project_path(root, target_relative))
+            if observed["state"] == "missing":
+                preserved.append({**entry, "reason": "missing"})
+                continue
+            if observed["state"] != "file":
+                preserved.append({**entry, "reason": observed["state"]})
+                continue
+            if observed["sha256"] != recorded:
+                preserved.append(
+                    {
+                        **entry,
+                        "reason": "legacy_drift",
+                        "actual_sha256": observed["sha256"],
+                    }
+                )
+                continue
+            existing = managed.get(target_key)
+            if existing is not None and existing.get("sha256") != recorded:
+                raise SetupTransactionError(
+                    "legacy_manifest_conflict",
+                    "verified legacy file conflicts with the setup manifest",
+                    details={
+                        "path": target_key,
+                        "manifest_sha256": existing.get("sha256"),
+                        "legacy_sha256": recorded,
+                    },
+                )
+            claims[target_key] = {
+                "sha256": recorded,
+                "mode": "file",
+                "owners": set(hosts_for_root),
+                "source": relative.as_posix(),
+            }
+            legacy_claims += 1
+    for relative_value, spec in desired.items():
+        if managed.get(relative_value) is not None:
+            continue
+        if relative_value in claims:
+            continue
+        observed = _observe_regular_file(
+            _project_path(root, PurePosixPath(relative_value))
+        )
+        if observed["state"] == "file" and observed["sha256"] == spec["sha256"]:
+            claims[relative_value] = {
+                "sha256": spec["sha256"],
+                "mode": "file",
+                "owners": set(spec["owners"]),
+                "source": "current-bytes",
+            }
+            current_claims += 1
+    cleanup = _empty_cleanup_summary(
+        requested=True,
+        status="planned" if retired else "nothing-retired",
+    )
+    cleanup["retired"] = retired
+    cleanup["retired_package_names"] = sorted(
+        {
+            package
+            for entry in retired
+            for package in entry["packages"]
+        }
+    )
+    return claims, {
+        "requested": True,
+        "manifests": manifest_summaries,
+        "claims": {
+            "legacy": legacy_claims,
+            "current": current_claims,
+            "total": len(claims),
+        },
+        "counts": {
+            "legacy": legacy_claims,
+            "current": current_claims,
+            "total": len(claims),
+            "preserved": len(preserved),
+        },
+        "preserved": preserved,
+        "preserved_count": len(preserved),
+        "archive": {
+            "performed": False,
+            "directory": None,
+            "archived": [],
+            **_legacy_archive_plan(manifest_summaries, preserved),
+        },
+        "cleanup": cleanup,
+    }
+
+
+def _legacy_archive_plan(
+    manifests: Sequence[Mapping[str, Any]],
+    preserved: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Decide per legacy manifest whether its ownership record can be archived.
+
+    Moving a legacy manifest out of its host root is only safe when every record
+    it owns was claimed by this adoption.  A manifest that still describes
+    preserved bytes is the only ownership record for those bytes, so it stays in
+    place and a later all-host adoption can still read it.
+    """
+
+    preserved_by_source: dict[str, list[str]] = {}
+    for entry in preserved:
+        if not isinstance(entry, Mapping):
+            continue
+        source = entry.get("source")
+        if not isinstance(source, str):
+            continue
+        reason = entry.get("reason")
+        preserved_by_source.setdefault(source, []).append(
+            reason if isinstance(reason, str) else "preserved"
+        )
+    sources: list[str] = []
+    retained: list[dict[str, Any]] = []
+    decisions: list[dict[str, Any]] = []
+    for entry in manifests:
+        if not isinstance(entry, Mapping) or entry.get("present") is not True:
+            continue
+        source = str(entry.get("path"))
+        reasons = sorted(set(preserved_by_source.get(source, [])))
+        if reasons:
+            decision = {
+                "source": source,
+                "archived": False,
+                "reason": "records-preserved",
+                "preserved_count": len(preserved_by_source[source]),
+                "preserved_reasons": reasons,
+            }
+            retained.append(decision)
+        else:
+            decision = {"source": source, "archived": True}
+            sources.append(source)
+        decisions.append(decision)
+    return {"sources": sources, "retained": retained, "manifests": decisions}
+
+
+def _archive_legacy_manifests(
+    root: Path,
+    lock: _RootLock,
+    generation: str,
+    adoption: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Move fully consumed legacy manifests out of the host roots after success.
+
+    Only a manifest whose every record was claimed is moved.  A manifest with a
+    preserved record stays in place: it is still the only recorded ownership for
+    those bytes, and keeping it lets a later all-host adoption read it again.
+    The archive lives beside the setup state directory, not inside it: idle
+    setup state permits only ``manifest.json``, ``staging`` and ``backup``.
+    """
+
+    decision = _legacy_archive_plan(
+        adoption.get("manifests", []),
+        adoption.get("preserved", []),
+    )
+    sources = decision["sources"]
+    retained = decision["retained"]
+    manifests = decision["manifests"]
+    if not sources:
+        return {
+            "performed": False,
+            "directory": None,
+            "sources": [],
+            "archived": [],
+            "retained": retained,
+            "manifests": manifests,
+            "reason": (
+                "no-legacy-manifests" if not manifests else "records-preserved"
+            ),
+        }
+    labels = {relative.as_posix(): label for label, relative in LEGACY_TARGETS}
+    directory = PurePosixPath(".agents") / f"{LEGACY_ARCHIVE_PREFIX}{generation}"
+    moved: list[dict[str, str]] = []
+    try:
+        _ensure_relative_directory(root, lock, directory)
+        for source_value in sources:
+            source_relative = _safe_relative(
+                source_value,
+                field="adoption.archive.source",
+            )
+            label = labels.get(source_value, source_relative.parent.name.lstrip("."))
+            destination = directory / label / LEGACY_MANIFEST_NAME
+            _ensure_relative_directory(
+                root,
+                lock,
+                PurePosixPath(*destination.parts[:-1]),
+            )
+            _rename_no_replace(root, lock, source_relative, destination)
+            moved.append(
+                {
+                    "source": source_value,
+                    "destination": destination.as_posix(),
+                }
+            )
+    except (OSError, SetupTransactionError) as error:
+        for item in reversed(moved):
+            try:
+                _rename_no_replace(
+                    root,
+                    lock,
+                    _safe_relative(
+                        item["destination"],
+                        field="adoption.archive.destination",
+                    ),
+                    _safe_relative(
+                        item["source"],
+                        field="adoption.archive.source",
+                    ),
+                )
+            except (OSError, SetupTransactionError):
+                pass
+        failed = {
+            source: {"source": source, "archived": False, "reason": "archive-failed"}
+            for source in sources
+        }
+        return {
+            "performed": False,
+            "directory": directory.as_posix(),
+            "sources": sources,
+            "archived": [],
+            "retained": [*retained, *failed.values()],
+            "manifests": [
+                failed[entry["source"]]
+                if entry.get("archived") is True and entry["source"] in failed
+                else entry
+                for entry in manifests
+            ],
+            "moved": moved,
+            "error": {
+                "code": getattr(error, "code", "environment_error"),
+                "message": str(error),
+            },
+        }
+    archived = {item["source"]: item["destination"] for item in moved}
+    return {
+        "performed": len(archived) == len(sources),
+        "directory": directory.as_posix(),
+        "path": str(_project_path(root, directory)),
+        "sources": sources,
+        "archived": list(archived),
+        "retained": retained,
+        "manifests": [
+            {
+                **entry,
+                **(
+                    {"destination": archived[entry["source"]]}
+                    if entry.get("archived") is True
+                    and entry["source"] in archived
+                    else {}
+                ),
+            }
+            for entry in manifests
+        ],
+        "moved": moved,
+    }
+
+
+_CACHE_FILE_SUFFIXES = {".pyc", ".pyo"}
+
+
+def _adoption_preserved_by_source(
+    adoption: Mapping[str, Any],
+) -> dict[str, dict[str, str]]:
+    """Map each legacy manifest source to the recorded paths it preserved."""
+
+    result: dict[str, dict[str, str]] = {}
+    preserved = adoption.get("preserved")
+    if not isinstance(preserved, list):
+        return result
+    for entry in preserved:
+        if not isinstance(entry, Mapping):
+            continue
+        source = entry.get("source")
+        path = entry.get("path")
+        if not isinstance(source, str) or not isinstance(path, str):
+            continue
+        reason = entry.get("reason")
+        result.setdefault(source, {})[path] = (
+            reason if isinstance(reason, str) else "preserved"
+        )
+    return result
+
+
+def _cleanup_error(
+    package: str,
+    source: str,
+    path: str,
+    error: BaseException,
+) -> dict[str, Any]:
+    return {
+        "path": path,
+        "package": package,
+        "source": source,
+        "code": getattr(error, "code", "environment_error"),
+        "message": str(error),
+    }
+
+
+def _cleanup_retired_package(
+    root: Path,
+    lock: _RootLock,
+    skill_root: PurePosixPath,
+    package: str,
+    source: str,
+    preserved_records: Mapping[str, str],
+    summary: dict[str, Any],
+) -> None:
+    """Clean one installer-retired package directory without following links."""
+
+    package_value = (skill_root / PurePosixPath(package)).as_posix()
+    try:
+        package_relative = _safe_relative(
+            package_value,
+            field="adoption.cleanup.package",
+        )
+    except SetupTransactionError as error:
+        summary["errors"].append(
+            _cleanup_error(package, source, package_value, error)
+        )
+        return
+    target = _project_path(root, package_relative)
+    try:
+        present = target.exists() or target.is_symlink()
+    except OSError as error:
+        summary["errors"].append(
+            _cleanup_error(package, source, package_relative.as_posix(), error)
+        )
+        return
+    if not present:
+        return
+    try:
+        _validate_chain(root, package_relative)
+    except SetupTransactionError as error:
+        # A link, reparse point, or non-directory ancestor is never followed.
+        summary["preserved"].append(
+            {
+                "path": package_relative.as_posix(),
+                "package": package,
+                "source": source,
+                "reason": "not-regular",
+                "recorded": False,
+            }
+        )
+        summary["preserved_count"] = len(summary["preserved"])
+        return
+    try:
+        unsafe = _is_link_or_reparse(target) or not target.is_dir()
+    except OSError as error:
+        summary["errors"].append(
+            _cleanup_error(package, source, package_relative.as_posix(), error)
+        )
+        return
+    if unsafe:
+        summary["preserved"].append(
+            {
+                "path": package_relative.as_posix(),
+                "package": package,
+                "source": source,
+                "reason": "not-regular",
+                "recorded": False,
+            }
+        )
+        summary["preserved_count"] = len(summary["preserved"])
+        return
+    directories: list[PurePosixPath] = [package_relative]
+    cache_files: list[PurePosixPath] = []
+    leftovers: list[tuple[PurePosixPath, str]] = []
+    stack = [package_relative]
+    while stack:
+        current = stack.pop()
+        try:
+            children = sorted(
+                _project_path(root, current).iterdir(),
+                key=lambda item: item.name,
+            )
+        except OSError as error:
+            summary["errors"].append(
+                _cleanup_error(package, source, current.as_posix(), error)
+            )
+            continue
+        for child in children:
+            child_relative = current / child.name
+            if _is_link_or_reparse(child):
+                leftovers.append((child_relative, "not-regular"))
+                continue
+            try:
+                if child.is_dir():
+                    directories.append(child_relative)
+                    stack.append(child_relative)
+                elif child.is_file():
+                    if child.suffix.lower() in _CACHE_FILE_SUFFIXES:
+                        cache_files.append(child_relative)
+                    else:
+                        leftovers.append((child_relative, "file"))
+                else:
+                    leftovers.append((child_relative, "unsupported"))
+            except OSError as error:
+                summary["errors"].append(
+                    _cleanup_error(
+                        package,
+                        source,
+                        child_relative.as_posix(),
+                        error,
+                    )
+                )
+    for relative in cache_files:
+        try:
+            _delete_managed(root, lock, relative)
+        except FileNotFoundError:
+            pass
+        except (OSError, SetupTransactionError) as error:
+            summary["errors"].append(
+                _cleanup_error(package, source, relative.as_posix(), error)
+            )
+            continue
+        summary["removed_cache_paths"].append(relative.as_posix())
+    summary["removed_cache_count"] = len(summary["removed_cache_paths"])
+    for relative in sorted(
+        directories,
+        key=lambda value: (len(value.parts), value.as_posix()),
+        reverse=True,
+    ):
+        try:
+            removed = _remove_relative_directory_if_empty(root, lock, relative)
+        except FileNotFoundError:
+            removed = True
+        except (OSError, SetupTransactionError) as error:
+            summary["errors"].append(
+                _cleanup_error(package, source, relative.as_posix(), error)
+            )
+            continue
+        if removed:
+            summary["removed_directories"].append(relative.as_posix())
+    summary["removed_directory_count"] = len(summary["removed_directories"])
+    preserved_here = 0
+    for relative, kind in leftovers:
+        path = _project_path(root, relative)
+        try:
+            still_present = path.exists() or path.is_symlink()
+        except OSError:
+            still_present = True
+        if not still_present:
+            continue
+        key = relative.as_posix()
+        if kind == "file":
+            recorded_reason = preserved_records.get(key)
+            if recorded_reason is None:
+                entry: dict[str, Any] = {
+                    "path": key,
+                    "package": package,
+                    "source": source,
+                    "reason": "unrecorded",
+                    "recorded": False,
+                }
+            else:
+                entry = {
+                    "path": key,
+                    "package": package,
+                    "source": source,
+                    "reason": recorded_reason,
+                    "recorded": True,
+                }
+        else:
+            entry = {
+                "path": key,
+                "package": package,
+                "source": source,
+                "reason": (
+                    "not-regular" if kind == "not-regular" else "unsupported"
+                ),
+                "recorded": key in preserved_records,
+            }
+        summary["preserved"].append(entry)
+        preserved_here += 1
+    summary["preserved_count"] = len(summary["preserved"])
+    if preserved_here:
+        return
+    if package_relative.as_posix() not in summary["removed_directories"]:
+        try:
+            still_present = target.exists() or target.is_symlink()
+        except OSError:
+            still_present = True
+        if still_present:
+            summary["errors"].append(
+                {
+                    "path": package_relative.as_posix(),
+                    "package": package,
+                    "source": source,
+                    "code": "directory_not_removed",
+                    "message": (
+                        "an empty retired package directory could not be removed"
+                    ),
+                }
+            )
+        return
+    # Remove now-empty managed parents up to, but not including, the host
+    # skills root: that root is a shared host convention directory.
+    current = package_relative.parent
+    while current != skill_root and skill_root in current.parents:
+        try:
+            removed = _remove_relative_directory_if_empty(root, lock, current)
+        except FileNotFoundError:
+            removed = True
+        except (OSError, SetupTransactionError) as error:
+            summary["errors"].append(
+                _cleanup_error(package, source, current.as_posix(), error)
+            )
+            break
+        if not removed:
+            break
+        summary["removed_directories"].append(current.as_posix())
+        current = current.parent
+    summary["removed_directory_count"] = len(summary["removed_directories"])
+
+
+def _cleanup_retired_packages(
+    root: Path,
+    lock: _RootLock,
+    adoption: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Prune installer-retired package directories after a committed adoption.
+
+    The cleanup is best effort and reporting-only: it never fails the committed
+    transaction.  Generated cache entries (``__pycache__`` content and
+    ``*.pyc``/``*.pyo`` files) are removed first, then empty directories.  A
+    non-cache file that the legacy manifest did not record is preserved and
+    reported, and its package directory is kept.
+    """
+
+    plan = adoption.get("cleanup")
+    entries = plan.get("retired") if isinstance(plan, Mapping) else None
+    if not isinstance(entries, list):
+        entries = []
+    summary = _empty_cleanup_summary(
+        requested=True,
+        status="nothing-retired",
+    )
+    retired: list[dict[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, Mapping):
+            continue
+        source = entry.get("source")
+        skill_root_value = entry.get("skill_root")
+        packages = entry.get("packages")
+        if (
+            not isinstance(source, str)
+            or not isinstance(skill_root_value, str)
+            or not isinstance(packages, list)
+        ):
+            continue
+        try:
+            skill_root = _safe_relative(
+                skill_root_value,
+                field="adoption.cleanup.skill_root",
+            )
+        except SetupTransactionError as error:
+            summary["errors"].append(
+                _cleanup_error("", str(source), skill_root_value, error)
+            )
+            continue
+        retired.append(
+            {
+                "source": source,
+                "skill_root": skill_root.as_posix(),
+                "packages": [
+                    value
+                    for value in packages
+                    if isinstance(value, str) and value
+                ],
+            }
+        )
+    summary["retired"] = retired
+    summary["retired_package_names"] = sorted(
+        {
+            package
+            for entry in retired
+            for package in entry["packages"]
+        }
+    )
+    if not retired:
+        return summary
+    preserved_records = _adoption_preserved_by_source(adoption)
+    for entry in retired:
+        for package in entry["packages"]:
+            _cleanup_retired_package(
+                root,
+                lock,
+                PurePosixPath(entry["skill_root"]),
+                package,
+                entry["source"],
+                preserved_records.get(entry["source"], {}),
+                summary,
+            )
+    if summary["errors"]:
+        summary["status"] = "partial"
+    elif summary["preserved"]:
+        summary["status"] = "preserved"
+    else:
+        summary["status"] = "complete"
+    return summary
+
+
 def _validate_idle_state(
     paths: Mapping[str, Path],
     manifest: dict[str, Any] | None,
@@ -1359,6 +2407,8 @@ def _preflight(
     delegation_adapters: list[dict[str, Any]],
     *,
     allow_journal: bool = False,
+    extra_managed: Mapping[str, Mapping[str, Any]] | None = None,
+    adoption: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     paths = _state_paths(root)
     if paths["journal"].exists() and not allow_journal:
@@ -1368,6 +2418,8 @@ def _preflight(
         )
     manifest, managed = _load_manifest(paths)
     _validate_idle_state(paths, manifest)
+    if extra_managed:
+        managed = _merge_managed(managed, extra_managed)
     operations: list[dict[str, Any]] = []
     all_paths = sorted(set(desired) | set(managed))
     for relative_value in all_paths:
@@ -1415,7 +2467,7 @@ def _preflight(
             }
         )
     inspection = inspect_installed_bundle()
-    return {
+    result = {
         "project_root": str(root),
         "root_identity": None,
         "hosts": list(hosts),
@@ -1425,6 +2477,9 @@ def _preflight(
         "operations": operations,
         "writes_performed": False,
     }
+    if adoption is not None:
+        result["adoption"] = dict(adoption)
+    return result
 
 
 def _fsync_directory(path: Path) -> None:
@@ -2042,6 +3097,23 @@ def _delete_backup_generation(
         else expected_manifest
     )
     files = {} if manifest is None else _manifest_files(manifest)
+    adoption_relative = base / ADOPTION_BACKUP_NAME
+    adoption_path = _project_path(root, adoption_relative)
+    adoption_files = (
+        _adoption_backup_files(
+            _read_json(adoption_path, code="journal_invalid")
+        )
+        if adoption_path.exists()
+        else {}
+    )
+    overlap = set(adoption_files) & set(files)
+    if overlap:
+        raise SetupTransactionError(
+            "journal_invalid",
+            "durable rollback generation duplicates an owned recovery path",
+            details={"paths": sorted(overlap)},
+        )
+    files.update(adoption_files)
     directories: set[PurePosixPath] = {base}
     for relative_value, entry in files.items():
         relative = PurePosixPath(relative_value)
@@ -2070,6 +3142,8 @@ def _delete_backup_generation(
             parent = parent.parent
     if manifest_path.exists():
         _delete_managed(root, lock, manifest_relative)
+    if adoption_path.exists():
+        _delete_managed(root, lock, adoption_relative)
     for directory in sorted(
         directories,
         key=lambda value: (len(value.parts), value.as_posix()),
@@ -2376,12 +3450,76 @@ def _matches_operation_after(path: Path, operation: Mapping[str, Any]) -> bool:
     )
 
 
+def _adoption_backup_value(
+    adopted_extra: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    return {
+        "schema_version": SETUP_SCHEMA_VERSION,
+        "kind": "xcoding-setup-adoption-backup",
+        "files": [
+            {
+                "path": relative,
+                "sha256": adopted_extra[relative]["sha256"],
+                "owners": sorted(
+                    host
+                    for host in HOST_ORDER
+                    if host in set(adopted_extra[relative].get("owners") or ())
+                ),
+            }
+            for relative in sorted(adopted_extra)
+        ],
+    }
+
+
+def _adoption_backup_files(
+    value: Mapping[str, Any],
+) -> dict[str, dict[str, Any]]:
+    if (
+        value.get("schema_version") != SETUP_SCHEMA_VERSION
+        or not isinstance(value.get("files"), list)
+    ):
+        raise SetupTransactionError(
+            "journal_invalid",
+            "adoption backup inventory is invalid",
+        )
+    files: dict[str, dict[str, Any]] = {}
+    for item in value["files"]:
+        if (
+            not isinstance(item, dict)
+            or not isinstance(item.get("path"), str)
+            or not isinstance(item.get("sha256"), str)
+            or len(item["sha256"]) != 64
+            or any(character not in "0123456789abcdef" for character in item["sha256"])
+        ):
+            raise SetupTransactionError(
+                "journal_invalid",
+                "adoption backup file record is invalid",
+            )
+        relative = _safe_relative(
+            item["path"],
+            field="adoption.files.path",
+        ).as_posix()
+        if relative in files:
+            raise SetupTransactionError(
+                "journal_invalid",
+                "adoption backup path is duplicated",
+            )
+        files[relative] = {
+            "sha256": item["sha256"],
+            "mode": "file",
+            "owners": list(item.get("owners") or []),
+        }
+    return files
+
+
 def _apply_transaction(
     root: Path,
     lock: _RootLock,
     hosts: tuple[str, ...],
     desired: dict[str, dict[str, Any]],
     plan: dict[str, Any],
+    *,
+    extra_managed: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     paths = _state_paths(root)
     _ensure_relative_directory(root, lock, STATE_RELATIVE)
@@ -2396,6 +3534,14 @@ def _apply_transaction(
     journal_relative = STATE_RELATIVE / "journal.json"
     manifest_relative = STATE_RELATIVE / "manifest.json"
     old_manifest, managed = _load_manifest(paths)
+    adopted_extra: dict[str, Mapping[str, Any]] = {}
+    if extra_managed:
+        adopted_extra = {
+            relative: claim
+            for relative, claim in extra_managed.items()
+            if relative not in managed
+        }
+        managed = _merge_managed(managed, extra_managed)
     target_manifest = _manifest_value(
         root,
         hosts,
@@ -2469,6 +3615,17 @@ def _apply_transaction(
             lock,
             backup_relative / "manifest.json",
             _canonical_json(old_manifest),
+        )
+    if adopted_extra:
+        # Adoption claims were not owned by the previous generation, so the
+        # backup manifest cannot describe them.  A separate inventory keeps
+        # crash recovery able to restore their pre-transaction bytes without
+        # widening the published manifest schema.
+        _write_relative_file(
+            root,
+            lock,
+            backup_relative / ADOPTION_BACKUP_NAME,
+            _canonical_json(_adoption_backup_value(adopted_extra)),
         )
     journal["state"] = "prepared"
     _atomic_relative_json(root, lock, journal_relative, journal)
@@ -2584,23 +3741,82 @@ def _apply_transaction(
     return result
 
 
+def _record_adoption_archive(
+    root: Path,
+    lock: _RootLock,
+    result: dict[str, Any],
+    adopt_legacy: bool,
+) -> None:
+    if not adopt_legacy:
+        return
+    adoption = result.get("adoption")
+    if not isinstance(adoption, dict):
+        return
+    generation = result.get("generation")
+    if not isinstance(generation, str):
+        return
+    archived = {
+        **adoption,
+        "archive": _archive_legacy_manifests(root, lock, generation, adoption),
+    }
+    try:
+        cleanup = _cleanup_retired_packages(root, lock, archived)
+    except Exception as error:  # a committed transaction must not fail here
+        cleanup = _empty_cleanup_summary(requested=True, status="partial")
+        cleanup["errors"] = [
+            {
+                "code": getattr(error, "code", "environment_error"),
+                "message": str(error),
+            }
+        ]
+    result["adoption"] = {**archived, "cleanup": cleanup}
+
+
+def _attach_adoption_failure(
+    error: SetupTransactionError,
+    adoption: Mapping[str, Any],
+    *,
+    phase: str,
+) -> SetupTransactionError:
+    """Attach the planned adoption summary to a failure raised after planning."""
+
+    error.details = {
+        **error.details,
+        "phase": phase,
+        "adoption": {**adoption, "requested": True},
+    }
+    return error
+
+
 def setup(
     project_root: str | os.PathLike[str],
     hosts: Sequence[str],
     *,
     dry_run: bool = False,
+    adopt_legacy: bool = False,
 ) -> dict[str, Any]:
     root = _resolve_project_root(project_root)
     selected = _validate_hosts(hosts)
     desired, delegation_adapters = _desired_files(selected)
     with project_lock(root) as lock:
         lock.verify()
-        plan = _preflight(
-            root,
-            selected,
-            desired,
-            delegation_adapters,
-        )
+        extra_managed: dict[str, dict[str, Any]] = {}
+        adoption = _disabled_adoption_summary()
+        try:
+            if adopt_legacy:
+                extra_managed, adoption = _plan_adoption(root, desired, selected)
+            plan = _preflight(
+                root,
+                selected,
+                desired,
+                delegation_adapters,
+                extra_managed=extra_managed,
+                adoption=adoption,
+            )
+        except SetupTransactionError as error:
+            if adopt_legacy:
+                _attach_adoption_failure(error, adoption, phase="preflight")
+            raise
         plan["root_identity"] = list(lock.identity)
         plan["lock_identity"] = (
             "Global\\XcodingSetup-v1-" + "-".join(f"{part:08x}" for part in lock.identity)
@@ -2610,23 +3826,37 @@ def setup(
         if dry_run:
             return plan
         try:
-            return _apply_transaction(root, lock, selected, desired, plan)
+            result = _apply_transaction(
+                root,
+                lock,
+                selected,
+                desired,
+                plan,
+                extra_managed=extra_managed,
+            )
         except SetupTransactionError as error:
+            if adopt_legacy:
+                _attach_adoption_failure(error, adoption, phase="apply")
             journal = _state_paths(root)["journal"]
             if not journal.exists():
                 raise
             try:
                 recovery = recover(root, _lock=lock)
             except Exception as rollback_error:
+                details: dict[str, Any] = {
+                    "original_code": error.code,
+                    "original_details": error.details,
+                    "rollback_exception": type(rollback_error).__name__,
+                    "rollback_code": getattr(rollback_error, "code", None),
+                    "phase": "apply",
+                    "rolled_back": False,
+                }
+                if adopt_legacy:
+                    details["adoption"] = {**adoption, "requested": True}
                 raise SetupTransactionError(
                     "rollback_failed",
                     "setup failed and automatic rollback could not close the transaction",
-                    details={
-                        "original_code": error.code,
-                        "original_details": error.details,
-                        "rollback_exception": type(rollback_error).__name__,
-                        "rollback_code": getattr(rollback_error, "code", None),
-                    },
+                    details=details,
                 ) from rollback_error
             if recovery.get("direction") == "complete":
                 result = dict(plan)
@@ -2640,9 +3870,12 @@ def setup(
                         "recovered_from_error": error.code,
                     }
                 )
+                _record_adoption_archive(root, lock, result, adopt_legacy)
                 return result
             error.details = {**error.details, "rolled_back": True}
             raise
+        _record_adoption_archive(root, lock, result, adopt_legacy)
+        return result
 
 
 def recover(
@@ -2747,6 +3980,19 @@ def recover(
             backup_manifest_path = backup / "manifest.json"
             backup_manifest = _read_json(backup_manifest_path, code="journal_invalid") if backup_manifest_path.exists() else None
             source_files = {} if backup_manifest is None else _manifest_files(backup_manifest)
+            adoption_backup_path = backup / ADOPTION_BACKUP_NAME
+            if adoption_backup_path.exists():
+                adoption_files = _adoption_backup_files(
+                    _read_json(adoption_backup_path, code="journal_invalid")
+                )
+                overlap = set(adoption_files) & set(source_files)
+                if overlap:
+                    raise SetupTransactionError(
+                        "journal_invalid",
+                        "adoption backup duplicates a manifest-owned recovery path",
+                        details={"paths": sorted(overlap)},
+                    )
+                source_files.update(adoption_files)
             staging_relative = STATE_RELATIVE / "staging" / transaction
             mutated_paths = {
                 str(operation.get("path"))
@@ -2989,6 +4235,23 @@ def rollback(project_root: str | os.PathLike[str]) -> dict[str, Any]:
                 "the previous setup generation backup does not match the manifest",
             )
         previous_files = _manifest_files(previous)
+        adopted_backup: dict[str, tuple[str, bytes]] = {}
+        adoption_path = backup / ADOPTION_BACKUP_NAME
+        if adoption_path.exists():
+            adoption_entries = _adoption_backup_files(
+                _read_json(adoption_path, code="rollback_unavailable")
+            )
+            for relative, entry in adoption_entries.items():
+                if relative in previous_files:
+                    continue
+                data = backup.joinpath(*PurePosixPath(relative).parts).read_bytes()
+                if _sha256(data) != entry["sha256"]:
+                    raise SetupTransactionError(
+                        "rollback_unavailable",
+                        "rollback adoption backup bytes are invalid",
+                        details={"path": relative},
+                    )
+                adopted_backup[relative] = (entry["sha256"], data)
         desired: dict[str, dict[str, Any]] = {}
         for relative, entry in previous_files.items():
             data = backup.joinpath(*PurePosixPath(relative).parts).read_bytes()
@@ -3009,18 +4272,435 @@ def rollback(project_root: str | os.PathLike[str]) -> dict[str, Any]:
             _rollback_adapter_summaries(hosts, desired),
         )
         result = _apply_transaction(root, lock, hosts, desired, plan)
+        restored_adopted: list[str] = []
+        skipped_adopted: list[dict[str, str]] = []
+        for relative, (_digest, data) in sorted(adopted_backup.items()):
+            target_relative = _safe_relative(
+                relative,
+                field="rollback.adoption.path",
+            )
+            observed = _observe_regular_file(_project_path(root, target_relative))
+            if observed["state"] == "file":
+                if observed["sha256"] == _sha256(data):
+                    restored_adopted.append(relative)
+                else:
+                    skipped_adopted.append(
+                        {"path": relative, "reason": "occupied"}
+                    )
+                continue
+            if observed["state"] != "missing":
+                skipped_adopted.append(
+                    {"path": relative, "reason": observed["state"]}
+                )
+                continue
+            try:
+                _write_relative_file(root, lock, target_relative, data)
+            except (OSError, SetupTransactionError) as error:
+                skipped_adopted.append(
+                    {
+                        "path": relative,
+                        "reason": "write-failed",
+                        "code": getattr(error, "code", "environment_error"),
+                    }
+                )
+            else:
+                restored_adopted.append(relative)
         result["rolled_back_from"] = generation
         result["rollback"] = True
+        result["restored_adopted"] = restored_adopted
+        if skipped_adopted:
+            result["skipped_adopted"] = skipped_adopted
+        return result
+
+
+def _rename_directory_no_replace(
+    root: Path,
+    lock: _RootLock,
+    source_relative: PurePosixPath,
+    target_relative: PurePosixPath,
+) -> None:
+    source = _project_path(root, source_relative)
+    target = _project_path(root, target_relative)
+    try:
+        if os.name == "nt":
+            with _windows_parent_handle(lock, source_relative.parts[:-1]) as source_parent:
+                source_handle = _windows_open_relative(
+                    source_parent,
+                    source_relative.name,
+                    source,
+                    directory=True,
+                    delete=True,
+                )
+                try:
+                    with _windows_parent_handle(
+                        lock,
+                        target_relative.parts[:-1],
+                    ) as target_parent:
+                        _windows_rename_relative(
+                            source_handle,
+                            target_parent,
+                            target_relative.name,
+                            target,
+                            replace=False,
+                        )
+                finally:
+                    _windows_kernel32().CloseHandle(source_handle)
+            return
+        with _posix_parent_descriptor(lock, source_relative.parts[:-1]) as source_parent:
+            with _posix_parent_descriptor(lock, target_relative.parts[:-1]) as target_parent:
+                _posix_rename_no_replace(
+                    source_parent,
+                    source_relative.name,
+                    target_parent,
+                    target_relative.name,
+                    target,
+                )
+                os.fsync(source_parent)
+                os.fsync(target_parent)
+    except FileExistsError as error:
+        raise SetupTransactionError(
+            "path_identity_changed",
+            "uninstall will not replace an existing state archive",
+            details={"path": target_relative.as_posix()},
+        ) from error
+
+
+def _remove_tree_guarded(
+    root: Path,
+    lock: _RootLock,
+    relative: PurePosixPath,
+) -> None:
+    """Delete one setup-owned tree without following links or reparse points."""
+
+    target = _project_path(root, relative)
+    if not (target.exists() or target.is_symlink()):
+        return
+    stack = [relative]
+    directories: list[PurePosixPath] = []
+    while stack:
+        current = stack.pop()
+        path = _project_path(root, current)
+        if _is_link_or_reparse(path) or not path.is_dir():
+            raise SetupTransactionError(
+                "path_identity_changed",
+                "uninstall state cleanup found an unexpected entry",
+                details={"path": current.as_posix()},
+            )
+        directories.append(current)
+        for child in sorted(path.iterdir(), key=lambda item: item.name):
+            child_relative = current / child.name
+            if _is_link_or_reparse(child):
+                raise SetupTransactionError(
+                    "path_identity_changed",
+                    "uninstall state cleanup found a link or reparse point",
+                    details={"path": child_relative.as_posix()},
+                )
+            if child.is_dir():
+                stack.append(child_relative)
+            elif child.is_file():
+                _delete_managed(root, lock, child_relative)
+            else:
+                raise SetupTransactionError(
+                    "path_identity_changed",
+                    "uninstall state cleanup found an unsupported entry",
+                    details={"path": child_relative.as_posix()},
+                )
+    for directory in sorted(
+        directories,
+        key=lambda value: (len(value.parts), value.as_posix()),
+        reverse=True,
+    ):
+        if not _remove_relative_directory_if_empty(root, lock, directory):
+            raise SetupTransactionError(
+                "path_identity_changed",
+                "uninstall state cleanup left an unexpected entry",
+                details={"path": directory.as_posix()},
+            )
+
+
+def _prune_managed_parents(
+    root: Path,
+    lock: _RootLock,
+    relative: PurePosixPath,
+    hosts: Sequence[str],
+) -> None:
+    """Prune empty managed parent directories bottom-up.
+
+    The walk stops at the host target root (for example ``.agents/skills``) so
+    shared convention directories such as ``.agents`` are never removed.
+    """
+
+    roots: list[PurePosixPath] = []
+    for host in hosts:
+        for candidate in HOST_TARGETS[host]:
+            if candidate in relative.parents and candidate not in roots:
+                roots.append(candidate)
+    if not roots:
+        return
+    boundary = max(roots, key=lambda value: len(value.parts))
+    current = relative.parent
+    while current == boundary or boundary in current.parents:
+        path = _project_path(root, current)
+        if not (path.exists() or path.is_symlink()):
+            if current == boundary:
+                return
+            current = current.parent
+            continue
+        if _is_link_or_reparse(path) or not path.is_dir():
+            return
+        try:
+            removed = _remove_relative_directory_if_empty(root, lock, current)
+        except FileNotFoundError:
+            removed = True
+        if not removed:
+            return
+        if current == boundary:
+            return
+        current = current.parent
+
+
+def uninstall(
+    project_root: str | os.PathLike[str],
+    *,
+    dry_run: bool = False,
+    keep_state: bool = True,
+) -> dict[str, Any]:
+    """Remove only hash-verified payload files owned by the setup manifest.
+
+    The setup state is archived beside itself after the payload phase so the
+    next install starts from a clean state.  ``keep_state=False`` replaces the
+    backup and staging payload with a small receipt.
+    """
+
+    root = _resolve_project_root(project_root)
+    paths = _state_paths(root)
+    with project_lock(root) as lock:
+        lock.verify()
+        if paths["journal"].exists():
+            raise SetupTransactionError(
+                "recovery_required",
+                "recover the open setup journal before uninstall",
+            )
+        manifest, files = _load_manifest(paths)
+        if manifest is None:
+            legacy = legacy_install_status(root)
+            if legacy["detected"]:
+                # A no-op success would be a false claim: the 0.3.6 payload is
+                # still an XC-owned user-level payload, and a user who removes
+                # the CLI externally would have no migration path left.
+                raise SetupTransactionError(
+                    "legacy_payload_present",
+                    (
+                        "a legacy development-installer payload is present "
+                        "without a setup manifest; uninstall removed nothing and "
+                        "will not report success while those XC-owned bytes remain"
+                    ),
+                    details={
+                        "project_root": str(root),
+                        "legacy": legacy,
+                        "next_action": (
+                            "xcoding install --scope user --adopt-legacy, then "
+                            "xcoding uninstall"
+                        ),
+                    },
+                )
+            return {
+                "project_root": str(root),
+                "installed": False,
+                "generation": None,
+                "version": None,
+                "bundle_manifest_sha256": None,
+                "hosts": [],
+                "operations": [],
+                "counts": {"remove": 0, "preserve": 0, "missing": 0, "total": 0},
+                "removed": 0,
+                "preserved": 0,
+                "missing": 0,
+                "writes_performed": False,
+                "dry_run": dry_run,
+                "manifest_path": str(paths["manifest"]),
+                "archive_path": None,
+                "state_archive": {
+                    "performed": False,
+                    "directory": None,
+                    "path": None,
+                    "keep_state": keep_state,
+                },
+            }
+        hosts = tuple(manifest["hosts"])
+        operations: list[dict[str, Any]] = []
+        for relative_value in sorted(files):
+            entry = files[relative_value]
+            observed = _observe_regular_file(
+                _project_path(root, PurePosixPath(relative_value))
+            )
+            operation: dict[str, Any] = {
+                "path": relative_value,
+                "sha256": entry["sha256"],
+                "owners": list(entry["owners"]),
+            }
+            if observed["state"] == "missing":
+                operation["action"] = "missing"
+            elif observed["state"] != "file":
+                operation.update(
+                    {
+                        "action": "preserve",
+                        "reason": observed["state"],
+                    }
+                )
+            elif observed["sha256"] != entry["sha256"]:
+                operation.update(
+                    {
+                        "action": "preserve",
+                        "reason": "modified",
+                        "actual_sha256": observed["sha256"],
+                    }
+                )
+            else:
+                operation["action"] = "remove"
+            operations.append(operation)
+        counts = {
+            action: sum(
+                1 for operation in operations if operation["action"] == action
+            )
+            for action in ("remove", "preserve", "missing")
+        }
+        counts["total"] = len(operations)
+        generation = str(manifest["generation"])
+        archive_relative = (
+            PurePosixPath(".agents") / f"{UNINSTALL_ARCHIVE_PREFIX}{generation}"
+        )
+        state_archive: dict[str, Any] = {
+            "performed": False,
+            "directory": archive_relative.as_posix(),
+            "path": str(_project_path(root, archive_relative)),
+            "keep_state": keep_state,
+        }
+        result: dict[str, Any] = {
+            "project_root": str(root),
+            "installed": True,
+            "generation": generation,
+            "version": manifest["version"],
+            "bundle_manifest_sha256": manifest["bundle_manifest_sha256"],
+            "hosts": list(hosts),
+            "operations": operations,
+            "counts": counts,
+            "removed": counts["remove"],
+            "preserved": counts["preserve"],
+            "missing": counts["missing"],
+            "writes_performed": False,
+            "dry_run": dry_run,
+            "manifest_path": str(paths["manifest"]),
+            "archive_path": str(_project_path(root, archive_relative)),
+            "state_archive": state_archive,
+        }
+        if dry_run:
+            return result
+        removed_paths: list[str] = []
+        for operation in operations:
+            if operation["action"] != "remove":
+                continue
+            relative = _safe_relative(operation["path"], field="uninstall.path")
+            observed = _observe_regular_file(_project_path(root, relative))
+            if observed["state"] != "file" or observed["sha256"] != operation["sha256"]:
+                raise SetupTransactionError(
+                    "managed_content_changed",
+                    "uninstall target changed after planning",
+                    details={"path": operation["path"]},
+                )
+            _delete_managed(root, lock, relative)
+            removed_paths.append(operation["path"])
+        for path_value in removed_paths:
+            _prune_managed_parents(
+                root,
+                lock,
+                PurePosixPath(path_value),
+                hosts,
+            )
+        archive_path = _project_path(root, archive_relative)
+        if archive_path.exists() or archive_path.is_symlink():
+            if (
+                _is_link_or_reparse(archive_path)
+                or not archive_path.is_dir()
+                or not _remove_relative_directory_if_empty(
+                    root,
+                    lock,
+                    archive_relative,
+                )
+            ):
+                raise SetupTransactionError(
+                    "uninstall_archive_conflict",
+                    "uninstall archive path is already occupied",
+                    details={"path": archive_relative.as_posix()},
+                )
+        state = paths["state"]
+        if state.exists() or state.is_symlink():
+            _rename_directory_no_replace(
+                root,
+                lock,
+                STATE_RELATIVE,
+                archive_relative,
+            )
+            state_archive["performed"] = True
+        if not keep_state:
+            receipt_relative = archive_relative / "receipt.json"
+            receipt = {
+                "schema_version": SETUP_SCHEMA_VERSION,
+                "kind": "xcoding-uninstall-receipt",
+                "generation": generation,
+                "version": manifest["version"],
+                "bundle_manifest_sha256": manifest["bundle_manifest_sha256"],
+                "hosts": list(hosts),
+                "removed": counts["remove"],
+                "preserved": counts["preserve"],
+                "missing": counts["missing"],
+                "preserved_paths": [
+                    operation["path"]
+                    for operation in operations
+                    if operation["action"] == "preserve"
+                ],
+            }
+            _write_relative_file(
+                root,
+                lock,
+                receipt_relative,
+                _canonical_json(receipt),
+            )
+            state_archive["receipt"] = receipt_relative.as_posix()
+            cleanup_errors: list[dict[str, Any]] = []
+            for name in ("backup", "staging"):
+                try:
+                    _remove_tree_guarded(
+                        root,
+                        lock,
+                        archive_relative / name,
+                    )
+                except (OSError, SetupTransactionError) as error:
+                    cleanup_errors.append(
+                        {
+                            "entry": name,
+                            "code": getattr(error, "code", "environment_error"),
+                            "message": str(error),
+                        }
+                    )
+            if cleanup_errors:
+                state_archive["cleanup_errors"] = cleanup_errors
+        result["writes_performed"] = True
         return result
 
 
 __all__ = [
     "HOST_ORDER",
     "HOST_TARGETS",
+    "LEGACY_MANIFEST_NAME",
     "SETUP_SCHEMA_VERSION",
+    "UNINSTALL_ARCHIVE_PREFIX",
     "SetupTransactionError",
+    "legacy_install_status",
+    "load_setup_manifest",
     "project_lock",
     "recover",
     "rollback",
     "setup",
+    "uninstall",
 ]

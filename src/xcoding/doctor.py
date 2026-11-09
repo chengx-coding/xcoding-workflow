@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import os
 import platform
 import shutil
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .bundle.resources import inspect_installed_bundle, installed_bundle_root
@@ -126,6 +127,212 @@ def delegation_adapter_readiness(
         "ready": not errors,
         "statements": statements,
         "errors": errors,
+    }
+
+
+def payload_readiness(
+    target_root: Path,
+    *,
+    inspection: Any | None = None,
+) -> dict[str, Any]:
+    """Classify an installed setup payload against the running distribution.
+
+    The check is read-only.  It verifies the setup manifest version and bundle
+    hash, then every manifest-owned file.  Files outside the manifest are
+    unowned by XC and are reported as preserved rather than evaluated.
+
+    A root without a setup manifest is not necessarily clean: the 0.3.6
+    development-installer layout leaves two ``.xc-skill-install-manifest.json``
+    records behind.  That layout is reported as ``legacy`` drift, not as
+    ``not-installed``, because it needs the explicit adoption path.
+    """
+
+    root = Path(target_root)
+    manifest_path = root / ".agents" / ".xcoding-setup" / "manifest.json"
+    base: dict[str, Any] = {
+        "target_root": str(root),
+        "manifest_path": str(manifest_path),
+    }
+    if not manifest_path.exists():
+        # Imported lazily so the common CLI-only doctor run never imports the
+        # transaction engine.  The legacy probe itself claims and writes nothing.
+        from .setup_transaction import legacy_install_status
+
+        legacy = legacy_install_status(root)
+        if not legacy["detected"]:
+            return {"installed": False, "status": "not-installed"}
+        return {
+            **base,
+            "installed": False,
+            "status": "legacy",
+            "legacy": legacy,
+            "problems": [
+                {
+                    "code": "legacy-install-detected",
+                    "status": "legacy",
+                    "message": (
+                        "a development-installer payload is present without a "
+                        "setup manifest"
+                    ),
+                    "manifests": legacy["manifest_paths"],
+                }
+            ],
+            "next_action": (
+                "run `xcoding install --scope user --adopt-legacy` to adopt the "
+                "verified legacy files, archive the legacy manifests, and "
+                "create the setup manifest"
+            ),
+        }
+    # Imported lazily so the doctor import graph stays free of the transaction
+    # engine unless a target root actually asks for the payload check.
+    from .setup_transaction import SetupTransactionError, load_setup_manifest
+
+    try:
+        manifest, files = load_setup_manifest(root)
+    except SetupTransactionError as error:
+        return {
+            **base,
+            "installed": True,
+            "status": "invalid",
+            "error": {
+                "code": error.code,
+                "message": str(error),
+                "details": error.details,
+            },
+        }
+    except OSError as error:
+        return {
+            **base,
+            "installed": True,
+            "status": "invalid",
+            "error": {
+                "code": "environment_error",
+                "message": str(error),
+                "details": {},
+            },
+        }
+    if manifest is None:
+        return {"installed": False, "status": "not-installed"}
+    if inspection is None:
+        from .version import version_report
+
+        try:
+            report = version_report()
+        except Exception as error:  # report unavailable context, never crash read-only
+            running: dict[str, Any] = {
+                "xc_version": None,
+                "bundle_manifest_sha256": None,
+                "error": {
+                    "code": getattr(error, "code", "version_unavailable"),
+                    "message": str(error),
+                },
+            }
+        else:
+            running = {
+                "xc_version": report["xc_version"],
+                "bundle_manifest_sha256": report["bundle_manifest_sha256"],
+            }
+    else:
+        running = {
+            "xc_version": inspection.manifest.xc_version,
+            "bundle_manifest_sha256": inspection.manifest_sha256,
+        }
+    problems: list[dict[str, Any]] = []
+    kinds = {"skill": 0, "agent-definition": 0}
+    verified = 0
+    for relative in sorted(files):
+        entry = files[relative]
+        parts = PurePosixPath(relative).parts
+        kind = (
+            "agent-definition"
+            if len(parts) >= 2 and parts[1] == "agents"
+            else "skill"
+        )
+        kinds[kind] = kinds.get(kind, 0) + 1
+        target = root.joinpath(*parts)
+        problem: dict[str, Any] = {
+            "path": relative,
+            "kind": kind,
+            "expected_sha256": entry["sha256"],
+            "owners": list(entry["owners"]),
+        }
+        if not (target.exists() or target.is_symlink()):
+            problems.append({**problem, "status": "missing"})
+            continue
+        if target.is_symlink() or not target.is_file():
+            problems.append(
+                {**problem, "status": "modified", "reason": "not-regular-file"}
+            )
+            continue
+        try:
+            digest = hashlib.sha256(target.read_bytes()).hexdigest()
+        except OSError:
+            problems.append(
+                {**problem, "status": "modified", "reason": "unreadable"}
+            )
+            continue
+        if digest != entry["sha256"]:
+            problems.append(
+                {
+                    **problem,
+                    "status": "modified",
+                    "actual_sha256": digest,
+                }
+            )
+        else:
+            verified += 1
+    missing = sum(1 for problem in problems if problem["status"] == "missing")
+    modified = sum(1 for problem in problems if problem["status"] == "modified")
+    version_matches = (
+        running.get("xc_version") is not None
+        and running.get("xc_version") == manifest.get("version")
+    )
+    bundle_matches = (
+        running.get("bundle_manifest_sha256") is not None
+        and running.get("bundle_manifest_sha256")
+        == manifest.get("bundle_manifest_sha256")
+    )
+    if not version_matches or not bundle_matches:
+        status = "stale"
+    elif missing:
+        status = "missing"
+    elif modified:
+        status = "modified"
+    else:
+        status = "current"
+    return {
+        **base,
+        "installed": True,
+        "status": status,
+        "generation": manifest.get("generation"),
+        "hosts": list(manifest.get("hosts", [])),
+        "manifest_version": manifest.get("version"),
+        "running_version": running.get("xc_version"),
+        "version_matches": version_matches,
+        "manifest_bundle_manifest_sha256": manifest.get(
+            "bundle_manifest_sha256"
+        ),
+        "running_bundle_manifest_sha256": running.get(
+            "bundle_manifest_sha256"
+        ),
+        "bundle_matches": bundle_matches,
+        "counts": {
+            "total": len(files),
+            "verified": verified,
+            "modified": modified,
+            "missing": missing,
+        },
+        "kinds": kinds,
+        "problems": problems,
+        "running": running,
+        "ownership": {
+            "manifest_owned": len(files),
+            "unowned": "preserved",
+            "note": (
+                "files outside the setup manifest are not owned by XC and are "
+                "never changed by install or uninstall"
+            ),
+        },
     }
 
 
@@ -256,6 +463,14 @@ def doctor_report(target_root: Path | None = None) -> dict[str, Any]:
                 details={"target_root": None},
             )
         )
+        checks.append(
+            _check(
+                "payload",
+                required=False,
+                status="not-requested",
+                details={"target_root": None},
+            )
+        )
     else:
         target = inspect_target_readiness(target_root)
         checks.append(
@@ -266,6 +481,47 @@ def doctor_report(target_root: Path | None = None) -> dict[str, Any]:
                 details=target,
             )
         )
+        payload = payload_readiness(target_root, inspection=inspection)
+        if payload["status"] == "legacy":
+            # The 0.3.6 layout is real installed drift, not a clean machine:
+            # it must fail readiness until the explicit adoption runs.
+            checks.append(
+                _check(
+                    "payload",
+                    required=True,
+                    status="fail",
+                    details=payload,
+                )
+            )
+        elif not payload["installed"]:
+            checks.append(
+                _check(
+                    "payload",
+                    required=False,
+                    status="not-installed",
+                    details=payload,
+                )
+            )
+            warnings.append(
+                {
+                    "code": "payload-not-installed",
+                    "message": (
+                        "no setup manifest is installed at the target root; "
+                        "payload consistency was not evaluated"
+                    ),
+                }
+            )
+        else:
+            checks.append(
+                _check(
+                    "payload",
+                    required=True,
+                    status=(
+                        "pass" if payload["status"] == "current" else "fail"
+                    ),
+                    details=payload,
+                )
+            )
 
     ready = all(
         check["status"] == "pass"
@@ -284,5 +540,6 @@ __all__ = [
     "MINIMUM_PYTHON",
     "delegation_adapter_readiness",
     "doctor_report",
+    "payload_readiness",
     "python_readiness",
 ]

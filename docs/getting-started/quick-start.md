@@ -2,7 +2,7 @@
 
 **Language:** **English** | [简体中文](../zh-CN/getting-started/quick-start.md)
 
-This guide starts from a consumer project with the required `xcoding` tool on `PATH` and at least one Agent host configured by `xcoding setup`. If either prerequisite is missing, follow [Installation](installation.md) first. Installing the wheel provides the tool; setup installs and owns the selected host's XC Skills and subagent definitions inside the explicit project root. `build_agents.py` is only the development mirror for the xcoding-workflow checkout.
+This guide starts from a consumer project with the `xcoding` CLI installed from a verified wheel with `uv`, and the XC payload installed with `xcoding install`: user scope by default, or project scope with `xcoding install --scope project --project-root /absolute/path/to/project` (or directly with `xcoding setup`). If either prerequisite is missing, follow [Installation](installation.md) first. Installing the wheel provides the CLI; `xcoding install` and `xcoding setup` install and own the selected hosts' XC Skills and subagent definitions from the installed wheel. `build_agents.py` is only the development mirror for the xcoding-workflow checkout.
 
 ## 1. Choose the consumer project
 

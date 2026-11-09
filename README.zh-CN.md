@@ -4,7 +4,7 @@
 
 xcoding-workflow 帮助编码 Agent 把一个需求推进到经过测试和审查的结果。它不绑定特定编程语言、框架或运行编码 Agent 的应用；本文把这类应用称为 **Agent 宿主**。
 
-当前源码候选版本：<!-- xc:version -->0.4.18<!-- /xc:version -->。[版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
+当前源码候选版本：<!-- xc:version -->0.4.19<!-- /xc:version -->。[版本维护政策](docs/zh-CN/development/versioning.md)要求先提出建议，再经用户明确同意才升级；源码版本不代表公开发行已可用。
 
 ## XC 由哪些部分组成
 
@@ -20,7 +20,7 @@ flowchart LR
         bridge[".xcoding/WORKFLOW.md<br/>项目桥接"]
     end
     subgraph engine["xcoding 命令行"]
-        cli["runtime · viewer · setup"]
+        cli["setup · install · upgrade · uninstall · runtime · viewer"]
         tree["受管运行时树<br/>唯一进度权威"]
     end
     subgraph project["消费项目"]
@@ -131,29 +131,53 @@ python skills/xc-work/scripts/classify.py [事实参数]
 
 受支持的 distribution 是 `xcoding-workflow`；`0.1.0` 只通过不可变 GitHub Release 分发，不发布到 PyPI。如果不可变 release 及其完整性文件尚不可用，就还没有受支持的公开安装产物。
 
-对于已经发布的 release，应从该 release 下载 wheel 和完整性文件，并按[安装](docs/zh-CN/getting-started/installation.md)中的说明校验。以下文件名仅示意当前尚未发布的 `0.4.18` 源码候选，不表示发行产物已经可用或已获得发行资格。只有在候选 wheel 完成构建并针对预期用途验证后，才安装它：
+对于已经发布的 release，应从该 release 下载 wheel 和完整性文件，并按[安装](docs/zh-CN/getting-started/installation.md)中的说明校验。以下文件名仅示意当前尚未发布的 `0.4.19` 源码候选，不表示发行产物已经可用或已获得发行资格。只有在候选 wheel 完成构建并针对预期用途验证后，才安装它：
 
 ```console
-uv tool install /absolute/path/to/xcoding_workflow-0.4.18-py3-none-any.whl
+uv tool install /absolute/path/to/xcoding_workflow-0.4.19-py3-none-any.whl
 xcoding version --json
 ```
 
 包含新快捷入口实现的构建也支持 `xcoding --version`；既有安装请继续使用 `xcoding version --json`，直到升级至包含该变更的构建。重新安装同一历史 wheel 不会增加该能力。
 
-安装结果只提供 `xcoding` 命令。在消费项目根目录为一个或多个显式宿主执行设置；重复的 `--host` 值共同构成完整 desired host set：
+这一步只安装 CLI。XC Skills 与 agent 定义是独立的载荷阶段，由已安装的 CLI 拥有：
 
 ```console
+xcoding install --json
+xcoding doctor --target-root <home> --json
+```
+
+`xcoding install` 默认使用用户级作用域，写入用户主目录，把所有权记录在 `<home>/.agents/.xcoding-setup/manifest.json`，并且在未指定 `--host` 时选择全部四种受支持宿主（`claude-code`、`codex`、`opencode`、`trae`）。`.agents/skills` 由 `codex`、`opencode` 和 `trae` 共享，只写一次。追加 `--dry-run` 可以在零写入情况下检查计划。由 0.3.6 开发安装器准备的主目录通过 `xcoding install --scope user --adopt-legacy --json` 显式迁移；采纳会校验 hash 并保留漂移或未知文件。
+
+项目级载荷继续使用既有 setup 路径或其生命周期薄别名：
+
+```console
+xcoding install --scope project --project-root /absolute/path/to/consumer --host codex --host trae --json
 xcoding setup --project-root /absolute/path/to/consumer --host codex --host trae --json
 ```
 
-追加 `--dry-run` 可以在零写入情况下检查同一计划。Setup 报告中断 journal 时，应显式恢复；需要还原上一份成功 generation 时，执行 rollback：
+从已验证 wheel 同时升级 CLI 与载荷，或把载荷对账到当前 CLI：
+
+```console
+xcoding upgrade --json
+xcoding upgrade --wheel /absolute/path/to/<verified-wheel>.whl --json
+```
+
+移除载荷；加 `--all` 还会请求执行 `uv tool uninstall xcoding-workflow`。运行中的 CLI 在 Windows 上无法删除自己，因此失败的 CLI 移除会明确报告，绝不会报告为完全成功：
+
+```console
+xcoding uninstall --json
+xcoding uninstall --all --json
+```
+
+`xcoding install --scope project` 要求显式 `--project-root`，`xcoding setup` 要求显式 `--project-root` 和至少一个显式 `--host`。两者都不会根据当前目录推断项目，也不会交互式检测宿主。没有 `--host` 时，`xcoding install` 使用固定的四宿主默认集合。旧布局采纳是显式且仅限用户级作用域的：`install` 与 `upgrade` 都需要 `--adopt-legacy` 才会采纳 0.3.6 布局，没有任何 force 选项能覆盖未纳管文件或已漂移的受管文件；`upgrade --force` 只重装同版本 wheel。若 setup 报告中断 journal，应显式恢复；需要还原上一份成功 generation 时，执行 rollback：
 
 ```console
 xcoding setup --project-root /absolute/path/to/consumer --recover --json
 xcoding setup --project-root /absolute/path/to/consumer --rollback --json
 ```
 
-Setup 会拒绝未纳管冲突和已漂移的受管文件，不会覆盖它们。XC 不提供 `install.ps1`、`install.sh`、远程脚本 pipe 命令、自动宿主检测或 force 选项。宿主路径、desired-state 更新、恢复、回滚、release 完整性和支持政策详见[安装](docs/zh-CN/getting-started/installation.md)。
+载荷安装并验证后，继续阅读[快速开始](docs/zh-CN/getting-started/quick-start.md)。宿主路径、两阶段 bootstrap、用户级与项目级作用域、旧布局采纳、所有权、升级与卸载失败语义、恢复、回滚、release 完整性和支持政策详见[安装](docs/zh-CN/getting-started/installation.md)。
 
 ## 创建工作流空间
 
@@ -205,7 +229,7 @@ New-Item -ItemType Junction -Path (Join-Path $ProjectRoot ".xcoding") -Target (J
 - [写作与质量 Skill](docs/zh-CN/reference/skills/implementation-and-quality.md)
 - [工单示例](samples/minecraft-sandbox-work-order/README.zh-CN.md)
 
-`build_agents.py` 只用于开发本仓库。它刷新当前检出中的本地 Skill 镜像，不会把 XC 安装到其他项目。
+`build_agents.py` 与当前检出的安装脚本 `install_skills.py`、`skills/xc-workflow-evolution/scripts/install_xc_skills.py` 只用于开发本仓库。它们不会把 XC 安装到消费项目；消费安装请使用 `xcoding install`、`xcoding upgrade` 与 `xcoding uninstall`。
 
 ## 许可证
 

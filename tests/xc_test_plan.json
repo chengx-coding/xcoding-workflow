@@ -121,6 +121,7 @@
         "test_xc_package_wheel",
         "test_xc_package_cli",
         "test_xc_setup_transaction",
+        "test_xc_install_lifecycle",
         "test_xc_stage1_matrix",
         "test_install_skills",
         "test_xc_install_skills_guard",
@@ -130,7 +131,7 @@
         "test_ensure_gitignore"
       ],
       "baseline_seconds": 158.8,
-      "baseline_tests": 135
+      "baseline_tests": 191
     },
     "daemon": {
       "directory": "tests/daemon",
@@ -534,6 +535,7 @@
     "test_xc_frontmatter_yaml": 0.022,
     "test_xc_governance_stats": 23.897,
     "test_xc_human_readable_documents": 0.001,
+    "test_xc_install_lifecycle": 2.87,
     "test_xc_install_skills_guard": 13.669,
     "test_xc_jit_milestone": 8.181,
     "test_xc_lifecycle_e2e": 272.028,
@@ -564,5 +566,5 @@
   },
   "module_weights_source": "measured per-module wall seconds and collected test counts from a full serial baseline profile on a 20-logical-core Windows machine; used only as the sharding cost model",
   "module_test_counts": {},
-  "expected_collected_tests": 693
+  "expected_collected_tests": 749
 }
